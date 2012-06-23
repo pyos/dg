@@ -14,6 +14,11 @@ programs; and b) produces less tested and less optimized output.
 As you may have already noticed, I have some problems thinking of project names.
 Got any suggestions?
 
+## Requirements
+
+ * [dg](https://github.com/pyos/dg)
+ * [interactive](https://github.com/pyos/interactive)
+
 ## Unsupported features
 
 1. `try/except/else/finally` clauses produce very complex bytecode sequences I was unable to decode so far. Maybe later.
