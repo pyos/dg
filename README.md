@@ -28,7 +28,7 @@ Got any suggestions?
 Yeah, using `dg` as a parser allows you to do cool things that may impress your
 friends (if they don't know about [Haskell](http://www.haskell.org/).)
 
-## Examples are (sometimes) better than words.
+### Examples are (sometimes) better than words.
 
 ```python
 
