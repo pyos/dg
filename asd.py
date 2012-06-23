@@ -278,7 +278,7 @@ class Compiler:
         args = match.matchR(lhs, TUPLE, lambda f, q: q.pop(-2))[::-1] + [rhs]
         self.opcode('BUILD_TUPLE', *args, arg=len(args))
 
-    def function(self, *stuff, _code_hook=lambda code: 0):
+    def function(self, *stuff, _code_hook=lambda code: 0, _name='<lambda>'):
 
         # TODO generators
 
@@ -340,7 +340,7 @@ class Compiler:
             (CO_VARKWARGS if vark else 0)
         )
         _code_hook(mcode)
-        code = self.compile(code, mcode)
+        code = self.compile(code, mcode, _name)
 
         if code.co_freevars:
 
@@ -443,10 +443,11 @@ class Compiler:
             if len(func) > 1:
 
                 *args, var = func
-                self.function(*args[::-1] + [expr])
 
                 # `var` might've become a closure again.
                 var = match.matchR(var, CLOSURE, lambda f, q: q.pop(-1))[-1]
+
+                self.function(*args[::-1] + [expr], _name=str(var))
 
             else:
 
@@ -578,12 +579,12 @@ class Interactive (interactive.Interactive):
     def compile(self, code):
 
         q = self.PARSER.compile_command(code)
-        return q if q is None else self.COMPILER.compile(q, single=True)
+        return q if q is None else self.COMPILER.compile(q, name='<module>', single=True)
 
     def run(self, ns):
 
         q = self.PARSER.parse(sys.stdin, '<stdin>')
-        q = self.COMPILER.compile(q)
+        q = self.COMPILER.compile(q, name='<module>')
         return self.eval(q, ns)
 
 
