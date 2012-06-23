@@ -527,29 +527,6 @@ class Compiler:
         # NOTE:: `self._loading` may become garbage because of exceptions.
         self._loading = _backup
 
-    # try-except-else-finally:
-    #
-    #    SETUP_FINALLY  @finally
-    #    SETUP_EXCEPT   @first_except
-    # try:
-    #    ...
-    #    POP_BLOCK
-    #    JUMP_FORWARD   @else
-    # first_except:
-    #    DUP_TOP
-    #    ; load the second argument to `isinstance`
-    #    COMPARE_OP 10  ; exception match
-    #    ; the stack now contains (type, value, traceback)
-    #    POP_TOP
-    #    POP_TOP || STORE_FAST ...
-    #    POP_TOP
-    #    ...
-    #    POP_EXCEPT
-    #    JUMP_FORWARD   @exit
-    # next_except:
-    #    ... ; same as above
-    #
-
     def compile(self, e, into=None, name='<lambda>', single=False):
 
         backup, self.code = self.code, MutableCode(e) if into is None else into
