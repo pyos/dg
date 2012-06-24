@@ -21,18 +21,21 @@ CO_GENERATOR = 32
 CO_NOFREE    = 64
 
 
-CLOSURE, FUNCALL, TUPLE, ATTRIBUTE, ITEM, IMPORT = dg.Parser().parse(
-    '(_);'
-    '_ _;'
-    '_, _;'
-    '_._;'
-    '_ !! _;'
-    'import'
+(
+    CLOSURE, FUNCALL, TUPLE,
+    ATTRIBUTE, ITEM, IMPORT,
+    KW_ARG, VAR_ARG, VAR_KW_ARG, ARG_ANNOTATION
+) = dg.Parser().parse(
+    '(_); _ _; _, _;'
+    '_._; _ !! _; import;'
+    '_ = _; *_; **_; _: _'
 )
 
 
-iindex = lambda it, v: next(i for i, q in enumerate(it) if q == v)
-delay  = lambda f: type('delay', (), {'__int__': f})()
+iindex  = lambda it, v: next(i for i, q in enumerate(it) if q == v)
+delay   = lambda f: type('delay', (), {'__int__': f})()
+unwrap  = lambda f: match.matchR(f, CLOSURE, lambda f, q: q.pop(-1))[-1]
+uncurry = lambda f, p: match.matchR(f, p,    lambda f, q: q.pop(-2))[::-1]
 
 
 class MutableCode:
@@ -247,14 +250,14 @@ class Compiler:
 
     def call(self, f, *args):
 
-        args = match.matchR(f, FUNCALL, lambda f, q: q.pop(-2))[::-1] + list(args)
+        args = uncurry(f, FUNCALL) + list(args)
         expr = dg.Expression(args)
         expr.reparse_location = f.reparse_location
         self.load(expr)
 
-    def tuple(self, lhs, rhs):
+    def tuple(self, lhs, *rhs):
 
-        args = match.matchR(lhs, TUPLE, lambda f, q: q.pop(-2))[::-1] + [rhs]
+        args = uncurry(lhs, TUPLE) + list(rhs)
         self.opcode('BUILD_TUPLE', *args, arg=len(args))
 
     def function(self, qargs, code, *_, _code_hook=lambda code: 0, _name='<lambda>'):
@@ -271,9 +274,7 @@ class Compiler:
 
         if not isinstance(qargs, dg.Closure) or qargs:
 
-            qargs = match.matchR(qargs, CLOSURE, lambda f, q: q.pop(-1))[-1]
-            qargs = match.matchR(qargs, TUPLE,   lambda f, q: q.pop(-2))[::-1]
-            args = tuple(qargs)
+            args = tuple(uncurry(unwrap(qargs), TUPLE))
 
         len(args) < 256 or self.error('CPython can\'t into 256+ arguments')
 
@@ -396,17 +397,57 @@ class Compiler:
         )
 
         self.load('<class>')
-      # self.load_call(args, ld=3)
-        self.opcode('CALL_FUNCTION', *args, arg=len(args) + 2, delta=-2)
+        self.load_call(args, ld=2)
+
+    def load_call(self, args, ld=0):
+
+        kwargs = {}
+        vararg = {}
+
+        for arg in args:
+
+            arg = unwrap(arg)
+
+            kw = match.matchA(arg, KW_ARG)
+            kw and kwargs.__setitem__(*kw)
+
+            var = match.matchA(arg, VAR_ARG)
+            var and 0 in vararg and self.error('multiple *varargs are not allowed')
+            var and vararg.__setitem__(0, *var)
+
+            varkw = match.matchA(arg, VAR_KW_ARG)
+            varkw and 1 in vararg and self.error('multiple **varkwargs are not allowed')
+            varkw and vararg.__setitem__(1, *varkw)
+
+            var or kw or varkw or self.load(arg)
+
+        for kw, value in kwargs.items():
+
+            isinstance(kw, dg.Link) or self.error('keywords should be names')
+            self.load(str(kw))
+            self.load(value)
+
+        0 in vararg and self.load(vararg[0])
+        1 in vararg and self.load(vararg[1])
+
+        (
+            self.code.CALL_FUNCTION_VAR_KW if len(vararg) == 2 else
+            self.code.CALL_FUNCTION_VAR    if 0 in vararg else
+            self.code.CALL_FUNCTION_KW     if 1 in vararg else
+            self.code.CALL_FUNCTION
+        )(
+            ld + len(args) + 255 * len(kwargs) - len(vararg),
+            delta=-ld - len(args) - len(kwargs)
+        )
 
     def store(self, var, expr):
 
         # Drop outermost pairs of parentheses.
-        var = match.matchR(var, CLOSURE, lambda f, q: q.pop(-1))[-1]
+        var = unwrap(var)
 
         if match.matchQ(expr, IMPORT):
 
-            args = match.matchR(var, ATTRIBUTE, lambda f, q: q.pop(-2))[::-1]
+            args = uncurry(var, ATTRIBUTE)
             var = args[0]
 
             isinstance(var, dg.Link) or self.error('use `__import__` instead')
@@ -472,8 +513,8 @@ class Compiler:
 
                 return self.builtins[e[0]](*e[1:])
 
-          # self.load_call(e)
-            self.opcode('CALL_FUNCTION', *e, arg=len(e) - 1)
+            self.load(e[0])
+            self.load_call(e[1:])
 
         elif isinstance(e, dg.Link):
 
