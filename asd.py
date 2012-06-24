@@ -248,13 +248,6 @@ class Compiler:
         list(map(self.load, args))
         self.code.append(opcode, arg, -len(args) + delta)
 
-    def call(self, f, *args):
-
-        args = uncurry(f, FUNCALL) + list(args)
-        expr = dg.Expression(args)
-        expr.reparse_location = f.reparse_location
-        self.load(expr)
-
     def tuple(self, lhs, *rhs):
 
         args = uncurry(lhs, TUPLE) + list(rhs)
@@ -398,6 +391,12 @@ class Compiler:
 
         self.load('<class>')
         self.load_call(args, ld=2)
+
+    def call(self, f, *args):
+
+        args = uncurry(f, FUNCALL) + list(args)
+        self.load(args.pop(0))
+        self.load_call(args)
 
     def load_call(self, args, ld=0):
 
