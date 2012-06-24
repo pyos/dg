@@ -1,9 +1,11 @@
 import sys
+import math
 import types
 import opcode
 import struct
 import operator
 import functools
+import itertools
 
 import dg
 import match
@@ -29,62 +31,11 @@ CLOSURE, FUNCALL, TUPLE, ATTRIBUTE, ITEM, IMPORT = dg.Parser().parse(
 )
 
 
-class FakeBytecodeValue:
+iindex = lambda it, v: next(i for i, q in enumerate(it) if q == v)
+delay  = lambda f: type('delay', (), {'__int__': f})()
 
-    def __init__(self, v, f=lambda x: 0):
-
-        super().__init__()
-        self.v = v
-        self.f = f
-
-    def __int__(self):
-
-        return self.f(self.v)
-
-    def __index__(self):
-
-        return int(self)
-
-    def __coerce__(self, other):
-
-        return int(self).__coerce__(other)
-
-    def __ge__(self, other):
-
-        return int(self) >= other
-
-    def __floordiv__(self, other):
-
-        return FakeBytecodeValue(self.v, lambda x, f=self.f, o=other: f(x) // o)
-
-    def __mod__(self, other):
-
-        return FakeBytecodeValue(self.v, lambda x, f=self.f, o=other: f(x) % o)
-
-    def __imod__(self, other):
-
-        return self % other
 
 class MutableCode:
-
-    # Call any of these to get the index of a variable in the respective tuple.
-    NAME  = property(lambda self: lambda v: self.use(self.names,    v))
-    CONST = property(lambda self: lambda v: self.use(self.consts,   v))
-    LOCAL = property(lambda self: lambda v: self.use(self.varnames, v))
-    #FREE  = property(lambda self: lambda v: self.use(self.freevars, v))
-    #CELL  = property(lambda self: lambda v: self.use(self.cellvars, v))
-
-    def FREE(self, v):
-
-        return FakeBytecodeValue(
-            self.use(self.freevars, v),
-            lambda x: x + len(self.cellvars)
-        )
-
-    def CELL(self, v):
-
-        return self.FREE(v) if v in self.freevars or v in self.cellnames \
-          else self.use(self.cellvars, v)
 
     def __init__(self, e, argc=0, kwargc=0, locals=(), cell=(), flags=0):
 
@@ -126,19 +77,6 @@ class MutableCode:
             super().__getattr__(name)
         )
 
-    # Add a name/constant to a name container.
-    #
-    # :param container: one of `names`, `constants`, etc.
-    #
-    # :param v: a variable name/constant value.
-    #
-    # :return: index of `v` in `container`.
-    #
-    def use(self, container, v):
-
-        v in container or container.append(v)
-        return container.index(v)
-
     # Add an entry to the lineno table.
     #
     # :param struct: a dg output structure that will produce an instruction.
@@ -169,39 +107,78 @@ class MutableCode:
                 yield (q[1] - e[1]) % 256
                 e = q
 
+    # Add a name/constant to a name container.
+    #
+    # :param v: the variable name/constant value to append.
+    #
+    # :param id: index of the preferred container.
+    #
+    # :param containers: mutually exclusive containers sorted by their priority.
+    #
+    # :return: delayed computation of index of `v` in the sum of `containers`.
+    #
+    def use(self, v, id, *containers):
+
+        for i, ct in enumerate(containers):
+
+            i < id and v in ct and ct.remove(v)
+
+            if i >= id and v in ct:
+
+                break
+
+        else:
+
+            containers[id].append(v)
+
+        return delay(lambda _: iindex(itertools.chain.from_iterable(containers), v))
+
     # Add an instruction to a mutable code object.
     #
     # :param name: the instruction name.
     #
     # :param value: an argument to that instruction, if necessary.
     #
-    def append(self, name, value=None, delta=0):
+    def append(self, name, value=0, delta=0):
 
-        assert self.cstacksize >= -delta, 'Segmentation Fault'
+        code = opcode.opmap[name]
 
-        if value is not None and value >= 0x10000:
-
-            # This is how CPython VM handles arguments that
-            # don't fit in 2 bytes.
-            #
-            # Note that EXTENDED_ARG carries the most significant bits.
-            # This may lead to some confusion on little-endian platforms.
-            #
-            self.append('EXTENDED_ARG', value // 0x10000)
-            value %= 0x10000
-
-        self.bytecode.append(opcode.opmap[name])
-
-        if value is not None:
-
-            # XXX see if it really uses native byte ordering.
-            #     This line works on x86, but may break on PPC.
-            #self.bytecode.extend(struct.pack('@H', value))
-            self.bytecode.append(value % 0x100)
-            self.bytecode.append(value // 0x100)
+        self.bytecode.append((
+            code,
+            0                                 if code <  HAVE_ARGUMENT   else
+            self.use(value, 0, self.names)    if code in opcode.hasname  else
+            self.use(value, 0, self.varnames) if code in opcode.haslocal else
+            self.use(value, 0, self.consts)   if code in opcode.hasconst else
+            self.use(value, value in self.cellnames, self.cellvars, self.freevars) if code in opcode.hasfree else
+            # TODO hasjrel, hasjabs
+            opcode.cmp_op.index(value) if code in opcode.hascompare else
+            value
+        ))
 
         self.cstacksize += delta
         self.stacksize = max(self.stacksize, self.cstacksize)
+
+    def make_bytecode(self):
+
+        for code, value in self.bytecode:
+
+            value = int(value)
+
+            for q in range(value and int(math.log(value, 0x10000)), 0, -1):
+
+                yield opcode.opmap['EXTENDED_ARG']
+                yield value // (0x10000 ** q) %  0x100
+                yield value // (0x10000 ** q) // 0x100
+                value %= (0x10000 ** q)
+
+            yield code
+
+            if code >= opcode.HAVE_ARGUMENT:
+
+                # XXX see if it uses native byte ordering.
+                # FIXME if it does, this will break on big-endian platforms.
+                yield value %  0x100
+                yield value // 0x100
 
     def compile(self, name='<lambda>'):
 
@@ -211,7 +188,7 @@ class MutableCode:
             len(self.varnames),
             self.stacksize,
             self.flags | (CO_NESTED if self.freevars else 0 if self.cellvars else CO_NOFREE),
-            bytes(self.bytecode),
+            bytes(self.make_bytecode()),
             tuple(self.consts),
             tuple(self.names),
             tuple(self.varnames),
@@ -225,8 +202,6 @@ class MutableCode:
 
 
 class Compiler:
-
-    insert = property(lambda self: self.code.append)
 
     def __init__(self):
 
@@ -252,7 +227,7 @@ class Compiler:
           , 'inherit': self.class_
 
           , '=':  self.store
-          , '.':  lambda n, a: self.opcode('LOAD_ATTR', n, arg=self.code.NAME(a))
+          , '.':  lambda n, a: self.opcode('LOAD_ATTR', n, arg=a)
 
             # TODO various operators
           , '+':  functools.partial(self.opcode, 'BINARY_ADD')
@@ -260,14 +235,13 @@ class Compiler:
           , '!!': functools.partial(self.opcode, 'BINARY_SUBSCR')
         }
 
-    def opcode(self, opcode, *args, arg=None, delta=1):
+    def opcode(self, opcode, *args, arg=0, delta=1):
 
         list(map(self.load, args))
         self.code.append(opcode, arg, -len(args) + delta)
 
     def call(self, f, *args):
 
-        # TODO kwargs
         args = match.matchR(f, FUNCALL, lambda f, q: q.pop(-2))[::-1] + list(args)
         expr = dg.Expression(args)
         expr.reparse_location = f.reparse_location
@@ -353,14 +327,10 @@ class Compiler:
                 if freevar in self.code.varnames:
 
                     # Export local variable.
-                    self.code.LOAD_FAST  (self.code.LOCAL(freevar), delta=1)
-                    self.code.STORE_DEREF(self.code.CELL(freevar), delta=-1)
+                    self.code.LOAD_FAST  (freevar, delta=1)
+                    self.code.STORE_DEREF(freevar, delta=-1)
 
-                elif freevar in self.code.cellnames:
-
-                    self.code.FREE(freevar)
-
-                self.code.LOAD_CLOSURE(self.code.CELL(freevar), delta=1)
+                self.code.LOAD_CLOSURE(freevar, delta=1)
 
             # STACK: - len(code.co_freevars)
             # STACK: + 1
@@ -407,16 +377,16 @@ class Compiler:
             _code_hook=lambda code: (
                 setattr(code, 'slowlocals', True),
 
-                code.LOAD_FAST(code.LOCAL('__locals__'), 1),
+                code.LOAD_FAST('__locals__', 1),
                 code.STORE_LOCALS(delta=-1),
 
-                code.LOAD_NAME (code.NAME('__name__'),    1),
-                code.STORE_NAME(code.NAME('__module__'), -1),
+                code.LOAD_NAME ('__name__',    1),
+                code.STORE_NAME('__module__', -1),
             )
         )
 
         self.load('<class>')
-      # self.call(args, ld=3)
+      # self.load_call(args, ld=3)
         self.opcode('CALL_FUNCTION', *args, arg=len(args) + 2, delta=-2)
 
     def store(self, var, expr):
@@ -433,7 +403,7 @@ class Compiler:
 
             self.load(0)
             self.load(None)
-            self.code.IMPORT_NAME( self.code.NAME('.'.join(args)), -1)
+            self.code.IMPORT_NAME('.'.join(args), -1)
             self.code.DUP_TOP(delta=1)
 
         else:
@@ -463,7 +433,7 @@ class Compiler:
                 isinstance(attr[1], dg.Link) or self.error('use `setattr` instead')
 
                 self.load(attr[0])
-                self.code.STORE_ATTR(self.code.NAME(attr[1]), -2)
+                self.code.STORE_ATTR(attr[1], -2)
                 return
 
             if item:
@@ -475,12 +445,13 @@ class Compiler:
 
         isinstance(var, dg.Link) or self.error('can\'t assign to non-constant names')
 
-        self.code.STORE_DEREF (self.code.CELL(var),  -1) if var in self.code.cellvars else \
-        self.code.STORE_NAME  (self.code.NAME(var),  -1) if self.code.slowlocals else \
-        self.code.STORE_FAST  (self.code.LOCAL(var), -1)
+        self.code.STORE_DEREF (var, -1) if var in self.code.cellvars else \
+        self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
+        self.code.STORE_FAST  (var, -1)
 
     def load(self, e):
 
+        stacksize = self.code.cstacksize
         _backup = self._loading
 
         if hasattr(e, 'reparse_location'):
@@ -490,15 +461,9 @@ class Compiler:
 
         if isinstance(e, dg.Closure):
 
-            stacksize = self.code.cstacksize
-
             for not_at_end, q in enumerate(e, -len(e) + 1):
 
                 self.load(q)
-                # XXX this line is for compiler debugging purposes.
-                #     If it triggers an exception, the required stack size
-                #     might have been calculated improperly.
-                assert self.code.cstacksize == stacksize + 1, 'stack leaked'
                 # XXX should it insert PRINT_EXPR in `single` mode instead?
                 not_at_end and self.code.POP_TOP(delta=-1)
 
@@ -510,23 +475,26 @@ class Compiler:
 
                 return self.builtins[e[0]](*e[1:])
 
-          # self.call(e)
+          # self.load_call(e)
             self.opcode('CALL_FUNCTION', *e, arg=len(e) - 1)
 
         elif isinstance(e, dg.Link):
 
-            self.code.LOAD_FAST   (self.code.LOCAL(e), 1) if e in self.code.varnames  else \
-            self.code.LOAD_DEREF  (self.code.CELL(e),  1) if e in self.code.cellvars  else \
-            self.code.LOAD_DEREF  (self.code.FREE(e),  1) if e in self.code.cellnames else \
-            self.code.LOAD_NAME   (self.code.NAME(e),  1) if self.code.slowlocals     else \
-            self.code.LOAD_GLOBAL (self.code.NAME(e),  1)
+            self.code.LOAD_FAST   (e, 1) if e in self.code.varnames  else \
+            self.code.LOAD_DEREF  (e, 1) if e in self.code.cellnames or e in self.code.cellvars  else \
+            self.code.LOAD_NAME   (e, 1) if self.code.slowlocals     else \
+            self.code.LOAD_GLOBAL (e, 1)
 
         else:
 
-            self.code.LOAD_CONST(self.code.CONST(e), 1)
+            self.code.LOAD_CONST(e, 1)
 
-        # NOTE:: `self._loading` may become garbage because of exceptions.
+        # NOTE `self._loading` may become garbage because of exceptions.
         self._loading = _backup
+        # XXX this line is for compiler debugging purposes.
+        #     If it triggers an exception, the required stack size
+        #     might have been calculated improperly.
+        assert self.code.cstacksize == stacksize + 1, 'stack leaked'
 
     def compile(self, e, into=None, name='<lambda>', single=False):
 
