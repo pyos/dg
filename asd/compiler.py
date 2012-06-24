@@ -44,7 +44,7 @@ class Compiler:
 
     def opcode(self, opcode, *args, arg=0, delta=1):
 
-        list(map(self.load, args))
+        self.load(*args)
         self.code.append(opcode, arg, -len(args) + delta)
 
     def tuple(self, lhs, *rhs):
@@ -70,22 +70,10 @@ class Compiler:
 
         len(args) < 256 or self.error(const.ERR_TOO_MANY_ARGS)
 
-        for arg, value in kwvs.items():
-
-            self.load(arg)
-            self.load(value)
-
-        for value in defs:
-
-            self.load(value)
-
-        annotated = tuple(annt)
-
-        for annotation in map(annt.__getitem__, annotated):
-
-            self.load(annotation)
-
-        annotated and self.load(annotated)
+        list(map(self.load, kwvs.items()))
+        self.load(*defs)
+        self.load(*annt.values())
+        annt and self.load(tuple(annt))
 
         mcode = codegen.MutableCode(
             code,
@@ -113,19 +101,13 @@ class Compiler:
                 self.code.LOAD_CLOSURE(freevar, delta=1)
 
             self.code.BUILD_TUPLE(len(code.co_freevars), -len(code.co_freevars) + 1)
-            self.load(code)
-            self.code.MAKE_CLOSURE(
-                256 * len(kwvs) + len(defs),  # + ?????
-                -len(kwvs) * 2 - len(defs) - 1
-            )
 
-        else:
-
-            self.load(code)
-            self.code.MAKE_FUNCTION(
-                256 * len(kwvs) + len(defs),  # + ?????
-                -len(kwvs) * 2 - len(defs)
-            )
+        self.load(code)
+        self.code.append(
+            'MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION',
+            256 * len(kwvs) + len(defs),  # + ?????
+            -len(kwvs) * 2 - len(defs) - bool(code.co_freevars)
+        )
 
     def class_(self, *stuff):
 
@@ -153,8 +135,7 @@ class Compiler:
     def call(self, f, *args):
 
         args = uncurry(f, const.ST_OP_FUNCALL) + list(args)
-        self.load(args.pop(0))
-        self.load_call(args)
+        self.load(dg.Expression(args))
 
     def load_call(self, args, ld=0):
 
@@ -209,8 +190,7 @@ class Compiler:
 
             isinstance(var, dg.Link) or self.error(const.ERR_NONCONST_IMPORT)
 
-            self.load(0)
-            self.load(None)
+            self.load(0, None)
             self.code.IMPORT_NAME('.'.join(args), -1)
             self.code.DUP_TOP(delta=1)
 
@@ -232,8 +212,7 @@ class Compiler:
 
             if item:
 
-                self.load(item[0])
-                self.load(item[1])
+                self.load(*item)
                 self.code.STORE_SUBSCR(delta=-3)
                 return
 
@@ -244,53 +223,59 @@ class Compiler:
         self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
         self.code.STORE_FAST  (var, -1)
 
-    def load(self, e):
+    def load(self, *es):
 
-        stacksize = self.code.cstacksize
-        _backup = self._loading
+        for e in es:
 
-        if hasattr(e, 'reparse_location'):
+            stacksize = self.code.cstacksize
+            _backup = self._loading
 
-            self.code.mark(e)
-            self._loading = e
+            if hasattr(e, 'reparse_location'):
 
-        if isinstance(e, dg.Closure):
+                self.code.mark(e)
+                self._loading = e
 
-            for not_at_end, q in enumerate(e, -len(e) + 1):
+            if isinstance(e, dg.Closure):
 
-                self.load(q)
-                # XXX should it insert PRINT_EXPR in `single` mode instead?
-                not_at_end and self.code.POP_TOP(delta=-1)
+                for not_at_end, q in enumerate(e, -len(e) + 1):
 
-            e or self.load(None)
+                    self.load(q)
+                    # XXX should it insert PRINT_EXPR in `single` mode instead?
+                    not_at_end and self.code.POP_TOP(delta=-1)
 
-        elif isinstance(e, dg.Expression):
+                e or self.load(None)
 
-            if isinstance(e[0], dg.Link) and e[0] in self.builtins:
+            elif isinstance(e, dg.Expression):
 
-                return self.builtins[e[0]](*e[1:])
+                f, *args = e
 
-            self.load(e[0])
-            self.load_call(e[1:])
+                if isinstance(f, dg.Link) and f in self.builtins:
 
-        elif isinstance(e, dg.Link):
+                    self.builtins[f](*args)
 
-            self.code.LOAD_DEREF  (e, 1) if e in self.code.cellvars  else \
-            self.code.LOAD_FAST   (e, 1) if e in self.code.varnames  else \
-            self.code.LOAD_DEREF  (e, 1) if e in self.code.cellnames else \
-            self.code.LOAD_NAME   (e, 1) if self.code.slowlocals     else \
-            self.code.LOAD_GLOBAL (e, 1)
+                else:
 
-        else:
+                    self.load(f)
+                    self.load_call(args)
 
-            self.code.LOAD_CONST(e, 1)
+            elif isinstance(e, dg.Link):
 
-        # NOTE `self._loading` may become garbage because of exceptions.
-        self._loading = _backup
-        # XXX this line is for compiler debugging purposes.
-        #     If it triggers an exception, the required stack size
-        #     might have been calculated improperly.
-        assert self.code.cstacksize == stacksize + 1, 'stack leaked'
+                self.code.LOAD_DEREF  (e, 1) if e in self.code.cellvars  else \
+                self.code.LOAD_FAST   (e, 1) if e in self.code.varnames  else \
+                self.code.LOAD_DEREF  (e, 1) if e in self.code.cellnames else \
+                self.code.LOAD_NAME   (e, 1) if self.code.slowlocals     else \
+                self.code.LOAD_GLOBAL (e, 1)
+
+            else:
+
+                self.code.LOAD_CONST(e, 1)
+
+            # NOTE `self._loading` may become garbage because of exceptions.
+            self._loading = _backup
+            # XXX this line is for compiler debugging purposes.
+            #     If it triggers an exception, the required stack size
+            #     might have been calculated improperly.
+            assert self.code.cstacksize == stacksize + 1, 'stack leaked'
 
     def compile(self, e, into=None, name='<lambda>', single=False):
 
