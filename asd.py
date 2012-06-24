@@ -149,7 +149,8 @@ class MutableCode:
             self.use(value, 0, self.names)    if code in opcode.hasname  else
             self.use(value, 0, self.varnames) if code in opcode.haslocal else
             self.use(value, 0, self.consts)   if code in opcode.hasconst else
-            self.use(value, value in self.cellnames, self.cellvars, self.freevars) if code in opcode.hasfree else
+            self.use(value, value in self.cellnames, self.cellvars, self.freevars)
+                if code in opcode.hasfree else
             # TODO hasjrel, hasjabs
             opcode.cmp_op.index(value) if code in opcode.hascompare else
             value
@@ -187,7 +188,11 @@ class MutableCode:
             self.kwargc,
             len(self.varnames),
             self.stacksize,
-            self.flags | (CO_NESTED if self.freevars else 0 if self.cellvars else CO_NOFREE),
+            self.flags | (
+                CO_NESTED if self.freevars else
+                0         if self.cellvars else
+                CO_NOFREE
+            ),
             bytes(self.make_bytecode()),
             tuple(self.consts),
             tuple(self.names),
@@ -549,7 +554,8 @@ class Interactive (interactive.Interactive):
     def compile(self, code):
 
         q = self.PARSER.compile_command(code)
-        return q if q is None else self.COMPILER.compile(q, name='<module>', single=True)
+        q = q if q is None else self.COMPILER.compile(q, name='<module>', single=True)
+        return q
 
     def run(self, ns):
 
