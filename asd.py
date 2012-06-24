@@ -228,7 +228,7 @@ class Compiler:
           , ':':  self.call
 
           , ',':  self.tuple
-          , '\\': self.function
+          , '->': self.function
           , 'inherit': self.class_
 
           , '=':  self.store
@@ -257,18 +257,23 @@ class Compiler:
         args = match.matchR(lhs, TUPLE, lambda f, q: q.pop(-2))[::-1] + [rhs]
         self.opcode('BUILD_TUPLE', *args, arg=len(args))
 
-    def function(self, *stuff, _code_hook=lambda code: 0, _name='<lambda>'):
+    def function(self, qargs, code, *_, _code_hook=lambda code: 0, _name='<lambda>'):
 
         # TODO generators
 
-        code = stuff[-1]
-        args = stuff[:-1]  # positional arguments
-        defs = ()          # TODO default values
-        kwas = ()          # TODO kw-only arguments
-        kwvs = {}          # TODO kw-only arguments default values
-        vara = ()          # TODO varargs
-        vark = ()          # TODO varkwargs
-        annt = {}          # TODO annotations
+        args = ()  # Arguments, obv.
+        defs = ()  # TODO Default values
+        kwas = ()  # TODO kw-only arguments
+        kwvs = {}  # TODO kw-only arguments default values
+        vara = ()  # TODO varargs
+        vark = ()  # TODO varkwargs
+        annt = {}  # TODO annotations
+
+        if not isinstance(qargs, dg.Closure) or qargs:
+
+            qargs = match.matchR(qargs, CLOSURE, lambda f, q: q.pop(-1))[-1]
+            qargs = match.matchR(qargs, TUPLE,   lambda f, q: q.pop(-2))[::-1]
+            args = tuple(qargs)
 
         len(args) < 256 or self.error('CPython can\'t into 256+ arguments')
 
@@ -413,21 +418,7 @@ class Compiler:
 
         else:
 
-            func = match.matchR(var, FUNCALL, lambda f, q: q.pop(-2))
-
-            if len(func) > 1:
-
-                *args, var = func
-
-                # `var` might've become a closure again.
-                var = match.matchR(var, CLOSURE, lambda f, q: q.pop(-1))[-1]
-
-                self.function(*args[::-1] + [expr], _name=str(var))
-
-            else:
-
-                self.load(expr)
-
+            self.load(expr)
             self.code.DUP_TOP(delta=1)
 
             attr = match.matchA(var, ATTRIBUTE)

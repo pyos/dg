@@ -36,62 +36,52 @@ friends (if they don't know about [Haskell](http://www.haskell.org/).)
 ### Examples are (sometimes) better than words.
 
 ```python
-
 dis = import      # import dis
 os.path = import  # import os.path
 
-f a b = print a 'and' b 'are the arguments you called `f` with'
-
-# Alternative syntax for function definition.
-# `\args: ...` is actually an anonymous function.
-# Don't forget to put a space between the slash and the colon if there
-# are no arguments.
-g = \x:
-  print "Did you know that the colon right there"
-  print "can be replaced with a dollar sign?"
-  print "(Oh, and this anonymous function spans multiple lines!)"
-  print "By the way, `x` was" x
+# Function definition syntax was borrowed from CoffeeScript.
+f = (a, b) -> print a 'and' b 'are the arguments you called `f` with'
 
 # That's how you call a function.
-# Prints "1 and 2 are the arguments you called `f` with".
 f 1 2
 
-# Syntax for calling functions without arguments is not so neat.
-# It's `:function`. Or `$function`. But not `function`.
-g (:object)
+# You may omit the parentheses if a function has only one argument.
+h = x -> y -> x + y
 
+# As always, parentheses can be used to explicitly set the order of operations.
+(h 2) 3
+
+# You may define your own operators, but you can't set their precedence,
+# at least for now. Parentheses in the left-hand statement are optional.
+#
 # There's no alternative syntax for function calls.
 # `(x, y)` here is just a tuple.
-# As in Haskell, `f a + b + c` is parsed as `((f a) + b) + c`.
-$@%^ = \x y: max (x, y) + x + y
+#
+$@%^ = (x, y) -> max (x, y) + x + y
 
 # $ is the best operator in the world.
 # Equivalent to `print (567 $@%^ 123 $@%^ 41823548)`.
 print $ 567 $@%^ 123 $@%^ 41823548
 
-# Yes, classes are supported, too.
-# And they are anonymous! (Unless you bind them to a name like in this example.)
-# `object` may be omitted 'cause that's the default base class, like in Python.
+# Classes are supported, too. And they are anonymous by default!
+# (Unless you bind them to a name like in this example.)
 A = inherit object:
   a = 1
   b = 2
 
-  __init__ self =
-    # Does not work yet 'cause there is no __class__ free variable.
+  __init__ = (self) ->
+    # Argumentless `super` does not work yet
+    # because there is no `__class__` free variable.
     #:(:super).__init__
     :(super A self).__init__
 
     print "Created an instance of A"
 
-print $ isinstance (:A) A  # True, obviously.
+print $ isinstance (:A) A
 
-# Items and attiributes work!
+# Subscription syntax is similar to that in Haskell, not Python.
 a = :dict
-b = :(inherit ())
-
 a !! 'b' = 'c'
-b.c = 'd'
-
-print (a !! 'b') b.c  # c d
+print (a !! 'b')
 ```
 
