@@ -8,9 +8,10 @@ import functools
 import itertools
 
 import dg
-import match
-import const
 import interactive
+
+from . import match
+from . import const
 
 
 iindex  = lambda it, v: next(i for i, q in enumerate(it) if q == v)
