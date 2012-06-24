@@ -21,6 +21,24 @@ CO_GENERATOR = 32
 CO_NOFREE    = 64
 
 
+# Attempted to store an imported module in a non-variable (e.g. object attribute.)
+ERR_NONCONST_IMPORT = 'use `__import__` instead'
+# Attempted to pass a kwarg with an invalid name.
+ERR_NONCONST_KEYWORD = 'argument names should be...well, names'
+# Attempted to get an attribute by non-constant name.
+ERR_NONCONST_ATTR = 'use `setattr` instead'
+# Attempted to assign a value to something but a name.
+ERR_NONCONST_VARNAME = 'can\'t assign to non-constant names'
+# Attempted to assign a value to a non-local variable.
+ERR_FREEVAR_ASSIGNMENT = 'can\'t assign to free variables'
+# More than 255 arguments in a function definition.
+ERR_TOO_MANY_ARGS = 'CPython can\'t into 256+ arguments'
+# Two or more *varargs definitions.
+ERR_MULTIPLE_VARARGS = 'multiple *varargs are not allowed'
+# Same as above, but for **varkwargs.
+ERR_MULTIPLE_VARKWARGS = 'multiple **varkwargs are not allowed'
+
+
 (
     CLOSURE, FUNCALL, TUPLE,
     ATTRIBUTE, ITEM, IMPORT,
@@ -269,7 +287,7 @@ class Compiler:
 
             args = tuple(uncurry(unwrap(qargs), TUPLE))
 
-        len(args) < 256 or self.error('CPython can\'t into 256+ arguments')
+        len(args) < 256 or self.error(ERR_TOO_MANY_ARGS)
 
         # Put keyword-only default values onto the stack.
         #
@@ -411,18 +429,18 @@ class Compiler:
             kw and kwargs.__setitem__(*kw)
 
             var = match.matchA(arg, VAR_ARG)
-            var and 0 in vararg and self.error('multiple *varargs are not allowed')
+            var and 0 in vararg and self.error(ERR_MULTIPLE_VARARGS)
             var and vararg.__setitem__(0, *var)
 
             varkw = match.matchA(arg, VAR_KW_ARG)
-            varkw and 1 in vararg and self.error('multiple **varkwargs are not allowed')
+            varkw and 1 in vararg and self.error(ERR_MULTIPLE_VARKWARGS)
             varkw and vararg.__setitem__(1, *varkw)
 
             var or kw or varkw or self.load(arg)
 
         for kw, value in kwargs.items():
 
-            isinstance(kw, dg.Link) or self.error('keywords should be names')
+            isinstance(kw, dg.Link) or self.error(ERR_NONCONST_KEYWORD)
             self.load(str(kw))
             self.load(value)
 
@@ -449,7 +467,7 @@ class Compiler:
             args = uncurry(var, ATTRIBUTE)
             var = args[0]
 
-            isinstance(var, dg.Link) or self.error('use `__import__` instead')
+            isinstance(var, dg.Link) or self.error(ERR_NONCONST_IMPORT)
 
             self.load(0)
             self.load(None)
@@ -466,7 +484,7 @@ class Compiler:
 
             if attr:
 
-                isinstance(attr[1], dg.Link) or self.error('use `setattr` instead')
+                isinstance(attr[1], dg.Link) or self.error(ERR_NONCONST_ATTR)
 
                 self.load(attr[0])
                 self.code.STORE_ATTR(attr[1], -2)
@@ -479,8 +497,8 @@ class Compiler:
                 self.code.STORE_SUBSCR(delta=-3)
                 return
 
-        isinstance(var, dg.Link) or self.error('can\'t assign to non-constant names')
-        var in self.code.cellnames and self.error('can\'t assign to free variables')
+        isinstance(var, dg.Link) or self.error(ERR_NONCONST_VARNAME)
+        var in self.code.cellnames and self.error(ERR_FREEVAR_ASSIGNMENT)
 
         self.code.STORE_DEREF (var, -1) if var in self.code.cellvars else \
         self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
