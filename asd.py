@@ -145,7 +145,7 @@ class MutableCode:
 
         self.bytecode.append((
             code,
-            0                                 if code <  HAVE_ARGUMENT   else
+            0                                 if code <  opcode.HAVE_ARGUMENT else
             self.use(value, 0, self.names)    if code in opcode.hasname  else
             self.use(value, 0, self.varnames) if code in opcode.haslocal else
             self.use(value, 0, self.consts)   if code in opcode.hasconst else
