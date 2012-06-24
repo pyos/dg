@@ -24,9 +24,6 @@ class Compiler:
         self._loading = None
 
         # Predefined stuff that translates to bytecode.
-        #
-        # ..seealso:: `Interactive.GLOBALS`
-        #
         self.builtins = {
             '':   self.call
           , '$':  self.call
@@ -73,27 +70,15 @@ class Compiler:
 
         len(args) < 256 or self.error(const.ERR_TOO_MANY_ARGS)
 
-        # Put keyword-only default values onto the stack.
-        #
-        # STACK: + len(kwvs) * 2
-        #
         for arg, value in kwvs.items():
 
             self.load(arg)
             self.load(value)
 
-        # Put positional default values onto the stack.
-        #
-        # STACK: + len(defs)
-        #
         for value in defs:
 
             self.load(value)
 
-        # Put argument annotations onto the stack.
-        #
-        # STACK: + len(annt) + 1
-        #
         annotated = tuple(annt)
 
         for annotation in map(annt.__getitem__, annotated):
@@ -102,12 +87,6 @@ class Compiler:
 
         annotated and self.load(annotated)
 
-        # Create a new `MutableCode` object for that function.
-        #
-        # Note that it can't use cell variables defined later.
-        # This is not of concern in the global namespace as it will fall
-        # back to LOAD_GLOBAL anyway.
-        #
         mcode = codegen.MutableCode(
             code,
             len(args),
@@ -123,32 +102,18 @@ class Compiler:
 
         if code.co_freevars:
 
-            # Build a tuple of cell variables used by the new function.
-            #
-            # STACK: + len(code.co_freevars)
-            #
             for freevar in code.co_freevars:
 
                 if freevar in self.code.varnames:
 
-                    # Export local variable.
+                    # Make fast slot accessible from inner scopes.
                     self.code.LOAD_FAST  (freevar, delta=1)
                     self.code.STORE_DEREF(freevar, delta=-1)
 
                 self.code.LOAD_CLOSURE(freevar, delta=1)
 
-            # STACK: - len(code.co_freevars)
-            # STACK: + 1
             self.code.BUILD_TUPLE(len(code.co_freevars), -len(code.co_freevars) + 1)
-            # STACK: + 1
             self.load(code)
-            # Create a new function object.
-            #
-            # STACK: - len(kwvs) * 2
-            # STACK: - len(defs)
-            # STACK: - 2
-            # STACK: + 1
-            #
             self.code.MAKE_CLOSURE(
                 256 * len(kwvs) + len(defs),  # + ?????
                 -len(kwvs) * 2 - len(defs) - 1
@@ -156,15 +121,7 @@ class Compiler:
 
         else:
 
-            # STACK: + 1
             self.load(code)
-            # Create a new function object without any cell variables.
-            #
-            # STACK: - len(kwvs) * 2
-            # STACK: - len(defs)
-            # STACK: - 1
-            # STACK: + 1
-            #
             self.code.MAKE_FUNCTION(
                 256 * len(kwvs) + len(defs),  # + ?????
                 -len(kwvs) * 2 - len(defs)
