@@ -14,8 +14,8 @@ class Interactive (interactive.Interactive):
     GLOBALS  = {
         # Runtime counterparts of some stuff in `Compiler.builtins`.
 
-        '$': lambda f, x: f(x)
-      , ':': lambda f, x: f(x)
+        '$': lambda f, *xs: f(*xs)
+      , ':': lambda f, *xs: f(*xs)
 
         # TODO various operators
       , '+':  operator.add
