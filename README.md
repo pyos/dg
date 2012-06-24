@@ -47,11 +47,10 @@ f a b = print a 'and' b 'are the arguments you called `f` with'
 # Don't forget to put a space between the slash and the colon if there
 # are no arguments.
 g = \x:
-
-    print "Did you know that the colon right there"
-    print "can be replaced with a dollar sign?"
-    print "(Oh, and this anonymous function spans multiple lines!)"
-    print "By the way, `x` was" x
+  print "Did you know that the colon right there"
+  print "can be replaced with a dollar sign?"
+  print "(Oh, and this anonymous function spans multiple lines!)"
+  print "By the way, `x` was" x
 
 # That's how you call a function.
 # Prints "1 and 2 are the arguments you called `f` with".
@@ -74,17 +73,15 @@ print $ 567 $@%^ 123 $@%^ 41823548
 # And they are anonymous! (Unless you bind them to a name like in this example.)
 # `object` may be omitted 'cause that's the default base class, like in Python.
 A = inherit object:
+  a = 1
+  b = 2
 
-    a = 1
-    b = 2
+  __init__ self =
+    # Does not work yet 'cause there is no __class__ free variable.
+    #:(:super).__init__
+    :(super A self).__init__
 
-    __init__ self =
-
-        # Does not work yet 'cause there is no __class__ free variable.
-        #:(:super).__init__
-        :(super A self).__init__
-
-        print "Created an instance of A"
+    print "Created an instance of A"
 
 print $ isinstance (:A) A  # True, obviously.
 
