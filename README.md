@@ -50,7 +50,7 @@ f a.b
 To call a function without arguments, prefix its name with a colon or
 a dollar sign. Don't forget to place parentheses accordingly.
 
-```
+```coffeescript
 :f  # f()
 
 g :h  # Similar to `g : h` and means g(h), since `:` is defined as a call operator.
