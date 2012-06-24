@@ -33,7 +33,6 @@ A dot (`.`) is an exception, though.
 # Without parentheses: print('Hello', 'World!', sep) = ', '
 print 'Hello' 'World!' sep = ', '
 # With parentheses: print('Hello', 'World!', sep=', ')
-# (Keyword arguments are not supported yet, though.)
 print 'Hello' 'World!' (sep = ', ')
 
 # Without parentheses: f(a) + b
