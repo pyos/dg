@@ -444,6 +444,7 @@ class Compiler:
                 return
 
         isinstance(var, dg.Link) or self.error('can\'t assign to non-constant names')
+        var in self.code.cellnames and self.error('can\'t assign to free variables')
 
         self.code.STORE_DEREF (var, -1) if var in self.code.cellvars else \
         self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
@@ -480,8 +481,9 @@ class Compiler:
 
         elif isinstance(e, dg.Link):
 
+            self.code.LOAD_DEREF  (e, 1) if e in self.code.cellvars  else \
             self.code.LOAD_FAST   (e, 1) if e in self.code.varnames  else \
-            self.code.LOAD_DEREF  (e, 1) if e in self.code.cellnames or e in self.code.cellvars  else \
+            self.code.LOAD_DEREF  (e, 1) if e in self.code.cellnames else \
             self.code.LOAD_NAME   (e, 1) if self.code.slowlocals     else \
             self.code.LOAD_GLOBAL (e, 1)
 
