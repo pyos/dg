@@ -4,13 +4,13 @@ import operator
 import dg
 import interactive
 
-from . import asd
+from . import compiler
 
 
 class Interactive (interactive.Interactive):
 
     PARSER   = dg.Parser()
-    COMPILER = asd.Compiler()
+    COMPILER = compiler.Compiler()
     GLOBALS  = {
         # Runtime counterparts of some stuff in `Compiler.builtins`.
 
