@@ -1,5 +1,4 @@
 import itertools
-import collections
 
 import dg
 
