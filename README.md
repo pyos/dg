@@ -45,8 +45,8 @@ f a.b
 (f a).b
 ```
 
-To call a function without arguments, prefix its name with a colon or
-a dollar sign. Don't forget to place parentheses accordingly.
+Prefix the name of a function with a colon to call it without any arguments.
+Don't forget to place parentheses accordingly.
 
 ```coffeescript
 :f  # f()
@@ -118,8 +118,8 @@ inner = :changeNumbers
 
 ### Objects
 
-There is no built-in syntax for lists in dicts for now, so you'll have
-to use Python types instead.
+There is no built-in syntax for lists, dicts and other stuff for now, so you'll
+have to use Python types instead.
 
 ```coffeescript
 song = list ('do', 're', 'mi', 'fa', 'so')
@@ -165,13 +165,51 @@ os.path = import
 print $ os.path.exists '/'
 ```
 
-### Everything is an Expression, Stack Style
+### Everything is an Expression
 
-In contrast with many languages, *every* statement returns a value.
-But while compilers like CoffeeScript work hard to insert `return` statements
-everywhere, here it is implemented easier than you might think: the return
-value is whatever happens to be on the top of CPython stack at the end of
-the function.
+*Every* statement returns a value. No exceptions. Assignments return the assigned
+value, blocks return the result of the last expression, etc.
+
+### Generators
+
+They are pretty useless if you note that neither `for` nor `while` is available yet.
+
+```coffeescript
+countdown () ->
+  yield 3
+  yield 2
+  yield 1
+
+print $ list $ :countdown
+```
+
+Note that since `yield` is also an expression, sending a value to the last
+`yield` will cause that value to be yielded, too.
+
+```coffeescript
+g = :countdown
+print $ next   g  # 3
+print $ g.send 5  # 2
+print $ g.send 4  # 1
+print $ g.send 3  # suddenly, 3
+print $ g.send 2  # StopIteration
+```
+
+This is not a problem most of the time, but if it is, either *return* the last
+value instead of yielding it or put `None` after the last `yield` statement.
+
+```coffeescript
+countdown2 () ->
+  yield 3
+  yield 2
+  1
+
+countdown3 () ->
+  yield 3
+  yield 2
+  yield 1
+  None
+```
 
 ### Redefining Operators
 
