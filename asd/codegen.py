@@ -119,6 +119,10 @@ class MutableCode:
 
         code = opcode.opmap[name]
 
+        if code == opcode.opmap['YIELD_VALUE']:
+
+            self.flags |= const.CO_GENERATOR
+
         self.bytecode.append((
             code,
             0                                 if code <  opcode.HAVE_ARGUMENT else
