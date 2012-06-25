@@ -17,8 +17,10 @@ class Interactive (interactive.Interactive):
         '$': lambda f, *xs: f(*xs)
       , ':': lambda f, *xs: f(*xs)
 
-      , '+':  operator.add
-      , '-':  operator.sub
+      , 'not': operator.not_
+      , '~':  operator.invert
+      , '+':  compiler.varary(operator.pos, operator.add)
+      , '-':  compiler.varary(operator.neg, operator.sub)
       , '*':  operator.mul
       , '**': operator.pow
       , '/':  operator.truediv

@@ -7,6 +7,7 @@ from . import const
 from . import codegen
 
 
+varary  = lambda *fs: lambda *xs: fs[len(xs) - 1](*xs)
 unwrap  = lambda f: match.matchR(f, const.ST_CLOSURE, lambda f, q: q.pop(-1))[-1]
 uncurry = lambda f, p: match.matchR(f, p, lambda f, q: q.pop(-2))[::-1]
 
@@ -36,8 +37,19 @@ class Compiler:
           , '=':  self.store
           , '.':  lambda n, a: self.opcode('LOAD_ATTR', n, arg=a)
 
-          , '+':  functools.partial(self.opcode, 'BINARY_ADD')
-          , '-':  functools.partial(self.opcode, 'BINARY_SUBTRACT')
+          , 'not': functools.partial(self.opcode, 'UNARY_NOT')
+          , '~':   functools.partial(self.opcode, 'UNARY_INVERT')
+
+          , '+':  varary(
+                functools.partial(self.opcode, 'UNARY_POSITIVE')
+              , functools.partial(self.opcode, 'BINARY_ADD')
+            )
+
+          , '-':  varary(
+                functools.partial(self.opcode, 'UNARY_NEGATIVE')
+              , functools.partial(self.opcode, 'BINARY_SUBTRACT')
+            )
+
           , '*':  functools.partial(self.opcode, 'BINARY_MULTIPLY')
           , '**': functools.partial(self.opcode, 'BINARY_POWER')
           , '/':  functools.partial(self.opcode, 'BINARY_TRUE_DIVIDE')
