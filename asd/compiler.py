@@ -37,15 +37,16 @@ class Compiler:
           , '=':  self.store
           , '.':  lambda n, a: self.opcode('LOAD_ATTR', n, arg=a)
 
-          , 'not': lambda a: self.opcode('UNARY_NOT',    a)
-          , '~':   lambda a: self.opcode('UNARY_INVERT', a)
+          , 'yield': lambda a: self.opcode('YIELD_VALUE',  a)
+          , 'not':   lambda a: self.opcode('UNARY_NOT',    a)
+          , '~':     lambda a: self.opcode('UNARY_INVERT', a)
 
-          , '+':  varary(
+          , '+': varary(
                 lambda a:    self.opcode('UNARY_POSITIVE', a)
               , lambda a, b: self.opcode('BINARY_ADD',     a, b)
             )
 
-          , '-':  varary(
+          , '-': varary(
                 lambda a:    self.opcode('UNARY_NEGATIVE',  a)
               , lambda a, b: self.opcode('BINARY_SUBTRACT', a, b)
             )
