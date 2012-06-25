@@ -330,6 +330,14 @@ class Compiler:
             self.code.RETURN_VALUE(delta=-1)
             return self.code.compile(name)
 
+        except (SyntaxError, AssertionError, KeyboardInterrupt) as e:
+
+            raise
+
+        except Exception as e:
+
+            self.error(str(e))
+
         finally:
 
             self.code = backup
