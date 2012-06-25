@@ -183,31 +183,25 @@ countdown () ->
 print $ list $ :countdown
 ```
 
-Note that since `yield` is also an expression, sending a value to the last
-`yield` will cause that value to be yielded, too.
-
-```coffeescript
-g = :countdown
-print $ next   g  # 3
-print $ g.send 5  # 2
-print $ g.send 4  # 1
-print $ g.send 3  # suddenly, 3
-print $ g.send 2  # StopIteration
-```
-
-This is not a problem most of the time, but if it is, either *return* the last
-value instead of yielding it or put `None` after the last `yield` statement.
+Returning a value from a generator is the same as yielding it.
 
 ```coffeescript
 countdown2 () ->
   yield 3
   yield 2
   1
+```
 
+Note that since `yield` is also an expression, sending a value to the last
+`yield` will cause that value to be yielded, too. If that's not what you want,
+simply return `None` from the generator.
+
+```coffeescript
 countdown3 () ->
   yield 3
   yield 2
   yield 1
+  some_stuff_that_shouldnt_be_yielded
   None
 ```
 
