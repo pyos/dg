@@ -37,9 +37,10 @@ class Compiler:
           , '=':  self.store
           , '.':  lambda n, a: self.opcode('LOAD_ATTR', n, arg=a)
 
-          , 'yield': lambda a: self.opcode('YIELD_VALUE',  a)
-          , 'not':   lambda a: self.opcode('UNARY_NOT',    a)
-          , '~':     lambda a: self.opcode('UNARY_INVERT', a)
+          , 'return': lambda a: (self.opcode('DUP_TOP', a), self.code.RETURN_VALUE())
+          , 'yield':  lambda a: self.opcode('YIELD_VALUE',  a)
+          , 'not':    lambda a: self.opcode('UNARY_NOT',    a)
+          , '~':      lambda a: self.opcode('UNARY_INVERT', a)
 
           , '+': varary(
                 lambda a:    self.opcode('UNARY_POSITIVE', a)
