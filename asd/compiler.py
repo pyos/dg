@@ -36,16 +36,40 @@ class Compiler:
           , '=':  self.store
           , '.':  lambda n, a: self.opcode('LOAD_ATTR', n, arg=a)
 
-            # TODO various operators
           , '+':  functools.partial(self.opcode, 'BINARY_ADD')
           , '-':  functools.partial(self.opcode, 'BINARY_SUBTRACT')
+          , '*':  functools.partial(self.opcode, 'BINARY_MULTIPLY')
+          , '**': functools.partial(self.opcode, 'BINARY_POWER')
+          , '/':  functools.partial(self.opcode, 'BINARY_TRUE_DIVIDE')
+          , '//': functools.partial(self.opcode, 'BINARY_FLOOR_DIVIDE')
+          , '%':  functools.partial(self.opcode, 'BINARY_MODULO')
           , '!!': functools.partial(self.opcode, 'BINARY_SUBSCR')
+          , '&':  functools.partial(self.opcode, 'BINARY_AND')
+          , '^':  functools.partial(self.opcode, 'BINARY_XOR')
+          , '|':  functools.partial(self.opcode, 'BINARY_OR')
+          , '<<': functools.partial(self.opcode, 'BINARY_LSHIFT')
+          , '>>': functools.partial(self.opcode, 'BINARY_RSHIFT')
+
+          , '+=':  functools.partial(self.opcode, 'INPLACE_ADD',          inplace=True)
+          , '-=':  functools.partial(self.opcode, 'INPLACE_SUBTRACT',     inplace=True)
+          , '*=':  functools.partial(self.opcode, 'INPLACE_MULTIPLY',     inplace=True)
+          , '**=': functools.partial(self.opcode, 'INPLACE_POWER',        inplace=True)
+          , '/=':  functools.partial(self.opcode, 'INPLACE_TRUE_DIVIDE',  inplace=True)
+          , '//=': functools.partial(self.opcode, 'INPLACE_FLOOR_DIVIDE', inplace=True)
+          , '%=':  functools.partial(self.opcode, 'INPLACE_MODULO',       inplace=True)
+          , '!!=': functools.partial(self.opcode, 'BINARY_SUBSCR',        inplace=True)
+          , '&=':  functools.partial(self.opcode, 'INPLACE_AND',          inplace=True)
+          , '^=':  functools.partial(self.opcode, 'INPLACE_XOR',          inplace=True)
+          , '|=':  functools.partial(self.opcode, 'INPLACE_OR',           inplace=True)
+          , '<<=': functools.partial(self.opcode, 'INPLACE_LSHIFT',       inplace=True)
+          , '>>=': functools.partial(self.opcode, 'INPLACE_RSHIFT',       inplace=True)
         }
 
-    def opcode(self, opcode, *args, arg=0, delta=1):
+    def opcode(self, opcode, *args, arg=0, delta=1, inplace=False):
 
         self.load(*args)
         self.code.append(opcode, arg, -len(args) + delta)
+        inplace and self.store_top(args[0])
 
     def tuple(self, lhs, *rhs):
 
@@ -189,32 +213,33 @@ class Compiler:
             var = args[0]
 
             isinstance(var, dg.Link) or self.error(const.ERR_NONCONST_IMPORT)
-
-            self.load(0, None)
-            self.code.IMPORT_NAME('.'.join(args), -1)
-            self.code.DUP_TOP(delta=1)
+            self.opcode('IMPORT_NAME', 0, None, arg='.'.join(args))
 
         else:
 
             self.load(expr)
-            self.code.DUP_TOP(delta=1)
 
-            attr = match.matchA(var, const.ST_OP_ATTRIBUTE)
-            item = match.matchA(var, const.ST_OP_ITEM)
+        self.store_top(var)
 
-            if attr:
+    def store_top(self, var):
 
-                isinstance(attr[1], dg.Link) or self.error(const.ERR_NONCONST_ATTR)
+        self.code.DUP_TOP(delta=1)
+        attr = match.matchA(var, const.ST_OP_ATTRIBUTE)
+        item = match.matchA(var, const.ST_OP_ITEM)
 
-                self.load(attr[0])
-                self.code.STORE_ATTR(attr[1], -2)
-                return
+        if attr:
 
-            if item:
+            isinstance(attr[1], dg.Link) or self.error(const.ERR_NONCONST_ATTR)
 
-                self.load(*item)
-                self.code.STORE_SUBSCR(delta=-3)
-                return
+            self.load(attr[0])
+            self.code.STORE_ATTR(attr[1], -2)
+            return
+
+        if item:
+
+            self.load(*item)
+            self.code.STORE_SUBSCR(delta=-3)
+            return
 
         isinstance(var, dg.Link) or self.error(const.ERR_NONCONST_VARNAME)
         var in self.code.cellnames and self.error(const.ERR_FREEVAR_ASSIGNMENT)

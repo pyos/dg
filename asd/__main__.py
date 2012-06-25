@@ -17,10 +17,19 @@ class Interactive (interactive.Interactive):
         '$': lambda f, *xs: f(*xs)
       , ':': lambda f, *xs: f(*xs)
 
-        # TODO various operators
       , '+':  operator.add
       , '-':  operator.sub
+      , '*':  operator.mul
+      , '**': operator.pow
+      , '/':  operator.truediv
+      , '//': operator.floordiv
+      , '%':  operator.mod
       , '!!': operator.getitem
+      , '&':  operator.and_
+      , '^':  operator.xor
+      , '|':  operator.or_
+      , '<<': operator.lshift
+      , '>>': operator.rshift
     }
 
     def compile(self, code):
