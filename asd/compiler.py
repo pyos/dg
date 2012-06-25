@@ -216,12 +216,9 @@ class Compiler:
 
     def store(self, var, expr):
 
-        # Drop outermost pairs of parentheses.
-        var = unwrap(var)
-
         if match.matchQ(expr, const.ST_IMPORT):
 
-            args = uncurry(var, const.ST_OP_ATTRIBUTE)
+            args = uncurry(unwrap(var), const.ST_OP_ATTRIBUTE)
             var = args[0]
 
             isinstance(var, dg.Link) or self.error(const.ERR_NONCONST_IMPORT)
@@ -236,6 +233,8 @@ class Compiler:
     def store_top(self, var):
 
         self.code.DUP_TOP(delta=1)
+
+        var  = unwrap(var)
         attr = match.matchA(var, const.ST_OP_ATTRIBUTE)
         item = match.matchA(var, const.ST_OP_ITEM)
 
