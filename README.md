@@ -18,7 +18,6 @@ Got any suggestions?
 2. `if/elif/else` is not something I've started working on.
 3. Methods lack `__class__` cell; `super` needs both arguments to work correctly.
 4. Functions only support positional arguments with no default values. Support for defaults, keyword-only arguments, var(kw)args and annotations will be implemented later.
-5. Only absolute imports.
 
 ## A Small Reference
 
@@ -159,7 +158,8 @@ pet = :Bat
 3. Enjoy the might of Python modules.
 
 ```coffeescript
-os.path = import
+os.path = import  # import os.path
+..submodule = import  # from .. import submodule
 
 # By the way, `$` is a low-priority function call operator, too.
 print $ os.path.exists '/'

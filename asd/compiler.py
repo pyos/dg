@@ -219,11 +219,20 @@ class Compiler:
 
         if match.matchQ(expr, const.ST_IMPORT):
 
+            parent = 0
+
+            if isinstance(var, dg.Expression) and len(var) == 3:
+
+                if var[0] == '' and set(var[1]) == {'.'}:
+
+                    parent = len(var[1])
+                    var = var[2]
+
             args = uncurry(unwrap(var), const.ST_OP_ATTRIBUTE)
             var = args[0]
 
             isinstance(var, dg.Link) or self.error(const.ERR_NONCONST_IMPORT)
-            self.opcode('IMPORT_NAME', 0, None, arg='.'.join(args))
+            self.opcode('IMPORT_NAME', parent, None, arg='.'.join(args))
 
         else:
 
