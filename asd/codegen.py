@@ -44,7 +44,7 @@ class MutableCode:
         # Some info about the location of this code object in source files
         self.filename = e.reparse_location.filename
         self.lineno   = e.reparse_location.start[1]
-        self.lnotab   = []
+        self.lnotab   = {}
 
     def __getattr__(self, name):
 
@@ -59,28 +59,39 @@ class MutableCode:
     #
     def mark(self, e):
 
-        self.lnotab.append((len(self.bytecode), e.reparse_location.start[1]))
+        self.lnotab[len(self.bytecode)] = e.reparse_location.start[1]
 
     def make_lnotab(self):
 
         e = 0, self.lineno
 
-        for q in sorted(self.lnotab, key=lambda x: x[0]):
+        for q in sorted(self.lnotab.items()):
 
             if q[1] > e[1]:
 
-                for _ in range((q[0] - e[0]) // 256):
+                code = self.bytecode[e[0]:q[0]]
+                dl = q[1] - e[1]
+                do = sum(
+                    1 + (  # opcode length
+                        c >= opcode.HAVE_ARGUMENT and (  # 0 if no argument
+                            2 +  # argument length
+                            3 * int(math.log(int(v) or 1, 0x10000)) # EXTENDED_ARGs
+                        )
+                    ) for c, v in code
+                )
+
+                for _ in range(do // 256):
 
                     yield 255
                     yield 0
 
-                for _ in range((q[1] - e[1]) // 256):
+                for _ in range(dl // 256):
 
                     yield 0
                     yield 255
 
-                yield (q[0] - e[0]) % 256
-                yield (q[1] - e[1]) % 256
+                yield do % 256
+                yield dl % 256
                 e = q
 
     # Add a name/constant to a name container.
