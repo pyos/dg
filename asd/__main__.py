@@ -17,6 +17,15 @@ class Interactive (interactive.Interactive):
         '$': lambda f, *xs: f(*xs)
       , ':': lambda f, *xs: f(*xs)
 
+      , '<':  operator.lt
+      , '<=': operator.le
+      , '==': operator.eq
+      , '!=': operator.ne
+      , '>':  operator.gt
+      , '>=': operator.ge
+      , 'is': operator.is_
+      , 'in': lambda a, b: a in b
+
       , 'not': operator.not_
       , '~':  operator.invert
       , '+':  compiler.varary(operator.pos, operator.add)

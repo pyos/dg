@@ -52,6 +52,15 @@ class Compiler:
               , lambda a, b: self.opcode('BINARY_SUBTRACT', a, b)
             )
 
+          , '<':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='<')
+          , '<=': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='<=')
+          , '==': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='==')
+          , '!=': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='!=')
+          , '>':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='>')
+          , '>=': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='>=')
+          , 'is': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='is')
+          , 'in': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='in')
+
           , '*':  lambda a, b: self.opcode('BINARY_MULTIPLY',     a, b)
           , '**': lambda a, b: self.opcode('BINARY_POWER',        a, b)
           , '/':  lambda a, b: self.opcode('BINARY_TRUE_DIVIDE',  a, b)
