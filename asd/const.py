@@ -40,6 +40,7 @@ ERR_NO_DEFAULT = 'one of the arguments lacks the required default value'
 
     ST_OP_FUNCALL,    # function call with a single argument
     ST_OP_TUPLE,      # tuple constructor (i.e. infix comma)
+    (ST_OP_TUPLE_S,), # tuple with a single item (i.e. unary postfix comma)
     ST_OP_ATTRIBUTE,  # attribute getter (i.e. infix dot)
     ST_OP_ITEM,       # item getter
 
@@ -48,7 +49,7 @@ ERR_NO_DEFAULT = 'one of the arguments lacks the required default value'
     ST_ARG_VAR_KW,     # **varkwargs
 ) = parser.Parser().parse(
     '(_); import;'
-    '_ _; _, _; _._; _ !! _;'
+    '_ _; _, _; (_,); _._; _ !! _;'
     '_: _; *_; **_'
 )
 

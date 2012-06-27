@@ -276,11 +276,42 @@ class Compiler:
 
         self.store_top(var)
 
-    def store_top(self, var):
+    def store_top(self, var, dup=True):
 
-        self.code.DUP_TOP(delta=1)
+        dup and self.code.DUP_TOP(delta=1)
 
         var  = unwrap(var)
+        pack = uncurry(var, const.ST_OP_TUPLE)
+        pack = pack if len(pack) > 1 else match.matchA(var, const.ST_OP_TUPLE_S)
+
+        if pack:
+
+            star = [i for i, q in enumerate(pack) if match.matchQ(q, const.ST_ARG_VAR)]
+
+            if star:
+
+                len(star) == 1 or self.error(const.ERR_MULTIPLE_VARARGS)
+
+                star,  = star
+                before = pack[:star]
+                pack[star] = match.matchA(pack[star], const.ST_ARG_VAR)[0]
+
+                self.code.UNPACK_EX(
+                    # items before a star + 256 * items after a star
+                    star + 256 * (len(pack) - star - 1),
+                    len(pack) - 1
+                )
+
+            else:
+
+                self.code.UNPACK_SEQUENCE(len(pack), len(pack) - 1)
+
+            for item in pack:
+
+                self.store_top(item, dup=False)
+
+            return
+
         attr = match.matchA(var, const.ST_OP_ATTRIBUTE)
         item = match.matchA(var, const.ST_OP_ITEM)
 
