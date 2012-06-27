@@ -8,7 +8,15 @@ from . import const
 
 
 iindex  = lambda it, v: next(i for i, q in enumerate(it) if q == v)
-delay   = lambda f: type('delay', (), {'__int__': f})()
+delay   = lambda f, g=None: type('delay', (), {'__int__': f, '__call__': g})()
+codelen = lambda cs: sum(
+    1 + (  # opcode length
+        c >= opcode.HAVE_ARGUMENT and (  # 0 if no argument
+            2 +  # argument length
+            3 * int(math.log(int(v) or 1, 0x10000)) # EXTENDED_ARGs
+        )
+    ) for c, v in cs
+)
 
 
 class MutableCode:
@@ -48,10 +56,11 @@ class MutableCode:
 
     def __getattr__(self, name):
 
-        return (
-            functools.partial(self.append, name) if name.isupper() else
-            super().__getattr__(name)
-        )
+        if name.isupper():
+
+            return functools.partial(self.append, name)
+
+        raise AttributeError(name)
 
     # Add an entry to the lineno table.
     #
@@ -69,16 +78,8 @@ class MutableCode:
 
             if q[1] > e[1]:
 
-                code = self.bytecode[e[0]:q[0]]
                 dl = q[1] - e[1]
-                do = sum(
-                    1 + (  # opcode length
-                        c >= opcode.HAVE_ARGUMENT and (  # 0 if no argument
-                            2 +  # argument length
-                            3 * int(math.log(int(v) or 1, 0x10000)) # EXTENDED_ARGs
-                        )
-                    ) for c, v in code
-                )
+                do = codelen(self.bytecode[e[0]:q[0]])
 
                 for _ in range(do // 256):
 
@@ -120,6 +121,26 @@ class MutableCode:
 
         return delay(lambda _: iindex(itertools.chain.from_iterable(containers), v))
 
+    def jump(self, absolute):
+
+        start  = len(self.bytecode)
+        finish = lambda v: setattr(v, 'end', len(self.bytecode))
+        to_int = lambda v: (
+            # Returns 0 if recurring and the actual jump target otherwise.
+            # Will fail given the length of bytecode is big enough
+            # (i.e. the target for this jump >= 0x10000)
+            #
+            # FIXME given the size constraints of `int`, the value may increase
+            #       by 3 (possibly 6). Repeating the calculation
+            #       2 more times may fix the issue.
+            #
+            hasattr(self, '_c') or (
+              setattr(self, '_c', 0),
+              setattr(self, '_c', codelen(self.bytecode[0 if absolute else start:v.end])),
+            ) and self._c
+        )
+        return delay(to_int, finish)
+
     # Add an instruction to a mutable code object.
     #
     # :param name: the instruction name.
@@ -137,18 +158,20 @@ class MutableCode:
         self.bytecode.append((
             code,
             0                                 if code <  opcode.HAVE_ARGUMENT else
+            self.jump(absolute=False)         if code in opcode.hasjrel  else
+            self.jump(absolute=True)          if code in opcode.hasjabs  else
             self.use(value, 0, self.names)    if code in opcode.hasname  else
             self.use(value, 0, self.varnames) if code in opcode.haslocal else
             self.use(value, 0, self.consts)   if code in opcode.hasconst else
             self.use(value, value in self.cellnames, self.cellvars, self.freevars)
                 if code in opcode.hasfree else
-            # TODO hasjrel, hasjabs
             opcode.cmp_op.index(value) if code in opcode.hascompare else
             value
         ))
 
         self.cstacksize += delta
         self.stacksize = max(self.stacksize, self.cstacksize)
+        return self.bytecode[-1][1]
 
     def make_bytecode(self):
 
