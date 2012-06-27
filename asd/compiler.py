@@ -59,6 +59,9 @@ class Compiler:
           , 'is':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='is')
           , 'in':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='in')
 
+          , 'or':  lambda a, b: (self.load(a), self.code.JUMP_IF_TRUE_OR_POP (delta=-1), self.load(b))[1]()
+          , 'and': lambda a, b: (self.load(a), self.code.JUMP_IF_FALSE_OR_POP(delta=-1), self.load(b))[1]()
+
           , '.':   lambda a, b: self.opcode('LOAD_ATTR',            a, arg=b)
           , '!!':  lambda a, b: self.opcode('BINARY_SUBSCR',        a, b)
           , '*':   lambda a, b: self.opcode('BINARY_MULTIPLY',      a, b)
