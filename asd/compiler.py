@@ -1,15 +1,15 @@
 import functools
 
 import dg
+import dg.util
 
-from . import match
 from . import const
 from . import codegen
 
 
 varary  = lambda *fs: lambda *xs: fs[len(xs) - 1](*xs)
-unwrap  = lambda f: match.matchR(f, const.ST_CLOSURE, lambda f, q: q.pop(-1))[-1]
-uncurry = lambda f, p: match.matchR(f, p, lambda f, q: q.pop(-2))[::-1]
+unwrap  = lambda f: dg.util.matchR(f, const.ST_CLOSURE, lambda f, q: q.pop(-1))[-1]
+uncurry = lambda f, p: dg.util.matchR(f, p, lambda f, q: q.pop(-2))[::-1]
 
 
 class Compiler:
@@ -29,18 +29,16 @@ class Compiler:
             '':   self.call
           , '$':  self.call
           , ':':  self.call
-
           , ',':  self.tuple
           , '->': self.function
-          , 'inherit': self.class_
-
           , '=':  self.store
-          , '.':  lambda n, a: self.opcode('LOAD_ATTR', n, arg=a)
 
-          , 'return': lambda a: (self.opcode('DUP_TOP', a), self.code.RETURN_VALUE())
-          , 'yield':  lambda a: self.opcode('YIELD_VALUE',  a)
-          , 'not':    lambda a: self.opcode('UNARY_NOT',    a)
-          , '~':      lambda a: self.opcode('UNARY_INVERT', a)
+          , 'inherit': self.class_
+          , 'return':  lambda a: (self.opcode('DUP_TOP', a), self.code.RETURN_VALUE())
+          , 'yield':   lambda a: self.opcode('YIELD_VALUE',  a)
+
+          , 'not': lambda a: self.opcode('UNARY_NOT',    a)
+          , '~':   lambda a: self.opcode('UNARY_INVERT', a)
 
           , '+': varary(
                 lambda a:    self.opcode('UNARY_POSITIVE', a)
@@ -52,27 +50,28 @@ class Compiler:
               , lambda a, b: self.opcode('BINARY_SUBTRACT', a, b)
             )
 
-          , '<':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='<')
-          , '<=': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='<=')
-          , '==': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='==')
-          , '!=': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='!=')
-          , '>':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='>')
-          , '>=': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='>=')
-          , 'is': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='is')
-          , 'in': lambda a, b: self.opcode('COMPARE_OP', a, b, arg='in')
+          , '<':   lambda a, b: self.opcode('COMPARE_OP', a, b, arg='<')
+          , '<=':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='<=')
+          , '==':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='==')
+          , '!=':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='!=')
+          , '>':   lambda a, b: self.opcode('COMPARE_OP', a, b, arg='>')
+          , '>=':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='>=')
+          , 'is':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='is')
+          , 'in':  lambda a, b: self.opcode('COMPARE_OP', a, b, arg='in')
 
-          , '*':  lambda a, b: self.opcode('BINARY_MULTIPLY',     a, b)
-          , '**': lambda a, b: self.opcode('BINARY_POWER',        a, b)
-          , '/':  lambda a, b: self.opcode('BINARY_TRUE_DIVIDE',  a, b)
-          , '//': lambda a, b: self.opcode('BINARY_FLOOR_DIVIDE', a, b)
-          , '%':  lambda a, b: self.opcode('BINARY_MODULO',       a, b)
-          , '!!': lambda a, b: self.opcode('BINARY_SUBSCR',       a, b)
-          , '&':  lambda a, b: self.opcode('BINARY_AND',          a, b)
-          , '^':  lambda a, b: self.opcode('BINARY_XOR',          a, b)
-          , '|':  lambda a, b: self.opcode('BINARY_OR',           a, b)
-          , '<<': lambda a, b: self.opcode('BINARY_LSHIFT',       a, b)
-          , '>>': lambda a, b: self.opcode('BINARY_RSHIFT',       a, b)
-
+          , '.':   lambda a, b: self.opcode('LOAD_ATTR',            a, arg=b)
+          , '!!':  lambda a, b: self.opcode('BINARY_SUBSCR',        a, b)
+          , '*':   lambda a, b: self.opcode('BINARY_MULTIPLY',      a, b)
+          , '**':  lambda a, b: self.opcode('BINARY_POWER',         a, b)
+          , '/':   lambda a, b: self.opcode('BINARY_TRUE_DIVIDE',   a, b)
+          , '//':  lambda a, b: self.opcode('BINARY_FLOOR_DIVIDE',  a, b)
+          , '%':   lambda a, b: self.opcode('BINARY_MODULO',        a, b)
+          , '&':   lambda a, b: self.opcode('BINARY_AND',           a, b)
+          , '^':   lambda a, b: self.opcode('BINARY_XOR',           a, b)
+          , '|':   lambda a, b: self.opcode('BINARY_OR',            a, b)
+          , '<<':  lambda a, b: self.opcode('BINARY_LSHIFT',        a, b)
+          , '>>':  lambda a, b: self.opcode('BINARY_RSHIFT',        a, b)
+          , '!!=': lambda a, b: self.opcode('BINARY_SUBSCR',        a, b, inplace=True)
           , '+=':  lambda a, b: self.opcode('INPLACE_ADD',          a, b, inplace=True)
           , '-=':  lambda a, b: self.opcode('INPLACE_SUBTRACT',     a, b, inplace=True)
           , '*=':  lambda a, b: self.opcode('INPLACE_MULTIPLY',     a, b, inplace=True)
@@ -80,7 +79,6 @@ class Compiler:
           , '/=':  lambda a, b: self.opcode('INPLACE_TRUE_DIVIDE',  a, b, inplace=True)
           , '//=': lambda a, b: self.opcode('INPLACE_FLOOR_DIVIDE', a, b, inplace=True)
           , '%=':  lambda a, b: self.opcode('INPLACE_MODULO',       a, b, inplace=True)
-          , '!!=': lambda a, b: self.opcode('BINARY_SUBSCR',        a, b, inplace=True)
           , '&=':  lambda a, b: self.opcode('INPLACE_AND',          a, b, inplace=True)
           , '^=':  lambda a, b: self.opcode('INPLACE_XOR',          a, b, inplace=True)
           , '|=':  lambda a, b: self.opcode('INPLACE_OR',           a, b, inplace=True)
@@ -115,9 +113,9 @@ class Compiler:
             # Either a single argument, or multiple arguments separated by commas.
             for arg in uncurry(unwrap(args), const.ST_OP_TUPLE):
 
-                arg, *default = match.matchA(arg, const.ST_ARG_KW) or [arg]
-                vararg = match.matchA(arg, const.ST_ARG_VAR)
-                varkw  = match.matchA(arg, const.ST_ARG_VAR_KW)
+                arg, *default = dg.util.matchA(arg, const.ST_ARG_KW) or [arg]
+                vararg = dg.util.matchA(arg, const.ST_ARG_VAR)
+                varkw  = dg.util.matchA(arg, const.ST_ARG_VAR_KW)
                 # Extract argument name from `vararg` or `varkw`.
                 arg, = vararg or varkw or [arg]
 
@@ -219,14 +217,14 @@ class Compiler:
 
             arg = unwrap(arg)
 
-            kw = match.matchA(arg, const.ST_ARG_KW)
+            kw = dg.util.matchA(arg, const.ST_ARG_KW)
             kw and kwargs.__setitem__(*kw)
 
-            var = match.matchA(arg, const.ST_ARG_VAR)
+            var = dg.util.matchA(arg, const.ST_ARG_VAR)
             var and 0 in vararg and self.error(const.ERR_MULTIPLE_VARARGS)
             var and vararg.__setitem__(0, *var)
 
-            varkw = match.matchA(arg, const.ST_ARG_VAR_KW)
+            varkw = dg.util.matchA(arg, const.ST_ARG_VAR_KW)
             varkw and 1 in vararg and self.error(const.ERR_MULTIPLE_VARKWARGS)
             varkw and vararg.__setitem__(1, *varkw)
 
@@ -253,7 +251,7 @@ class Compiler:
 
     def store(self, var, expr):
 
-        if match.matchQ(expr, const.ST_IMPORT):
+        if dg.util.matchQ(expr, const.ST_IMPORT):
 
             parent = 0
 
@@ -282,11 +280,11 @@ class Compiler:
 
         var  = unwrap(var)
         pack = uncurry(var, const.ST_OP_TUPLE)
-        pack = pack if len(pack) > 1 else match.matchA(var, const.ST_OP_TUPLE_S)
+        pack = pack if len(pack) > 1 else dg.util.matchA(var, const.ST_OP_TUPLE_S)
 
         if pack:
 
-            star = [i for i, q in enumerate(pack) if match.matchQ(q, const.ST_ARG_VAR)]
+            star = [i for i, q in enumerate(pack) if dg.util.matchQ(q, const.ST_ARG_VAR)]
 
             if star:
 
@@ -294,7 +292,7 @@ class Compiler:
 
                 star,  = star
                 before = pack[:star]
-                pack[star] = match.matchA(pack[star], const.ST_ARG_VAR)[0]
+                pack[star] = dg.util.matchA(pack[star], const.ST_ARG_VAR)[0]
 
                 self.code.UNPACK_EX(
                     # items before a star + 256 * items after a star
@@ -312,8 +310,8 @@ class Compiler:
 
             return
 
-        attr = match.matchA(var, const.ST_OP_ATTRIBUTE)
-        item = match.matchA(var, const.ST_OP_ITEM)
+        attr = dg.util.matchA(var, const.ST_OP_ATTRIBUTE)
+        item = dg.util.matchA(var, const.ST_OP_ITEM)
 
         if attr:
 
