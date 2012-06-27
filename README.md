@@ -12,7 +12,6 @@ Got any suggestions?
 1. `try/except/else/finally` clauses produce very complex bytecode sequences I was unable to decode so far. Maybe later.
 2. `if/elif/else` is not something I've started working on.
 3. Methods lack `__class__` cell; `super` needs both arguments to work correctly.
-4. Functions only support positional arguments with no default values. Support for defaults, keyword-only arguments, var(kw)args and annotations will be implemented later.
 
 ## A Small Reference
 
