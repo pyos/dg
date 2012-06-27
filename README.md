@@ -23,16 +23,9 @@ Got any suggestions?
 
 First of all, parentheses are only used to explicitly set the evaluation order.
 Function call is implemented as in Haskell: it is an empty operator that has
-the highest priority of all.
-
-A dot (`.`) is an exception, though.
+the highest priority of all. The only exceptions are the dot and the colon.
 
 ```coffeescript
-# Without parentheses: print('Hello', 'World!', sep) = ', '
-print 'Hello' 'World!' sep = ', '
-# With parentheses: print('Hello', 'World!', sep=', ')
-print 'Hello' 'World!' (sep = ', ')
-
 # Without parentheses: f(a) + b
 f a + b
 # With parentheses: f(a + b)
@@ -50,7 +43,8 @@ Don't forget to place parentheses accordingly.
 ```coffeescript
 :f  # f()
 
-g :h  # Similar to `g : h` and means g(h), since `:` is defined as a call operator.
+g :h  # Similar to `g :h` and means g(h), since `:` is defined as a call operator when not used within another function call.
+g a :b # `g a: b` => g(a=b)
 g (:h)  # g(h())
 ```
 
@@ -68,14 +62,12 @@ cube   = (x) -> square x * x
 ```coffeescript
 # WRONG
 noop = ->
-defined_function (-> print 'callback')
+defined_function -> print 'callback'
 
 # CORRECT
 noop = () -> ()
 defined_function (() -> print 'callback')
 ```
-
-(The following syntax is not supported yet, move along.)
 
 You may omit parentheses in the argument list if you only have one argument
 with no annotation or default value, though.
@@ -85,13 +77,12 @@ double    =  x  -> x * 2
 doubleAll = *xs -> map double xs
 ```
 
-Variable-length argument lists and argument annotation have syntax similar to
-Python, not CoffeeScript:
+Variable-length argument lists have syntax similar to Python, not CoffeeScript:
 
 ```coffeescript
 f = (*args)    -> print args
 g = (**kwargs) -> print kwargs
-h = (x: 'annotation' = 'default value') -> print x
+h = (x: 'default value') -> print x
 ```
 
 ### Scoping
@@ -131,13 +122,13 @@ defined with a function called `inherit`, not with the `class` keyword.
 
 ```coffeescript
 # `object` is optional here, as it is a default base class.
-Animal = inherit object:
+Animal = inherit object $
   eat = (self) -> print 'NOM NOM'
 
-Mammal = inherit Animal:
+Mammal = inherit Animal $
   breathe = (self) -> print 'phhh'
 
-WingedAnimal = inherit Animal:
+WingedAnimal = inherit Animal $
   fly = (self) -> print 'flap flap'
 
 # Multiple inheritance is supported, too.
@@ -175,7 +166,7 @@ value, blocks return the result of the last expression, etc.
 They are pretty useless if you note that neither `for` nor `while` is available yet.
 
 ```coffeescript
-countdown () ->
+countdown = () ->
   yield 3
   yield 2
   yield 1
@@ -186,18 +177,16 @@ print $ list $ :countdown
 Returning a value from a generator is the same as yielding it.
 
 ```coffeescript
-countdown2 () ->
+countdown2 = () ->
   yield 3
   yield 2
   1
 ```
 
-Note that since `yield` is also an expression, sending a value to the last
-`yield` will cause that value to be yielded, too. If that's not what you want,
-simply return `None` from the generator.
+If that's not what you want, simply return `None` from the generator.
 
 ```coffeescript
-countdown3 () ->
+countdown3 = () ->
   yield 3
   yield 2
   yield 1

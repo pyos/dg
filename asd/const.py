@@ -1,4 +1,4 @@
-import dg
+from . import parser
 
 
 CO_OPTIMIZED = 1   # PyFrame should ignore `f_locals` in favor of fast slots
@@ -40,11 +40,10 @@ ERR_MULTIPLE_VARKWARGS = 'multiple **varkwargs are not allowed'
     ST_ARG_KW,         # keyword argument to a function call
     ST_ARG_VAR,        # *varargs
     ST_ARG_VAR_KW,     # **varkwargs
-    ST_ARG_ANNOTATION  # function argument annotation
-) = dg.Parser().parse(
+) = parser.Parser().parse(
     '(_); import;'
     '_ _; _, _; _._; _ !! _;'
-    '_ = _; *_; **_; _: _'
+    '_: _; *_; **_'
 )
 
 
