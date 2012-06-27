@@ -84,13 +84,16 @@ class Compiler:
           , '|=':  lambda a, b: self.opcode('INPLACE_OR',           a, b, inplace=True)
           , '<<=': lambda a, b: self.opcode('INPLACE_LSHIFT',       a, b, inplace=True)
           , '>>=': lambda a, b: self.opcode('INPLACE_RSHIFT',       a, b, inplace=True)
+          , '.~':  lambda a, b: self.opcode('DELETE_ATTR',          a, arg=b, delta=0, ret=None)
+          , '!!~': lambda a, b: self.opcode('DELETE_SUBSCR',        a, b,     delta=0, ret=None)
         }
 
-    def opcode(self, opcode, *args, arg=0, delta=1, inplace=False):
+    def opcode(self, opcode, *args, arg=0, delta=1, inplace=False, **k):
 
         self.load(*args)
         self.code.append(opcode, arg, -len(args) + delta)
         inplace and self.store_top(args[0])
+        'ret' in k and self.load(k['ret'])
 
     def tuple(self, lhs, *rhs):
 
