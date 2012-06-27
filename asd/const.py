@@ -26,6 +26,12 @@ ERR_TOO_MANY_ARGS = 'CPython can\'t into 256+ arguments'
 ERR_MULTIPLE_VARARGS = 'multiple *varargs are not allowed'
 # Same as above, but for **varkwargs.
 ERR_MULTIPLE_VARKWARGS = 'multiple **varkwargs are not allowed'
+# *varargs or **varkwargs have been assigned a default value in function definition.
+ERR_VARARGS_DEFAULT = 'neither *varargs nor **varkwargs can have default values'
+# **varkwargs is not the last argument in function definition.
+ERR_ARG_AFTER_VARARGS = '**varkwargs must be the last argument'
+# An argument between one with a default value and *varargs lacks such a value.
+ERR_NO_DEFAULT = 'one of the arguments lacks the required default value'
 
 
 ( # Common syntactic constructs.

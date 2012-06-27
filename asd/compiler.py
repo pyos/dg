@@ -99,38 +99,64 @@ class Compiler:
         args = uncurry(lhs, const.ST_OP_TUPLE) + list(rhs)
         self.opcode('BUILD_TUPLE', *args, arg=len(args))
 
-    def function(self, qargs, code, *_, _code_hook=lambda code: 0, _name='<lambda>'):
+    def function(self, args, code, *_, _code_hook=lambda code: 0, _name='<lambda>'):
 
-        # TODO generators
+        arguments   = []  # `c.co_varnames[:c.co_argc]`
+        kwarguments = []  # `c.co_varnames[c.co_argc:c.co_argc + c.co_kwonlyargc]`
 
-        args = ()  # Arguments, obv.
-        defs = ()  # TODO Default values
-        kwas = ()  # TODO kw-only arguments
-        kwvs = {}  # TODO kw-only arguments default values
-        vara = ()  # TODO varargs
-        vark = ()  # TODO varkwargs
-        annt = {}  # TODO annotations
+        defaults    = []  # `f.__defaults__`
+        kwdefaults  = {}  # `f.__kwdefaults__`
 
-        if not isinstance(qargs, dg.Closure) or qargs:
+        varargs     = []  # [] or [name of a varargs container]
+        varkwargs   = []  # [] or [name of a varkwargs container]
 
-            args = tuple(uncurry(unwrap(qargs), const.ST_OP_TUPLE))
+        if not isinstance(args, dg.Closure) or args:
 
-        len(args) < 256 or self.error(const.ERR_TOO_MANY_ARGS)
+            # Either a single argument, or multiple arguments separated by commas.
+            for arg in uncurry(unwrap(args), const.ST_OP_TUPLE):
 
-        list(map(self.load, kwvs.items()))
-        self.load(*defs)
-        self.load(*annt.values())
-        annt and self.load(tuple(annt))
+                arg, *default = match.matchA(arg, const.ST_ARG_KW) or [arg]
+                vararg = match.matchA(arg, const.ST_ARG_VAR)
+                varkw  = match.matchA(arg, const.ST_ARG_VAR_KW)
+                # Extract argument name from `vararg` or `varkw`.
+                arg, = vararg or varkw or [arg]
+
+                # Syntax checks.
+                # 0. varkwargs should be the last argument
+                varkwargs and self.error(const.ERR_ARG_AFTER_VARKWARGS)
+                # 1. varargs and varkwargs can't have default values.
+                default and (vararg or varkw) and self.error(const.ERR_VARARG_DEFAULT)
+                # 2. all arguments between the first one with the default value
+                #    and the varargs must have default values
+                varargs or not defaults or default or self.error(const.ERR_NO_DEFAULT)
+                # 3. only one vararg and one varkwarg is allowed
+                varargs   and vararg and self.error(const.ERR_MULTIPLE_VARARGS)
+                varkwargs and varkw  and self.error(const.ERR_MULTIPLE_VARKWARGS)
+
+                # Put the argument into the appropriate list.
+                default and not varargs and defaults.extend(default)
+                default and     varargs and kwdefaults.__setitem__(arg, *default)
+                (
+                    varargs     if vararg  else
+                    varkwargs   if varkw   else
+                    kwarguments if varargs else
+                    arguments
+                ).append(arg)
+
+        len(arguments) < 256 or self.error(const.ERR_TOO_MANY_ARGS)
+
+        [self.load(str(k), v) for k, v in kwdefaults.items()]
+        self.load(*defaults)
 
         mcode = codegen.MutableCode(
             code,
-            len(args),
-            len(kwas),
-            args + kwas + vara + vark,
+            len(arguments),
+            len(kwarguments),
+            arguments + kwarguments + varargs + varkwargs,
             set(self.code.varnames) | self.code.cellnames,
             const.CO_OPTIMIZED | const.CO_NEWLOCALS |
-            (const.CO_VARARGS   if vara else 0) |
-            (const.CO_VARKWARGS if vark else 0)
+            bool(varargs)   * const.CO_VARARGS |
+            bool(varkwargs) * const.CO_VARKWARGS
         )
         _code_hook(mcode)
         code = self.compile(code, mcode, _name)
@@ -152,8 +178,8 @@ class Compiler:
         self.load(code)
         self.code.append(
             'MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION',
-            256 * len(kwvs) + len(defs),  # + ?????
-            -len(kwvs) * 2 - len(defs) - bool(code.co_freevars)
+            len(defaults) + 256 * len(kwdefaults),
+            -len(kwdefaults) * 2 - len(defaults) - bool(code.co_freevars)
         )
 
     def class_(self, *stuff):

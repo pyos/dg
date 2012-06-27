@@ -69,8 +69,7 @@ noop = () -> ()
 defined_function (() -> print 'callback')
 ```
 
-You may omit parentheses in the argument list if you only have one argument
-with no annotation or default value, though.
+You may omit parentheses in the argument list if you only have one argument, though.
 
 ```coffeescript
 double    =  x  -> x * 2
