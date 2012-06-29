@@ -2,69 +2,93 @@ from . import core
 from . import tree
 from .. import const
 
-ST_GROUP      = '(_)'
+# CONST
+# {
+_PARSER = core.Parser()
+_CONSTS = dict(
+    ST_GROUP      = '(_)'
 
-ST_ASSIGNMENT = '_ = _'
-ST_FUNCTION   = '_ -> _'
-ST_TUPLE_S    = '_,'
-ST_TUPLE      = '_, _'
-ST_CALL       = '_ _'
-ST_NCALL      = ':_'
-ST_DCALL      = '_ $ _'
+    ST_TUPLE_S    = '_,'
+    ST_TUPLE      = '_, _'
+    ST_CALL       = '_ _'
 
-ST_ARG_KW     = '_: _'
-ST_ARG_VAR    = '*_'
-ST_ARG_VAR_KW = '**_'
+    ST_ARG_KW     = '_: _'
+    ST_ARG_VAR    = '*_'
+    ST_ARG_VAR_KW = '**_'
 
-ST_IMPORT     = 'import'
-ST_IMPORT_REL = '_ _'
-ST_IMPORT_SEP = '_._'
+    ST_IMPORT     = 'import'
+    ST_IMPORT_REL = '_ _'
+    ST_IMPORT_SEP = '_._'
 
-ST_ASSIGN_ATTR = '_._'
-ST_ASSIGN_ITEM = '_ !! _'
+    ST_ASSIGN_ATTR = '_._'
+    ST_ASSIGN_ITEM = '_ !! _'
+)
 
+
+globals().update(
+    c: _PARSER.parse(v)[0]
+    for c, v in _CONSTS.items()
+)
+
+del _PARSER
+del _CONSTS
+# }
+
+# MISC
+# {
+# Drop outermost parentheses from a syntactic construct `f`.
 unwrap  = lambda f:    tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
+
+# Recursively match `f` with a binary operator `p`, returning all the operands.
 uncurry = lambda f, p: tree.matchR(f, p,        lambda f, q: q.pop(-2))[::-1]
+# }
 
 
-@ST_ASSIGNMENT
 def assignment(self, var, expr):
 
     if tree.matchQ(expr, ST_IMPORT):
 
+        #
+        # import = module_spec, assignment_operator, ST_IMPORT
+        # module_spec = ( ST_IMPORT_REL nesting module_name ) | module_name
+        # module_name = ( ST_IMPORT_SEP module_name Link ) | Link
+        # nesting     = < an operator consisting of dots >
+        #
         var    = tree.matchA(var, ST_IMPORT_REL)
-        parent = len(var[0]) if len(var) > 1 else 0
-        var    = var[len(var) > 1]
+        parent = var[0].count('.') if len(var) > 1 else 0
+      # parent == (len(var[0]) if len(var) > 1 else 0) or self.error(...)
+
+        var = var[len(var) > 1]
         var, *args = uncurry(unwrap(var), ST_IMPORT_SEP)
 
         isinstance(var, tree.Link) or self.error(const.ERR_NONCONST_IMPORT)
         return '.'.join([var] + args), const.AT_IMPORT, var, parent
 
+    # Other assignment types do not depend on right-hand statement value.
     return (expr,) + assignment_target(var)
 
 
 def assignment_target(self, var):
 
+    # Attempt to do iterable unpacking first.
     var  = unwrap(var)
     pack = uncurry(var, ST_TUPLE)
     pack = pack if len(pack) > 1 else tree.matchA(var, ST_TUPLE_S)
 
     if pack:
 
-        star = [i for i, q in enumerate(pack) if tree.matchQ(q, ST_ARG_VAR)]
+        # Allow one starred argument that is similar to `varargs`.
+        star = [i for i, q in enumerate(pack) if tree.matchQ(q, ST_ARG_VAR)] or [-1]
+        len(star) == 1 or self.error(const.ERR_MULTIPLE_VARARGS)
+        star[0] < 256  or self.error(const.ERR_TOO_MANY_ITEMS_BEFORE_STAR)
 
-        if star:
+        if star[0] >= 0:
 
-            len(star) == 1 or self.error(const.ERR_MULTIPLE_VARARGS)
-
-            star,  = star
-            before = pack[:star]
-            pack[star] = tree.matchA(pack[star], ST_ARG_VAR)[0]
-
+            # Remove the star. We know it's there, that's enough.
+            pack[star], = tree.matchA(pack[star], ST_ARG_VAR)
             isinstance(pack[start], tree.Link) or self.error(const.ERR_NONCONST_STAR)
-            return const.AT_UNPACK, map(assignment_target, var), len(pack), star
 
-        return const.AT_UNPACK, map(assignment_target, var), len(pack), -1
+        return const.AT_UNPACK, map(assignment_target, var), len(pack), star[0]
 
     attr = tree.matchA(var, ST_ASSIGN_ATTR)
     item = tree.matchA(var, ST_ASSIGN_ITEM)
@@ -82,7 +106,6 @@ def assignment_target(self, var):
     return const.AT_NAME, var
 
 
-@ST_FUNCTION
 def function(self, args, code):
 
     arguments   = []  # `c.co_varnames[:c.co_argc]`
@@ -134,16 +157,11 @@ def function(self, args, code):
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs, code
 
 
-@ST_TUPLE
-@ST_TUPLE_S
 def tuple(self, init, *last):
 
     return uncurry(init, ST_TUPLE) + list(args))
 
 
-@ST_CALL
-@ST_NCALL
-@ST_DCALL
 def call(self, f, *args):
 
     f, *args = uncurry(f, ST_CALL) + list(args)
