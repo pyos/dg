@@ -1,9 +1,3 @@
-[submodule "dg"]
-	path = dg
-	url = https://github.com/pyos/dg.git
-[submodule "reparse"]
-	path = reparse
-	url = https://github.com/pyos/reparse.git
 [submodule "interactive"]
 	path = interactive
 	url = https://github.com/pyos/interactive.git
