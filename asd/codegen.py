@@ -134,11 +134,11 @@ class MutableCode:
             #       by 3 (possibly 6). Repeating the calculation
             #       2 more times may fix the issue.
             #
-            hasattr(self, '_c') or (
-              setattr(self, '_c', 0),
-              setattr(self, '_c', codelen(self.bytecode[0 if absolute else start:v.end])),
-            ) and self._c
-        )
+            hasattr(v, '_c') or (
+              setattr(v, '_c', 0),
+              setattr(v, '_c', codelen(self.bytecode[0 if absolute else start:v.end])),
+            ), v._c
+        )[-1]
         return delay(to_int, finish)
 
     # Add an instruction to a mutable code object.
