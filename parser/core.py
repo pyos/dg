@@ -29,6 +29,15 @@ class Parser (collections.Iterator):
     #
     ALLOW_BREAKS_IN_PARENTHESES = False
 
+    # Whether to use indentation to delimit blocks in parentheses.
+    # Implies ALLOW_BREAKS_IN_PARENTHESES.
+    # Yay, multi-line anonymous functions!
+    #
+    #    False:: any indent in parentheses is ignored.
+    #    True:: indent @ unindent.
+    #
+    ALLOW_INDENT_IN_PARENTHESES = False
+
     # Whether operators accept variable amount of arguments.
     #
     #    False:: `a + b + c` <=> `+ (+ a b) c`
@@ -256,14 +265,14 @@ def do(token: r'\(', stream):
     # Only enable indentation when the closure is not parenthesized.
     # Note that this also disables expression chaining inside parentheses,
     # unless ALLOW_BREAKS_IN_PARENTHESES is true.
-    stream.state |= not token and STATE_INDENT_IS_ALLOWED
+    stream.state |= (not token or stream.ALLOW_INDENT_IN_PARENTHESES) and STATE_INDENT_IS_ALLOWED
 
     for item in stream:
 
         if item is SIG_CLOSURE_END:
 
             (
-                not stream.state & STATE_INDENT_IS_ALLOWED
+                token
                 and stream.state & STATE_AT_FILE_END
                 and stream.error('non-closed block at EOF')
             )
