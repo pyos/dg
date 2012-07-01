@@ -28,6 +28,8 @@ class Compiler:
           , '=':  self.store
           , '->': self.function
 
+          , 'while': self.while_
+
           , 'inherit': self.class_
           , 'return':  lambda a: (self.opcode('DUP_TOP', a), self.code.RETURN_VALUE())
           , 'yield':   lambda a: self.opcode('YIELD_VALUE',  a)
@@ -96,6 +98,24 @@ class Compiler:
 
         args = syntax.tuple(lhs, *rhs)
         self.opcode('BUILD_TUPLE', *args, arg=len(args))
+
+    def while_(self, cond, block):
+
+        exit_ptr = self.code.SETUP_LOOP()
+        cond_ptr = self.code.JUMP_ABSOLUTE(-1)
+        self.load(cond)
+        else_ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
+        self.load(block)
+        self.code.POP_TOP(delta=-1)
+        cond_ptr()
+        else_ptr()
+        self.code.POP_BLOCK()
+        # self.load(else_)
+        # self.code.POP_TOP(delta=-1)
+        exit_ptr()
+        # FIXME popping a block resets the stack.
+        #   We can't return values from `while` because of that.
+        self.load(None)
 
     def function(self, args, code, hook=0):
 
