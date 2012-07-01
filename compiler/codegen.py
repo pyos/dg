@@ -4,7 +4,7 @@ import opcode
 import functools
 import itertools
 
-from . import const
+from .. import const
 
 
 iindex  = lambda it, v: next(i for i, q in enumerate(it) if q == v)
@@ -39,7 +39,7 @@ class MutableCode:
         # Unused freevars
         self.cellnames = set(cell)
         # True if nothing should be added to `varnames`
-        self.slowlocals = not flags & const.CO_NEWLOCALS
+        self.slowlocals = not flags & const.CO.NEWLOCALS
 
         # Main stuff
         self.flags = flags
@@ -153,7 +153,7 @@ class MutableCode:
 
         if code == opcode.opmap['YIELD_VALUE']:
 
-            self.flags |= const.CO_GENERATOR
+            self.flags |= const.CO.GENERATOR
 
         self.bytecode.append((
             code,
@@ -203,9 +203,9 @@ class MutableCode:
             len(self.varnames),
             self.stacksize,
             self.flags | (
-                const.CO_NESTED if self.freevars else
+                const.CO.NESTED if self.freevars else
                 0               if self.cellvars else
-                const.CO_NOFREE
+                const.CO.NOFREE
             ),
             bytes(self.make_bytecode()),
             tuple(self.consts),

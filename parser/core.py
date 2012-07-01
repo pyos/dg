@@ -37,9 +37,51 @@ class Parser (collections.Iterator):
     JOIN_OPERATOR_CALLS = False
 
     # Constants used by default :func:`has_priority` implementation.
-    OPERATOR_RIGHT_FIXITY = ()       # a container of operators w/ right fixity
-    OPERATOR_PRECEDENCE_DEFAULT = 0  # default priority
-    OPERATOR_PRECEDENCE = {}         # priority override
+    OPERATOR_RIGHT_FIXITY = ('**', ':', '$', '->', '=')
+    OPERATOR_PRECEDENCE_DEFAULT = -7
+    OPERATOR_PRECEDENCE = {
+      # Scope resolution
+        '.':   0,
+      # Keyword arguments
+        ':':  -1,
+      # Function application
+         '':  -2,
+      # Container subscription
+       '!!':  -3,
+      # Math
+       '**':  -4,
+        '*':  -5,
+        '/':  -5,
+       '//':  -5,
+        '%':  -5,
+        '+':  -6,
+        '-':  -6,
+      # Comparison
+        '<':  -8,
+       '<=':  -8,
+       '>=':  -8,
+        '>':  -8,
+       '==':  -9,
+       '/=':  -9,
+      # Binary operations
+       '<<': -10,
+       '>>': -10,
+        '&': -11,
+        '^': -12,
+        '|': -13,
+      # Logic
+       '&&': -14,
+       '||': -15,
+      # Low-priority binding
+        '$': -16,
+      # Function definition
+       '->': -17,
+      # Sequential evaluation
+        ',': -18,
+      # Assignment
+        '=': -19,
+    }
+
 
     # Whether an operator's priority is higher than the other one's.
     #

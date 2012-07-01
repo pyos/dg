@@ -1,22 +1,21 @@
 import sys
 import operator
 
-import dg
-import interactive
-
-from . import parser
-from . import compiler
+from .parser.core import Parser
+from .compiler.core import Compiler, varary
+from .interactive import Interactive
 
 
-class Interactive (interactive.Interactive):
+class Interactive (Interactive):
 
-    PARSER   = parser.Parser()
-    COMPILER = compiler.Compiler()
+    PARSER   = Parser()
+    COMPILER = Compiler()
     GLOBALS  = {
         # Runtime counterparts of some stuff in `Compiler.builtins`.
 
         '$': lambda f, *xs: f(*xs)
       , ':': lambda f, *xs: f(*xs)
+      , ',': lambda a, *xs: (a,) + xs
 
       , '<':  operator.lt
       , '<=': operator.le
@@ -29,8 +28,8 @@ class Interactive (interactive.Interactive):
 
       , 'not': operator.not_
       , '~':  operator.invert
-      , '+':  compiler.varary(operator.pos, operator.add)
-      , '-':  compiler.varary(operator.neg, operator.sub)
+      , '+':  varary(operator.pos, operator.add)
+      , '-':  varary(operator.neg, operator.sub)
       , '*':  operator.mul
       , '**': operator.pow
       , '/':  operator.truediv
@@ -52,7 +51,7 @@ class Interactive (interactive.Interactive):
 
     def run(self, ns):
 
-        q = self.PARSER.parse(sys.stdin, '<stdin>')
+        q = self.PARSER.parse(sys.stdin.read(), '<stdin>')
         q = self.COMPILER.compile(q, name='<module>')
         return self.eval(q, ns)
 

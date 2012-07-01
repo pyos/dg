@@ -1,10 +1,9 @@
 import functools
 
-import dg
-import dg.util
-
-from . import const
 from . import codegen
+from .. import const
+from ..parser import tree
+from ..parser import syntax
 
 
 varary  = lambda *fs: lambda *xs: fs[len(xs) - 1](*xs)
@@ -24,12 +23,12 @@ class Compiler:
 
         # Predefined stuff that translates to bytecode.
         self.builtins = {
-            ',':  tuple
+            ',':  self.tuple
           , '':   self.call
           , '$':  self.call
           , ':':  self.call
-          , '->': self.function
           , '=':  self.store
+          , '->': self.function
 
           , 'inherit': self.class_
           , 'return':  lambda a: (self.opcode('DUP_TOP', a), self.code.RETURN_VALUE())
@@ -89,20 +88,21 @@ class Compiler:
           , '!!~': lambda a, b: self.opcode('DELETE_SUBSCR',        a, b,     delta=0, ret=None)
         }
 
-    def opcode(self, opcode, *args, arg=0, delta=1, inplace=False, **k):
+    def opcode(self, opcode, *args, arg=0, delta=1, inplace=False, ret=None):
 
         self.load(*args)
         self.code.append(opcode, arg, -len(args) + delta)
+        inplace and self.store_top(*syntax.assignment_target(self, args[0]))
+        inplace and self.load(ret)
 
-        if inplace:
+    def tuple(self, lhs, *rhs):
 
-            raise NotImplementedError
-            # self.store_top(*abstract.assignment_target(args[0]))
+        args = syntax.tuple(self, lhs, *rhs)
+        self.opcode('BUILD_TUPLE', *args, arg=len(args))
 
-        'ret' in k and self.load(k['ret'])
+    def function(self, args, code, hook=0):
 
-    def function(self, args, kwargs, defs, kwdefs, varargs, varkwargs, code, hook=0):
-
+        args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(self, args, code)
         self.load_map(kwdefs)
         self.load(*defs)
 
@@ -112,9 +112,9 @@ class Compiler:
             len(kwargs),
             args + kwargs + varargs + varkwargs,
             set(self.code.varnames) | self.code.cellnames,
-            const.CO_OPTIMIZED | const.CO_NEWLOCALS |
-            bool(varargs)   * const.CO_VARARGS |
-            bool(varkwargs) * const.CO_VARKWARGS
+            const.CO.OPTIMIZED | const.CO.NEWLOCALS |
+            bool(varargs)   * const.CO.VARARGS |
+            bool(varkwargs) * const.CO.VARKWARGS
         )
         hook and hook(mcode)
         code = self.compile(code, mcode, '<lambda>')
@@ -147,7 +147,7 @@ class Compiler:
         # FIXME methods should have '__class__' in their `freevars`.
         self.code.LOAD_BUILD_CLASS(delta=1)
         self.function(
-            ['__locals__'], [], [], {}, [], [], block,
+            tree.Link('__locals__'), block,
             lambda code: (
                 setattr(code, 'slowlocals', True),
                 code.LOAD_FAST('__locals__', 1),
@@ -159,9 +159,63 @@ class Compiler:
         self.load('<class>', *args)
         self.code.CALL_FUNCTION(len(args) + 2, delta=-len(args) - 2)
 
-    def call(self, f, posargs, kwargs, vararg, varkwarg):
+    def store(self, var, expr):
 
-        # FIXME this will also attempt to call builtin non-operators.
+        expr, type, var, *args = syntax.assignment(self, var, expr)
+
+        if type == const.AT.IMPORT:
+
+            self.opcode('IMPORT_NAME', args[0], None, arg=expr)
+
+        else:
+
+            self.load(expr)
+
+        self.store_top(type, var, *args)
+
+    def store_top(self, type, var, *args, dup=True):
+
+        dup and self.code.DUP_TOP(delta=1)
+
+        if type == const.AT.UNPACK:
+
+            ln, star = args
+
+            star < 0 and self.code.UNPACK_SEQUENCE(ln, ln - 1)
+            star < 0 or  self.code.UNPACK_EX(star + 256 * (ln - star - 1), ln - 1)
+
+            for item in var:
+
+                self.store_top(*item, dup=False)
+
+        elif type == const.AT.ATTR:
+
+            self.load(var[0])
+            self.code.STORE_ATTR(var[1], -2)
+
+        elif type == const.AT.ITEM:
+
+            self.load(*var)
+            self.code.STORE_SUBSCR(delta=-3)
+
+        else:
+
+            var in self.code.cellnames and self.error(const.ERR.FREEVAR_ASSIGNMENT)
+
+            self.code.STORE_DEREF (var, -1) if var in self.code.cellvars else \
+            self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
+            self.code.STORE_FAST  (var, -1)
+
+    def call(self, f, *args):
+
+        f, *args = syntax.call_pre(self, f, *args)
+
+        if isinstance(f, tree.Link) and f in self.builtins:
+
+            return self.builtins[f](*args)
+
+        f, posargs, kwargs, vararg, varkwarg = syntax.call(self, f, *args)
+        self.load(f)
         self.load(*posargs)
         self.load_map(kwargs)
         self.load(*vararg)
@@ -174,56 +228,8 @@ class Compiler:
             self.code.CALL_FUNCTION
         )(
             len(posargs) + 256 * len(kwargs),
-            delta=-len(args) - 2 * len(kwargs) - len(vararg) - len(varkwarg) + 1
+            delta=-len(args) - 2 * len(kwargs) - len(vararg) - len(varkwarg)
         )
-
-    def store(self, expr, type, var, *args):
-
-        if type == const.AT_IMPORT:
-
-            return self.opcode('IMPORT_NAME', args[0], None, arg=expr)
-
-        self.load(expr)
-        self.store_top(type, var, *args)
-
-    def store_top(self, type, var, *args, dup=True):
-
-        dup and self.code.DUP_TOP(delta=1)
-
-        if type == const.AT_UNPACK:
-
-            ln, star = args
-
-            star < 0 and self.code.UNPACK_SEQUENCE(ln, ln - 1)
-            star < 0 or  self.code.UNPACK_EX(star + 256 * (ln - star - 1), ln - 1)
-
-            for item in var:
-
-                self.store_top(*item, dup=False)
-
-        elif type == const.AT_ATTR:
-
-            self.load(var[0])
-            self.code.STORE_ATTR(var[1], -2)
-
-        elif type == const.AT_ITEM:
-
-            self.load(*var)
-            self.code.STORE_SUBSCR(delta=-3)
-
-        else:
-
-            var in self.code.cellnames and self.error(const.ERR_FREEVAR_ASSIGNMENT)
-
-            self.code.STORE_DEREF (var, -1) if var in self.code.cellvars else \
-            self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
-            self.code.STORE_FAST  (var, -1)
-
-    def load_map(self, d):
-
-        for k, v in d.items():
-
-            self.load(str(k), v)
 
     def load(self, *es):
 
@@ -237,29 +243,20 @@ class Compiler:
                 self.code.mark(e)
                 self._loading = e
 
-            if isinstance(e, dg.Closure):
+            if isinstance(e, tree.Closure):
 
                 for not_at_end, q in enumerate(e, -len(e) + 1):
 
                     self.load(q)
-                    # XXX should it insert PRINT_EXPR in `single` mode instead?
                     not_at_end and self.code.POP_TOP(delta=-1)
 
                 e or self.load(None)
 
-            elif isinstance(e, dg.Expression):
+            elif isinstance(e, tree.Expression):
 
-                if isinstance(f, dg.Link) and f in self.builtins:
+                self.call(*e)
 
-                    self.builtins[e[0]](*e[1:])
-
-                else:
-
-                    raise NotImplementedError
-                    #self.load(f)
-                    #self.load_call(args)
-
-            elif isinstance(e, dg.Link):
+            elif isinstance(e, tree.Link):
 
                 self.code.LOAD_DEREF  (e, 1) if e in self.code.cellvars  else \
                 self.code.LOAD_FAST   (e, 1) if e in self.code.varnames  else \
@@ -276,7 +273,18 @@ class Compiler:
             # XXX this line is for compiler debugging purposes.
             #     If it triggers an exception, the required stack size
             #     might have been calculated improperly.
+            if self.code.cstacksize != stacksize + 1:
+
+                import dis
+                dis.dis(self.code.compile())
+
             assert self.code.cstacksize == stacksize + 1, 'stack leaked'
+
+    def load_map(self, d):
+
+        for k, v in d.items():
+
+            self.load(str(k), v)
 
     def compile(self, e, into=None, name='<lambda>', single=False):
 
@@ -298,9 +306,9 @@ class Compiler:
 
             raise
 
-        except Exception as e:
+        #except Exception as e:
 
-            self.error(str(e))
+        #    self.error(str(e))
 
         finally:
 
