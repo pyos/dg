@@ -38,8 +38,8 @@ class MutableCode:
         self.slowlocals = not isfunc
 
         self.flags  = const.CO.OPTIMIZED | const.CO.NEWLOCALS if isfunc else 0
-        self.flags |= const.CO_VARARGS   if varargs   else 0
-        self.flags |= const.CO_VARKWARGS if varkwargs else 0
+        self.flags |= const.CO.VARARGS   if varargs   else 0
+        self.flags |= const.CO.VARKWARGS if varkwargs else 0
         self.bytecode = []
 
         self.stacksize = self.cstacksize = 0
