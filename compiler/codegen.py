@@ -101,7 +101,7 @@ class MutableCode:
     #
     def use(self, v, id, *containers):
 
-        if not isinstance(v, str):
+        if not isinstance(v, str) and self.consts not in containers:
 
             raise Exception(const.ERR.NONCONST_ATTR)
 
