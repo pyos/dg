@@ -1,11 +1,9 @@
-import functools
-
 from . import codegen
 from .. import const
 from ..parser import tree
 from ..parser import syntax
 
-
+# Choose a function based on the number of arguments.
 varary  = lambda *fs: lambda *xs: fs[len(xs) - 1](*xs)
 
 
@@ -92,30 +90,21 @@ class Compiler:
 
         self.load(*args)
         self.code.append(opcode, arg, -len(args) + delta)
-        inplace and self.store_top(*syntax.assignment_target(self, args[0]))
+        inplace and self.store_top(*syntax.assignment_target(args[0]))
         inplace and self.load(ret)
 
     def tuple(self, lhs, *rhs):
 
-        args = syntax.tuple(self, lhs, *rhs)
+        args = syntax.tuple(lhs, *rhs)
         self.opcode('BUILD_TUPLE', *args, arg=len(args))
 
     def function(self, args, code, hook=0):
 
-        args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(self, args, code)
+        args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(args, code)
         self.load_map(kwdefs)
         self.load(*defs)
 
-        mcode = codegen.MutableCode(
-            code,
-            len(args),
-            len(kwargs),
-            args + kwargs + varargs + varkwargs,
-            set(self.code.varnames) | self.code.cellnames,
-            const.CO.OPTIMIZED | const.CO.NEWLOCALS |
-            bool(varargs)   * const.CO.VARARGS |
-            bool(varkwargs) * const.CO.VARKWARGS
-        )
+        mcode = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
         hook and hook(mcode)
         code = self.compile(code, mcode, '<lambda>')
 
@@ -161,7 +150,7 @@ class Compiler:
 
     def store(self, var, expr):
 
-        expr, type, var, *args = syntax.assignment(self, var, expr)
+        expr, type, var, *args = syntax.assignment(var, expr)
 
         if type == const.AT.IMPORT:
 
@@ -208,13 +197,13 @@ class Compiler:
 
     def call(self, f, *args):
 
-        f, *args = syntax.call_pre(self, f, *args)
+        f, *args = syntax.call_pre(f, *args)
 
         if isinstance(f, tree.Link) and f in self.builtins:
 
             return self.builtins[f](*args)
 
-        f, posargs, kwargs, vararg, varkwarg = syntax.call(self, f, *args)
+        f, posargs, kwargs, vararg, varkwarg = syntax.call(f, *args)
         self.load(f)
         self.load(*posargs)
         self.load_map(kwargs)
@@ -283,7 +272,10 @@ class Compiler:
 
     def compile(self, e, into=None, name='<lambda>', single=False):
 
-        backup, self.code = self.code, codegen.MutableCode(e) if into is None else into
+        backup = self.code
+        self.code = codegen.MutableCode(isfunc=False) if into is None else into
+        self.code.filename = e.reparse_location.filename
+        self.code.lineno   = e.reparse_location.start[1]
 
         try:
 
@@ -297,13 +289,13 @@ class Compiler:
             self.code.RETURN_VALUE(delta=-1)
             return self.code.compile(name)
 
-        except (SyntaxError, AssertionError, KeyboardInterrupt) as e:
+        except (SyntaxError, AssertionError) as e:
 
             raise
 
-        #except Exception as e:
+        except Exception as e:
 
-        #    self.error(str(e))
+            self.error(str(e))
 
         finally:
 
