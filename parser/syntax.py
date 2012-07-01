@@ -173,7 +173,7 @@ def call(self, f, *args):
 
         kw = tree.matchA(arg, ST_ARG_KW)
         kw and kwargs.__setitem__(*kw)
-        kw and not isinstance(kw, tree.Link) and self.error(const.ERR.NONCONST_KEYWORD)
+        kw and not isinstance(kw[0], tree.Link) and self.error(const.ERR.NONCONST_KEYWORD)
 
         var = tree.matchA(arg, ST_ARG_VAR)
         var and vararg and self.error(const.ERR.MULTIPLE_VARARGS)
