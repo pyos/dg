@@ -82,8 +82,8 @@ class Compiler:
           , '|=':  lambda a, b: self.opcode('INPLACE_OR',           a, b, inplace=True)
           , '<<=': lambda a, b: self.opcode('INPLACE_LSHIFT',       a, b, inplace=True)
           , '>>=': lambda a, b: self.opcode('INPLACE_RSHIFT',       a, b, inplace=True)
-          , '.~':  lambda a, b: self.opcode('DELETE_ATTR',          a, arg=b, delta=0, ret=None)
-          , '!!~': lambda a, b: self.opcode('DELETE_SUBSCR',        a, b,     delta=0, ret=None)
+          , '.~':  lambda a, b: (self.opcode('DELETE_ATTR',         a, arg=b, delta=0), self.load(None))
+          , '!!~': lambda a, b: (self.opcode('DELETE_SUBSCR',       a, b,     delta=0), self.load(None))
         }
 
     def opcode(self, opcode, *args, arg=0, delta=1, inplace=False, ret=None):
@@ -91,7 +91,6 @@ class Compiler:
         self.load(*args)
         self.code.append(opcode, arg, -len(args) + delta)
         inplace and self.store_top(*syntax.assignment_target(args[0]))
-        inplace and self.load(ret)
 
     def tuple(self, lhs, *rhs):
 
