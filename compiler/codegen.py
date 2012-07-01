@@ -21,37 +21,31 @@ codelen = lambda cs: sum(
 
 class MutableCode:
 
-    def __init__(self, e, argc=0, kwargc=0, locals=(), cell=(), flags=0):
+    def __init__(self, isfunc, args=(), kwargs=(), varargs=(), varkwargs=(), cell=None):
 
         super().__init__()
 
-        # Argument counts
-        self.argc = argc
-        self.kwargc = kwargc
+        self.argc = len(args)
+        self.kwargc = len(kwargs)
 
-        # Stuff used by `LOAD_*` and `STORE_*`
         self.names = []
         self.consts = []
         self.freevars = []
         self.cellvars = []
-        self.varnames = list(locals)
+        self.varnames = list(itertools.chain(args, kwargs, varargs, varkwargs))
 
-        # Unused freevars
-        self.cellnames = set(cell)
-        # True if nothing should be added to `varnames`
-        self.slowlocals = not flags & const.CO.NEWLOCALS
+        self.cellnames = set(cell.varnames) | cell.cellnames if cell else set()
+        self.slowlocals = not isfunc
 
-        # Main stuff
-        self.flags = flags
+        self.flags  = const.CO.OPTIMIZED | const.CO.NEWLOCALS if isfunc else 0
+        self.flags |= const.CO_VARARGS   if varargs   else 0
+        self.flags |= const.CO_VARKWARGS if varkwargs else 0
         self.bytecode = []
 
-        # Required & current stack depth
-        self.stacksize  = 0
-        self.cstacksize = 0
+        self.stacksize = self.cstacksize = 0
 
-        # Some info about the location of this code object in source files
-        self.filename = e.reparse_location.filename
-        self.lineno   = e.reparse_location.start[1]
+        self.filename = '<generated>'
+        self.lineno   = 1
         self.lnotab   = {}
 
     def __getattr__(self, name):
@@ -106,6 +100,10 @@ class MutableCode:
     # :return: delayed computation of index of `v` in the sum of `containers`.
     #
     def use(self, v, id, *containers):
+
+        if not isinstance(v, str):
+
+            raise Exception(const.ERR.NONCONST_ATTR)
 
         for i, ct in enumerate(containers):
 
