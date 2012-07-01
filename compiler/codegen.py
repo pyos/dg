@@ -119,10 +119,13 @@ class MutableCode:
 
         return delay(lambda _: iindex(itertools.chain.from_iterable(containers), v))
 
-    def jump(self, absolute):
+    def jump(self, absolute, reverse=False):
 
         start  = len(self.bytecode)
-        finish = lambda v: setattr(v, 'end', len(self.bytecode))
+        finish = lambda v: (
+            setattr(v, 'end', len(self.bytecode)),
+            hasattr(v, '_c') and delattr(v, '_c')  # Empty the value cache.
+        )
         to_int = lambda v: (
             # Returns 0 if recurring and the actual jump target otherwise.
             # Will fail given the length of bytecode is big enough
@@ -133,8 +136,11 @@ class MutableCode:
             #       2 more times may fix the issue.
             #
             hasattr(v, '_c') or (
-              setattr(v, '_c', 0),
-              setattr(v, '_c', codelen(self.bytecode[0 if absolute else start:v.end])),
+                setattr(v, '_c', 0),
+                setattr(v, '_c', codelen(
+                    self.bytecode[0 if absolute else v.end + 1:start] if reverse else
+                    self.bytecode[0 if absolute else start + 1:v.end]
+                )),
             ), v._c
         )[-1]
         return delay(to_int, finish)
@@ -152,6 +158,12 @@ class MutableCode:
         if code == opcode.opmap['YIELD_VALUE']:
 
             self.flags |= const.CO.GENERATOR
+
+        if code in (opcode.hasjrel + opcode.hasjabs) and value < 0:
+
+            # Reverse jump.
+            jmp = self.jump(absolute=code in opcode.hasjabs, reverse=True)
+            return lambda: self.bytecode.append((code, jmp))
 
         self.bytecode.append((
             code,
