@@ -228,7 +228,7 @@ class Compiler:
             self.code.CALL_FUNCTION
         )(
             len(posargs) + 256 * len(kwargs),
-            delta=-len(args) - 2 * len(kwargs) - len(vararg) - len(varkwarg)
+            delta=-len(posargs) - 2 * len(kwargs) - len(vararg) - len(varkwarg)
         )
 
     def load(self, *es):
@@ -273,11 +273,6 @@ class Compiler:
             # XXX this line is for compiler debugging purposes.
             #     If it triggers an exception, the required stack size
             #     might have been calculated improperly.
-            if self.code.cstacksize != stacksize + 1:
-
-                import dis
-                dis.dis(self.code.compile())
-
             assert self.code.cstacksize == stacksize + 1, 'stack leaked'
 
     def load_map(self, d):
