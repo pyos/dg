@@ -43,7 +43,7 @@ ERR = AttrDict(  # error descriptions
     # Attempted to pass a kwarg with an invalid name.
   , NONCONST_KEYWORD = 'keyword argument names should be constant'
     # Attempted to get an attribute by non-constant name.
-  , NONCONST_ATTR = 'use `setattr` instead'
+  , NONCONST_ATTR = 'can\'t access attributes with non-constant names'
     # Attempted to assign a value to something but a name.
   , NONCONST_VARNAME = 'can\'t assign to non-constant names'
 
@@ -52,9 +52,9 @@ ERR = AttrDict(  # error descriptions
     # Same as above, but for **varkwargs.
   , MULTIPLE_VARKWARGS = 'multiple **varkwargs are not allowed'
     # *varargs or **varkwargs have been assigned a default value in function definition.
-  , VARARGS_DEFAULT = 'neither *varargs nor **varkwargs can have default values'
+  , VARARG_DEFAULT = 'neither *varargs nor **varkwargs can have default values'
     # **varkwargs is not the last argument in function definition.
-  , ARG_AFTER_VARARGS = '**varkwargs must be the last argument'
+  , ARG_AFTER_VARKWARGS = '**varkwargs must be the last argument'
 
   ### UNDEFINED BEHAVIOR
 
