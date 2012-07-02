@@ -1,5 +1,5 @@
-import math
 import types
+import struct
 import opcode
 import functools
 import itertools
@@ -56,49 +56,26 @@ class MutableCode:
 
         raise AttributeError(name)
 
-    # Add an entry to the lineno table.
-    #
-    # :param struct: a dg output structure that will produce an instruction.
-    #
     def mark(self, e):
 
         self.lnotab[len(self.bytecode)] = e.reparse_location.start[1]
 
     def make_lnotab(self):
 
-        e = 0, self.lineno
+        offset = 0
+        lineno = self.lineno
 
-        for q in sorted(self.lnotab.items()):
+        for offset_, lineno_ in sorted(self.lnotab.items()):
 
-            if q[1] > e[1]:
+            if lineno_ > lineno:
 
-                dl = q[1] - e[1]
-                do = codelen(self.bytecode[e[0]:q[0]])
+                bytediff = codelen(self.bytecode[offset:offset_])
+                linediff = lineno_ - lineno
+                yield b'\xff\x00' * (bytediff // 256)
+                yield b'\x00\xff' * (linediff // 256)
+                yield bytes((bytediff % 256, linediff % 256))
+                offset, lineno = offset_, lineno_
 
-                for _ in range(do // 256):
-
-                    yield 255
-                    yield 0
-
-                for _ in range(dl // 256):
-
-                    yield 0
-                    yield 255
-
-                yield do % 256
-                yield dl % 256
-                e = q
-
-    # Add a name/constant to a name container.
-    #
-    # :param v: the variable name/constant value to append.
-    #
-    # :param id: index of the preferred container.
-    #
-    # :param containers: mutually exclusive containers sorted by their priority.
-    #
-    # :return: delayed computation of index of `v` in the sum of `containers`.
-    #
     def use(self, v, id, *containers):
 
         if not isinstance(v, str) and self.consts not in containers:
@@ -121,36 +98,35 @@ class MutableCode:
 
     def jump(self, absolute, reverse=False):
 
-        start  = len(self.bytecode)
-        finish = lambda v: (
-            setattr(v, 'end', len(self.bytecode)),
+        start = len(self.bytecode)
+
+        def finish(v):
+
+            v.end = len(self.bytecode)
             hasattr(v, '_c') and delattr(v, '_c')  # Empty the value cache.
-        )
-        to_int = lambda v: (
-            # Returns 0 if recurring and the actual jump target otherwise.
-            # Will fail given the length of bytecode is big enough
-            # (i.e. the target for this jump >= 0x10000)
-            #
-            # FIXME given the size constraints of `int`, the value may increase
-            #       by 3 (possibly 6). Repeating the calculation
-            #       2 more times may fix the issue.
-            #
-            hasattr(v, '_c') or (
-                setattr(v, '_c', 0),
-                setattr(v, '_c', codelen(
+
+        # Returns 0 if recurring and the actual jump target otherwise.
+        # Will fail given the length of bytecode is big enough
+        # (i.e. the target for this jump >= 0x10000)
+        #
+        # FIXME given the size constraints of `int`, the value may increase
+        #       by 3 (possibly 6). Repeating the calculation
+        #       2 more times may fix the issue.
+        #
+        def to_int(v):
+
+            if not hasattr(v, '_c'):
+
+                v._c = 0
+                v._c = codelen(
                     self.bytecode[0 if absolute else v.end + 1:start] if reverse else
                     self.bytecode[0 if absolute else start + 1:v.end]
-                )),
-            ), v._c
-        )[-1]
+                )
+
+            return v._c
+
         return delay(to_int, finish)
 
-    # Add an instruction to a mutable code object.
-    #
-    # :param name: the instruction name.
-    #
-    # :param value: an argument to that instruction, if necessary.
-    #
     def append(self, name, value=0, delta=0):
 
         code = opcode.opmap[name]
@@ -188,22 +164,21 @@ class MutableCode:
         for code, value in self.bytecode:
 
             value = int(value)
+            oparg = [value % 0x10000]
 
-            for q in range(value and int(math.log(value, 0x10000)), 0, -1):
+            while value > 0x10000:
 
-                yield opcode.opmap['EXTENDED_ARG']
-                yield value // (0x10000 ** q) %  0x100
-                yield value // (0x10000 ** q) // 0x100
-                value %= (0x10000 ** q)
+                value //= 0x10000
+                oparg.insert(0, value % 0x10000)
 
-            yield code
+            for arg in oparg[:-1]:
 
-            if code >= opcode.HAVE_ARGUMENT:
+                yield struct.pack('=BH', opcode.opmap['EXTENDED_ARG'], arg)
 
-                # XXX see if it uses native byte ordering.
-                # FIXME if it does, this will break on big-endian platforms.
-                yield value %  0x100
-                yield value // 0x100
+            yield struct.pack(*
+                ('=BH', code, oparg[-1]) if code >= opcode.HAVE_ARGUMENT else
+                ('=B',  code)
+            )
 
     def compile(self, name='<lambda>'):
 
@@ -217,14 +192,14 @@ class MutableCode:
                 0               if self.cellvars else
                 const.CO.NOFREE
             ),
-            bytes(self.make_bytecode()),
+            b''.join(self.make_bytecode()),
             tuple(self.consts),
             tuple(self.names),
             tuple(self.varnames),
             self.filename,
             name,
             self.lineno,
-            bytes(self.make_lnotab()),
+            b''.join(self.make_lnotab()),
             tuple(self.freevars),
             tuple(self.cellvars)
         )
