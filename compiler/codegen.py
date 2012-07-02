@@ -163,7 +163,7 @@ class MutableCode:
 
             # Reverse jump.
             jmp = self.jump(absolute=code in opcode.hasjabs, reverse=True)
-            return lambda: self.bytecode.append((code, jmp))
+            return lambda: (jmp(), self.bytecode.append((code, jmp)))
 
         self.bytecode.append((
             code,
