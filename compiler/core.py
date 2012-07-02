@@ -208,7 +208,9 @@ class Compiler:
 
         else:
 
-            var in self.code.cellnames and self.error(const.ERR.FREEVAR_ASSIGNMENT)
+            if var in self.code.cellnames:
+
+                raise Exception(const.ERR.FREEVAR_ASSIGNMENT)
 
             self.code.STORE_DEREF (var, -1) if var in self.code.cellvars else \
             self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
@@ -314,20 +316,16 @@ class Compiler:
 
         except Exception as e:
 
-            self.error(str(e))
+            raise SyntaxError(
+                str(e),
+                (
+                    self._loading.reparse_location.filename,
+                    self._loading.reparse_location.start[1],
+                    1, str(self._loading)
+                )
+            )
 
         finally:
 
             self.code = backup
-
-    def error(self, description):
-
-        raise SyntaxError(
-            description,
-            (
-                self._loading.reparse_location.filename,
-                self._loading.reparse_location.start[1],
-                1, str(self._loading)
-            )
-        )
 
