@@ -1,6 +1,3 @@
-from . import parser
-
-
 class FlagSet(list):
 
     def __getattr__(self, name):
