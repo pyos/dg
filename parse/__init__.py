@@ -4,9 +4,8 @@ from . import core
 from . import tree
 from . import libparse
 
-SIG_CLOSURE_END       = tree.Internal()  # )
-SIG_EXPRESSION_BREAK  = tree.Internal()  # \n
-SIG_EXPRESSION_HARDBR = tree.Internal()  # ;
+SIG_CLOSURE_END       = tree.Internal()
+SIG_EXPRESSION_BREAK  = tree.Internal()
 
 STATE_CAN_POP_FROM_STACK = libparse.STATE_CUSTOM << 0
 STATE_INDENT_IS_ALLOWED  = libparse.STATE_CUSTOM << 1
@@ -31,13 +30,9 @@ def bof(stream: libparse.STATE_AT_FILE_START, token: r''):
 def separator(stream, token: r'\s*(?:\n|;[^\S\n]*)'):
 
     ok = stream.state & STATE_INDENT_IS_ALLOWED or stream.ALLOW_BREAKS_IN_PARENTHESES
+    ok or ';' not in token.group() or stream.error('can\'t chain expressions here')
 
-    if ';' in token.group():
-
-        ok or stream.error('can\'t chain expressions here')
-        yield SIG_EXPRESSION_HARDBR
-
-    elif ok:
+    if ok:
 
         yield SIG_EXPRESSION_BREAK
 
@@ -62,24 +57,23 @@ def indent(stream: libparse.STATE_AT_LINE_START, token: r' *'):
 
         # Indent is not allowed, yet we need to consume the whitespace.
         # FIXME whitespace should be handled by some other token handler.
-        return ()
+        return
 
     indent = len(token.group())
 
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-        return do(stream, None)
+      # yield from do(stream, None)
+        for _ in do(stream, None): yield _
+        return
 
     while indent != stream.indent.pop():
 
-        stream.repeat.append(SIG_CLOSURE_END)
+        yield SIG_CLOSURE_END
         stream.indent or stream.error('no matching indentation level', after=True)
 
-    # Don't allow further expressions touch the indented block.
-    stream.repeat and stream.repeat.append(SIG_EXPRESSION_BREAK)
     stream.indent.append(indent)
-    return ()
 
 
 @r.token
@@ -107,7 +101,7 @@ def end(stream, token: r'[^\S\n]*\)'):
 # non_empty_operator = < some punctuation > + | ( '`', word, '`' )
 # word = ( < alphanumeric > | '_' ) +
 #
-def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'\s*(`\w+`|[!$%&*-/:<-@\\^|~]*)[^\S\n]*'):
+def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'\s*(`\w+`|[!$%&*-/:<-@\\^|~]*)[^\S\n]*\n*'):
 
     stream.state &= ~STATE_CAN_POP_FROM_STACK
 
@@ -115,8 +109,7 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'\s*(`\w+`|[!$%&*-/:<-@\\
 
     op  = stream.repeat.pop()
     lhs = stream.stack
-    # Ignore soft breaks (i.e. newlines.)
-    rhs = next(_ for _ in stream if _ is not SIG_EXPRESSION_BREAK)
+    rhs = next(stream)
 
     # true   `lhs R;` or `(lhs R)`
     # false  `lhs R rhs`
@@ -159,14 +152,14 @@ def do(stream, token: r'\('):
         if item is SIG_CLOSURE_END:
 
             (
-                token  # i.e.
+                token
                 and stream.state & libparse.STATE_AT_FILE_END
                 and stream.error('non-closed block at EOF')
             )
 
             break
 
-        if item in (SIG_EXPRESSION_BREAK, SIG_EXPRESSION_HARDBR):
+        if item is SIG_EXPRESSION_BREAK:
 
             stream.state &= ~STATE_CAN_POP_FROM_STACK
             continue
@@ -177,7 +170,13 @@ def do(stream, token: r'\('):
     stream.stack, result = stack_backup, stream.stack
     stream.state &= ~STATE_INDENT_IS_ALLOWED
     stream.state |=  STATE_INDENT_BACKUP
+
     yield result
+
+    if not token:
+
+        # Don't allow the expression on the next line touch the indented block.
+        yield SIG_EXPRESSION_BREAK
 
 
 @r.token
