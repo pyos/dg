@@ -1,3 +1,4 @@
+import math
 import types
 import struct
 import opcode
