@@ -1,37 +1,31 @@
+from . import r
 from . import core
 from . import tree
 from .. import const
 
 # CONST
 # {
-_PARSER = core.Parser()
-_CONSTS = dict(
-    ST_GROUP      = '(_)'
-
-  , ST_TUPLE_S    = '_,'
-  , ST_TUPLE      = '_, _'
-  , ST_CALL       = '_ _'
-
-  , ST_ARG_KW     = '_: _'
-  , ST_ARG_VAR    = '*_'
-  , ST_ARG_VAR_KW = '**_'
-
-  , ST_IMPORT     = 'import'
-  , ST_IMPORT_REL = '_ _'
-  , ST_IMPORT_SEP = '_._'
-
-  , ST_ASSIGN_ATTR = '_._'
-  , ST_ASSIGN_ITEM = '_ !! _'
-)
-
-
 globals().update({
-    c: _PARSER.parse(v)[0]
-    for c, v in _CONSTS.items()
-})
+    n: r(v)[0] for n, v in
+    dict(
+        ST_GROUP      = '(_)'
 
-del _PARSER
-del _CONSTS
+      , ST_TUPLE_S    = '_,'
+      , ST_TUPLE      = '_, _'
+      , ST_CALL       = '_ _'
+
+      , ST_ARG_KW     = '_: _'
+      , ST_ARG_VAR    = '*_'
+      , ST_ARG_VAR_KW = '**_'
+
+      , ST_IMPORT     = 'import'
+      , ST_IMPORT_REL = '_ _'
+      , ST_IMPORT_SEP = '_._'
+
+      , ST_ASSIGN_ATTR = '_._'
+      , ST_ASSIGN_ITEM = '_ !! _'
+    ).items()
+})
 # }
 
 # MISC

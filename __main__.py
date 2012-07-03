@@ -1,14 +1,13 @@
 import sys
 import operator
 
-from .parser.core import Parser
+from . import parse
 from .compiler.core import Compiler, varary
 from .interactive import Interactive
 
 
 class Interactive (Interactive):
 
-    PARSER   = Parser()
     COMPILER = Compiler()
     GLOBALS  = {
         # Runtime counterparts of some stuff in `Compiler.builtins`.
@@ -45,13 +44,13 @@ class Interactive (Interactive):
 
     def compile(self, code):
 
-        q = self.PARSER.compile_command(code)
+        q = parse.r.compile_command(code)
         q = q if q is None else self.COMPILER.compile(q, name='<module>', single=True)
         return q
 
     def run(self, ns):
 
-        q = self.PARSER.parse(sys.stdin.read(), '<stdin>')
+        q = parse.r(sys.stdin.read(), '<stdin>')
         q = self.COMPILER.compile(q, name='<module>')
         return self.eval(q, ns)
 

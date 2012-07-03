@@ -1,7 +1,7 @@
 from . import codegen
 from .. import const
-from ..parser import tree
-from ..parser import syntax
+from ..parse import tree
+from ..parse import syntax
 
 # Choose a function based on the number of arguments.
 varary  = lambda *fs: lambda *xs: fs[len(xs) - 1](*xs)
@@ -316,6 +316,7 @@ class Compiler:
 
         except Exception as e:
 
+            raise
             raise SyntaxError(
                 str(e),
                 (
