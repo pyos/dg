@@ -316,7 +316,10 @@ class Compiler:
 
         except Exception as e:
 
-            raise
+            if __debug__:
+
+                raise
+
             raise SyntaxError(
                 str(e),
                 (
