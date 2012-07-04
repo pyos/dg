@@ -241,9 +241,10 @@ class Compiler:
             delta=-len(posargs) - 2 * len(kwargs) - len(vararg) - len(varkwarg)
         )
 
-    def pipe(self, f, arg):
+    def pipe(self, f, *args):
 
-        return self.call(f, tree.Closure([arg]))
+        args = [tree.Closure([arg]) for arg in args] if args else [tree.Closure()]
+        return self.call(f, *args)
 
     def load(self, *es):
 
