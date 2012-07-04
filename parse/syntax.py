@@ -161,7 +161,9 @@ def tuple(init, *last):
 
 def call_pre(f, *args):
 
-    return uncurry(f, ST_CALL) + list(args)
+    f, *args2 = uncurry(f, ST_CALL)
+    f, *args3 = tree.matchA(f, ST_ARG_KW) or [f]
+    return [f] + args3 + args2 + list(args)
 
 
 def call(f, *args):
