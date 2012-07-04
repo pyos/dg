@@ -185,16 +185,28 @@ def do(stream, token: r'\(', indented=False):
             stream.stack.append(item)
             stream.state |= STATE_CAN_POP_FROM_STACK
 
-    yield stream.stack
-
-    stream.state &= ~(STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
-    stream.state |= state_backup
-    stream.stack = stack_backup
+    # These SIG_CLOSURE_END are put there by `indent` when it unindents
+    # for more than one level. All other stuff should have been handled.
+    assert not set(stream.repeat) - {SIG_CLOSURE_END}
 
     if indented:
 
         # Don't allow the expression on the next line touch the indented block.
         yield SIG_EXPRESSION_BREAK
+        # Put that stuff before closure ends yielded by `indent`.
+        # (We already know there's nothing else in the queue.)
+        stream.repeat.appendleft(stream.repeat.pop())
+
+    yield stream.stack
+    # If we don't do that, outer blocks will receive SIG_CLOSURE_END
+    # from `indent` before they get to this block. That may have some...
+    # unexpected results, such as *inner* blocks going to the *outermost*
+    # expression.
+    stream.repeat.appendleft(stream.repeat.pop())
+
+    stream.state &= ~(STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
+    stream.state |= state_backup
+    stream.stack = stack_backup
 
 
 @r.token
