@@ -16,8 +16,8 @@ globals().update({
       , ST_ARG_KW       = '_: _'
       , ST_ARG_VAR      = '*_'
       , ST_ARG_VAR_KW   = '**_'
-      , ST_ARG_VAR_C    = '(*): _'
-      , ST_ARG_VAR_KW_C = '(**): _'
+      , ST_ARG_VAR_C    = '(*)'
+      , ST_ARG_VAR_KW_C = '(**)'
 
       , ST_IMPORT     = 'import'
       , ST_IMPORT_REL = '_ _'
@@ -173,30 +173,26 @@ def call(f, *args):
 
     for arg in args:
 
-        arg = unwrap(arg)
+        kw = tree.matchA(arg, ST_ARG_KW)
 
-        var   = tree.matchA(arg, ST_ARG_VAR_C)
-        varkw = tree.matchA(arg, ST_ARG_VAR_KW_C)
-        kw    = tree.matchA(arg, ST_ARG_KW)
+        if not kw:
 
-        if var:
+            posargs.append(arg)
+
+        elif tree.matchQ(kw[0], ST_ARG_VAR_C):
 
             ERROR(vararg, const.ERR.MULTIPLE_VARARGS)
-            vararg.extend(var)
+            vararg.append(kw[1])
 
-        elif varkw:
+        elif tree.matchQ(kw[0], ST_ARG_VAR_KW_C):
 
             ERROR(varkwarg, const.ERR.MULTIPLE_VARKWARGS)
-            varkwarg.extend(varkw)
-
-        elif kw:
-
-            ERROR(not isinstance(kw[0], tree.Link), const.ERR.NONCONST_KEYWORD)
-            kwargs.__setitem__(*kw)
+            varkwarg.append(kw[1])
 
         else:
 
-            posargs.append(arg)
+            ERROR(not isinstance(kw[0], tree.Link), const.ERR.NONCONST_KEYWORD)
+            kwargs.__setitem__(*kw)
 
     return f, posargs, kwargs, vararg, varkwarg
 
