@@ -135,7 +135,7 @@ def function(args, code):
             ERROR(varargs   and vararg, const.ERR.MULTIPLE_VARARGS)
             ERROR(varkwargs and varkw,  const.ERR.MULTIPLE_VARKWARGS)
             # 4. guess what
-            ERROR(not isinstance(arg, tree.Link), const.ERR.NONCONST_VARNAME)
+            ERROR(not isinstance(arg, tree.Link), const.ERR.NONCONST_ARGUMENT)
 
             # Put the argument into the appropriate list.
             default and not varargs and defaults.extend(default)

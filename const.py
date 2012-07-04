@@ -43,6 +43,8 @@ ERR = AttrDict(  # error descriptions
   , NONCONST_ATTR = 'can\'t access attributes with non-constant names'
     # Attempted to assign a value to something but a name.
   , NONCONST_VARNAME = 'can\'t assign to non-constant names'
+    # Same as above, but for function arguments.
+  , NONCONST_ARGUMENT = 'pattern-matching of function arguments is not supported'
 
     # Two or more *varargs definitions.
   , MULTIPLE_VARARGS = 'multiple *varargs are not allowed'
