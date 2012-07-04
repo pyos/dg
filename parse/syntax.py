@@ -1,5 +1,4 @@
 from . import r
-from . import core
 from . import tree
 from .. import const
 

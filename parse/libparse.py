@@ -38,6 +38,7 @@ class Parser (collections.Iterator):
     @classmethod
     def token(cls, func):
 
+        assert func.__code__.co_argcount >= 2, 'def handler(parser, token)'
         state = func.__annotations__.get(func.__code__.co_varnames[0], 0)
         regex = func.__annotations__.get(func.__code__.co_varnames[1], r'.')
         cls.tokens.append(Token(re.compile(regex, re.DOTALL).match, state, func))
@@ -84,10 +85,10 @@ class Parser (collections.Iterator):
 
             f, match = next(m for m in matches if m[1])
             self.pstack.append(self.offset)
-            self.state  &= ~STATE_AT_FILE_START
-            self.state  &= ~STATE_AT_LINE_START
-            self.state  |= match.group().endswith('\n') and STATE_AT_LINE_START
-            self.offset  = match.end()
+            self.state &= ~STATE_AT_FILE_START
+            self.state &= ~STATE_AT_LINE_START
+            self.state |= match.group().endswith('\n') and STATE_AT_LINE_START
+            self.offset = match.end()
             self.repeat.extend(map(self.located, f(self, match)))
             self.pstack.pop()
 

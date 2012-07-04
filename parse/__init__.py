@@ -20,14 +20,14 @@ r = core.Parser.make()
 def bof(stream: libparse.STATE_AT_FILE_START, token: r''):
 
     stream.state |= libparse.STATE_AT_LINE_START
-    return do(stream, None)
+    return do(stream, token, indented=True)
 
 
 @r.token
 #
 # separator = '\n' | ';'
 #
-def separator(stream, token: r'\s*(?:\n|;[^\S\n]*)'):
+def separator(stream, token: r'(?:\s*\n|;)'):
 
     ok = stream.state & STATE_INDENT_IS_ALLOWED or stream.ALLOW_BREAKS_IN_PARENTHESES
     ok or ';' not in token.group() or stream.error('can\'t chain expressions here')
@@ -51,21 +51,15 @@ def comment(stream, token: r'\s*#[^\n]*'):
 #
 # indent = ^ ( ' ' | '\t' ) *
 #
-def indent(stream: libparse.STATE_AT_LINE_START, token: r' *'):
-
-    if not stream.state & STATE_INDENT_IS_ALLOWED:
-
-        # Indent is not allowed, yet we need to consume the whitespace.
-        # FIXME whitespace should be handled by some other token handler.
-        return
+def indent(stream: libparse.STATE_AT_LINE_START | STATE_INDENT_IS_ALLOWED, token: r' *'):
 
     indent = len(token.group())
 
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-      # yield from do(stream, None)
-        for _ in do(stream, None): yield _
+      # yield from do(stream, token, indented=True)
+        for _ in do(stream, token, indented=True): yield _
         return
 
     while indent != stream.indent.pop():
@@ -89,23 +83,22 @@ def eof(stream: libparse.STATE_AT_FILE_END, token: r''):
 #
 # end = ')'
 #
-def end(stream, token: r'[^\S\n]*\)'):
+def end(stream, token: r'\)'):
 
     yield SIG_CLOSURE_END
 
 
 @r.token
 #
-# operator = non_empty_operator | ''
+# operator = < some punctuation > + | ( '`', word, '`' )
 #
-# non_empty_operator = < some punctuation > + | ( '`', word, '`' )
 # word = ( < alphanumeric > | '_' ) +
 #
-def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'\s*(`\w+`|[!$%&*-/:<-@\\^|~]*)[^\S\n]*\n*'):
+def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+)\s*?\n*'):
 
     stream.state &= ~STATE_CAN_POP_FROM_STACK
 
-    yield tree.Link(token.group(1).strip('`'))
+    yield tree.Link(token.group(1).strip('`') if token else '')
 
     op  = stream.repeat.pop()
     lhs = stream.stack
@@ -134,46 +127,55 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'\s*(`\w+`|[!$%&*-/:<-@\\
 #
 # do = '('
 #
-def do(stream, token: r'\('):
+def do(stream, token: r'\(', indented=False):
 
-    STATE_INDENT_BACKUP = stream.state & STATE_INDENT_IS_ALLOWED
+    state_backup = stream.state & (STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
+    stack_backup = stream.stack
 
-    # Reset the parser state.
-    stream.state &= ~STATE_INDENT_IS_ALLOWED
-    stream.state &= ~STATE_CAN_POP_FROM_STACK
-    stream.stack, stack_backup = tree.Closure(), stream.stack
+    stream.state &= ~(STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
+    stream.stack = tree.Closure()
 
-    # Only enable indentation when the closure is not parenthesized.
-    # (May also affect expression separators.)
-    stream.state |= (not token or stream.ALLOW_INDENT_IN_PARENTHESES) and STATE_INDENT_IS_ALLOWED
+    if indented or stream.ALLOW_INDENT_IN_PARENTHESES:
+
+        # Only enable indentation when the closure is not parenthesized.
+        # (May also affect expression separators.)
+        stream.state |= STATE_INDENT_IS_ALLOWED
 
     for item in stream:
 
         if item is SIG_CLOSURE_END:
 
             (
-                token
+                not indented
                 and stream.state & libparse.STATE_AT_FILE_END
                 and stream.error('non-closed block at EOF')
             )
 
             break
 
-        if item is SIG_EXPRESSION_BREAK:
+        elif item is SIG_EXPRESSION_BREAK:
 
             stream.state &= ~STATE_CAN_POP_FROM_STACK
-            continue
 
-        stream.stack.append(item)
-        stream.state |= STATE_CAN_POP_FROM_STACK
+        elif stream.state & STATE_CAN_POP_FROM_STACK:
 
-    stream.stack, result = stack_backup, stream.stack
-    stream.state &= ~STATE_INDENT_IS_ALLOWED
-    stream.state |=  STATE_INDENT_BACKUP
+            # Two objects in a row should be joined with an empty operator.
+            stream.repeat.appendleft(item)
+          # yield from operator(stream, None)
+            for _ in operator(stream, None): yield _
 
-    yield result
+        else:
 
-    if not token:
+            stream.stack.append(item)
+            stream.state |= STATE_CAN_POP_FROM_STACK
+
+    yield stream.stack
+
+    stream.state &= ~(STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
+    stream.state |= state_backup
+    stream.stack = stack_backup
+
+    if indented:
 
         # Don't allow the expression on the next line touch the indented block.
         yield SIG_EXPRESSION_BREAK
@@ -223,12 +225,14 @@ def number(stream, token: r'([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?'
 
 @r.token
 #
-# string = 'r' ?, 'b' ?, sq_string | dq_string
+# string = 'r' ?, 'b' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
 # sq_string = "'", ( '\\' ?, < any character > ) * ?, "'"
 # dq_string = '"', ( '\\' ?,  < any character > ) * ?, '"'
+# sq_string_m = "'''", ( '\\' ?, < any character > ) * ?, "'''"
+# dq_string_m = '"""', ( '\\' ?,  < any character > ) * ?, '"""'
 #
-def string(stream, token: r'(b?r?)("|\')((?:\\?.)*?)\2'):
+def string(stream, token: r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2'):
 
     yield ast.literal_eval('{0}{1}{1}{1}{2}{1}{1}{1}'.format(*token.groups()))
 
@@ -244,11 +248,20 @@ def string_err(stream, token: r'"|\''):
 
 @r.token
 #
-# link = word | non_empty_operator
+# link = word | operator
 #
 def link(stream, token: r'\w+|[!$%&*-/:<-@\\^|~]+|`\w+`'):
 
-    yield tree.Link(token.group())
+    yield tree.Link(token.group().strip('`'))
+
+
+@r.token
+#
+# whitespace = < whitespace >
+#
+def whitespace(stream, token: '\s'):
+
+    return ()
 
 
 @r.token
