@@ -295,8 +295,16 @@ class Compiler:
 
         backup = self.code
         self.code = codegen.MutableCode(isfunc=False) if into is None else into
-        self.code.filename = e.reparse_location.filename
-        self.code.lineno   = e.reparse_location.start[1]
+
+        if hasattr(e, 'reparse_location'):
+
+            self.code.filename = e.reparse_location.filename
+            self.code.lineno   = e.reparse_location.start[1]
+
+        else:
+
+            self.code.filename = backup.filename
+            self.code.lineno   = backup.lnotab[max(backup.lnotab)]
 
         try:
 
