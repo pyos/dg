@@ -128,6 +128,12 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~
 
         lhs = lhs[-1]
 
+    if rhsless and lhs is not stream.stack:
+
+        # `a R b Q`  where Q has higher priority than R.
+        # Is it `(a R b) Q` or `a R (b Q)`?
+        stream.error('ambiguous input')
+
     # `R`         <=> `Op R`
     # `R rhs`     <=> `Call (Link R) (Link rhs)`
     # `lhs R`     <=> `Op R (Link lhs)`
