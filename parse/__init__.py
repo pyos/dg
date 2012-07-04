@@ -114,7 +114,7 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~
 
     elif bool(token) and token.group().endswith('\n') and not getattr(rhs, 'indented', False):
 
-        # The operator was followed by something other that an object or
+        # The operator was followed by something other than an object or
         # an indented block.
         yield SIG_EXPRESSION_BREAK
         yield rhs
