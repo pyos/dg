@@ -104,10 +104,25 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~
     lhs = stream.stack
     rhs = next(stream)
 
-    # true   `lhs R;` or `(lhs R)`
-    # false  `lhs R rhs`
-    rhsless = isinstance(rhs, tree.Internal)
-    rhsless and stream.repeat.append(rhs)
+    # rhsless is true:   `lhs R;` or `(lhs R)` or `lhs R \n not_rhs`
+    # rhsless is false:  `lhs R rhs` or `lhs R \n indented_block`
+    if isinstance(rhs, tree.Internal):
+
+        # Either an explicit expression break or a block end was encountered.
+        yield rhs
+        rhsless = True
+
+    elif bool(token) and token.group().endswith('\n') and not getattr(rhs, 'indented', False):
+
+        # The operator was followed by something other that an object or
+        # an indented block.
+        yield SIG_EXPRESSION_BREAK
+        yield rhs
+        rhsless = True
+
+    else:
+
+        rhsless = False
 
     while isinstance(lhs[-1], tree.Expression) and stream.has_priority(op, lhs[-1][0]):
 
@@ -134,6 +149,7 @@ def do(stream, token: r'\(', indented=False):
 
     stream.state &= ~(STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
     stream.stack = tree.Closure()
+    stream.stack.indented = indented
 
     if indented or stream.ALLOW_INDENT_IN_PARENTHESES:
 
