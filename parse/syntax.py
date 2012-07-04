@@ -1,5 +1,3 @@
-import itertools
-
 from . import r
 from . import tree
 from .. import const
@@ -173,10 +171,7 @@ def call(f, *args):
     vararg   = []
     varkwarg = []
 
-    # f: arg1 arg2 ... -> f arg1 arg2 ...
-    f, *pre_args = tree.matchA(f, ST_ARG_KW) or [f]
-
-    for arg in itertools.chain(pre_args, args):
+    for arg in args:
 
         arg = unwrap(arg)
 
