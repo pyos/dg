@@ -23,8 +23,8 @@ class Compiler:
         self.builtins = {
             ',':  self.tuple
           , '':   self.call
-          , '$':  self.call
           , ':':  self.call
+          , '$':  self.pipe
           , '=':  self.store
           , '->': self.function
 
@@ -240,6 +240,10 @@ class Compiler:
             len(posargs) + 256 * len(kwargs),
             delta=-len(posargs) - 2 * len(kwargs) - len(vararg) - len(varkwarg)
         )
+
+    def pipe(self, f, arg):
+
+        return self.call(f, tree.Closure([arg]))
 
     def load(self, *es):
 
