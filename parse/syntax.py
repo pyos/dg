@@ -7,15 +7,17 @@ from .. import const
 globals().update({
     n: r(v)[0] for n, v in
     dict(
-        ST_GROUP      = '(_)'
+        ST_GROUP = '(_)'
 
-      , ST_TUPLE_S    = '_,'
-      , ST_TUPLE      = '_, _'
-      , ST_CALL       = '_ _'
+      , ST_TUPLE_S = '_,'
+      , ST_TUPLE   = '_, _'
+      , ST_CALL    = '_ _'
 
-      , ST_ARG_KW     = '_: _'
-      , ST_ARG_VAR    = '*_'
-      , ST_ARG_VAR_KW = '**_'
+      , ST_ARG_KW       = '_: _'
+      , ST_ARG_VAR      = '*_'
+      , ST_ARG_VAR_KW   = '**_'
+      , ST_ARG_VAR_C    = '(*): _'
+      , ST_ARG_VAR_KW_C = '(**): _'
 
       , ST_IMPORT     = 'import'
       , ST_IMPORT_REL = '_ _'
@@ -171,19 +173,28 @@ def call(f, *args):
 
         arg = unwrap(arg)
 
-        kw = tree.matchA(arg, ST_ARG_KW)
-        kw and kwargs.__setitem__(*kw)
-        ERROR(kw and not isinstance(kw[0], tree.Link), const.ERR.NONCONST_KEYWORD)
+        var   = tree.matchA(arg, ST_ARG_VAR_C)
+        varkw = tree.matchA(arg, ST_ARG_VAR_KW_C)
+        kw    = tree.matchA(arg, ST_ARG_KW)
 
-        var = tree.matchA(arg, ST_ARG_VAR)
-        var and vararg.extend(*var)
-        ERROR(var and vararg, const.ERR.MULTIPLE_VARARGS)
+        if var:
 
-        varkw = tree.matchA(arg, ST_ARG_VAR_KW)
-        varkw and varkwarg.extend(*varkw)
-        ERROR(varkw and varkwarg, const.ERR.MULTIPLE_VARKWARGS)
+            ERROR(vararg, const.ERR.MULTIPLE_VARARGS)
+            vararg.extend(var)
 
-        var or kw or varkw or posargs.append(arg)
+        elif varkw:
+
+            ERROR(varkwarg, const.ERR.MULTIPLE_VARKWARGS)
+            varkwarg.extend(varkw)
+
+        elif kw:
+
+            ERROR(not isinstance(kw[0], tree.Link), const.ERR.NONCONST_KEYWORD)
+            kwargs.__setitem__(*kw)
+
+        else:
+
+            posargs.append(arg)
 
     return f, posargs, kwargs, vararg, varkwarg
 
