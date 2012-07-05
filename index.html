@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html asd="qwe">
+  <head>
+    <meta charset="utf-8" />
+    <title>Woof</title>
+    <link href="css/bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="css/bootstrap-responsive.css" rel="stylesheet" type="text/css" />
+    <link href="css/style.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="js/bootstrap.js"></script>
+  </head>
+  <body>
+    <div class="row-fluid side-row hidden-phone">
+      <div class="span2 sidebar">
+        <h1>
+          <a href="#">woof</a>
+          <img src="img/icon.png" />
+        </h1>
+        <ul class="nav nav-list">
+          <li><a href="#overview">Overview</a></li>
+          <li class="divider"></li>
+          <li><a href="#installation">Installation</a></li>
+          <li><a href="#usage">Usage</a></li>
+          <li class="divider"></li>
+          <li><a href="#reference">Reference</a></li>
+          <li><a href="#literals">Literals</a></li>
+          <li><a href="#functions">Functions</a></li>
+          <li><a href="#operators">Operators</a></li>
+          <li><a href="#modules">Modules</a></li>
+          <li><a href="#conditions">Conditions</a></li>
+          <li><a href="#loops">Loops</a></li>
+          <li><a href="#exceptions">Exceptions</a></li>
+          <li><a href="#decorators">Decorators</a></li>
+          <li><a href="#objects">Objects</a></li>
+          <li class="divider"></li>
+          <li><a href="#performance">Performance</a></li>
+          <li><a href="#inspiration">Inspired by</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="row-fluid content-row">
+      <div class="span2 hidden-phone"></div>
+      <div class="span10 content">
+        <div id="overview" class="section">
+          <h2>Overview</h2>
+          <p>Woof is a simple (as in KISS) language that compiles to CPython bytecode. In fact, you can think of it as of an alternative syntax for Python 3. The key feature of Woof is the ability to use whatever Python 3 library you want with neat and clean syntax.</p>
+          <p>Note that not everything described here have been implemented yet.</p>
+        </div>
+
+        <div id="installation" class="section">
+          <h2>Installation</h2>
+          <p>Since Woof is a Python 3 module, barely any installation is required. Simply <a href="https://github.com/pyos/woof/zipball/master">download the compiler</a> (or fetch it using git: <code>git clone https://github.com/pyos/woof.git</code>) and extract the archive in a directory somewhere in your <code>$PYTHONPATH</code> (e.g. /usr/lib/python3.2/site-packages/).</p>
+        </div>
+
+        <div id="usage" class="section">
+          <h2>Usage</h2>
+          <p>Usage: <code>python3 -m woof [options] [file [arguments]]</code></p>
+
+          <h3>Options</h3>
+          <table class="table table-striped table-bordered">
+            <tr>
+              <td>-i, --interactive</td>
+              <td>start REPL (default behavior if no input files are specified)</td>
+            </tr>
+            <tr>
+              <td>-c, --compile</td>
+              <td>precompile the specified files (and those imported by them) and save tham as .pyc or .pyo bytecode files</td>
+            </tr>
+            <tr>
+              <td>-e, --eval SCRIPT</td>
+              <td>evaluate SCRIPT as a Woof command</td>
+            </tr>
+            <tr>
+              <td>-p, --print</td>
+              <td>when compiling, make the top-level code print its evaluation result in addition to returning it (does not affect REPL)</td>
+            </tr>
+            <tr>
+              <td>-t, --tree</td>
+              <td>print out dg parse trees instead of compiling them</td>
+            </tr>
+          </table>
+        </div>
+
+        <div id="reference" class="section">
+          <h2>Reference</h2>
+          <p>
+            Just like Python itself, Woof uses indentation as a delimiter for blocks.
+            There is one difference, though: an indented block is the same as a
+            parenthesized one.
+            Woof doesn't require you to use parentheses when calling functions.
+            In fact, it doesn't support that at all. The only syntax for calls
+            is a mix of Haskell and Smalltalk.
+          </p>
+          <p>
+            Variable assignment is done the usual way, <code>name = value</code>.
+            The assignment can also be used to assign attributes or items, or
+            unwrap iterables, almost like in Python.
+            Everything is an expression. That doesn't mean that everything
+            returns a value that makes any sense, though. For example,
+            <code>while</code> always returns <code>None</code> due to limitations
+            of the CPython virtual machine.
+          </p>
+          <p>
+            Woof does not treat neither parentheses nor indented blocks as
+            separate scopes. Every assignment you do inside will affect
+            the outside block as well. The only exceptions are, as always,
+            functions and classes.
+            Another limitation of the namespaces is that you can't modify anything
+            not in your local namespace. Most people consider changing global and non-local
+            a bad practice anyway, so you probably won't even notice.
+            One more thing: trying to create a local with the same name as a non-local
+            variable will result in a compile-time error,
+          </p>
+        </div>
+
+        <div id="literals" class="section">
+          <h2>Literals</h2>
+          <div class="example-woof">
+            <pre class="prettyprint lang-woof">
+<span class="com"># Numbers</span>
+<span class="typ">42</span>
+<span class="typ">3.14159265358979323865</span>
+<span class="typ">6.959500E+9</span>
+<span class="typ">1j</span>
+<span class="typ">0b01010111</span>
+<span class="typ">0o755</span>
+<span class="typ">0xDEADF00D</span>
+
+<span class="com"># Booleans (actually Python builtins)</span>
+<span class="spc">True</span>
+<span class="spc">False</span>
+<span class="spc">None</span>
+
+<span class="com"># Strings</span>
+<span class="str">'single-'</span>
+<span class="str">"or double-quoted"</span>
+<span class="str">'They all can span</span>
+<span class="str">multiple lines.'</span>
+
+<span class="str">'Instead of escaping \'s'</span>
+<span class="str">'''you may use triple-quoted strings.'''</span>
+
+<span class="com"># Tuples</span>
+<span class="typ">1</span><span class="op">,</span> <span class="com"># with a single item</span>
+<span class="typ">2</span><span class="op">,</span> <span class="typ">True</span><span class="op">,</span> <span class="str">'hi'</span> <span class="com"># with multiple items (and an optional comma at the end)</span>
+<span class="blt">tuple</span><span class="op">:</span> <span class="com"># empty</span>
+
+<span class="com"># Since the comma operator has the lowest priority (slightly higher than =, though), you may need to wrap it in parentheses.</span>
+print<span class="op">:</span>  <span class="var">a</span><span class="op">,</span> <span class="typ">1</span>  <span class="com"># Prints out a, returns (None, 1)</span>
+print<span class="op">:</span> <span class="par">(</span><span class="var">a</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span> <span class="com"># Prints out (a, 1), returns None</span>
+</pre>
+          </div>
+        </div>
+
+        <div id="functions" class="section">
+          <h2>Functions</h2>
+          <div class="example-woof">
+            <pre class="prettyprint lang-woof">
+<span class="com"># Calling functions is almost like sending messages in Smalltalk.</span>
+print<span class="op">:</span> <span class="str">'Hello'</span> <span class="str">'print'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
+<span class="com"># And calling them without arguments is no different.</span>
+exit<span class="op">:</span>
+
+<span class="com"># If you do have some arguments to pass, though, there's also a Haskell-ish notation.</span>
+print <span class="str">'Hello, uh...Haskell?'</span> <span class="op">$</span> <span class="str">'No, totally not {}'</span><span class="op">.</span>format <span class="str">'Haskell.'</span>
+
+<span class="com"># Due to the nature of Python, you can't partially apply functions that way.</span>
+<span class="com"># Good thing the ~: operator can help you with that.</span>
+<span class="com"># (`~:` means `functools.partial`, by the way. It's just an alias.)</span>
+greet <span class="op">=</span> print <span class="op">~:</span> <span class="str">'Hello,'</span>
+greet<span class="op">:</span> <span class="str">'World'</span>
+
+<span class="com"># Our good friends *starred **arguments are still with us.</span>
+<span class="com"># As always, * means "the rest of positional arguments" and ** is "the rest of keyword arguments."</span>
+a <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span>
+print<span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> a
+
+<span class="com"># Define functions with -> operator</span>
+double <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> x <span class="op">*</span> <span class="typ">2</span>
+
+<span class="com"># You may omit parentheses if there's only one (unambiguous) argument:</span>
+doubleAll <span class="op">=</span> <span class="op">*</span>xs <span class="op">-></span> <span class="blt">map</span><span class="op">:</span> double xs
+<span class="com"># This is invalid because `whom: 'world' -> ...` is parsed as `whom: ('world' -> ...)`.</span>
+<span class="com">#greet = whom: 'world' -> (print: 'Hello,' whom end: '!\n')</span>
+<span class="com"># Also ambiguous: is it `(f = *) xs -> xs` or `f = (*xs) -> xs`?</span>
+<span class="com">#f = *xs -> xs</span>
+
+<span class="com"># That means you can easily pass anonymous functions as arguments. Note the parentheses, though.</span>
+<span class="com"># Oh, and starred arguments can also be used in argument lists.</span>
+double_all <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">map</span><span class="op">:</span> x <span class="op">-></span> <span class="par">(</span>x <span class="op">*</span> <span class="typ">2</span><span class="par">)</span> xs
+
+<span class="com"># Functions return the last value they evaluate, unless explicitly told to do otherwise.</span>
+do_something <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  <span class="typ">1</span>
+  <span class="typ">2</span>
+  <span class="typ">3</span>  <span class="com"># do_something will return 3</span>
+
+<span class="com"># Remember about parentheses meaning the same thing as indentation?</span>
+do_something2 <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span> <span class="par">(</span><span class="typ">1</span><span class="sep">;</span> <span class="typ">2</span><span class="sep">;</span> <span class="typ">3</span><span class="par">)</span>
+
+<span class="com"># You can even use indentation in them. (So don't insert line breaks just everywhere.)</span>
+do_something3 <span class="op">=</span> <span class="par">(</span><span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  <span class="typ">1</span>
+  <span class="typ">2</span>
+  <span class="typ">3</span>
+<span class="par">)</span>
+
+do_something4 <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  <span class="typ">1</span>
+  <span class="kwd">return</span><span class="op">:</span> <span class="typ">2</span>  <span class="com"># do_something4 will return 2 and ignore everything after that line</span>
+  <span class="typ">3</span>  <span class="com"># Well, the bytecode will still be generated. There's no optimizer yet.</span>
+
+do_something5 <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  <span class="com"># And do_something5 is a generator.</span>
+  <span class="kwd">yield</span><span class="op">:</span> <span class="typ">1</span>
+  <span class="com"># That's how you handle `generator.send(...)`:</span>
+  somebody_sent_something_here <span class="op">=</span> <span class="kwd">yield</span><span class="op">:</span> <span class="typ">2</span>
+  <span class="kwd">yield</span><span class="op">:</span> <span class="typ">3</span>
+  <span class="com"># All returned values but None also get yielded, so it's better to explicitly return None. Just in case.</span>
+  <span class="spc">None</span>
+</pre>
+          </div>
+        </div>
+
+        <div id="operators" class="section">
+          <h2>Operators</h2>
+          <div class="example-woof">
+            <pre class="prettyprint lang-woof">
+<span class="com"># Function calls are preferred over other operators</span>
+f<span class="op">:</span> <span class="str">'param1'</span> <span class="str">'param2'</span> <span class="op">+</span> <span class="typ">3</span>
+<span class="com"># i.e. that line is the same as</span>
+<span class="par">(</span>f<span class="op">:</span> <span class="str">'param1'</span> <span class="str">'param2'</span><span class="par">)</span> <span class="op">+</span> <span class="typ">3</span>
+
+<span class="com"># Attribute access is the only exception to that rule.</span>
+print<span class="op">:</span> object<span class="op">.</span>__class__
+print<span class="op">:</span> <span class="par">(</span>object<span class="op">.</span>__class__<span class="par">)</span>  <span class="com"># Same thing</span>
+
+<span class="com"># Most of the operators deal with numbers.</span>
+<span class="typ">1</span> <span class="op">+</span> <span class="typ">2</span> <span class="op">**</span> <span class="typ">3</span>
+<span class="com"># Binary stuff:</span>
+<span class="typ">6</span> <span class="op">|</span> <span class="par">(</span><span class="typ">2</span> <span class="op">&lt;&lt;</span> <span class="typ">3</span><span class="par">)</span>
+
+<span class="com"># Unsurprisingly, subitem access is just like in Haskell.</span>
+<span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="str">'b'</span><span class="par">)</span> <span class="op">!!</span> <span class="typ">1</span>
+<span class="com"># There is no special syntax for slices yet, sorry.</span>
+<span class="com"># `'abcdefghijklmnopqrstuvwxyz'[:5]` is written like this:</span>
+<span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!!</span> slice<span class="op">:</span> <span class="spc">None</span> <span class="typ">5</span>
+
+<span class="com"># Assignment can work with names, attributes, subitems, and tuples:</span>
+a <span class="op">=</span> b
+a<span class="op">.</span>b <span class="op">=</span> c
+a <span class="op">!!</span> b <span class="op">=</span> c
+<span class="com"># Tuples may also contain names, attributes, subitems and tuples, as well as starred arguments:</span>
+a<span class="op">,</span> <span class="op">*</span>bs<span class="op">,</span> c <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">4</span>
+print<span class="op">:</span> a b c  <span class="com"># 1 [2, 3] 4</span>
+
+<span class="com"># Any binary function can be transformed into an operator by wrapping its name in backticks:</span>
+do_stuff <span class="op">=</span> <span class="par">(</span>a<span class="op">,</span> b<span class="par">)</span> <span class="op">-></span> print<span class="op">:</span> a b
+<span class="typ">1</span> <span class="iop"</span>`do_stuff`</span> <span class="typ">2</span>  <span class="com"># Prints "1 2"</span>
+<span class="spc">False</span> <span class="iop"</span>`or`</span> <span class="spc">True</span>  <span class="com"># Returns True</span>
+
+<span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
+dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
+
+<span class="com"># And you can define your own if you think these are not enough. Don't consider that a very good practice, though.</span>
+<span class="par">(</span><span class="op">$%^&*/|\@!+-:.,?</span><span class="par">)</span> <span class="op">=</span> do_stuff
+<span class="typ">1</span> <span class="op"</span>$%^&*/|\@!+-:.,?</span> <span class="typ">2</span>  <span class="com"># Also prints "1 2"</span>
+</pre>
+          </div>
+        </div>
+
+        <div id="modules" class="section">
+          <h2>Modules</h2>
+          <div class="example-woof">
+            <pre class="prettyprint lang-woof">
+<span class="com"># Yay, __import__!</span>
+os <span class="op">=</span> <span class="blt">__import__</span> <span class="str">'os'</span>
+
+<span class="com"># Don't worry, you don't have to use it.</span>
+sys <span class="op">=</span> <span class="kwd">import</span>
+os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">import</span>
+<span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span>
+
+<span class="com"># Not much else to show here. Star-imports will never be supported.</span>
+<span class="com"># Woof modules don't work, 'cause there's no import hook yet.</span>
+</pre>
+          </div>
+        </div>
+
+        <div id="conditions" class="section">
+          <h2>Conditions</h2>
+          <p>TODO</p>
+        </div>
+
+        <div id="loops" class="section">
+          <h2>Loops</h2>
+        </div>
+
+        <div id="exceptions" class="section">
+          <h2>Exceptions</h2>
+        </div>
+
+        <div id="decorators" class="section">
+          <h2>Decorators</h2>
+        </div>
+
+        <div id="oop" class="section">
+          <h2>Objects</h2>
+        </div>
+
+        <div id="performance" class="section">
+          <h2>Performance</h2>
+        </div>
+
+        <div id="inspired-by" class="section">
+          <h2>Inspired by</h2>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+

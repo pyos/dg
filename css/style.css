@@ -1,0 +1,47 @@
+html, body
+{
+    font-family: Roboto, Helvetica, sans-serif;
+    font-size: 12pt;
+}
+
+h3
+{
+    line-height: 3em;
+}
+
+p
+{
+    margin: 0.2em 0 0.2em 0;
+    padding: 0.3em 1em 0.3em 0.5em;
+    text-indent: 1em;
+    line-height: 1.5;
+}
+
+.content .section
+{
+    margin-bottom: 2em;
+    margin-left: 0.5em;
+    margin-right: 1em;
+}
+
+@media(min-width: 767px)
+{
+    .sidebar
+    {
+        position: fixed;
+        height: 100%;
+    }
+}
+
+.prettyprint .com { color: #999; font-style: italic; }
+.prettyprint .str { color: #d14; }
+.prettyprint .cls { color: #458; }
+.prettyprint .iop { color: #458; }
+.prettyprint .typ { color: teal; }
+.prettyprint .blt { color: teal; }
+.prettyprint .spc { color: #999; }
+.prettyprint .sep { color: #999; }
+.prettyprint .kwd { font-weight: bold; }
+.prettyprint .op  { font-weight: bold; }
+.prettyprint .par { font-weight: bold; }
+
