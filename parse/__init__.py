@@ -4,8 +4,9 @@ from . import core
 from . import tree
 from . import libparse
 
-SIG_CLOSURE_END       = tree.Internal()
-SIG_EXPRESSION_BREAK  = tree.Internal()
+SIG_CLOSURE_END        = tree.Internal()
+SIG_EXPRESSION_BREAK   = tree.Internal()
+SIG_EXPRESSION_BR_HARD = tree.Internal()
 
 STATE_CAN_POP_FROM_STACK = libparse.STATE_CUSTOM << 0
 STATE_INDENT_IS_ALLOWED  = libparse.STATE_CUSTOM << 1
@@ -30,9 +31,13 @@ def bof(stream: libparse.STATE_AT_FILE_START, token: r''):
 def separator(stream, token: r'(?:\s*\n|;)'):
 
     ok = stream.state & STATE_INDENT_IS_ALLOWED or stream.ALLOW_BREAKS_IN_PARENTHESES
-    ok or ';' not in token.group() or stream.error('can\'t chain expressions here')
 
-    if ok:
+    if ';' in token.group():
+
+        ok or stream.error('can\'t chain expressions here')
+        yield SIG_EXPRESSION_BR_HARD
+
+    elif ok:
 
         yield SIG_EXPRESSION_BREAK
 
@@ -94,15 +99,19 @@ def end(stream, token: r'\)'):
 #
 # word = ( < alphanumeric > | '_' ) +
 #
-def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+)\s*?\n*'):
+def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+)'):
 
     stream.state &= ~STATE_CAN_POP_FROM_STACK
 
-    yield tree.Link(token.group(1).strip('`') if token else '')
-
-    op  = stream.repeat.pop()
+    br  = False  # whether there was a soft expression break after the operator.
+    op  = stream.located(tree.Link(token.group(1).strip('`') if token else ''))
     lhs = stream.stack
     rhs = next(stream)
+
+    while rhs is SIG_EXPRESSION_BREAK:
+
+        br  = True
+        rhs = next(stream)  # Skip soft breaks.
 
     # rhsless is true:   `lhs R;` or `(lhs R)` or `lhs R \n not_rhs`
     # rhsless is false:  `lhs R rhs` or `lhs R \n indented_block`
@@ -112,7 +121,7 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~
         yield rhs
         rhsless = True
 
-    elif bool(token) and token.group().endswith('\n') and not getattr(rhs, 'indented', False):
+    elif bool(token) and br and not getattr(rhs, 'indented', False):
 
         # The operator was followed by something other than an object or
         # an indented block.
@@ -132,8 +141,8 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~
     # `R rhs`     <=> `Call (Link R) (Link rhs)`
     # `lhs R`     <=> `Op R (Link lhs)`
     # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
-    yield tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
-    lhs.append(stream.repeat.pop())
+    e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
+    lhs.append(stream.located(e))
 
     stream.state |= STATE_CAN_POP_FROM_STACK
 
@@ -169,7 +178,7 @@ def do(stream, token: r'\(', indented=False):
 
             break
 
-        elif item is SIG_EXPRESSION_BREAK:
+        elif item in (SIG_EXPRESSION_BREAK, SIG_EXPRESSION_BR_HARD):
 
             stream.state &= ~STATE_CAN_POP_FROM_STACK
 
