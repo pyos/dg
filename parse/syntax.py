@@ -75,7 +75,7 @@ def assignment_target(var):
 
         # Allow one starred argument that is similar to `varargs`.
         star = [i for i, q in enumerate(pack) if tree.matchQ(q, ST_ARG_VAR)] or [-1]
-        ERROR(len(star) < 2, const.ERR.MULTIPLE_VARARGS)
+        ERROR(len(star) > 1, const.ERR.MULTIPLE_VARARGS)
         ERROR(star[0] > 255, const.ERR.TOO_MANY_ITEMS_BEFORE_STAR)
 
         if star[0] >= 0:
