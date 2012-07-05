@@ -44,20 +44,6 @@ class Compiler:
         self.code.append(opcode, arg, -len(args) + delta)
         inplace and self.store_top(*syntax.assignment_target(args[0]))
 
-    def store(self, var, expr):
-
-        expr, type, var, *args = syntax.assignment(var, expr)
-
-        if type == const.AT.IMPORT:
-
-            self.opcode('IMPORT_NAME', args[0], None, arg=expr)
-
-        else:
-
-            self.load(expr)
-
-        self.store_top(type, var, *args)
-
     def store_top(self, type, var, *args, dup=True):
 
         dup and self.code.DUP_TOP(delta=1)
