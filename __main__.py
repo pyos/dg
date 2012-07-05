@@ -2,13 +2,12 @@ import sys
 import operator
 
 from . import parse
-from .compiler.core import Compiler, varary
+from . import compile
 from .interactive import Interactive
 
 
 class Interactive (Interactive):
 
-    COMPILER = Compiler()
     GLOBALS  = {
         # Runtime counterparts of some stuff in `Compiler.builtins`.
 
@@ -27,8 +26,8 @@ class Interactive (Interactive):
 
       , 'not': operator.not_
       , '~':  operator.invert
-      , '+':  varary(operator.pos, operator.add)
-      , '-':  varary(operator.neg, operator.sub)
+      , '+':  compile.varary(operator.pos, operator.add)
+      , '-':  compile.varary(operator.neg, operator.sub)
       , '*':  operator.mul
       , '**': operator.pow
       , '/':  operator.truediv
@@ -45,13 +44,13 @@ class Interactive (Interactive):
     def compile(self, code):
 
         q = parse.r.compile_command(code)
-        q = q if q is None else self.COMPILER.compile(q, name='<module>', single=True)
+        q = q if q is None else compile.r(q, name='<module>', single=True)
         return q
 
     def run(self, ns):
 
         q = parse.r(sys.stdin.read(), '<stdin>')
-        q = self.COMPILER.compile(q, name='<module>')
+        q = compile.r(q, name='<module>')
         return self.eval(q, ns)
 
 

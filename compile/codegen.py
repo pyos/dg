@@ -136,6 +136,10 @@ class MutableCode:
 
             self.flags |= const.CO.GENERATOR
 
+        if code == opcode.opmap['STORE_LOCALS']:
+
+            self.slowlocals = True
+
         if code in (opcode.hasjrel + opcode.hasjabs) and value < 0:
 
             # Reverse jump.
