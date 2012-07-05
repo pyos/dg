@@ -152,7 +152,7 @@ def function(args, code):
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs, code
 
 
-def tuple(init, *last):
+def tuple_(init, *last):
 
     return uncurry(init, ST_TUPLE) + list(last)
 

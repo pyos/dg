@@ -83,7 +83,7 @@ r.builtins = {
 #
 def tuple(self, init, *last):
 
-    args = syntax.tuple(init, *last)
+    args = syntax.tuple_(init, *last)
     self.opcode('BUILD_TUPLE', *args, arg=len(args))
 
 
