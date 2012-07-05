@@ -93,7 +93,7 @@ class Compiler:
             self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
             self.code.STORE_FAST  (var, -1)
 
-    def call(self, f, *args):
+    def call(self, f, *args, preloaded=0):
 
         f, *args = syntax.call_pre(f, *args)
 
@@ -102,7 +102,7 @@ class Compiler:
             return self.builtins[f](self, *args)
 
         f, posargs, kwargs, vararg, varkwarg = syntax.call(f, *args)
-        self.load(f)
+        preloaded or self.load(f)
         self.load(*posargs)
         self.load_map(kwargs)
         self.load(*vararg)
@@ -114,8 +114,11 @@ class Compiler:
             self.code.CALL_FUNCTION_KW     if varkwarg else
             self.code.CALL_FUNCTION
         )(
-            len(posargs) + 256 * len(kwargs),
-            delta=-len(posargs) - 2 * len(kwargs) - len(vararg) - len(varkwarg)
+            len(posargs) + 256 * len(kwargs) + preloaded,
+            delta=(
+                -len(posargs) - 2 * len(kwargs)
+                -len(vararg)  - len(varkwarg) - preloaded
+            )
         )
 
     def load(self, *es):

@@ -207,8 +207,8 @@ def inherit(self, *stuff):
 
     # FIXME methods should have '__class__' in their `freevars`.
     self.code.LOAD_BUILD_CLASS(delta=1)
-    self.function(
-        tree.Link('__locals__'), block,
+    function(
+        self, tree.Link('__locals__'), block,
         lambda code: (
             code.LOAD_FAST('__locals__', 1),
             code.STORE_LOCALS(delta=-1),
@@ -216,6 +216,6 @@ def inherit(self, *stuff):
             code.STORE_NAME('__module__', -1),
         )
     )
-    self.load('<class>', *args)
-    self.code.CALL_FUNCTION(len(args) + 2, delta=-len(args) - 2)
+    self.load('<class>')
+    self.call(None, *args, preloaded=2)
 
