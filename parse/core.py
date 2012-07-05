@@ -13,14 +13,14 @@ class Parser (libparse.Parser):
     #    on   indent @ unindent
     #    off  any indent in parentheses is ignored
     #
-    ALLOW_INDENT_IN_PARENTHESES = False
+    ALLOW_INDENT_IN_PARENTHESES = True
 
     # Whether to allow expression breaks in parenthesized closures
     #
     #    on   parentheses are syntactically equivalent to indentation
     #    off  parentheses contain a single expression
     #
-    ALLOW_BREAKS_IN_PARENTHESES = False or ALLOW_INDENT_IN_PARENTHESES
+    ALLOW_BREAKS_IN_PARENTHESES = True or ALLOW_INDENT_IN_PARENTHESES
 
     OPERATOR_RIGHT_FIXITY = ('**', ':', '$', '->', '=')
     OPERATOR_PRECEDENCE = lambda self, i, q={
