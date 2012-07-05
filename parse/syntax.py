@@ -83,7 +83,7 @@ def assignment_target(var):
             # Remove the star. We know it's there, that's enough.
             pack[star[0]], = tree.matchA(pack[star[0]], ST_ARG_VAR)
 
-        return const.AT.UNPACK, map(assignment_target, var), len(pack), star[0]
+        return const.AT.UNPACK, map(assignment_target, pack), len(pack), star[0]
 
     attr = tree.matchA(var, ST_ASSIGN_ATTR)
     item = tree.matchA(var, ST_ASSIGN_ITEM)
