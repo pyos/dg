@@ -12,6 +12,7 @@ globals().update({
       , ST_TUPLE_S = '_,'
       , ST_TUPLE   = '_, _'
       , ST_CALL    = '_ _'
+      , ST_ASSIGN  = '_ = _'
 
       , ST_EXPR_IF     = '_ `if` _'
       , ST_EXPR_UNLESS = '_ `unless` _'
@@ -166,6 +167,18 @@ def else_(cond):
     args2 = tree.matchA(cond, ST_EXPR_UNLESS)
     ERROR(not args1 and not args2, const.ERR.NOT_AFTER_IF)
     return args1 or args2, (const.COND.IF if args1 else const.COND.UNLESS)
+
+
+def switch(cases):
+
+    cases = unwrap(cases)
+    cases = cases if isinstance(cases, tree.Closure) else [cases]
+
+    for case in cases:
+
+        case = tree.matchA(case, ST_ASSIGN)
+        ERROR(not case, const.ERR.INVALID_STMT_IN_SWITCH)
+        yield case
 
 
 def call_pre(f, *args):

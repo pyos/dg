@@ -246,3 +246,48 @@ def else_(self, cond, otherwise):
     self.load(otherwise)
     jmp()
 
+
+@r.builtin('switch')
+#
+# ```
+# switch:
+#   case1 = action1
+#   case2 = action2
+#   ...
+#   True  = default
+# ```
+#
+# Evaluate the first action to be assigned to a True value.
+#
+def switch(self, cases):
+
+    cases = syntax.switch(cases)
+    jumps = []
+    ptr   = None
+
+    for cond, action in cases:
+
+        ptr and ptr()
+        self.load(cond)
+        ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
+        self.load(action)
+        jumps.append(self.code.JUMP_FORWARD(delta=-1))
+
+    ptr and ptr()
+
+    self.code.LOAD_GLOBAL('SyntaxError')
+    self.code.LOAD_CONST(const.ERR.SWITCH_FELL_THROUGH)
+    self.code.LOAD_CONST(
+        (
+            self._loading.reparse_location.filename,
+            self._loading.reparse_location.start[1],
+            1, str(self._loading)
+        )
+    )
+    self.code.CALL_FUNCTION(2)
+    self.code.RAISE_VARARGS(1)
+
+    for jmp in jumps:
+
+        jmp()
+

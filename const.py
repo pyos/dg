@@ -58,6 +58,11 @@ ERR = AttrDict(  # error descriptions
     # `else` did not follow an `if` directly.
   , NOT_AFTER_IF = 'that should be used only after `if` or `unless`'
 
+    # `switch` contains something other than assignments
+  , INVALID_STMT_IN_SWITCH = 'all rules in `switch` must be of form `condition = action`'
+    # `switch` did not have a True clause
+  , SWITCH_FELL_THROUGH = 'non-exhaustive patterns in `switch`'
+
   ### UNDEFINED BEHAVIOR
 
     # Attempted to assign a value to a non-local variable.
