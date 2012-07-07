@@ -46,7 +46,9 @@ class Parser (libparse.Parser):
        '>=':  -8,
         '>':  -8,
        '==':  -9,
-       '/=':  -9,
+       '!=':  -9,
+       'is':  -9,
+       'in':  -9,
       # Binary operations
        '<<': -10,
        '>>': -10,
