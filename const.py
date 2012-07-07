@@ -55,8 +55,8 @@ ERR = AttrDict(  # error descriptions
     # **varkwargs is not the last argument in function definition.
   , ARG_AFTER_VARKWARGS = '**varkwargs must be the last argument'
 
-    # `elif` or `else` did not follow an `if` or `elif` directly.
-  , NOT_AFTER_IF = 'that should be used only after `if` or `elif`'
+    # `else` did not follow an `if` directly.
+  , NOT_AFTER_IF = 'that should be used only after `if`'
 
   ### UNDEFINED BEHAVIOR
 

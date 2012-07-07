@@ -13,6 +13,8 @@ globals().update({
       , ST_TUPLE   = '_, _'
       , ST_CALL    = '_ _'
 
+      , ST_EXPR_IF = '_ `if` _'
+
       , ST_ARG_KW       = '_: _'
       , ST_ARG_VAR      = '*_'
       , ST_ARG_VAR_KW   = '**_'
@@ -155,6 +157,13 @@ def function(args, code):
 def tuple_(init, *last):
 
     return uncurry(init, ST_TUPLE) + list(last)
+
+
+def else_(cond):
+
+    args = tree.matchA(cond, ST_EXPR_IF)
+    ERROR(not args, const.ERR.NOT_AFTER_IF)
+    return args
 
 
 def call_pre(f, *args):

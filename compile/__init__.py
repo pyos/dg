@@ -222,17 +222,32 @@ def inherit(self, *stuff):
 
 @r.builtin('if')
 #
-# `if: cond then [else]`
+# ``then `if` cond``
 #
-# Evaluate `then` if `cond`, `else` (or None) otherwise.
+# Same as ``cond `and` then``, but semantically different.
 #
-def if_(self, cond, then, else_=None):
+def if_(self, then, cond):
 
     self.load(cond)
-    end_ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
+    ptr = self.code.JUMP_IF_FALSE_OR_POP(delta=-1)
     self.load(then)
-    jmp_ptr = self.code.JUMP_FORWARD(delta=-1)
-    end_ptr()
-    self.load(else_)
-    jmp_ptr()
+    ptr()
+
+
+@r.builtin('else')
+#
+# ``then `if` cond `else` otherwise``
+#
+# Return `then` if `cond`, `otherwise` otherwise.
+#
+def else_(self, cond, otherwise):
+
+    then, cond = syntax.else_(cond)
+    self.load(cond)
+    ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
+    self.load(then)
+    jmp = self.code.JUMP_FORWARD(delta=-1)
+    ptr()
+    self.load(otherwise)
+    jmp()
 
