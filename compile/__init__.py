@@ -35,8 +35,10 @@ r.builtins = {
   , 'is':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='is')
   , 'in':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='in')
 
-  , 'or':  lambda self, a, b: unless(self, b, a)
-  , 'and': lambda self, a, b: if_(self, b, a)
+  , 'or':  lambda self, a, b: (self.load(a), self.code.JUMP_IF_TRUE_OR_POP (delta=-1), self.load(b))[1]()
+  , 'and': lambda self, a, b: (self.load(a), self.code.JUMP_IF_FALSE_OR_POP(delta=-1), self.load(b))[1]()
+  , 'if':     lambda self, b, a: self.builtins['and'](self, a, b)
+  , 'unless': lambda self, b, a: self.builtins['or'] (self, a, b)
 
   , '.':   lambda self, a, b: self.opcode('LOAD_ATTR',            a, arg=b)
   , '!!':  lambda self, a, b: self.opcode('BINARY_SUBSCR',        a, b)
@@ -218,34 +220,6 @@ def inherit(self, *stuff):
     )
     self.load('<class>')
     self.call(None, *args, preloaded=2)
-
-
-@r.builtin('if')
-#
-# ``then `if` cond``
-#
-# Same as ``cond `and` then``, but semantically different.
-#
-def if_(self, then, cond):
-
-    self.load(cond)
-    ptr = self.code.JUMP_IF_FALSE_OR_POP(delta=-1)
-    self.load(then)
-    ptr()
-
-
-@r.builtin('unless')
-#
-# ``otherwise `unless` cond``
-#
-# Same as ``cond `or` otherwise``.
-#
-def unless(self, otherwise, cond):
-
-    self.load(cond)
-    ptr = self.code.JUMP_IF_TRUE_OR_POP(delta=-1)
-    self.load(otherwise)
-    ptr()
 
 
 @r.builtin('else')
