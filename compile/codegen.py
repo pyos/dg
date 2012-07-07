@@ -1,7 +1,7 @@
+import dis
 import math
 import types
 import struct
-import opcode
 import functools
 import itertools
 
@@ -12,7 +12,7 @@ iindex  = lambda it, v: next(i for i, q in enumerate(it) if q == v)
 delay   = lambda f, g=None: type('delay', (), {'__int__': f, '__call__': g})()
 codelen = lambda cs: sum(
     1 + (  # opcode length
-        c >= opcode.HAVE_ARGUMENT and (  # 0 if no argument
+        c >= dis.HAVE_ARGUMENT and (  # 0 if no argument
             2 +  # argument length
             3 * int(math.log(int(v) or 1, 0x10000)) # EXTENDED_ARGs
         )
@@ -120,7 +120,7 @@ class MutableCode:
 
                 v._c = 0
                 v._c = codelen(
-                    self.bytecode[0 if absolute else v.end + 1:start] if reverse else
+                    self.bytecode[0:start] if reverse else
                     self.bytecode[0 if absolute else start + 1:v.end]
                 )
 
@@ -130,33 +130,34 @@ class MutableCode:
 
     def append(self, name, value=0, delta=0):
 
-        code = opcode.opmap[name]
+        code = dis.opmap[name]
 
-        if code == opcode.opmap['YIELD_VALUE']:
+        if code == dis.opmap['YIELD_VALUE']:
 
             self.flags |= const.CO.GENERATOR
 
-        if code == opcode.opmap['STORE_LOCALS']:
+        if code == dis.opmap['STORE_LOCALS']:
 
             self.slowlocals = True
 
-        if code in (opcode.hasjrel + opcode.hasjabs) and value < 0:
+        if code in dis.hasjabs and value < 0:
 
             # Reverse jump.
-            jmp = self.jump(absolute=code in opcode.hasjabs, reverse=True)
+            # Note that relative jumps can't be in reverse direction.
+            jmp = self.jump(absolute=True, reverse=True)
             return lambda: (jmp(), self.bytecode.append((code, jmp)))
 
         self.bytecode.append((
             code,
-            0                                 if code <  opcode.HAVE_ARGUMENT else
-            self.jump(absolute=False)         if code in opcode.hasjrel  else
-            self.jump(absolute=True)          if code in opcode.hasjabs  else
-            self.use(value, 0, self.names)    if code in opcode.hasname  else
-            self.use(value, 0, self.varnames) if code in opcode.haslocal else
-            self.use(value, 0, self.consts)   if code in opcode.hasconst else
+            0                                 if code <  dis.HAVE_ARGUMENT else
+            self.jump(absolute=False)         if code in dis.hasjrel       else
+            self.jump(absolute=True)          if code in dis.hasjabs       else
+            self.use(value, 0, self.names)    if code in dis.hasname       else
+            self.use(value, 0, self.varnames) if code in dis.haslocal      else
+            self.use(value, 0, self.consts)   if code in dis.hasconst      else
             self.use(value, value in self.cellnames, self.cellvars, self.freevars)
-                if code in opcode.hasfree else
-            opcode.cmp_op.index(value) if code in opcode.hascompare else
+                if code in dis.hasfree else
+            dis.cmp_op.index(value) if code in dis.hascompare else
             value
         ))
 
@@ -178,10 +179,10 @@ class MutableCode:
 
             for arg in oparg[:-1]:
 
-                yield struct.pack('=BH', opcode.opmap['EXTENDED_ARG'], arg)
+                yield struct.pack('=BH', dis.opmap['EXTENDED_ARG'], arg)
 
             yield struct.pack(*
-                ('=BH', code, oparg[-1]) if code >= opcode.HAVE_ARGUMENT else
+                ('=BH', code, oparg[-1]) if code >= dis.HAVE_ARGUMENT else
                 ('=B',  code)
             )
 
