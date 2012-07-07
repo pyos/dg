@@ -56,7 +56,7 @@ ERR = AttrDict(  # error descriptions
   , ARG_AFTER_VARKWARGS = '**varkwargs must be the last argument'
 
     # `else` did not follow an `if` directly.
-  , NOT_AFTER_IF = 'that should be used only after `if`'
+  , NOT_AFTER_IF = 'that should be used only after `if` or `unless`'
 
   ### UNDEFINED BEHAVIOR
 
@@ -82,3 +82,10 @@ AT = FlagSet([  # assignment types
   , 'ITEM'
   , 'NAME'
 ])
+
+
+COND = FlagSet([
+    'IF'
+  , 'UNLESS'
+])
+

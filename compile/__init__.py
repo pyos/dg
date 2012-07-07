@@ -35,8 +35,8 @@ r.builtins = {
   , 'is':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='is')
   , 'in':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='in')
 
-  , 'or':  lambda self, a, b: (self.load(a), self.code.JUMP_IF_TRUE_OR_POP (delta=-1), self.load(b))[1]()
-  , 'and': lambda self, a, b: (self.load(a), self.code.JUMP_IF_FALSE_OR_POP(delta=-1), self.load(b))[1]()
+  , 'or':  lambda self, a, b: unless(self, b, a)
+  , 'and': lambda self, a, b: if_(self, b, a)
 
   , '.':   lambda self, a, b: self.opcode('LOAD_ATTR',            a, arg=b)
   , '!!':  lambda self, a, b: self.opcode('BINARY_SUBSCR',        a, b)
@@ -234,17 +234,38 @@ def if_(self, then, cond):
     ptr()
 
 
+@r.builtin('unless')
+#
+# ``otherwise `unless` cond``
+#
+# Same as ``cond `or` otherwise``.
+#
+def unless(self, otherwise, cond):
+
+    self.load(cond)
+    ptr = self.code.JUMP_IF_TRUE_OR_POP(delta=-1)
+    self.load(otherwise)
+    ptr()
+
+
 @r.builtin('else')
 #
 # ``then `if` cond `else` otherwise``
+# ``otherwise `unless` cond `else` then``
 #
 # Return `then` if `cond`, `otherwise` otherwise.
 #
 def else_(self, cond, otherwise):
 
-    then, cond = syntax.else_(cond)
+    (then, cond), code = syntax.else_(cond)
+
+    code = {
+        const.COND.IF:     'POP_JUMP_IF_FALSE',
+        const.COND.UNLESS: 'POP_JUMP_IF_TRUE',
+    }[code]
+
     self.load(cond)
-    ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
+    ptr = self.code.append(code, delta=-1)
     self.load(then)
     jmp = self.code.JUMP_FORWARD(delta=-1)
     ptr()

@@ -22,7 +22,7 @@ class Parser (libparse.Parser):
     #
     ALLOW_BREAKS_IN_PARENTHESES = True or ALLOW_INDENT_IN_PARENTHESES
 
-    OPERATOR_RIGHT_FIXITY = {'**', ':', '$', '->', '=', 'if', 'else'}
+    OPERATOR_RIGHT_FIXITY = {'**', ':', '$', '->', '=', 'if', 'unless', 'else'}
     OPERATOR_PRECEDENCE = lambda self, i, q={
       # Scope resolution
         '.':   0,
@@ -66,6 +66,7 @@ class Parser (libparse.Parser):
         '=': -19,
       # Conditionals
        'if': -20,
+   'unless': -20,
      'else': -21,
     }.get: q(i, -7)  # Default
 
