@@ -28,7 +28,7 @@ def bof(stream: libparse.STATE_AT_FILE_START, token: r''):
 #
 # separator = '\n' | ';'
 #
-def separator(stream, token: r'(?:\s*\n|;)'):
+def separator(stream, token: r'\s*\n|;'):
 
     ok = stream.state & STATE_PARSE_INDENT or stream.ALLOW_BREAKS_IN_PARENTHESES
 
@@ -100,12 +100,12 @@ def end(stream, token: r'\)'):
 # word = ( < alphanumeric > | '_' ) +
 # word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
 #
-def operator(stream: STATE_AFTER_OBJECT, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+|if|unless|else|and|or)'):
+def operator(stream: STATE_AFTER_OBJECT, token: r'`\w+`|[!$%&*-/:<-@\\^|~]+|if|unless|else|and|or'):
 
     stream.state &= ~STATE_AFTER_OBJECT
 
     br  = False  # whether there was a soft expression break after the operator.
-    op  = stream.located(tree.Link(token.group(1).strip('`') if token else ''))
+    op  = stream.located(tree.Link(token.group().strip('`') if token else ''))
     lhs = stream.stack
     rhs = next(stream)
 
