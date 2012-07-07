@@ -39,4 +39,7 @@ builtins.__dict__.update({
     # Useful stuff.
   , 'foldl': functools.reduce
   , '~:': functools.partial
+
+    # Not so useful stuff.
+  , 'if': lambda cond, then, else_=None: then if cond else else_
 })
