@@ -100,7 +100,7 @@ def end(stream, token: r'\)'):
 # word = ( < alphanumeric > | '_' ) +
 # word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
 #
-def operator(stream: STATE_AFTER_OBJECT, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+)'):
+def operator(stream: STATE_AFTER_OBJECT, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+|if|unless|else|and|or)'):
 
     stream.state &= ~STATE_AFTER_OBJECT
 
