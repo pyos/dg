@@ -8,8 +8,8 @@ SIG_CLOSURE_END        = tree.Internal()
 SIG_EXPRESSION_BREAK   = tree.Internal()
 SIG_EXPRESSION_BR_HARD = tree.Internal()
 
-STATE_CAN_POP_FROM_STACK = libparse.STATE_CUSTOM << 0
-STATE_INDENT_IS_ALLOWED  = libparse.STATE_CUSTOM << 1
+STATE_AFTER_OBJECT = libparse.STATE_CUSTOM << 0
+STATE_PARSE_INDENT = libparse.STATE_CUSTOM << 1
 
 r = core.Parser.make()
 
@@ -30,7 +30,7 @@ def bof(stream: libparse.STATE_AT_FILE_START, token: r''):
 #
 def separator(stream, token: r'(?:\s*\n|;)'):
 
-    ok = stream.state & STATE_INDENT_IS_ALLOWED or stream.ALLOW_BREAKS_IN_PARENTHESES
+    ok = stream.state & STATE_PARSE_INDENT or stream.ALLOW_BREAKS_IN_PARENTHESES
 
     if ';' in token.group():
 
@@ -56,7 +56,7 @@ def comment(stream, token: r'\s*#[^\n]*'):
 #
 # indent = ^ ( ' ' | '\t' ) *
 #
-def indent(stream: libparse.STATE_AT_LINE_START | STATE_INDENT_IS_ALLOWED, token: r' *'):
+def indent(stream: libparse.STATE_AT_LINE_START | STATE_PARSE_INDENT, token: r' *'):
 
     indent = len(token.group())
 
@@ -95,13 +95,14 @@ def end(stream, token: r'\)'):
 
 @r.token
 #
-# operator = < some punctuation > + | ( '`', word, '`' )
+# operator = < some punctuation > + | ( '`', word, '`' ) | word_op
 #
 # word = ( < alphanumeric > | '_' ) +
+# word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
 #
-def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+)'):
+def operator(stream: STATE_AFTER_OBJECT, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+)'):
 
-    stream.state &= ~STATE_CAN_POP_FROM_STACK
+    stream.state &= ~STATE_AFTER_OBJECT
 
     br  = False  # whether there was a soft expression break after the operator.
     op  = stream.located(tree.Link(token.group(1).strip('`') if token else ''))
@@ -144,7 +145,7 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~
     e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
     lhs.append(stream.located(e))
 
-    stream.state |= STATE_CAN_POP_FROM_STACK
+    stream.state |= STATE_AFTER_OBJECT
 
 
 @r.token
@@ -153,10 +154,10 @@ def operator(stream: STATE_CAN_POP_FROM_STACK, token: r'(`\w+`|[!$%&*-/:<-@\\^|~
 #
 def do(stream, token: r'\(', indented=False):
 
-    state_backup = stream.state & (STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
+    state_backup = stream.state & (STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
     stack_backup = stream.stack
 
-    stream.state &= ~(STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
+    stream.state &= ~(STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
     stream.stack = tree.Closure()
     stream.stack.indented = indented
 
@@ -164,7 +165,7 @@ def do(stream, token: r'\(', indented=False):
 
         # Only enable indentation when the closure is not parenthesized.
         # (May also affect expression separators.)
-        stream.state |= STATE_INDENT_IS_ALLOWED
+        stream.state |= STATE_PARSE_INDENT
 
     for item in stream:
 
@@ -180,9 +181,9 @@ def do(stream, token: r'\(', indented=False):
 
         elif item in (SIG_EXPRESSION_BREAK, SIG_EXPRESSION_BR_HARD):
 
-            stream.state &= ~STATE_CAN_POP_FROM_STACK
+            stream.state &= ~STATE_AFTER_OBJECT
 
-        elif stream.state & STATE_CAN_POP_FROM_STACK:
+        elif stream.state & STATE_AFTER_OBJECT:
 
             # Two objects in a row should be joined with an empty operator.
             stream.repeat.appendleft(item)
@@ -192,7 +193,7 @@ def do(stream, token: r'\(', indented=False):
         else:
 
             stream.stack.append(item)
-            stream.state |= STATE_CAN_POP_FROM_STACK
+            stream.state |= STATE_AFTER_OBJECT
 
     # These SIG_CLOSURE_END are put there by `indent` when it unindents
     # for more than one level. All other stuff should have been handled.
@@ -213,7 +214,7 @@ def do(stream, token: r'\(', indented=False):
     # expression.
     stream.repeat.appendleft(stream.repeat.pop())
 
-    stream.state &= ~(STATE_INDENT_IS_ALLOWED | STATE_CAN_POP_FROM_STACK)
+    stream.state &= ~(STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
     stream.state |= state_backup
     stream.stack = stack_backup
 
