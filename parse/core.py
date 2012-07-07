@@ -55,7 +55,9 @@ class Parser (libparse.Parser):
         '|': -13,
       # Logic
        '&&': -14,
+      'and': -14,
        '||': -15,
+       'or': -15,
       # Low-priority binding
         '$': -16,
       # Function definition
