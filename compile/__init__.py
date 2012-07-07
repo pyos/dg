@@ -249,7 +249,10 @@ def if_(self, cond, then, else_b=None, put_none=True):
     self.load(then)
     self._if_end_ptr()
 
-    else_b is None or else_(self, else_b)
+    if else_b is not None:
+
+        self.code.POP_TOP(delta=-1)
+        else_(self, else_b)
 
 
 def after_if(what_to_do):
