@@ -219,3 +219,87 @@ def inherit(self, *stuff):
     self.load('<class>')
     self.call(None, *args, preloaded=2)
 
+
+@r.builtin('if')
+#
+# `if: cond then [else]`
+#
+# Evaluate `then` if `cond`, `else` (or None) otherwise.
+#
+def if_(self, cond, then, else_b=None, put_none=True):
+
+    # NOTE changes in the bytecode pattern here should be reflected in `after_if`.
+    #  All optimizations should be perfromed by a separate optimized.
+    #  POP_JUMP_IF_FALSE is good enough for now.
+    if put_none:
+
+        self.load(None)
+        # `elif` should put JUMP_FORWARD stuff appended to each block here,
+        # then move them to the end of the last block.
+        self._if_jumps = []
+
+    self.load(cond)
+
+    # Allow other if-elif-else expressions to access that.
+    # By checking the length of bytecode and `self._if_end_ptr.end`
+    # they can know whether the previous expression was an `if`.
+    self._if_end_ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
+
+    self.code.POP_TOP(delta=-1)
+    self.load(then)
+    self._if_end_ptr()
+
+    else_b is None or else_(self, else_b)
+
+
+def after_if(what_to_do):
+
+    def decoed(self, *args, **kwargs):
+
+        syntax.ERROR(
+            # There was no `if` at all...
+            not hasattr(self, '_if_end_ptr')
+            # ...or it ended billions of statements back.
+            or  self._if_end_ptr.end + 1 != len(self.code.bytecode),
+            const.ERR.NOT_AFTER_IF
+        )
+
+        # Replace the POP_TOP bytecode with JUMP_FORWARD to the end of this block.
+        self.code.bytecode.pop()
+        self._if_jumps.append(self.code.JUMP_FORWARD(delta=1))
+
+        # `ptr` should now point to the start of this block.
+        self._if_end_ptr()
+
+        what_to_do(self, *args, **kwargs)
+
+        # Point all successful exit paths here.
+        for jmp in self._if_jumps: jmp()
+
+    return decoed
+
+
+@r.builtin('elif')
+@after_if
+#
+# `elif: cond then [else]`
+#
+# Evaluate `then` if `cond` and previous `if` failed, `else` otherwise.
+#
+def elif_(self, cond, then, else_b=None):
+
+    if_(self, cond, then, else_b, put_none=False)
+
+
+@r.builtin('else')
+@after_if
+#
+# `else: whatever`
+#
+# Evaluate `whatever` if all previous `if`s and `elif`s have failed.
+#
+def else_(self, whatever):
+
+    self.code.POP_TOP(delta=-1)
+    self.load(whatever)
+
