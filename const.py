@@ -36,7 +36,7 @@ ERR = AttrDict(  # error descriptions
   ### SYNTAX
 
     # Attempted to store an imported module in a non-variable (e.g. object attribute.)
-  , NONCONST_IMPORT = 'use `__import__` instead'
+  , NONCONST_IMPORT = 'can\'t infer module name from variable name'
     # Attempted to pass a kwarg with an invalid name.
   , NONCONST_KEYWORD = 'keyword argument names should be constant'
     # Attempted to get an attribute by non-constant name.
