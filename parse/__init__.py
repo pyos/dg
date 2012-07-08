@@ -272,7 +272,8 @@ def number(stream, token: r'([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?'
 #
 def string(stream, token: r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2'):
 
-    yield ast.literal_eval('{0}{1}{1}{1}{2}{1}{1}{1}'.format(*token.groups()))
+    g = token.group(2) * (4 - len(token.group(2)))
+    yield ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups()))
 
 
 @r.token
