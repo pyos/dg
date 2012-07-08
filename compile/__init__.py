@@ -140,15 +140,32 @@ def store(self, var, expr):
 #
 # Allow to evaluate `body` passing it stuff that matches `argspec`.
 #
-def function(self, args, code, hook=0):
+# :param hook_pre: `MutableCode -> *` function called *before* `Compiler.compile`
+#
+# :param hook_post: same as `hook_pre`, but called *after* `Compiler.compile`
+#
+# :param subf_hook_pre: same as `hook_pre`, but not for this function.
+#   If a function defined inside this function has its own `hook_pre`,
+#   this parameter does not affect it. Otherwise, it is used as a fallback hook.
+#
+def function(self, args, code, hook_pre=0, hook_post=0, subf_hook_pre=0):
 
     args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(args, code)
     self.load_map(kwdefs)
     self.load(*defs)
 
     mcode = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
-    hook and hook(mcode)
-    code = self.compile(code, mcode).compile('<lambda>')
+
+    f_hook_pre = getattr(self, '_function_hook_pre', 0)
+    hook_pre = hook_pre or f_hook_pre
+    hook_pre and hook_pre(mcode)
+
+    self._function_hook_pre = subf_hook_pre
+    self.compile(code, mcode)
+    self._function_hook_pre = f_hook_pre
+
+    hook_post and hook_post(mcode)
+    code = mcode.compile('<lambda>')
 
     if code.co_freevars:
 
