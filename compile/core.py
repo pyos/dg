@@ -20,7 +20,7 @@ class Compiler:
 
         obj = super(type, cls).__new__(cls)
         obj.__init__()
-        return obj.compile(*args, **kwargs)
+        return obj.compile(*args, **kwargs).compile('<module>')
 
     @classmethod
     def make(cls):
@@ -157,7 +157,7 @@ class Compiler:
 
             self.load(str(k), v)
 
-    def compile(self, e, into=None, name='<lambda>', single=False):
+    def compile(self, e, into=None, single=False):
 
         backup = self.code
         self.code = codegen.MutableCode(isfunc=False) if into is None else into
@@ -182,7 +182,7 @@ class Compiler:
                 self.code.PRINT_EXPR(delta=-1)
 
             self.code.RETURN_VALUE(delta=-1)
-            return self.code.compile(name)
+            return self.code
 
         except (SyntaxError, AssertionError) as e:
 

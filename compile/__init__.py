@@ -148,7 +148,7 @@ def function(self, args, code, hook=0):
 
     mcode = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
     hook and hook(mcode)
-    code = self.compile(code, mcode, '<lambda>')
+    code = self.compile(code, mcode).compile('<lambda>')
 
     if code.co_freevars:
 
@@ -207,7 +207,6 @@ def inherit(self, *stuff):
 
     *args, block = stuff
 
-    # FIXME methods should have '__class__' in their `freevars`.
     self.code.LOAD_BUILD_CLASS(delta=1)
     function(
         self, tree.Link('__locals__'), block,
