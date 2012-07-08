@@ -300,19 +300,7 @@ def switch(self, cases):
         jumps.append(self.code.JUMP_FORWARD(delta=-1))
 
     ptr and ptr()
-
-    self.code.cstacksize += 1  # one of the action did put something, after all
-    self.code.LOAD_GLOBAL('SyntaxError', delta=1)
-    self.load(const.ERR.SWITCH_FELL_THROUGH)
-    self.load(
-        (
-            self._loading.reparse_location.filename,
-            self._loading.reparse_location.start[1],
-            1, str(self._loading)
-        )
-    )
-    self.code.CALL_FUNCTION(2, delta=-2)
-    self.code.RAISE_VARARGS(1, delta=-1)
+    self.load(None)  # In case nothing matched.
 
     for jmp in jumps:
 
