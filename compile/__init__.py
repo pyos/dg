@@ -232,7 +232,17 @@ def inherit(self, *stuff):
             code.STORE_LOCALS(delta=-1),
             code.LOAD_NAME ('__name__',    1),
             code.STORE_NAME('__module__', -1),
-        )
+        ),
+        lambda code: (
+            code.bytecode.pop(),
+            code.POP_TOP(),
+            # LOAD_CLOSURE puts a *cell* onto the stack, not its contents.
+            # The __class__ cell is empty by now.
+            # CPython seems to perform some black magic to fill it.
+            code.LOAD_CLOSURE('__class__', 1),
+            code.RETURN_VALUE(),
+        ),
+        lambda code: code.freevars.append('__class__')
     )
     self.load('<class>')
     self.call(None, *args, preloaded=2)
