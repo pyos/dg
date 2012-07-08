@@ -11,13 +11,13 @@ class Interactive (Interactive):
     def compile(self, code):
 
         q = parse.r.compile_command(code)
-        q = q if q is None else compile.r(q, single=True)
+        q = q if q is None else compile.r(q, name='<module>', single=True)
         return q
 
     def run(self, ns):
 
         q = parse.r(sys.stdin.read(), '<stdin>')
-        q = compile.r(q)
+        q = compile.r(q, name='<module>')
         return self.eval(q, ns)
 
 

@@ -161,7 +161,7 @@ def function(self, args, code, hook_pre=0, hook_post=0, subf_hook_pre=0):
     hook_pre and hook_pre(mcode)
 
     self._function_hook_pre = subf_hook_pre
-    self.compile(code, mcode)
+    self.compile(code, mcode, name='<lambda>')  # Ignore that for now.
     self._function_hook_pre = f_hook_pre
 
     hook_post and hook_post(mcode)
