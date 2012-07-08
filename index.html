@@ -30,8 +30,8 @@
           <li><a href="#conditions">Conditions</a></li>
           <li><a href="#loops">Loops</a></li>
           <li><a href="#exceptions">Exceptions</a></li>
-          <li><a href="#decorators">Decorators</a></li>
           <li><a href="#objects">Objects</a></li>
+          <li><a href="#miscellaneous">Miscellaneous</a></li>
           <li class="divider"></li>
           <li><a href="#performance">Performance</a></li>
           <li><a href="#inspiration">Inspired by</a></li>
@@ -44,7 +44,7 @@
       <div class="span10 content">
         <div id="overview" class="section">
           <h2>Overview</h2>
-          <p>Woof is a simple (as in KISS) language that compiles to CPython bytecode. In fact, you can think of it as of an alternative syntax for Python 3. The key feature of Woof is the ability to use whatever Python 3 library you want with neat and clean syntax.</p>
+          <p>Woof is a (not so) simple language that compiles to CPython bytecode. In fact, you can think of it as of an alternative syntax for Python 3. The key feature of Woof is the ability to use whatever Python 3 library you want.</p>
           <p>Note that not everything described here have been implemented yet.</p>
         </div>
 
@@ -133,10 +133,15 @@
 <span class="spc">None</span>
 
 <span class="com"># Strings</span>
-<span class="str">'single-'</span>
-<span class="str">"or double-quoted"</span>
+<span class="str">'Single-'</span>
+<span class="str">"or double-quoted (these are not recommended, though.)"</span>
 <span class="str">'They all can span</span>
-<span class="str">multiple lines.'</span>
+<span class="str">multiple lines and have</span>
+<span class="str">Unicode characters in them ☺'</span>
+
+<span class="str">r'raw strings preserve \backslashes'</span>
+<span class="str">b'binary strings only contain ASCII characters'</span>
+<span class="str">br'guess what raw binary strings do'</span>
 
 <span class="str">'Instead of escaping \'s'</span>
 <span class="str">'''you may use triple-quoted strings.'''</span>
@@ -147,8 +152,8 @@
 <span class="blt">tuple</span><span class="op">:</span> <span class="com"># empty</span>
 
 <span class="com"># Since the comma operator has the lowest priority (slightly higher than =, though), you may need to wrap it in parentheses.</span>
-print<span class="op">:</span>  <span class="var">a</span><span class="op">,</span> <span class="typ">1</span>  <span class="com"># Prints out a, returns (None, 1)</span>
-print<span class="op">:</span> <span class="par">(</span><span class="var">a</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span> <span class="com"># Prints out (a, 1), returns None</span>
+print<span class="op">:</span>  <span class="spc">True</span><span class="op">,</span> <span class="typ">1</span>  <span class="com"># Prints True, returns (None, 1)</span>
+print<span class="op">:</span> <span class="par">(</span><span class="spc">True</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span> <span class="com"># Prints (True, 1), returns None</span>
 </pre>
           </div>
         </div>
@@ -160,7 +165,7 @@ print<span class="op">:</span> <span class="par">(</span><span class="var">a</sp
 <span class="com"># Calling functions is almost like sending messages in Smalltalk.</span>
 print<span class="op">:</span> <span class="str">'Hello'</span> <span class="str">'print'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
 <span class="com"># And calling them without arguments is no different.</span>
-exit<span class="op">:</span>
+print<span class="op">:</span>
 
 <span class="com"># If you do have some arguments to pass, though, there's also a Haskell-ish notation.</span>
 print <span class="str">'Hello, uh...Haskell?'</span> <span class="op">$</span> <span class="str">'No, totally not {}'</span><span class="op">.</span>format <span class="str">'Haskell.'</span>
@@ -177,13 +182,13 @@ a <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> 
 print<span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> a
 
 <span class="com"># Define functions with -> operator</span>
-double <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> x <span class="op">*</span> <span class="typ">2</span>
+function <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> print<span class="op">:</span> <span class="str">'Yay, '</span> x
 
 <span class="com"># You may omit parentheses if there's only one (unambiguous) argument:</span>
-doubleAll <span class="op">=</span> <span class="op">*</span>xs <span class="op">-></span> <span class="blt">map</span><span class="op">:</span> double xs
+double <span class="op">=</span> x <span class="op">-></span> x <span class="op">*</span> 2
 <span class="com"># This is invalid because `whom: 'world' -> ...` is parsed as `whom: ('world' -> ...)`.</span>
 <span class="com">#greet = whom: 'world' -> (print: 'Hello,' whom end: '!\n')</span>
-<span class="com"># Also ambiguous: is it `(f = *) xs -> xs` or `f = (*xs) -> xs`?</span>
+<span class="com"># This is also invalid, you can't do `* function`</span>
 <span class="com">#f = *xs -> xs</span>
 
 <span class="com"># That means you can easily pass anonymous functions as arguments. Note the parentheses, though.</span>
@@ -228,9 +233,9 @@ do_something5 <span class="op">=</span> <span class="par">(</span><span class="p
           <div class="example-woof">
             <pre class="prettyprint lang-woof">
 <span class="com"># Function calls are preferred over other operators</span>
-f<span class="op">:</span> <span class="str">'param1'</span> <span class="str">'param2'</span> <span class="op">+</span> <span class="typ">3</span>
+double_all<span class="op">:</span> <span class="typ">2</span> <span class="typ">4</span> <span class="op">*</span> <span class="typ">3</span>
 <span class="com"># i.e. that line is the same as</span>
-<span class="par">(</span>f<span class="op">:</span> <span class="str">'param1'</span> <span class="str">'param2'</span><span class="par">)</span> <span class="op">+</span> <span class="typ">3</span>
+<span class="par">(</span>double_all<span class="op">:</span> <span class="typ">2</span> <span class="typ">4</span><span class="par">)</span> <span class="op">*</span> <span class="typ">3</span>
 
 <span class="com"># Attribute access is the only exception to that rule.</span>
 print<span class="op">:</span> object<span class="op">.</span>__class__
@@ -248,17 +253,17 @@ print<span class="op">:</span> <span class="par">(</span>object<span class="op">
 <span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!!</span> slice<span class="op">:</span> <span class="spc">None</span> <span class="typ">5</span>
 
 <span class="com"># Assignment can work with names, attributes, subitems, and tuples:</span>
-a <span class="op">=</span> b
-a<span class="op">.</span>b <span class="op">=</span> c
-a <span class="op">!!</span> b <span class="op">=</span> c
+a <span class="op">=</span> <span class="str">'Hello'</span>
+a<span class="op">.</span>b <span class="op">=</span> <span class="str">'yes'</span>
+a <span class="op">!!</span> b <span class="op">=</span> <span class="str">'this is ='</span>
 <span class="com"># Tuples may also contain names, attributes, subitems and tuples, as well as starred arguments:</span>
-a<span class="op">,</span> <span class="op">*</span>bs<span class="op">,</span> c <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">4</span>
+a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> c <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">4</span>
 print<span class="op">:</span> a b c  <span class="com"># 1 [2, 3] 4</span>
 
 <span class="com"># Any binary function can be transformed into an operator by wrapping its name in backticks:</span>
 do_stuff <span class="op">=</span> <span class="par">(</span>a<span class="op">,</span> b<span class="par">)</span> <span class="op">-></span> print<span class="op">:</span> a b
 <span class="typ">1</span> <span class="iop"</span>`do_stuff`</span> <span class="typ">2</span>  <span class="com"># Prints "1 2"</span>
-<span class="spc">False</span> <span class="iop"</span>`or`</span> <span class="spc">True</span>  <span class="com"># Returns True</span>
+<span class="spc">False</span> <span class="iop"</span>`is`</span> <span class="spc">True</span>  <span class="com"># Returns False</span>
 
 <span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
 dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
@@ -274,10 +279,11 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
           <h2>Modules</h2>
           <div class="example-woof">
             <pre class="prettyprint lang-woof">
-<span class="com"># Yay, __import__!</span>
-os <span class="op">=</span> <span class="blt">__import__</span> <span class="str">'os'</span>
+<span class="com"># Import modules with `import` or `__import__`</span>
+module <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span> <span class="str">'os'</span>
 
-<span class="com"># Don't worry, you don't have to use it.</span>
+<span class="com"># You can omit the module name if it can be inferred.</span>
+<span class="com"># (Note the absence of `:`, that will be fixed later)</span>
 sys <span class="op">=</span> <span class="kwd">import</span>
 os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">import</span>
 <span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span>
@@ -290,7 +296,40 @@ os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">impo
 
         <div id="conditions" class="section">
           <h2>Conditions</h2>
-          <p>TODO</p>
+          <div class="example-woof">
+            <pre class="prettyprint lang-woof">
+<span class="com"># Basic stuff like `or` and `and` is available.</span>
+<span class="spc">True</span> <span class="op">or</span> <span class="spc">False</span>  <span class="com"># `a or b` is the same as `a if a else b`</span>
+<span class="typ">2</span> <span class="op">and</span> <span class="str">'HA'</span>  <span class="com"># `a and b` is the same as `b if a else a`</span>
+
+<span class="com"># `not` is a function,</span>
+<span class="blt">not</span><span class="op">:</span> <span class="str">'an operator'</span>
+
+<span class="com"># if/else can only be used in its infix form</span>
+print<span class="op">:</span> <span class="par">(</span><span class="str">'expected'</span> <span class="op">if</span> <span class="spc">True</span> <span class="op">else</span> <span class="str">'wtf'</span><span class="par">)</span>
+
+<span class="com"># `unless` means `if not`.</span>
+<span class="com"># Both `if` and `unless` have lower priority than assignment,</span>
+<span class="com"># so don't forget about parentheses</span>
+always_assigned_to <span class="op">=</span> <span class="par">(</span><span class="str">'expected'</span> <span class="op">unless</span> <span class="spc">False</span> <span class="op">else</span> <span class="str">'wtf'</span><span class="par">)</span>
+<span class="com"># `else` clauses can be omitted, in which case `if` and `unless`</span>
+<span class="com"># work like `and` and `or` with reversed order of arguments, respectively.</span>
+<span class="com"># This can be useful to evaluate single statements conditionally.</span>
+never_assigned_to <span class="op">=</span> <span class="typ">2</span> <span class="op">unless</span> <span class="spc">True</span>
+
+factorial <span class="op">=</span> n <span class="op">-></span>
+  <span class="com"># The most powerful (and the simpliest, actually)</span>
+  <span class="com"># conditional is `switch`.</span>
+  <span class="kwd">switch</span><span class="op">:</span>
+    <span class="com"># Switch only accepts expressions in form `condition = action`.</span>
+    n <span class="op">&lt;</span> <span class="typ">0</span> <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">ValueError</span></span class="op">:</span> <span class="str">'n >= 0'</span>
+    <span class="com"># It evaluates the first action to be assigned to a true condition.</span>
+    n <span class="op">&lt;</span> <span class="typ">2</span> <span class="op">=</span> <span class="typ">1</span>
+    <span class="com"># It's not considered an error if nothing matched, but None will be returned.</span>
+    <span class="com"># If you need a default action, though, simply assign something to `1` or `True`.</span>
+    <span class="spc">True</span> <span class="op">=</span> n <span class="op">*</span> factorial<span class="op">:</span> <span class="par">(</span>n <span class="op">-</span> <span class="typ">1</span><span class="par">)</span>
+</pre>
+          </div>
         </div>
 
         <div id="loops" class="section">
@@ -301,12 +340,31 @@ os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">impo
           <h2>Exceptions</h2>
         </div>
 
-        <div id="decorators" class="section">
-          <h2>Decorators</h2>
-        </div>
-
         <div id="oop" class="section">
           <h2>Objects</h2>
+          <div class="example-woof">
+            <pre class="prettyprint lang-woof">
+<span class="com"># Creating a type is done by calling `inherit` with the class body.</span>
+<span class="cls">MyType</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
+  a <span class="op">=</span> <span class="typ">1</span>
+
+MyType<span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
+
+<span class="com"># `inherit` also accepts any amount of base classes.</span>
+<span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> MyType <span class="blt">list</span> <span class="op">$</span>
+  b <span class="op">=</span> <span class="typ">2</span>
+
+MyList<span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
+MyList<span class="op">.</span>b <span class="op">==</span> <span class="typ">2</span>
+
+<span class="com"># The syntax for calling functions applies to `inherit`, too.</span>
+<span class="cls">MyTypeWMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> MyMetaclass <span class="op">$</span>
+<span class="com"># Class body can be omitted.</span>
+</pre>
+        </div>
+
+        <div id="decorators" class="section">
+          <h2>Miscellaneous</h2>
         </div>
 
         <div id="performance" class="section">

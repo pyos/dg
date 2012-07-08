@@ -33,9 +33,7 @@ p
     }
 }
 
-.prettyprint .com { color: #999; font-style: italic; }
 .prettyprint .str { color: #d14; }
-.prettyprint .cls { color: #458; }
 .prettyprint .iop { color: #458; }
 .prettyprint .typ { color: teal; }
 .prettyprint .blt { color: teal; }
@@ -44,4 +42,7 @@ p
 .prettyprint .kwd { font-weight: bold; }
 .prettyprint .op  { font-weight: bold; }
 .prettyprint .par { font-weight: bold; }
+.prettyprint .cls { color: #458; font-weight: bold; }
+.prettyprint .exc { color: #900; font-weight: bold; }
+.prettyprint .com { color: #999; font-style: italic; }
 
