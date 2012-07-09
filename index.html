@@ -2,7 +2,7 @@
 <html asd="qwe">
   <head>
     <meta charset="utf-8" />
-    <title>Woof</title>
+    <title>dg</title>
     <link href="css/bootstrap.css" rel="stylesheet" type="text/css" />
     <link href="css/bootstrap-responsive.css" rel="stylesheet" type="text/css" />
     <link href="css/style.css" rel="stylesheet" type="text/css" />
@@ -12,9 +12,8 @@
   <body>
     <div class="row-fluid side-row hidden-phone">
       <div class="span2 sidebar">
-        <h1>
-          <a href="#">woof</a>
-          <img src="img/icon.png" />
+        <h1 id="logo">
+          <a href="#">dg</a>
         </h1>
         <ul class="nav nav-list">
           <li><a href="#overview">Overview</a></li>
@@ -22,7 +21,7 @@
           <li><a href="#installation">Installation</a></li>
           <li><a href="#usage">Usage</a></li>
           <li class="divider"></li>
-          <li><a href="#reference">Reference</a></li>
+          <li><a href="#introduction">Introduction</a></li>
           <li><a href="#literals">Literals</a></li>
           <li><a href="#functions">Functions</a></li>
           <li><a href="#operators">Operators</a></li>
@@ -44,80 +43,90 @@
       <div class="span10 content">
         <div id="overview" class="section">
           <h2>Overview</h2>
-          <p>Woof is a (not so) simple language that compiles to CPython bytecode. In fact, you can think of it as of an alternative syntax for Python 3. The key feature of Woof is the ability to use whatever Python 3 library you want.</p>
+          <p>dg is a (not so) simple language that compiles to CPython bytecode. In fact, you can think of it as of an alternative syntax for Python 3. The key feature of dg is the ability to use whatever Python 3 library you want.</p>
           <p>Note that not everything described here have been implemented yet.</p>
         </div>
 
         <div id="installation" class="section">
           <h2>Installation</h2>
-          <p>Since Woof is a Python 3 module, barely any installation is required. Simply <a href="https://github.com/pyos/woof/zipball/master">download the compiler</a> (or fetch it using git: <code>git clone https://github.com/pyos/woof.git</code>) and extract the archive in a directory somewhere in your <code>$PYTHONPATH</code> (e.g. /usr/lib/python3.2/site-packages/).</p>
+          <p>Since dg is a Python 3 module, barely any installation is required. Simply <a href="https://github.com/pyos/dg/zipball/master">download the compiler</a> (or fetch it using git: <code>git clone https://github.com/pyos/dg.git</code>) and extract the archive in a directory somewhere in your <code>$PYTHONPATH</code> (e.g. /usr/lib/python3.2/site-packages/).</p>
         </div>
 
         <div id="usage" class="section">
           <h2>Usage</h2>
-          <p>Usage: <code>python3 -m woof [options] [file [arguments]]</code></p>
-
-          <h3>Options</h3>
-          <table class="table table-striped table-bordered">
-            <tr>
-              <td>-i, --interactive</td>
-              <td>start REPL (default behavior if no input files are specified)</td>
-            </tr>
-            <tr>
-              <td>-c, --compile</td>
-              <td>precompile the specified files (and those imported by them) and save tham as .pyc or .pyo bytecode files</td>
-            </tr>
-            <tr>
-              <td>-e, --eval SCRIPT</td>
-              <td>evaluate SCRIPT as a Woof command</td>
-            </tr>
-            <tr>
-              <td>-p, --print</td>
-              <td>when compiling, make the top-level code print its evaluation result in addition to returning it (does not affect REPL)</td>
-            </tr>
-            <tr>
-              <td>-t, --tree</td>
-              <td>print out dg parse trees instead of compiling them</td>
-            </tr>
-          </table>
+          <p>Usage: <code>python3 -m dg [options] [file [arguments]]</code></p>
+          <p>There are no options except for <code>-h</code>/<code>--help</code> (yet.)</p>
         </div>
 
-        <div id="reference" class="section">
-          <h2>Reference</h2>
+        <div id="introduction" class="section">
+          <h2>Introduction</h2>
+          <h3>Parentheses and indentation</h3>
+          <p>mean the same thing: they explicitly define the precedence of operators.</p>
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
+<span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  <span class="str">'A function!'</span>
+<span class="par">(</span><span class="par">)</span> <span class="op">-></span> <span class="par">(</span><span class="str">'Still a function!'</span><span class="par">)</span>
+</pre>
+          </div>
+          <p>Parentheses are not required in most cases, though.</p>
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
+<span class="par">(</span><span class="par">)</span> <span class="op">-></span> <span class="str">'A function, too!'
+</pre>
+          </div>
           <p>
-            Just like Python itself, Woof uses indentation as a delimiter for blocks.
-            There is one difference, though: an indented block is the same as a
-            parenthesized one.
-            Woof doesn't require you to use parentheses when calling functions.
-            In fact, it doesn't support that at all. The only syntax for calls
-            is a mix of Haskell and Smalltalk.
+            Line breaks and semicolons in both parentheses and indented blocks
+            separate different expressions, and indentation can be used
+            inside parentheses, so it's better to be cautious when it comes
+            to adding whitespace.
           </p>
           <p>
-            Variable assignment is done the usual way, <code>name = value</code>.
+            Also, dg doesn't require you to use parentheses when <i>calling</i>
+            functions. In fact, it doesn't support that at all.
+            <a href="#functions">The only syntax for calls is a mix of Haskell
+            and Smalltalk.</a>
+          </p>
+          <h3>Comments</h3>
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
+<span class="com"># are sh-style up to the end of the line</span>
+</pre>
+          </div>
+          <h3>Assignment</h3>
+          <p>
+            is done the usual way: <code>name = value</code>.
             The assignment can also be used to assign attributes or items, or
             unwrap iterables, almost like in Python.
+          </p>
+          <p>
             Everything is an expression. That doesn't mean that everything
-            returns a value that makes any sense, though. For example,
+            returns a value that makes sense, though. For example,
             <code>while</code> always returns <code>None</code> due to limitations
             of the CPython virtual machine.
           </p>
+          <h3>Namespaces</h3>
           <p>
-            Woof does not treat neither parentheses nor indented blocks as
+            dg does not treat neither parentheses nor indented blocks as
             separate scopes. Every assignment you do inside will affect
             the outside block as well. The only exceptions are, as always,
-            functions and classes.
-            Another limitation of the namespaces is that you can't modify anything
-            not in your local namespace. Most people consider changing global and non-local
-            a bad practice anyway, so you probably won't even notice.
-            One more thing: trying to create a local with the same name as a non-local
-            variable will result in a compile-time error,
+            functions and classes.</p>
+          <p>
+            You can't declare variables without assigning to them. In fact,
+            there is no reason to, because you can't modify them from inner scopes.
+            There is no <code>global</code> or <code>nonlocal</code> keyword —
+            and I bet most people (especially those writing in functional style)
+            would agree that using those is a bad practice. Note, though, that
+            assigning to a variable that is defined in an outside scope
+            (excluding the global namespace) is a compile-time error.
+            Trust me, that can save you some headache later.
           </p>
         </div>
 
         <div id="literals" class="section">
           <h2>Literals</h2>
-          <div class="example-woof">
-            <pre class="prettyprint lang-woof">
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
 <span class="com"># Numbers</span>
 <span class="typ">42</span>
 <span class="typ">3.14159265358979323865</span>
@@ -160,8 +169,8 @@ print<span class="op">:</span> <span class="par">(</span><span class="spc">True<
 
         <div id="functions" class="section">
           <h2>Functions</h2>
-          <div class="example-woof">
-            <pre class="prettyprint lang-woof">
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
 <span class="com"># Calling functions is almost like sending messages in Smalltalk.</span>
 print<span class="op">:</span> <span class="str">'Hello'</span> <span class="str">'print'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
 <span class="com"># And calling them without arguments is no different.</span>
@@ -191,9 +200,20 @@ double <span class="op">=</span> x <span class="op">-></span> x <span class="op"
 <span class="com"># This is also invalid, you can't do `* function`</span>
 <span class="com">#f = *xs -> xs</span>
 
-<span class="com"># That means you can easily pass anonymous functions as arguments. Note the parentheses, though.</span>
-<span class="com"># Oh, and starred arguments can also be used in argument lists.</span>
+<span class="com"># Arguments can have default values.</span>
+function2 <span class="op">=</span> <span class="par">(</span>x<span class="op">:</span> <span class="spc">None</span><span class="par">)</span> <span class="op">-></span> function<span class="op">:</span> x
+<span class="com"># Starred arguments have a different syntax in function definitions.</span>
+double_all <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">map</span><span class="op">:</span> double xs
+
+<span class="com"># The -> operator always consumes exactly one token to the left,</span>
+<span class="com"># so you can wrap function body in parentheses instead of doing the same</span>
+<span class="com"># for the whole function definition.</span>
 double_all <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">map</span><span class="op">:</span> x <span class="op">-></span> <span class="par">(</span>x <span class="op">*</span> <span class="typ">2</span><span class="par">)</span> xs
+
+<span class="com"># There is no special syntax for decorators.</span>
+<span class="com"># Just call them with the function as an argument.</span>
+wtf <span class="op">=</span> <span class="blt">staticmethod</span><span class="op">:</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  print<span class="op">:</span> <span class="str">'A static method outside of a class?!'</span>
 
 <span class="com"># Functions return the last value they evaluate, unless explicitly told to do otherwise.</span>
 do_something <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
@@ -230,8 +250,8 @@ do_something5 <span class="op">=</span> <span class="par">(</span><span class="p
 
         <div id="operators" class="section">
           <h2>Operators</h2>
-          <div class="example-woof">
-            <pre class="prettyprint lang-woof">
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
 <span class="com"># Function calls are preferred over other operators</span>
 double_all<span class="op">:</span> <span class="typ">2</span> <span class="typ">4</span> <span class="op">*</span> <span class="typ">3</span>
 <span class="com"># i.e. that line is the same as</span>
@@ -277,8 +297,8 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
 
         <div id="modules" class="section">
           <h2>Modules</h2>
-          <div class="example-woof">
-            <pre class="prettyprint lang-woof">
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
 <span class="com"># Import modules with `import` or `__import__`</span>
 module <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span> <span class="str">'os'</span>
 
@@ -289,15 +309,15 @@ os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">impo
 <span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span>
 
 <span class="com"># Not much else to show here. Star-imports will never be supported.</span>
-<span class="com"># Woof modules don't work, 'cause there's no import hook yet.</span>
+<span class="com"># dg modules don't work, 'cause there's no import hook yet.</span>
 </pre>
           </div>
         </div>
 
         <div id="conditions" class="section">
           <h2>Conditions</h2>
-          <div class="example-woof">
-            <pre class="prettyprint lang-woof">
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
 <span class="com"># Basic stuff like `or` and `and` is available.</span>
 <span class="spc">True</span> <span class="op">or</span> <span class="spc">False</span>  <span class="com"># `a or b` is the same as `a if a else b`</span>
 <span class="typ">2</span> <span class="op">and</span> <span class="str">'HA'</span>  <span class="com"># `a and b` is the same as `b if a else a`</span>
@@ -325,6 +345,8 @@ factorial <span class="op">=</span> n <span class="op">-></span>
     n <span class="op">&lt;</span> <span class="typ">0</span> <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">ValueError</span></span class="op">:</span> <span class="str">'n >= 0'</span>
     <span class="com"># It evaluates the first action to be assigned to a true condition.</span>
     n <span class="op">&lt;</span> <span class="typ">2</span> <span class="op">=</span> <span class="typ">1</span>
+    <span class="com"># Conditions may be completely unrelated to each other.</span>
+    <span class="blt">not</span> <span class="op">$</span> factorial <span class="iop">`is`</span> factorial <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">SanityError</span><span class="op">:</span> <span class="str">'wat'</span>
     <span class="com"># It's not considered an error if nothing matched, but None will be returned.</span>
     <span class="com"># If you need a default action, though, simply assign something to `1` or `True`.</span>
     <span class="spc">True</span> <span class="op">=</span> n <span class="op">*</span> factorial<span class="op">:</span> <span class="par">(</span>n <span class="op">-</span> <span class="typ">1</span><span class="par">)</span>
@@ -338,12 +360,64 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 
         <div id="exceptions" class="section">
           <h2>Exceptions</h2>
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
+<span class="com"># Raise exceptions with the `raise` built-in.</span>
+<span class="kwd">raise</span><span class="op">:</span> <span class="exc">Exception</span>
+
+<span class="com"># Raise accepts classes that derive from BaseException</span>
+<span class="com"># as well as their instances.</span>
+<span class="kwd">raise</span> <span class="op">$</span> <span class="exc">Exception</span><span class="op">:</span> <span class="str">'Ow!'</span>
+<span class="kwd">raise</span><span class="op">:</span> <span class="par">(</span><span class="exc">OblivionError</span><span class="op">:</span> <span class="str">'Stop right there, criminal scum'</span><span class="par">)</span>
+
+<span class="com"># Catch thrown exceptions with the `unsafe` conditional.</span>
+<span class="com"># Its syntax is similar to `switch`.</span>
+<span class="kwd">unsafe</span><span class="op">:</span>
+  <span class="com"># The first expression is in form `name = expression`,</span>
+  <span class="com"># where `expression` is what you want to do</span>
+  <span class="com"># and `name` is where to store the raised exception, if any.</span>
+  error <span class="op">=</span>
+    i <span class="op">=</span> <span class="blt">int</span><span class="op">:</span> <span class="str">'1234567890a'</span>
+    f <span class="op">=</span> <span class="blt">open</span><span class="op">:</span> <span class="str">'/etc/hostname'</span> <span class="str">'wb'</span>
+    f<span class="op">.</span>write<span class="op">:</span> i
+  <span class="com"># All other lines are conditional expressions.</span>
+  <span class="com"># Use `isinstance` to match exception types:</span>
+  error <span class="iop">`isinstance`</span> <span class="exc">ValueError</span> <span class="op">=</span>
+    print<span class="op">:</span> <span class="str">'Hey, that wasn\'t a decimal number!'</span>
+  <span class="com"># You may also check the exception's attributes if you want:</span>
+  error <span class="iop">`isinstance`</span> <span class="exc">IOError</span> <span class="op">and</span> error<span class="op">.</span>errno <span class="op">==</span> <span class="typ">13</span> <span class="op">=</span>
+    print<span class="op">:</span> <span class="str">'Permission denied'</span>
+  <span class="com"># As in `switch`, conditions may be completely unrelated.</span>
+  <span class="com"># Any matching condition will silence the traceback, though.</span>
+  admin_is_watching <span class="op">=</span>
+    <span class="com"># Don't attract his attention with colorful tracebacks.</span>
+    print<span class="op">:</span> <span class="str">'Psst, user!'</span> error
+  <span class="com"># If no exception was caught, the provided variable will be set to None.</span>
+  error <span class="iop">`is`</span> <span class="spc">None</span> <span class="op">=</span>
+    <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">AssertionError</span><span class="op">:</span> <span class="str">'Wait, but that code was obviously incorrect!'</span>
+  <span class="com"># If the last action is assigned to True, it has a special meaning.</span>
+  <span class="com"># Specifically, it will be called regardless of whether any</span>
+  <span class="com"># any other condition matched (and whether there was any</span>
+  <span class="com"># exception at all.) It won't silence the exception, though.</span>
+  <span class="spc">True</span> <span class="op">=</span>
+    print<span class="op">:</span> <span class="str">'That is, it is the same as `finally` in Python.'</span>
+
+<span class="com"># One more thing to note. `unsafe` returns:</span>
+<span class="com">#   * the value of the unsafe expression if no exception was raised;</span>
+<span class="com">#   * None if an exception was raised, but handled;</span>
+<span class="com">#   * nothing if there was an unhandled exception.</span>
+file <span class="op">=</span> <span class="kwd">unsafe</span><span class="op">:</span>
+  e <span class="op">=</span> <span class="blt">open</span><span class="op">:</span> <span class="str">'README.md'</span>
+  <span class="com"># Not having a README isn't critical, but `file` will be `None`.</span>
+  e <span class="iop">`isinstance`</span> <span class="exc">IOError</span> <span class="op">=</span> <span class="par">(</span><span class="par">)</span>
+</pre>
+          </div>
         </div>
 
         <div id="oop" class="section">
           <h2>Objects</h2>
-          <div class="example-woof">
-            <pre class="prettyprint lang-woof">
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
 <span class="com"># Creating a type is done by calling `inherit` with the class body.</span>
 <span class="cls">MyType</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
   a <span class="op">=</span> <span class="typ">1</span>
@@ -351,20 +425,47 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 MyType<span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
 
 <span class="com"># `inherit` also accepts any amount of base classes.</span>
-<span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> MyType <span class="blt">list</span> <span class="op">$</span>
+<span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="cls">MyType</span> <span class="blt">list</span> <span class="op">$</span>
   b <span class="op">=</span> <span class="typ">2</span>
 
 MyList<span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
 MyList<span class="op">.</span>b <span class="op">==</span> <span class="typ">2</span>
 
 <span class="com"># The syntax for calling functions applies to `inherit`, too.</span>
-<span class="cls">MyTypeWMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> MyMetaclass <span class="op">$</span>
-<span class="com"># Class body can be omitted.</span>
+<span class="cls">MyTypeWithMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> <span class="cls">MyMetaclass</span> <span class="par">(</span><span class="par">)</span>
+
+<span class="cls">Animal</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
+  <span class="com"># Classes can have methods, which are actually functions.</span>
+  __init__ <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="op">,</span> name<span class="par">)</span> <span class="op">-></span>
+    <span class="com"># One of the most awful syntactic constructs</span>
+    <span class="com"># (just a runtime function call, actually)</span>
+    <span class="com"># is a call to one of the superclasses' methods:</span>
+    <span class="par">(</span><span class="blt">super</span><span class="op">:</span><span class="par">)</span><span class="op">.</span>__init__<span class="op">:</span>  <span class="com"># See <a href="http://docs.python.org/dev/library/functions.html#super">Python docs</a> for details</span>
+
+    <span class="spc">self</span><span class="op">.</span>name <span class="op">=</span> name
+    <span class="com"># __init__ must always return None.</span>
+    <span class="com"># This is one of the pointless limitations of CPython.</span>
+    <span class="spc">None</span>
+
+  eat <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="par">)</span> <span class="op">-></span>
+    print<span class="op">:</span> <span class="str">'OM NOM NOM'</span>
+
+<span class="com"># Instantiating a class is done by calling it, as always.</span>
+bob <span class="op">=</span> <span class="cls">Animal</span><span class="op">:</span> <span class="str">'Bob'</span>
+bob<span class="op">.</span>eat<span class="op">:</span>
 </pre>
+          </div>
         </div>
 
         <div id="decorators" class="section">
           <h2>Miscellaneous</h2>
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
+<span class="com"># No matter what BDFL says, `reduce` is pretty useful.</span>
+<span class="com"># So it's back as `foldl`:</span>
+<span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-></span> <span class="blt">foldl</span><span class="op">:</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> xs <span class="typ">0</span>
+</pre>
+          </div>
         </div>
 
         <div id="performance" class="section">
