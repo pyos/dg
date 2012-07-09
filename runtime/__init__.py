@@ -1,6 +1,7 @@
 import builtins
 import operator
 import functools
+import importlib
 
 from ..compile import varary
 
@@ -37,7 +38,7 @@ builtins.__dict__.update({
   , '>>': operator.rshift
 
     # Useful stuff.
-  , 'import': __import__
+  , 'import': importlib.import_module
   , 'foldl': functools.reduce
   , '~:': functools.partial
 })
