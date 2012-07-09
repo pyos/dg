@@ -413,3 +413,16 @@ def unsafe(self, cases):
 
     # We should be left with a return value by now.
 
+
+@r.builtin('raise')
+#
+# `raise: exception_object`
+#
+# Raise an exception, which is either a type or an instance of Exception.
+#
+def raise_(self, exc):
+
+    self.load(exc)
+    self.code.DUP_TOP(delta=1)
+    self.code.RAISE_VARARGS(1, delta=-1)
+
