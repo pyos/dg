@@ -327,14 +327,19 @@ def unsafe(self, cases):
     # That seems to work, though.
     (name, try_), *cases, (has_finally, finally_) = syntax.unsafe(cases)
 
+    # This will be our return value.
+    self.load(None)
+
     if has_finally:
 
         to_finally = self.code.SETUP_FINALLY()
 
-    to_except = self.code.SETUP_EXCEPT(delta=3)
+    to_except = self.code.SETUP_EXCEPT()
     self.load(try_)
-    self.code.POP_TOP(delta=-1)
-    self.code.POP_BLOCK()
+    # Replace that None with the value returned by `try_`
+    # to fool the POP_BLOCK instruction.
+    self.code.ROT_TWO()
+    self.code.POP_BLOCK(delta=-1)
     # Er, so there was no exception, let's store None instead.
     self.load(None)
     # Since we've already POPped_BLOCK, exceptions occured
@@ -344,16 +349,16 @@ def unsafe(self, cases):
     self.code.cstacksize -= 1
 
     # Jump over that block if there was no exception.
-    to_else = self.code.JUMP_FORWARD()
+    # Finishing SETUP_EXCEPT with an exception pushes
+    # 3 items onto the stack.
+    #
+    # Stack:: [try_, None] or [None, traceback, value, type]
+    #
+    to_else = self.code.JUMP_FORWARD(delta=3)
     to_except()
-    # But if there was one, the stack should now contain
-    # (traceback, value, type).
-    #                    ^- this is the top of the stack
     self.code.ROT_TWO()
-    # (traceback, type, value)
     self.store_top(*syntax.assignment_target(name))
     self.code.ROT_TWO()
-    # (traceback, value, type) again. These will be fed to END_FINALLY.
     to_else()
 
     # The same `switch` statement as above...
@@ -366,7 +371,7 @@ def unsafe(self, cases):
         self.load(cond)
         ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
         self.load(case)
-        # ...but we can't return anything. Dammit, CPython.
+        # FIXME we can't return anything from handlers.
         self.code.POP_TOP(delta=-1)
         jmps.append(self.code.JUMP_FORWARD())
 
@@ -406,6 +411,5 @@ def unsafe(self, cases):
         self.code.POP_TOP(delta=-1)
         self.code.END_FINALLY()
 
-    # As I already said, we can't return anything.
-    self.load(None)
+    # We should be left with a return value by now.
 
