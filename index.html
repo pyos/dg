@@ -33,7 +33,7 @@
           <li><a href="#miscellaneous">Miscellaneous</a></li>
           <li class="divider"></li>
           <li><a href="#performance">Performance</a></li>
-          <li><a href="#inspiration">Inspired by</a></li>
+          <li><a href="#inspired-by">Inspired by</a></li>
         </ul>
       </div>
     </div>
@@ -43,13 +43,25 @@
       <div class="span10 content">
         <div id="overview" class="section">
           <h2>Overview</h2>
-          <p>dg is a (not so) simple language that compiles to CPython bytecode. In fact, you can think of it as of an alternative syntax for Python 3. The key feature of dg is the ability to use whatever Python 3 library you want.</p>
-          <p>Note that not everything described here have been implemented yet.</p>
+          <p>
+            dg is a (not so) simple language that compiles to CPython bytecode.
+            In fact, you can think of it as of an alternative syntax for Python 3.
+            The key feature of dg is the ability to use whatever Python library you want.
+          </p>
         </div>
 
         <div id="installation" class="section">
           <h2>Installation</h2>
-          <p>Since dg is a Python 3 module, barely any installation is required. Simply <a href="https://github.com/pyos/dg/zipball/master">download the compiler</a> (or fetch it using git: <code>git clone https://github.com/pyos/dg.git</code>) and extract the archive in a directory somewhere in your <code>$PYTHONPATH</code> (e.g. /usr/lib/python3.2/site-packages/).</p>
+          <p>
+            Since dg is a Python 3 module, barely any installation is required.
+            Simply <a href="https://github.com/pyos/dg/zipball/master">download
+            the compiler</a> (or fetch it using git:
+            <code>git clone https://github.com/pyos/dg.git</code>) and extract
+            the archive in a directory somewhere in your <code>$PYTHONPATH</code>
+            (e.g. <code>/usr/lib/python3.2/site-packages/</code>).
+            Don't forget to run <code>git submodule init</code> and
+            <code>git submodule update</code>!
+          </p>
         </div>
 
         <div id="usage" class="section">
@@ -293,6 +305,110 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
 <span class="typ">1</span> <span class="op"</span>$%^&*/|\@!+-:.,?</span> <span class="typ">2</span>  <span class="com"># Also prints "1 2"</span>
 </pre>
           </div>
+
+          <h3>The full table of operators</h3>
+          <table class="table table-bordered table-striped">
+            <thead>
+              <th>?</th>
+              <th>What</th>
+              <th>Available in runtime</th>
+            </thead>
+            <tr>
+              <td><code></code></td>
+              <td>(Empty operator.) Function call</td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>:</code></td>
+              <td>Function call, the right-hand statement is parsed as an argument. Calls a function with no arguments when only one argument is supplied.</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>$</code></td>
+              <td>Function call, the right-hand statement is parsed as an expression. Calls a function with <code>()</code> (an empty block) when only one argument is supplied.</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>=</code></td>
+              <td>Generic assignment</td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>+ - * ** / // %</code></td>
+              <td>Built-in Python numeric operators</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>& ^ | << >> ~</code></td>
+              <td>Built-in Python binary operators</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>!!</code></td>
+              <td>Subitem lookup</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>!!= += -= *= **= /= //= %= &= ^= |= <<= >>=</code></td>
+              <td>Destructive in-place equivalents of the above operators</td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>&lt; &lt;= == != > >=</code></td>
+              <td>Built-in comparison operators</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>is</code></td>
+              <td>Identifier-based comparison <b>(prefix)</b></td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>in</code></td>
+              <td>Whether an object is in a container <b>(prefix)</b></td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>or and</code></td>
+              <td>Built-in Python logic operators <b>(lazy, infix)</b></td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>if unless else</code></td>
+              <td>Inline conditional branching <b>(lazy, infix)</b></td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>.</code></td>
+              <td>Attribute lookup</td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>.~</code></td>
+              <td>Attribute removal. Returns None</td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>!!~</code></td>
+              <td>Subitem removal. Returns None</td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>,</code></td>
+              <td>Tuple constructor</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>-></code></td>
+              <td>Function constructor</td>
+              <td class="no">No</td>
+            </tr>
+            <tr>
+              <td><code>~:</code></td>
+              <td>Partial function application</td>
+              <td class="yes">Yes</td>
+            </tr>
+          </table>
         </div>
 
         <div id="modules" class="section">
@@ -388,7 +504,7 @@ factorial <span class="op">=</span> n <span class="op">-></span>
   error <span class="iop">`isinstance`</span> <span class="exc">IOError</span> <span class="op">and</span> error<span class="op">.</span>errno <span class="op">==</span> <span class="typ">13</span> <span class="op">=</span>
     print<span class="op">:</span> <span class="str">'Permission denied'</span>
   <span class="com"># As in `switch`, conditions may be completely unrelated.</span>
-  <span class="com"># Any matching condition will silence the traceback, though.</span>
+  <span class="com"># Any matching condition will silence the exception.</span>
   admin_is_watching <span class="op">=</span>
     <span class="com"># Don't attract his attention with colorful tracebacks.</span>
     print<span class="op">:</span> <span class="str">'Psst, user!'</span> error
@@ -414,7 +530,7 @@ file <span class="op">=</span> <span class="kwd">unsafe</span><span class="op">:
           </div>
         </div>
 
-        <div id="oop" class="section">
+        <div id="objects" class="section">
           <h2>Objects</h2>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
@@ -457,7 +573,7 @@ bob<span class="op">.</span>eat<span class="op">:</span>
           </div>
         </div>
 
-        <div id="decorators" class="section">
+        <div id="miscellaneous" class="section">
           <h2>Miscellaneous</h2>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
@@ -470,11 +586,41 @@ bob<span class="op">.</span>eat<span class="op">:</span>
 
         <div id="performance" class="section">
           <h2>Performance</h2>
+          <p>
+            dg should be on par with Python 3 in terms of evaluation speed.
+            But the compilation stage is...pretty slow. It takes nearly 150ms
+            to set up the Python interpreter, load the compiler and parse
+            <a href="https://gist.github.com/3068335">a real-world 169 LOC file</a>
+            on my computer.
+          </p>
+          <p>
+            To be exact, dg-generated bytecode may or may not be slower than Python 3 —
+            that depends on how good your code is. CPython has a simple bytecode
+            optimizer which eliminates some of the dead code, combines some
+            opcodes, preloads <code>True</code>/<code>False</code>/<code>None</code>
+            at the compilation stage and does other kinds of stuff, while dg lacks such
+            an optimizer. That shouldn't be a problem most of the time, though.
+          </p>
         </div>
 
         <div id="inspired-by" class="section">
           <h2>Inspired by</h2>
+          <ul>
+            <li>Python, obviously</li>
+            <li>Haskell</li>
+            <li>CoffeeScript and LiveScript</li>
+            <li>Smalltalk</li>
+            <li>Lisp</li>
         </div>
+
+        <div id="thanks" class="section">
+          <h2>Thanks</h2>
+          <p>
+            Thanks to me. <span style="color: white">And /pr/.</span>
+            Special thanks to Python developers who, as always,
+            <a href="http://docs.python.org/dev/whatsnew/3.3.html">do implement cool features</a>,
+            but release them 2 or 3 months after I want to try them out. :-)
+          </p>
       </div>
     </div>
   </body>
