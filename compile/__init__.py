@@ -306,3 +306,106 @@ def switch(self, cases):
 
         jmp()
 
+
+@r.builtin('unsafe')
+#
+# ```
+# unsafe:
+#   exc_name = unsafe_code
+#   exc_name :: Exception = caught_Exception
+#   exc_name `is` None = caught_nothing
+#   True = finally
+# ```
+#
+# Catch an exception, store it as `exc_name`, evaluate the first matching
+# clause, then evaluate `finally` unconditionally and re-raise the exception
+# if it was not handled.
+#
+def unsafe(self, cases):
+
+    # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
+    # That seems to work, though.
+    (name, try_), *cases, (has_finally, finally_) = syntax.unsafe(cases)
+
+    if has_finally:
+
+        to_finally = self.code.SETUP_FINALLY()
+
+    to_except = self.code.SETUP_EXCEPT(delta=3)
+    self.load(try_)
+    self.code.POP_TOP(delta=-1)
+    self.code.POP_BLOCK()
+    # Er, so there was no exception, let's store None instead.
+    self.load(None)
+    # Since we've already POPped_BLOCK, exceptions occured
+    # during this assignment will be ignored.
+    self.store_top(*syntax.assignment_target(name))
+    # XXX I don't know why is that needed.
+    self.code.cstacksize -= 1
+
+    # Jump over that block if there was no exception.
+    to_else = self.code.JUMP_FORWARD()
+    to_except()
+    # But if there was one, the stack should now contain
+    # (traceback, value, type).
+    #                    ^- this is the top of the stack
+    self.code.ROT_TWO()
+    # (traceback, type, value)
+    self.store_top(*syntax.assignment_target(name))
+    self.code.ROT_TWO()
+    # (traceback, value, type) again. These will be fed to END_FINALLY.
+    to_else()
+
+    # The same `switch` statement as above...
+    ptr  = None
+    jmps = []
+
+    for cond, case in cases:
+
+        ptr and ptr()
+        self.load(cond)
+        ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
+        self.load(case)
+        # ...but we can't return anything. Dammit, CPython.
+        self.code.POP_TOP(delta=-1)
+        jmps.append(self.code.JUMP_FORWARD())
+
+    ptr and ptr()
+    # This will re-raise the exception if nothing matched
+    # (and there was an exception. And there is no `finally` clause.)
+    self.code.END_FINALLY(delta=-3)
+
+    # The problem is, now we need to POP_EXCEPT, but only
+    # if there was a handled exception.
+
+    # First, jump over this whole part if the exception was not handled.
+    unhandled_exception = self.code.JUMP_FORWARD()
+
+    for jmp in jmps: jmp()
+
+    # Second, check if the exception type is None, in which case
+    # there was no exception at all.
+    self.code.DUP_TOP(delta=1)
+    self.load(None)
+    self.code.COMPARE_OP('is', delta=-1)
+    # Then skip POP_EXCEPT if that is the case.
+    no_exception = self.code.POP_JUMP_IF_TRUE(delta=-1)
+
+    self.code.POP_EXCEPT()
+    unhandled_exception()
+    no_exception()
+
+    if has_finally:
+
+        # If the interpreter made it here, one of the `except` clauses matched.
+        self.code.POP_BLOCK(delta=-1)
+        self.load(None)
+
+        to_finally()
+        self.load(finally_)
+        self.code.POP_TOP(delta=-1)
+        self.code.END_FINALLY()
+
+    # As I already said, we can't return anything.
+    self.load(None)
+

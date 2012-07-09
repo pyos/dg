@@ -9,6 +9,8 @@ globals().update({
     dict(
         ST_GROUP = '(_)'
 
+      , ST_EXC_FINALLY = 'True'
+
       , ST_TUPLE_S = '_,'
       , ST_TUPLE   = '_, _'
       , ST_CALL    = '_ _'
@@ -179,6 +181,18 @@ def switch(cases):
         case = tree.matchA(case, ST_ASSIGN)
         ERROR(not case, const.ERR.INVALID_STMT_IN_SWITCH)
         yield case
+
+
+def unsafe(cases):
+
+    cases = list(switch(cases))
+    ERROR(not cases, const.ERR.DEFAULT)  # there was no `try` clause
+
+    if len(cases) < 2 or not tree.matchQ(cases[-1][0], ST_EXC_FINALLY):
+
+        cases.append((None, None))
+
+    return cases
 
 
 def call_pre(f, *args):
