@@ -117,6 +117,10 @@ class MutableCode:
 
         def to_int(v):
 
+            if not (reverse or hasattr(v, 'end')):
+
+                raise Exception(dis.opname[self.bytecode[start][0]])
+
             if not hasattr(v, '_c'):
 
                 # codelen() may call this function again,
