@@ -1,13 +1,10 @@
-# woof
+# dg
 
-dg to CPython byte-compiler.
+A language that compiles to CPython bytecode.
 
 ## Fatal Flaws
 
 1. `with`, `for/else`, `break`, `continue`, and the `else` clause of `while` are missing.
-2. Syntax can be awful sometimes.
-
-## Documentation
-
-Oh, and there's no documentation since the syntax is not very stable yet.
+2. No support for dg modules yet.
+3. Syntax can be awful sometimes.
 
