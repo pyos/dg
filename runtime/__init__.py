@@ -3,7 +3,8 @@ import operator
 import functools
 import importlib
 
-from ..compile import varary
+# Choose a function based on the number of arguments.
+varary  = lambda *fs: lambda *xs: fs[len(xs) - 1](*xs)
 
 
 builtins.__dict__.update({
