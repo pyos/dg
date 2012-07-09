@@ -28,11 +28,31 @@ p
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.content ul, .content ol
+{
+    margin: 1em 0 1em 2em;
+}
+
+.content ul li, .content ol li
+{
+    margin: 0.2em 0 0.2em 0;
+}
+
 .content .section
 {
     margin-bottom: 2em;
     margin-left: 0.5em;
     margin-right: 1em;
+}
+
+.table td.yes
+{
+    background-color: rgba(0, 255, 0, 0.1) !important;
+}
+
+.table td.no
+{
+    background-color: rgba(255, 0, 0, 0.1) !important;
 }
 
 @media(min-width: 767px)
