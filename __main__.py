@@ -13,13 +13,7 @@ class Interactive (Interactive):
 
         super().__init__()
 
-        self.args   = args
-        self.single = sys.stdin.isatty() or args.print
-
-    def displayhook(self, value):
-
-        self.args.print and print(value)
-        return super().displayhook(value)
+        self.args = args
 
     def traceback(self, trace):
 
@@ -30,18 +24,17 @@ class Interactive (Interactive):
     def compile(self, code):
 
         q = parse.r.compile_command(code)
-        q = q if q is None else compile.r(q, name='<module>', single=self.single)
+        q = q if q is None else compile.r(q, name='<module>', single=True)
         return q
 
     def run(self, ns):
 
         q = parse.r(sys.stdin.read(), sys.stdin.name)
-        q = compile.r(q, name='<module>', single=self.single)
+        q = compile.r(q, name='<module>')
         return self.eval(q, ns)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--print', action='store_true', help='when compiling, make the top-level code print its evaluation result in addition to returning it (does not affect REPL)')
 parser.add_argument('file', nargs='?', help='files to parse/compile', type=argparse.FileType())
 parser.add_argument('arguments', nargs='*', help='additional arguments')
 args = parser.parse_args()
