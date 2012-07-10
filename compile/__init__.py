@@ -105,7 +105,7 @@ class r (core.Compiler):
 def tuple(self, init, *last):
 
     args = syntax.tuple_(init, *last)
-    self.opcode('BUILD_TUPLE', *args, arg=len(args))
+    self.opcode('BUILD_TUPLE', *args, arg=len(args), delta=1)
 
 
 @r.builtin('=')
