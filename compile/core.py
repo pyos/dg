@@ -21,9 +21,10 @@ class Compiler:
 
         return lambda f: cls.builtins.__setitem__(name, f) or f
 
-    def opcode(self, opcode, *args, arg=0, delta):
+    def opcode(self, opcode, *args, delta, **kwargs):
 
         self.load(*args)
+        arg = kwargs.get('arg', len(args))
         return self.code.append(opcode, arg, -len(args) + delta)
 
     def store_top(self, type, var, *args, dup=True):

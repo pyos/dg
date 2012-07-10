@@ -34,6 +34,7 @@ class r (core.Compiler):
     builtins = {
         '':   core.Compiler.call
       , ':':  core.Compiler.call
+      , ',':  lambda self, a, *bs: self.opcode('BUILD_TUPLE', *syntax.tuple_(a, *bs), delta=1)
       , '$':  lambda self, a, *bs, c=tree.Closure: self.call(a, *[c([b]) for b in bs] or [c()])
       , ':.': lambda self, a, *bs: (self.call(a), [self.opcode('LOAD_ATTR', arg=b, delta=0) for b in bs])
 
@@ -89,23 +90,6 @@ class r (core.Compiler):
       , '.~':  lambda self, a, b: self.opcode('DELETE_ATTR',   None, a, arg=b, delta=1)
       , '!!~': lambda self, a, b: self.opcode('DELETE_SUBSCR', None, a,     b, delta=1)
     }
-
-
-@r.builtin(',')
-#
-# `init, last`
-#
-# Append last to `init` if `init` is a syntactic tuple,
-# yield `(init, last)` otherwise.
-#
-# `init,`
-#
-# Return `init` if it's a syntactic tuple, and the tuple containing `init` otherwise.
-#
-def tuple(self, init, *last):
-
-    args = syntax.tuple_(init, *last)
-    self.opcode('BUILD_TUPLE', *args, arg=len(args), delta=1)
 
 
 @r.builtin('=')
