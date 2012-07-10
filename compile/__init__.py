@@ -120,7 +120,7 @@ def store(self, var, expr):
 
     if type == const.AT.IMPORT:
 
-        self.opcode('IMPORT_NAME', args[0], None, arg=expr)
+        self.opcode('IMPORT_NAME', args[0], None, arg=expr, delta=1)
 
     else:
 
