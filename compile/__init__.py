@@ -35,6 +35,7 @@ class r (core.Compiler):
         '':   core.Compiler.call
       , ':':  core.Compiler.call
       , '$':  lambda self, a, *bs, c=tree.Closure: self.call(a, *[c([b]) for b in bs] or [c()])
+      , ':.': lambda self, a, *bs: (self.call(a), [self.opcode('LOAD_ATTR', arg=b, delta=0) for b in bs])
 
       , 'or':     varary_cond('JUMP_IF_TRUE_OR_POP')
       , 'and':    varary_cond('JUMP_IF_FALSE_OR_POP')

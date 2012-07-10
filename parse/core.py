@@ -26,6 +26,7 @@ class Parser (libparse.Parser):
     OPERATOR_PRECEDENCE = lambda self, i, q={
       # Scope resolution
         '.':   0,
+       ':.':   0,
       # Keyword arguments
         ':':  -1,
       # Function application
