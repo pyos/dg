@@ -137,16 +137,6 @@ class MutableCode:
 
   ### OPCODE MANIPULATION
 
-    def __getattr__(self, name):
-
-        if name.isupper():
-
-            # `MutableCode.SOME_OPCODE_NAME(...)` is an alias to
-            # `MutableCode.append('SOME_OPCODE_NAME', ...)`
-            return functools.partial(self.append, name)
-
-        raise AttributeError(name)
-
     def append(self, name, value=0, delta=0):
 
         '''Append a new opcode to the bytecode sequence.

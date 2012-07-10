@@ -9,29 +9,24 @@ from .interactive import Interactive
 
 class Interactive (Interactive):
 
-    def __init__(self, args):
-
-        super().__init__()
-
-        self.args = args
-
-    def traceback(self, trace):
-
-        # When running in non-interactive mode, strip the first 4 lines.
-        # These correspond to stuff in this module.
-        return super().traceback(trace)[4 * (not sys.stdin.isatty()):]
-
     def compile(self, code):
 
         q = parse.r.compile_command(code)
-        q = q if q is None else compile.r(q, name='<module>', single=True)
-        return q
+        return q if q is None else compile.r().compile(q, name='<module>')
+
+    def eval(self, q, ns):
+
+        self.displayhook(eval(q, ns))
+
+    def traceback(self, trace):
+
+        return super().traceback(trace)[sys.stdin.isatty() or 4:]
 
     def run(self, ns):
 
         q = parse.r(sys.stdin.read(), sys.stdin.name)
-        q = compile.r(q, name='<module>')
-        return self.eval(q, ns)
+        q = compile.r().compile(q, name='<module>')
+        return eval(q, ns)
 
 
 parser = argparse.ArgumentParser()
@@ -42,4 +37,4 @@ args = parser.parse_args()
 sys.argv = [args.file.name if args.file else '-'] + args.arguments
 sys.stdin = args.file or sys.stdin
 
-Interactive(args).shell(__name__)
+Interactive().shell(__name__)

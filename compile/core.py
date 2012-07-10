@@ -16,44 +16,26 @@ class Compiler:
         # An expression currently being processed by innermost `load`.
         self._loading = None
 
-    def __new__(cls, *args, **kwargs):
-
-        obj = super(type, cls).__new__(cls)
-        obj.__init__()
-        return obj.compile(*args, **kwargs)
-
-    @classmethod
-    def make(cls):
-
-        class _(cls): builtins = {}
-        return _
-
     @classmethod
     def builtin(cls, name):
 
-        def deco(f):
+        return lambda f: cls.builtins.__setitem__(name, f) or f
 
-            cls.builtins[name] = f
-            return f
-
-        return deco
-
-    def opcode(self, opcode, *args, arg=0, delta=1, inplace=False, ret=None):
+    def opcode(self, opcode, *args, arg=0, delta):
 
         self.load(*args)
-        self.code.append(opcode, arg, -len(args) + delta)
-        inplace and self.store_top(*syntax.assignment_target(args[0]))
+        return self.code.append(opcode, arg, -len(args) + delta)
 
     def store_top(self, type, var, *args, dup=True):
 
-        dup and self.code.DUP_TOP(delta=1)
+        dup and self.opcode('DUP_TOP', delta=1)
 
         if type == const.AT.UNPACK:
 
             ln, star = args
-
-            star < 0 and self.code.UNPACK_SEQUENCE(ln, ln - 1)
-            star < 0 or  self.code.UNPACK_EX(star + 256 * (ln - star - 1), ln - 1)
+            op  = 'UNPACK_SEQUENCE'            if star < 0 else 'UNPACK_EX'
+            arg = star + 256 * (ln - star - 1) if star > 0 else ln
+            self.opcode(op, arg=arg, delta=ln - 1)
 
             for item in var:
 
@@ -61,23 +43,22 @@ class Compiler:
 
         elif type == const.AT.ATTR:
 
-            self.load(var[0])
-            self.code.STORE_ATTR(var[1], -2)
+            self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
 
         elif type == const.AT.ITEM:
 
-            self.load(*var)
-            self.code.STORE_SUBSCR(delta=-3)
+            self.opcode('STORE_SUBSCR', *var, delta=-1)
 
         else:
 
-            if var in self.code.cellnames:
+            syntax.ERROR(var in self.code.cellnames, const.ERR.FREEVAR_ASSIGNMENT)
 
-                raise Exception(const.ERR.FREEVAR_ASSIGNMENT)
-
-            self.code.STORE_DEREF (var, -1) if var in self.code.cellvars else \
-            self.code.STORE_NAME  (var, -1) if self.code.slowlocals else \
-            self.code.STORE_FAST  (var, -1)
+            self.opcode(
+                'STORE_DEREF' if var in self.code.cellvars else
+                'STORE_NAME'  if self.code.slowlocals else
+                'STORE_FAST',
+                arg=var, delta=-1
+            )
 
     def call(self, f, *args, preloaded=0):
 
@@ -90,24 +71,19 @@ class Compiler:
         f, posargs, kwargs, vararg, varkwarg = syntax.call(f, *args)
         preloaded or self.load(f)
         self.load(*posargs)
-        self.load_map(kwargs)
-        self.load(*vararg)
-        self.load(*varkwarg)
+        self.load(**kwargs)
 
-        (
-            self.code.CALL_FUNCTION_VAR_KW if vararg and varkwarg else
-            self.code.CALL_FUNCTION_VAR    if vararg else
-            self.code.CALL_FUNCTION_KW     if varkwarg else
-            self.code.CALL_FUNCTION
-        )(
-            len(posargs) + 256 * len(kwargs) + preloaded,
-            delta=(
-                -len(posargs) - 2 * len(kwargs)
-                -len(vararg)  - len(varkwarg) - preloaded
-            )
+        self.opcode(
+            'CALL_FUNCTION_VAR_KW' if vararg and varkwarg else
+            'CALL_FUNCTION_VAR'    if vararg else
+            'CALL_FUNCTION_KW'     if varkwarg else
+            'CALL_FUNCTION',
+            *vararg + varkwarg,
+            arg=len(posargs) + 256 * len(kwargs) + preloaded,
+            delta=-len(posargs) - 2 * len(kwargs) - preloaded
         )
 
-    def load(self, *es):
+    def load(self, *es, **kws):
 
         for e in es:
 
@@ -124,7 +100,7 @@ class Compiler:
                 for not_at_end, q in enumerate(e, -len(e) + 1):
 
                     self.load(q)
-                    not_at_end and self.code.POP_TOP(delta=-1)
+                    not_at_end and self.opcode('POP_TOP', delta=-1)
 
                 e or self.load(None)
 
@@ -134,15 +110,18 @@ class Compiler:
 
             elif isinstance(e, tree.Link):
 
-                self.code.LOAD_DEREF  (e, 1) if e in self.code.cellvars  else \
-                self.code.LOAD_FAST   (e, 1) if e in self.code.varnames  else \
-                self.code.LOAD_DEREF  (e, 1) if e in self.code.cellnames else \
-                self.code.LOAD_NAME   (e, 1) if self.code.slowlocals     else \
-                self.code.LOAD_GLOBAL (e, 1)
+                self.opcode(
+                    'LOAD_DEREF' if e in self.code.cellvars  else
+                    'LOAD_FAST'  if e in self.code.varnames  else
+                    'LOAD_DEREF' if e in self.code.cellnames else
+                    'LOAD_NAME'  if self.code.slowlocals     else
+                    'LOAD_GLOBAL',
+                    arg=e, delta=1
+                )
 
             else:
 
-                self.code.LOAD_CONST(e, 1)
+                self.opcode('LOAD_CONST', arg=e, delta=1)
 
             # NOTE `self._loading` may become garbage because of exceptions.
             self._loading = _backup
@@ -151,21 +130,19 @@ class Compiler:
             #     might have been calculated improperly.
             assert self.code.cstacksize == stacksize + 1, 'stack leaked'
 
-    def load_map(self, d):
+        for k, v in kws.items():
 
-        for k, v in d.items():
+            self.load(k, v)
 
-            self.load(str(k), v)
-
-    def compile(self, e, into=None, name='<lambda>', single=False):
+    def compile(self, expr, into=None, name='<lambda>'):
 
         backup = self.code
         self.code = codegen.MutableCode(isfunc=False) if into is None else into
 
-        if hasattr(e, 'reparse_location'):
+        if hasattr(expr, 'reparse_location'):
 
-            self.code.filename = e.reparse_location.filename
-            self.code.lineno   = e.reparse_location.start[1]
+            self.code.filename = expr.reparse_location.filename
+            self.code.lineno   = expr.reparse_location.start[1]
 
         else:
 
@@ -174,34 +151,19 @@ class Compiler:
 
         try:
 
-            self.load(e)
-
-            if single:
-
-                self.code.DUP_TOP(delta=1)
-                self.code.PRINT_EXPR(delta=-1)
-
-            self.code.RETURN_VALUE(delta=-1)
+            self.opcode('RETURN_VALUE', expr, delta=0)
             return self.code.compile(name)
 
-        except (SyntaxError, AssertionError) as e:
+        except Exception as err:
 
-            raise
-
-        except Exception as e:
-
-            if __debug__:
+            if __debug__ or isinstance(err, (SyntaxError, AsserionError)):
 
                 raise
 
-            raise SyntaxError(
-                str(e),
-                (
-                    self._loading.reparse_location.filename,
-                    self._loading.reparse_location.start[1],
-                    1, str(self._loading)
-                )
-            )
+            fn = self._loading.reparse_location.filename
+            ln = self._loading.reparse_location.start[1]
+            tx = str(self._loading)
+            raise SyntaxError(str(err), (fn, ln, 1, tx))
 
         finally:
 

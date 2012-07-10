@@ -3,73 +3,91 @@ from .. import const
 from ..parse import tree
 from ..parse import syntax
 
-# Choose a function based on the number of arguments.
-varary  = lambda *fs: lambda *xs: fs[len(xs) - 2](*xs)
 
-r = core.Compiler.make()
+def varary(multiple, arg=0, inplace=False, single=None):
 
-# Stuff not worth named functions.
-r.builtins = {
-    'return':  lambda self, a: (self.opcode('DUP_TOP', a), self.code.RETURN_VALUE())
-  , 'yield':   lambda self, a: self.opcode('YIELD_VALUE',  a)
+    def f(self, a, *bs):
 
-  , 'not': lambda self, a: self.opcode('UNARY_NOT',    a)
-  , '~':   lambda self, a: self.opcode('UNARY_INVERT', a)
+        self.load(a)
+        ps = [self.opcode(multiple, b, arg=arg, delta=0) for b in bs]
+        ps or self.opcode(single,      arg=arg, delta=0)
+        inplace and self.store_top(*syntax.assignment_target(a))
 
-  , '+': varary(
-        lambda self, a:    self.opcode('UNARY_POSITIVE', a)
-      , lambda self, a, b: self.opcode('BINARY_ADD',     a, b)
-    )
+    return f
 
-  , '-': varary(
-        lambda self, a:    self.opcode('UNARY_NEGATIVE',  a)
-      , lambda self, a, b: self.opcode('BINARY_SUBTRACT', a, b)
-    )
 
-  , '<':   lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='<')
-  , '<=':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='<=')
-  , '==':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='==')
-  , '!=':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='!=')
-  , '>':   lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='>')
-  , '>=':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='>=')
-  , 'is':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='is')
-  , 'in':  lambda self, a, b: self.opcode('COMPARE_OP', a, b, arg='in')
+def varary_cond(jmp, p=lambda xs: xs):
 
-  , 'or':  lambda self, a, b: (self.load(a), self.code.JUMP_IF_TRUE_OR_POP (delta=-1), self.load(b))[1]()
-  , 'and': lambda self, a, b: (self.load(a), self.code.JUMP_IF_FALSE_OR_POP(delta=-1), self.load(b))[1]()
-  , 'if':     lambda self, b, a: self.builtins['and'](self, a, b)
-  , 'unless': lambda self, b, a: self.builtins['or'] (self, a, b)
+    def f(self, *xs, n=lambda: 0):
 
-  , '.':   lambda self, a, b: self.opcode('LOAD_ATTR',            a, arg=b)
-  , '!!':  lambda self, a, b: self.opcode('BINARY_SUBSCR',        a, b)
-  , '*':   lambda self, a, b: self.opcode('BINARY_MULTIPLY',      a, b)
-  , '**':  lambda self, a, b: self.opcode('BINARY_POWER',         a, b)
-  , '/':   lambda self, a, b: self.opcode('BINARY_TRUE_DIVIDE',   a, b)
-  , '//':  lambda self, a, b: self.opcode('BINARY_FLOOR_DIVIDE',  a, b)
-  , '%':   lambda self, a, b: self.opcode('BINARY_MODULO',        a, b)
-  , '&':   lambda self, a, b: self.opcode('BINARY_AND',           a, b)
-  , '^':   lambda self, a, b: self.opcode('BINARY_XOR',           a, b)
-  , '|':   lambda self, a, b: self.opcode('BINARY_OR',            a, b)
-  , '<<':  lambda self, a, b: self.opcode('BINARY_LSHIFT',        a, b)
-  , '>>':  lambda self, a, b: self.opcode('BINARY_RSHIFT',        a, b)
+        *bs, a = p(xs)
+        ps = [self.opcode(jmp, b, delta=0) for b in bs]
+        self.load(a)
+        [p() for p in ps]
 
-  , '!!=': lambda self, a, b: self.opcode('BINARY_SUBSCR',        a, b, inplace=True)
-  , '+=':  lambda self, a, b: self.opcode('INPLACE_ADD',          a, b, inplace=True)
-  , '-=':  lambda self, a, b: self.opcode('INPLACE_SUBTRACT',     a, b, inplace=True)
-  , '*=':  lambda self, a, b: self.opcode('INPLACE_MULTIPLY',     a, b, inplace=True)
-  , '**=': lambda self, a, b: self.opcode('INPLACE_POWER',        a, b, inplace=True)
-  , '/=':  lambda self, a, b: self.opcode('INPLACE_TRUE_DIVIDE',  a, b, inplace=True)
-  , '//=': lambda self, a, b: self.opcode('INPLACE_FLOOR_DIVIDE', a, b, inplace=True)
-  , '%=':  lambda self, a, b: self.opcode('INPLACE_MODULO',       a, b, inplace=True)
-  , '&=':  lambda self, a, b: self.opcode('INPLACE_AND',          a, b, inplace=True)
-  , '^=':  lambda self, a, b: self.opcode('INPLACE_XOR',          a, b, inplace=True)
-  , '|=':  lambda self, a, b: self.opcode('INPLACE_OR',           a, b, inplace=True)
-  , '<<=': lambda self, a, b: self.opcode('INPLACE_LSHIFT',       a, b, inplace=True)
-  , '>>=': lambda self, a, b: self.opcode('INPLACE_RSHIFT',       a, b, inplace=True)
+    return f
 
-  , '.~':  lambda self, a, b: (self.opcode('DELETE_ATTR',         a, arg=b, delta=0), self.load(None))
-  , '!!~': lambda self, a, b: (self.opcode('DELETE_SUBSCR',       a, b,     delta=0), self.load(None))
-}
+
+class r (core.Compiler):
+
+    # Stuff not worth named functions.
+    builtins = {
+        '':   core.Compiler.call
+      , ':':  core.Compiler.call
+      , '$':  lambda self, a, *bs, c=tree.Closure: self.call(a, *[c([b]) for b in bs] or [c()])
+
+      , 'or':     varary_cond('JUMP_IF_TRUE_OR_POP')
+      , 'and':    varary_cond('JUMP_IF_FALSE_OR_POP')
+      , 'unless': varary_cond('JUMP_IF_TRUE_OR_POP',  reversed)
+      , 'if':     varary_cond('JUMP_IF_FALSE_OR_POP', reversed)
+      , 'return': lambda self, a: self.opcode('RETURN_VALUE', None, a, delta=1)
+      , 'yield':  lambda self, a: self.opcode('YIELD_VALUE',        a, delta=1)
+
+      , 'not': lambda self, a: self.opcode('UNARY_NOT',    a, delta=1)
+      , '~':   lambda self, a: self.opcode('UNARY_INVERT', a, delta=1)
+
+        # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
+      , '<':   varary('COMPARE_OP', '<')
+      , '<=':  varary('COMPARE_OP', '<=')
+      , '==':  varary('COMPARE_OP', '==')
+      , '!=':  varary('COMPARE_OP', '!=')
+      , '>':   varary('COMPARE_OP', '>')
+      , '>=':  varary('COMPARE_OP', '>=')
+      , 'is':  varary('COMPARE_OP', 'is')
+      , 'in':  varary('COMPARE_OP', 'in')
+
+      , '!!':  varary('BINARY_SUBSCR')
+      , '+':   varary('BINARY_ADD',      single='UNARY_POSITIVE')
+      , '-':   varary('BINARY_SUBTRACT', single='UNARY_NEGATIVE')
+      , '*':   varary('BINARY_MULTIPLY')
+      , '**':  varary('BINARY_POWER')
+      , '/':   varary('BINARY_TRUE_DIVIDE')
+      , '//':  varary('BINARY_FLOOR_DIVIDE')
+      , '%':   varary('BINARY_MODULO')
+      , '&':   varary('BINARY_AND')
+      , '^':   varary('BINARY_XOR')
+      , '|':   varary('BINARY_OR')
+      , '<<':  varary('BINARY_LSHIFT')
+      , '>>':  varary('BINARY_RSHIFT')
+
+      , '!!=': varary('BINARY_SUBSCR',        inplace=True)
+      , '+=':  varary('INPLACE_ADD',          inplace=True)
+      , '-=':  varary('INPLACE_SUBTRACT',     inplace=True)
+      , '*=':  varary('INPLACE_MULTIPLY',     inplace=True)
+      , '**=': varary('INPLACE_POWER',        inplace=True)
+      , '/=':  varary('INPLACE_TRUE_DIVIDE',  inplace=True)
+      , '//=': varary('INPLACE_FLOOR_DIVIDE', inplace=True)
+      , '%=':  varary('INPLACE_MODULO',       inplace=True)
+      , '&=':  varary('INPLACE_AND',          inplace=True)
+      , '^=':  varary('INPLACE_XOR',          inplace=True)
+      , '|=':  varary('INPLACE_OR',           inplace=True)
+      , '<<=': varary('INPLACE_LSHIFT',       inplace=True)
+      , '>>=': varary('INPLACE_RSHIFT',       inplace=True)
+
+      , '.':   lambda self, a, b: self.opcode('LOAD_ATTR',           a, arg=b, delta=1)
+      , '.~':  lambda self, a, b: self.opcode('DELETE_ATTR',   None, a, arg=b, delta=1)
+      , '!!~': lambda self, a, b: self.opcode('DELETE_SUBSCR', None, a,     b, delta=1)
+    }
 
 
 @r.builtin(',')
@@ -87,30 +105,6 @@ def tuple(self, init, *last):
 
     args = syntax.tuple_(init, *last)
     self.opcode('BUILD_TUPLE', *args, arg=len(args))
-
-
-@r.builtin('')
-@r.builtin(':')
-#
-# `f arg`
-# `f: arg`
-#
-# Call `f` with `arg`, which may be a keyword argument (`kw: value`).
-#
-def call(self, *args):
-
-    return self.call(*args)
-
-
-@r.builtin('$')
-#
-# `f $ arg`  Call `f` with `(arg)`.
-# `f $`      Call `f` with `()`.
-#
-def pipe(self, f, *args):
-
-    args = [tree.Closure([arg]) for arg in args] if args else [tree.Closure()]
-    return self.call(f, *args)
 
 
 @r.builtin('=')
@@ -151,7 +145,7 @@ def store(self, var, expr):
 def function(self, args, code, hook_pre=0, hook_post=0, subf_hook_pre=0):
 
     args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(args, code)
-    self.load_map(kwdefs)
+    self.load(**kwdefs)
     self.load(*defs)
 
     mcode = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
@@ -174,44 +168,19 @@ def function(self, args, code, hook_pre=0, hook_post=0, subf_hook_pre=0):
             if freevar in self.code.varnames:
 
                 # Make fast slot accessible from inner scopes.
-                self.code.LOAD_FAST  (freevar, delta=1)
-                self.code.STORE_DEREF(freevar, delta=-1)
+                self.opcode('LOAD_FAST',   arg=freevar, delta=1)
+                self.opcode('STORE_DEREF', arg=freevar, delta=-1)
 
-            self.code.LOAD_CLOSURE(freevar, delta=1)
+            self.opcode('LOAD_CLOSURE', arg=freevar, delta=1)
 
-        self.code.BUILD_TUPLE(len(code.co_freevars), -len(code.co_freevars) + 1)
+        self.opcode('BUILD_TUPLE', arg=len(code.co_freevars), delta=-len(code.co_freevars) + 1)
 
-    self.load(code)
-    self.code.append(
+    self.opcode(
         'MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION',
-        len(defs) + 256 * len(kwdefs),
-        -len(kwdefs) * 2 - len(defs) - bool(code.co_freevars)
+        code,
+        arg=len(defs) + 256 * len(kwdefs),
+        delta=-len(kwdefs) * 2 - len(defs) - bool(code.co_freevars) + 1
     )
-
-
-@r.builtin('while')
-#
-# `while: cond block`
-#
-# Evaluate `block` in the current namespace until `cond` becomes False. 
-#
-def while_(self, cond, block):
-
-    exit_ptr = self.code.SETUP_LOOP()
-    cond_ptr = self.code.JUMP_ABSOLUTE(-1)
-    self.load(cond)
-    else_ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
-    self.load(block)
-    self.code.POP_TOP(delta=-1)
-    cond_ptr()
-    else_ptr()
-    self.code.POP_BLOCK()
-    # self.load(else_)
-    # self.code.POP_TOP(delta=-1)
-    exit_ptr()
-    # FIXME popping a block resets the stack.
-    #   We can't return values from `while` because of that.
-    self.load(None)
 
 
 @r.builtin('inherit')
@@ -224,28 +193,27 @@ def inherit(self, *stuff):
 
     *args, block = stuff
 
-    self.code.LOAD_BUILD_CLASS(delta=1)
+    self.opcode('LOAD_BUILD_CLASS', delta=1)
     function(
         self, tree.Link('__locals__'), block,
         lambda code: (
-            code.LOAD_FAST('__locals__', 1),
-            code.STORE_LOCALS(delta=-1),
-            code.LOAD_NAME ('__name__',    1),
-            code.STORE_NAME('__module__', -1),
+            code.append('LOAD_FAST', '__locals__', 1),
+            code.append('STORE_LOCALS', delta=-1),
+            code.append('LOAD_NAME', '__name__', 1),
+            code.append('STORE_NAME', '__module__', -1),
         ),
         lambda code: (
             code.bytecode.pop(),
-            code.POP_TOP(),
+            code.append('POP_TOP'),
             # LOAD_CLOSURE puts a *cell* onto the stack, not its contents.
             # The __class__ cell is empty by now.
             # CPython seems to perform some black magic to fill it.
-            code.LOAD_CLOSURE('__class__', 1),
-            code.RETURN_VALUE(),
+            code.append('LOAD_CLOSURE', '__class__', 1),
+            code.append('RETURN_VALUE'),
         ),
         lambda code: code.freevars.append('__class__')
     )
-    self.load('<class>')
-    self.call(None, *args, preloaded=2)
+    self.call(None, '<class>', *args, preloaded=1)
 
 
 @r.builtin('else')
@@ -264,10 +232,8 @@ def else_(self, cond, otherwise):
         const.COND.UNLESS: 'POP_JUMP_IF_TRUE',
     }[code]
 
-    self.load(cond)
-    ptr = self.code.append(code, delta=-1)
-    self.load(then)
-    jmp = self.code.JUMP_FORWARD(delta=-1)
+    ptr = self.opcode(code,           cond, delta=0)
+    jmp = self.opcode('JUMP_FORWARD', then, delta=0)
     ptr()
     self.load(otherwise)
     jmp()
@@ -287,24 +253,17 @@ def else_(self, cond, otherwise):
 #
 def switch(self, cases):
 
-    cases = syntax.switch(cases)
     jumps = []
-    ptr   = None
 
-    for cond, action in cases:
+    for cond, action in syntax.switch(cases):
 
-        ptr and ptr()
-        self.load(cond)
-        ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
-        self.load(action)
-        jumps.append(self.code.JUMP_FORWARD(delta=-1))
+        jumps and jumps.pop(-2)()
+        jumps.append(self.opcode('POP_JUMP_IF_FALSE', cond, delta=0))
+        jumps.append(self.opcode('JUMP_FORWARD',    action, delta=0))
 
-    ptr and ptr()
+    jumps and jumps.pop(-2)()
     self.load(None)  # In case nothing matched.
-
-    for jmp in jumps:
-
-        jmp()
+    [jump() for jump in jumps]
 
 
 @r.builtin('unsafe')
@@ -330,21 +289,16 @@ def unsafe(self, cases):
     # This will be our return value.
     self.load(None)
 
-    if has_finally:
-
-        to_finally = self.code.SETUP_FINALLY()
-
-    to_except = self.code.SETUP_EXCEPT()
-    self.load(try_)
+    to_finally = has_finally and self.opcode('SETUP_FINALLY', delta=0)
+    to_except  = self.opcode('SETUP_EXCEPT', delta=0)
     # Replace that None with the value returned by `try_`
     # to fool the POP_BLOCK instruction.
-    self.code.ROT_TWO()
-    self.code.POP_BLOCK(delta=-1)
+    self.opcode('ROT_TWO', try_, delta=1)
+    self.opcode('POP_BLOCK', delta=-1)
     # Er, so there was no exception, let's store None instead.
-    self.load(None)
     # Since we've already POPped_BLOCK, exceptions occured
     # during this assignment will be ignored.
-    self.store_top(*syntax.assignment_target(name))
+    store(self, name, None)
     # XXX I don't know why is that needed.
     self.code.cstacksize -= 1
 
@@ -354,62 +308,57 @@ def unsafe(self, cases):
     #
     # Stack:: [try_, None] or [None, traceback, value, type]
     #
-    to_else = self.code.JUMP_FORWARD(delta=3)
+    to_else = self.opcode('JUMP_FORWARD', delta=3)
     to_except()
-    self.code.ROT_TWO()
+    self.opcode('ROT_TWO', delta=0)
     self.store_top(*syntax.assignment_target(name))
-    self.code.ROT_TWO()
+    self.opcode('ROT_TWO', delta=0)
     to_else()
 
     # The same `switch` statement as above...
-    ptr  = None
-    jmps = []
+    jumps = []
 
     for cond, case in cases:
 
-        ptr and ptr()
-        self.load(cond)
-        ptr = self.code.POP_JUMP_IF_FALSE(delta=-1)
-        self.load(case)
+        jumps and jumps.pop(-2)()
+        jumps.append(self.opcode('POP_JUMP_IF_FALSE', cond, delta=0))
         # FIXME we can't return anything from handlers.
-        self.code.POP_TOP(delta=-1)
-        jmps.append(self.code.JUMP_FORWARD())
+        self.opcode('POP_TOP', case, delta=0)
+        jumps.append(self.opcode('JUMP_FORWARD', delta=0))
 
-    ptr and ptr()
+    jumps and jumps.pop(-2)()
     # This will re-raise the exception if nothing matched
     # (and there was an exception. And there is no `finally` clause.)
-    self.code.END_FINALLY(delta=-3)
+    self.opcode('END_FINALLY', delta=-3)
 
     # The problem is, now we need to POP_EXCEPT, but only
     # if there was a handled exception.
 
     # First, jump over this whole part if the exception was not handled.
-    unhandled_exception = self.code.JUMP_FORWARD()
+    unhandled_exception = self.opcode('JUMP_FORWARD', delta=0)
 
-    for jmp in jmps: jmp()
+    for jmp in jumps: jmp()
 
     # Second, check if the exception type is None, in which case
     # there was no exception at all.
-    self.code.DUP_TOP(delta=1)
-    self.load(None)
-    self.code.COMPARE_OP('is', delta=-1)
+    self.opcode('DUP_TOP', delta=1)
+    self.opcode('COMPARE_OP', None, arg='is', delta=0)
     # Then skip POP_EXCEPT if that is the case.
-    no_exception = self.code.POP_JUMP_IF_TRUE(delta=-1)
+    no_exception = self.opcode('POP_JUMP_IF_TRUE', delta=-1)
 
-    self.code.POP_EXCEPT()
+    self.opcode('POP_EXCEPT', delta=0)
     unhandled_exception()
     no_exception()
 
     if has_finally:
 
         # If the interpreter made it here, one of the `except` clauses matched.
-        self.code.POP_BLOCK(delta=-1)
+        self.opcode('POP_BLOCK', delta=-1)
         self.load(None)
 
         to_finally()
-        self.load(finally_)
-        self.code.POP_TOP(delta=-1)
-        self.code.END_FINALLY()
+        self.opcode('POP_TOP', finally_, delta=0)
+        self.opcode('END_FINALLY', delta=0)
 
     # We should be left with a return value by now.
 
@@ -422,7 +371,6 @@ def unsafe(self, cases):
 #
 def raise_(self, exc):
 
-    self.load(exc)
-    self.code.DUP_TOP(delta=1)
-    self.code.RAISE_VARARGS(1, delta=-1)
+    self.opcode('DUP_TOP', exc, delta=2)
+    self.opcode('RAISE_VARARGS', arg=1, delta=-1)
 
