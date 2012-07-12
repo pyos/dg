@@ -91,6 +91,66 @@ class r (core.Compiler):
       , '!!~': lambda self, a, b: self.opcode('DELETE_SUBSCR', None, a,     b, delta=1)
     }
 
+    fake_methods = {}
+
+
+@r.builtin('while', fake_method=True)
+#
+# `var.while: expr`
+#
+# Evaluate `expr` while `var` is true.
+#
+def while_(self, cond, block):
+
+    self.load(None)
+    exit_ptr = self.opcode('SETUP_LOOP', delta=0)
+    cond_ptr = self.opcode('JUMP_ABSOLUTE', arg=-1, delta=0)
+    else_ptr = self.opcode('POP_JUMP_IF_FALSE', cond, delta=0)
+    self.opcode('ROT_TWO', block, delta=1)
+    self.opcode('POP_TOP', delta=-1)
+    cond_ptr()
+    else_ptr()
+    self.opcode('POP_BLOCK', delta=0)
+    exit_ptr()
+
+
+@r.builtin('map', fake_method=True)
+#
+# `var.map: function`
+#
+# Same as `map function var`.
+#
+def map_(self, iterable, function):
+
+    self.opcode('LOAD_GLOBAL', arg='map', delta=1)
+    self.opcode('CALL_FUNCTION', function, iterable, delta=0)
+
+
+@r.builtin('each', fake_method=True)
+#
+# `var.each: variable stuff`
+#
+# Equivalent to `for variable in var: stuff`.
+#
+def each(self, iterable, variable, stuff):
+
+    self.opcode('GET_ITER', None, iterable, delta=2)
+
+    loop_ptr = self.opcode('JUMP_ABSOLUTE', arg=-1, delta=0)
+    end_ptr  = self.opcode('FOR_ITER', delta=1)
+
+    self.store_top(*syntax.assignment_target(variable), dup=False)
+    self.load(stuff)
+    self.opcode('ROT_THREE', delta=0)
+    self.opcode('ROT_TWO',   delta=0)
+    self.opcode('POP_TOP',   delta=-1)
+
+    loop_ptr()
+    end_ptr()
+
+    # FOR_ITER popped `iterable` off the stack.
+    self.code.cstacksize -= 1
+
 
 @r.builtin('=')
 #
