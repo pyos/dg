@@ -6,6 +6,9 @@ from ..parse import syntax
 
 class Compiler:
 
+    builtins     = {}
+    fake_methods = {}
+
     def __init__(self):
 
         super().__init__()
@@ -17,9 +20,12 @@ class Compiler:
         self._loading = None
 
     @classmethod
-    def builtin(cls, name):
+    def builtin(cls, name, fake_method=False):
 
-        return lambda f: cls.builtins.__setitem__(name, f) or f
+        return lambda f: (
+            cls.fake_methods if fake_method else
+            cls.builtins
+        ).__setitem__(name, f) or f
 
     def opcode(self, opcode, *args, delta, **kwargs):
 
@@ -68,6 +74,12 @@ class Compiler:
         if isinstance(f, tree.Link) and f in self.builtins:
 
             return self.builtins[f](self, *args)
+
+        attr = syntax.call_attr(f)
+
+        if attr and attr[1] in self.fake_methods:
+
+            return self.fake_methods[attr[1]](self, attr[0], *args)
 
         f, posargs, kwargs, vararg, varkwarg = syntax.call(f, *args)
         preloaded or self.load(f)

@@ -202,6 +202,13 @@ def call_pre(f, *args):
     return [f] + args3 + args2 + list(args)
 
 
+def call_attr(f):
+
+    args = tree.matchA(f, ST_ASSIGN_ATTR)
+    ERROR(args and not isinstance(args[1], tree.Link), const.ERR.NONCONST_ATTR)
+    return args
+
+
 def call(f, *args):
 
     posargs  = []
