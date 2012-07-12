@@ -11,7 +11,7 @@ class Interactive (Interactive):
 
     def compile(self, code):
 
-        q = parse.r.compile_command(code)
+        q = parse.r().compile_command(code)
         return q if q is None else compile.r().compile(q, name='<module>')
 
     def eval(self, q, ns):
@@ -24,8 +24,8 @@ class Interactive (Interactive):
 
     def run(self, ns):
 
-        q = parse.r(sys.stdin.read(), sys.stdin.name)
-        q = compile.r().compile(q, name='<module>')
+        q = parse.r().reset(sys.stdin.read(), sys.stdin.name)
+        q = compile.r().compile(next(q), name='<module>')
         return eval(q, ns)
 
 

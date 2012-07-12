@@ -75,12 +75,11 @@ class Parser (libparse.Parser):
      'else': -21,
     }.get: q(i, -7)  # Default
 
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
+    def reset(self, *args, **kwargs):
 
         self.stack = None
         self.indent = collections.deque([0])
+        return super().reset(*args, **kwargs)
 
     # Whether an operator's priority is higher than the other one's.
     #
@@ -111,18 +110,17 @@ class Parser (libparse.Parser):
         p2 = self.OPERATOR_PRECEDENCE(in_relation_to)
         return p1 + (operator in self.OPERATOR_RIGHT_FIXITY) > p2
 
-    @classmethod
     # A compiler function for `interactive`, similar to `code.compile_command`.
     #
     # :param code: what to compile.
     #
     # :return: None if `code` is incomplete, `parse(code)` otherwise.
     #
-    def compile_command(cls, code):
+    def compile_command(self, code):
 
         try:
 
-            res = cls(code, '<stdin>')
+            res = next(self.reset(code, '<stdin>'))
 
         except SyntaxError as e:
 

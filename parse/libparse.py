@@ -12,23 +12,6 @@ Location = collections.namedtuple('Location', 'start, end, filename')
 
 class Parser (collections.Iterator):
 
-    def __init__(self, input, filename='<string>'):
-
-        super().__init__()
-
-        self.state  = STATE_AT_FILE_START | STATE_AT_LINE_START
-        self.buffer = input
-        self.offset = 0
-        self.pstack = collections.deque()
-        self.repeat = collections.deque()
-        self.filename = filename
-
-    def __new__(cls, input, filename='<string>'):
-
-        obj = super(type, cls).__new__(cls, input, filename)
-        obj.__init__(input, filename)
-        return next(obj)
-
     @classmethod
     def make(cls):
 
@@ -43,6 +26,16 @@ class Parser (collections.Iterator):
         regex = func.__annotations__.get(func.__code__.co_varnames[1], r'.')
         cls.tokens.append(Token(re.compile(regex, re.DOTALL).match, state, func))
         return func
+
+    def reset(self, input, filename='<string>'):
+
+        self.state  = STATE_AT_FILE_START | STATE_AT_LINE_START
+        self.buffer = input
+        self.offset = 0
+        self.pstack = collections.deque()
+        self.repeat = collections.deque()
+        self.filename = filename
+        return self
 
     def position(self, offset):
 

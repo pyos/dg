@@ -5,7 +5,7 @@ from .. import const
 # CONST
 # {
 globals().update({
-    n: r(v)[0] for n, v in
+    n: next(r().reset(v))[0] for n, v in
     dict(
         ST_GROUP = '(_)'
 
