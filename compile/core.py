@@ -133,7 +133,7 @@ class Compiler:
 
         for k, v in kws.items():
 
-            self.load(k, v)
+            self.load(str(k), v)
 
     def compile(self, expr, into=None, name='<lambda>'):
 
