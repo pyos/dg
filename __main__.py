@@ -26,6 +26,7 @@ class Interactive (Interactive):
 
         q = parse.r().reset(sys.stdin.read(), sys.stdin.name)
         q = compile.r().compile(next(q), name='<module>')
+        sys.stdin = sys.__stdin__
         return eval(q, ns)
 
 
