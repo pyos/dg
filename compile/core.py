@@ -169,7 +169,7 @@ class Compiler:
 
         except Exception as err:
 
-            if __debug__ or isinstance(err, (SyntaxError, AsserionError)):
+            if __debug__ or isinstance(err, (SyntaxError, AssertionError)):
 
                 raise
 
