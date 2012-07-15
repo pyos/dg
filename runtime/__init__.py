@@ -42,4 +42,5 @@ builtins.__dict__.update({
   , 'import': importlib.import_module
   , 'foldl': functools.reduce
   , '~:': functools.partial
+  , '...': Ellipsis
 })
