@@ -10,8 +10,6 @@ A (technically) simple language that compiles to CPython bytecode.
 
 **Unsupported**: CPython 3.0 (lacks various jump instructions) as well as all kinds of Python 2 (the compiler itself is in Python 3.)
 
-Unsupported: Python 2 (including non-reference implementations.)
-
 ## TODO
 
  * a neater syntax for loops (both `for` and `while`)
