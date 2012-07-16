@@ -1,9 +1,7 @@
 import sys
 import argparse
 
-from . import parse
-from . import compile
-from . import runtime
+from . import run
 
 
 parser = argparse.ArgumentParser()
@@ -12,4 +10,4 @@ parser.add_argument('arguments', nargs='*', help='additional arguments')
 args = parser.parse_args()
 
 sys.argv = [args.file.name if args.file else '-'] + args.arguments
-runtime.dg(args.file)
+run.dg(args.file)
