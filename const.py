@@ -54,6 +54,8 @@ ERR = AttrDict(  # error descriptions
   , VARARG_DEFAULT = 'neither *varargs nor **varkwargs can have default values'
     # **varkwargs is not the last argument in function definition.
   , ARG_AFTER_VARKWARGS = '**varkwargs must be the last argument'
+    # *varargs or **varkwargs used on a compile-time function
+  , VARARG_WITH_BUILTIN = 'can\'t call compile-time functions with *varargs'
 
     # `else` did not follow an `if` directly.
   , NOT_AFTER_IF = 'that should be used only after `if` or `unless`'

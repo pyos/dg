@@ -27,6 +27,17 @@ class Compiler:
             cls.builtins
         ).__setitem__(name, f) or f
 
+    @classmethod
+    def callable(cls, func):
+
+        def f(self, *args):
+
+            _, posargs, kwargs, vararg, varkwarg = syntax.call(None, *args)
+            syntax.ERROR(vararg or varkwarg, const.ERR.VARARG_WITH_BUILTIN)
+            return func(self, *posargs, **kwargs)
+
+        return f
+
     def opcode(self, opcode, *args, delta, **kwargs):
 
         self.load(*args)
