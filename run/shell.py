@@ -28,7 +28,7 @@ def traceback(trace):
     trace = trace and trace.tb_next if uses_runpy else trace
 
     # If the next lines are in this module, skip them, too.
-    while trace and trace.tb_frame.f_code is shell.__code__:
+    while trace and trace.tb_frame.f_code is dg.__code__:
 
         trace = trace.tb_next
 
