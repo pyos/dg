@@ -40,10 +40,6 @@ class Interactive:
     #
     def command(self, code, ns):
 
-        if code.strip() == 'exit':
-
-            exit()
-
         p = self.parser.compile_command(code)
         c = self.compiler.compile(p, name='<module>') if p is not None else p
         c and sys.displayhook(eval(c, ns))
