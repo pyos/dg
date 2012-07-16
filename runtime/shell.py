@@ -7,113 +7,87 @@ from .. import parse
 from .. import compile
 
 
-class Interactive:
+# Preprocess the traceback given its root frame.
+#
+# :param trace: `Exception.__traceback__`
+#
+# :return: a new traceback.
+#
+def traceback(trace):
 
-    def __init__(self, input=sys.stdin):
+    uses_runpy  = False
+    runpy_stuff = {runpy._run_module_as_main.__code__, runpy._run_code.__code__}
 
-        super().__init__()
+    # Skip over all entries in `runpy` module.
+    while trace and trace.tb_frame.f_code in runpy_stuff:
 
-        self.input    = input
-        self.parser   = parse.r()
-        self.compiler = compile.r()
+        trace = trace.tb_next
+        uses_runpy = True
 
-    # Read the remaining input, compile it, run, then exit.
-    #
-    # :param ns: the global namespace.
-    #
-    # :return: does not return.
-    #
-    def run(self, ns):
+    # If `runpy` was used, the next line is in `__main__`.
+    trace = trace and trace.tb_next if uses_runpy else trace
 
-        p = self.parser.reset(self.input.read(), self.input.name)
-        c = self.compiler.compile(next(p), name='<module>')
-        eval(c, ns)
-        exit(0)
+    # If the next lines are in this module, skip them, too.
+    while trace and trace.tb_frame.f_code is shell.__code__:
 
-    # Compile and run a single command.
-    #
-    # :param code: whatever was read so far.
-    #
-    # :param ns: the global namespace.
-    #
-    # :return: whether the input was complete.
-    #
-    def command(self, code, ns):
+        trace = trace.tb_next
 
-        p = self.parser.compile_command(code)
-        c = self.compiler.compile(p, name='<module>') if p is not None else p
-        c and sys.displayhook(eval(c, ns))
-        return c
+    return trace
 
-    # Preprocess the traceback given its root frame.
-    #
-    # :param trace: `Exception.__traceback__`
-    #
-    # :return: a new traceback.
-    #
-    def traceback(self, trace):
 
-        uses_runpy = False
+# Start an interactive shell.
+#
+# :param name: name of the module.
+#
+# :return: runs indefinitely.
+#
+def dg(fd, name='__main__'):
 
-        internal    = {self.shell.__code__, self.command.__code__, self.run.__code__}
-        runpy_stuff = {runpy._run_module_as_main.__code__, runpy._run_code.__code__}
+    parser   = parse.r()
+    compiler = compile.r()
+    environ  = {'__name__': name, '__builtins__': __builtins__}
 
-        # Skip over all entries in `runpy` module.
-        while trace and trace.tb_frame.f_code in runpy_stuff:
+    if not fd.isatty():
 
-            trace = trace.tb_next
-            uses_runpy = True
+        p = parser.reset(fd.read(), fd.name)
+        c = compiler.compile(next(p), name='<module>')
+        eval(c, environ)
+        return exit(0)
 
-        # If `runpy` was used, the next line is in `__main__`.
-        trace = trace and trace.tb_next if uses_runpy else trace
+    if fd is sys.stdin:
 
-        # If the next lines are in this module, skip them, too.
-        while trace and trace.tb_frame.f_code in internal:
+        # Run PYTHONSTARTUP first.
+        st = os.environ.get('PYTHONSTARTUP', '')
+        st and eval(builtins.compile(open(st).read(), st, 'exec'), environ)
 
-            trace = trace.tb_next
+    sys.ps1 = getattr(sys, 'ps1', '>>> ')
+    sys.ps2 = getattr(sys, 'ps2', '... ')
+    sys.stdin = fd
 
-        return trace
+    while True:
 
-    # Start an interactive shell.
-    #
-    # :param name: name of the module.
-    #
-    # :return: runs indefinitely.
-    #
-    def shell(self, name='__main__'):
+        try:
 
-        environ = {'__name__': name, '__builtins__': __builtins__}
+            buf  = ''
+            code = None
 
-        self.input.isatty() or self.run(environ)
+            while not code:
 
-        sys.ps1 = getattr(sys, 'ps1', '>>> ')
-        sys.ps2 = getattr(sys, 'ps2', '... ')
+                buf += '\n' + input(sys.ps2 if buf else sys.ps1)
+                tree = parser.compile_command(buf)
+                code = tree is not None and compiler.compile(tree, name='<module>')
 
-        if self.input is sys.stdin:
+            sys.displayhook(eval(code, environ))
 
-            # Run PYTHONSTARTUP first.
-            st = os.environ.get('PYTHONSTARTUP', '')
-            st and eval(builtins.compile(open(st).read(), st, 'exec'), environ)
+        except SystemExit:
 
-        while True:
+            raise
 
-            try:
+        except EOFError:
 
-                buf  = ''
+            exit()
 
-                while not (buf and self.command(buf, environ)):
+        except BaseException as e:
 
-                    buf += '\n' + input(sys.ps2 if buf else sys.ps1)
-
-            except SystemExit:
-
-                raise
-
-            except EOFError:
-
-                exit()
-
-            except BaseException as e:
-
-                sys.excepthook(type(e), e, self.traceback(e.__traceback__))
+            sys.excepthook(type(e), e, traceback(e.__traceback__))
 
