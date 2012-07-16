@@ -114,18 +114,6 @@ def while_(self, cond, block):
     exit_ptr()
 
 
-@r.builtin('map', fake_method=True)
-#
-# `var.map: function`
-#
-# Same as `map function var`.
-#
-def map_(self, iterable, function):
-
-    self.opcode('LOAD_GLOBAL', arg='map', delta=1)
-    self.opcode('CALL_FUNCTION', function, iterable, delta=0)
-
-
 @r.builtin('each', fake_method=True)
 #
 # `var.each: variable stuff`
