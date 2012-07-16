@@ -114,21 +114,22 @@ def while_(self, cond, block):
     exit_ptr()
 
 
-@r.builtin('each', fake_method=True)
+@r.builtin('for', fake_method=True)
+@r.callable
 #
 # `var.each: variable stuff`
 #
 # Equivalent to `for variable in var: stuff`.
 #
-def each(self, iterable, variable, stuff):
+def each(self, iterable, each, do):
 
     self.opcode('GET_ITER', None, iterable, delta=2)
 
     loop_ptr = self.opcode('JUMP_ABSOLUTE', arg=-1, delta=0)
     end_ptr  = self.opcode('FOR_ITER', delta=1)
 
-    self.store_top(*syntax.assignment_target(variable), dup=False)
-    self.load(stuff)
+    self.store_top(*syntax.assignment_target(each), dup=False)
+    self.load(do)
     self.opcode('ROT_THREE', delta=0)
     self.opcode('ROT_TWO',   delta=0)
     self.opcode('POP_TOP',   delta=-1)
