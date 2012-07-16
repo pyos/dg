@@ -409,13 +409,15 @@ def unsafe(self, cases):
 
 
 @r.builtin('raise')
+@r.callable
 #
 # `raise: exception_object`
 #
 # Raise an exception, which is either a type or an instance of Exception.
 #
-def raise_(self, exc):
+def raise_(self, exception, caused_by=...):
 
-    self.opcode('DUP_TOP', exc, delta=2)
-    self.opcode('RAISE_VARARGS', arg=1, delta=-1)
+    args = (exception,) if caused_by is ... else (exception, caused_by)
+    self.opcode('RAISE_VARARGS', *args, delta=0)
+    self.load(None)  # we've got to return something
 
