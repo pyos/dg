@@ -56,15 +56,15 @@ def assignment(var, expr):
 
     if tree.matchQ(expr, ST_IMPORT):
 
-        var    = tree.matchA(var, ST_IMPORT_REL) or [var]
-        parent = var[0].count('.') if len(var) > 1 else 0
-      # ERROR(parent != (len(var[0]) if len(var) > 1 else 0), ...)
+        var    = tree.matchA(var, ST_IMPORT_REL) or [tree.Link(), var]
+        parent = var[0].count('.')
+        args   = uncurry(unwrap(var[-1]), ST_IMPORT_SEP)
 
-        var = var[len(var) > 1]
-        var, *args = uncurry(unwrap(var), ST_IMPORT_SEP)
+        ERROR(parent != len(var[0]), const.ERR.NONCONST_IMPORT)
+        ERROR(not isinstance(var[0], tree.Link), const.ERR.NONCONST_IMPORT)
+        ERROR(not all(isinstance(a, tree.Link) for a in args), const.ERR.NONCONST_IMPORT)
 
-        ERROR(not isinstance(var, tree.Link), const.ERR.NONCONST_IMPORT)
-        return '.'.join([var] + args), const.AT.IMPORT, var, parent
+        return '.'.join(args), const.AT.IMPORT, args[0], parent
 
     # Other assignment types do not depend on right-hand statement value.
     return (expr,) + assignment_target(var)
