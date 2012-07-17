@@ -11,7 +11,7 @@ def varary(multiple, arg=0, inplace=False, single=None):
         self.load(a)
         ps = [self.opcode(multiple, b, arg=arg, delta=0) for b in bs]
         ps or self.opcode(single,      arg=arg, delta=0)
-        inplace and self.store_top(*syntax.assignment_target(a))
+        inplace and store_top(self, *syntax.assignment_target(a))
 
     return f
 
@@ -128,7 +128,7 @@ def each(self, iterable, each, do):
     loop_ptr = self.opcode('JUMP_ABSOLUTE', arg=-1, delta=0)
     end_ptr  = self.opcode('FOR_ITER', delta=1)
 
-    self.store_top(*syntax.assignment_target(each), dup=False)
+    store_top(self, *syntax.assignment_target(each), dup=False)
     self.load(do)
     self.opcode('ROT_THREE', delta=0)
     self.opcode('ROT_TWO',   delta=0)
@@ -159,7 +159,42 @@ def store(self, var, expr):
 
         self.load(expr)
 
-    self.store_top(type, var, *args)
+    store_top(self, type, var, *args)
+
+
+def store_top(self, type, var, *args, dup=True):
+
+    dup and self.opcode('DUP_TOP', delta=1)
+
+    if type == const.AT.UNPACK:
+
+        ln, star = args
+        op  = 'UNPACK_SEQUENCE'            if star < 0 else 'UNPACK_EX'
+        arg = star + 256 * (ln - star - 1) if star > 0 else ln
+        self.opcode(op, arg=arg, delta=ln - 1)
+
+        for item in var:
+
+            store_top(self, *item, dup=False)
+
+    elif type == const.AT.ATTR:
+
+        self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
+
+    elif type == const.AT.ITEM:
+
+        self.opcode('STORE_SUBSCR', *var, delta=-1)
+
+    else:
+
+        syntax.ERROR(var in self.code.cellnames, const.ERR.FREEVAR_ASSIGNMENT)
+
+        self.opcode(
+            'STORE_DEREF' if var in self.code.cellvars else
+            'STORE_NAME'  if self.code.slowlocals else
+            'STORE_FAST',
+            arg=var, delta=-1
+        )
 
 
 @r.builtin('->')
@@ -333,7 +368,7 @@ def unsafe(self, cases):
     to_else = self.opcode('JUMP_FORWARD', delta=3)
     to_except()
     self.opcode('ROT_TWO', delta=0)
-    self.store_top(*syntax.assignment_target(name))
+    store_top(self, *syntax.assignment_target(name))
     self.opcode('ROT_TWO', delta=0)
     to_else()
 

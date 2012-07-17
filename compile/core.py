@@ -44,40 +44,6 @@ class Compiler:
         arg = kwargs.get('arg', len(args))
         return self.code.append(opcode, arg, -len(args) + delta)
 
-    def store_top(self, type, var, *args, dup=True):
-
-        dup and self.opcode('DUP_TOP', delta=1)
-
-        if type == const.AT.UNPACK:
-
-            ln, star = args
-            op  = 'UNPACK_SEQUENCE'            if star < 0 else 'UNPACK_EX'
-            arg = star + 256 * (ln - star - 1) if star > 0 else ln
-            self.opcode(op, arg=arg, delta=ln - 1)
-
-            for item in var:
-
-                self.store_top(*item, dup=False)
-
-        elif type == const.AT.ATTR:
-
-            self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
-
-        elif type == const.AT.ITEM:
-
-            self.opcode('STORE_SUBSCR', *var, delta=-1)
-
-        else:
-
-            syntax.ERROR(var in self.code.cellnames, const.ERR.FREEVAR_ASSIGNMENT)
-
-            self.opcode(
-                'STORE_DEREF' if var in self.code.cellvars else
-                'STORE_NAME'  if self.code.slowlocals else
-                'STORE_FAST',
-                arg=var, delta=-1
-            )
-
     def call(self, f, *args, preloaded=0):
 
         f, attr, *args = syntax.call_pre(f, *args)
