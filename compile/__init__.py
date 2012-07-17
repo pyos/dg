@@ -168,15 +168,7 @@ def store(self, var, expr):
 #
 # Allow to evaluate `body` passing it stuff that matches `argspec`.
 #
-# :param hook_pre: `MutableCode -> *` function called *before* `Compiler.compile`
-#
-# :param hook_post: same as `hook_pre`, but called *after* `Compiler.compile`
-#
-# :param subf_hook_pre: same as `hook_pre`, but not for this function.
-#   If a function defined inside this function has its own `hook_pre`,
-#   this parameter does not affect it. Otherwise, it is used as a fallback hook.
-#
-def function(self, args, code, hook_pre=0, hook_post=0, subf_hook_pre=0):
+def function(self, args, code):
 
     args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(args, code)
     self.load(**kwdefs)
@@ -184,16 +176,18 @@ def function(self, args, code, hook_pre=0, hook_post=0, subf_hook_pre=0):
 
     mcode = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
 
-    f_hook_pre = getattr(self, '_function_hook_pre', 0)
-    hook_pre = hook_pre or f_hook_pre
-    hook_pre and hook_pre(mcode)
+    hasattr(self.code, 'f_hook') and self.code.f_hook(mcode)
+    code = self.compile(code, mcode, name='<lambda>')
 
-    self._function_hook_pre = subf_hook_pre
-    self.compile(code, mcode, name='<lambda>')  # Ignore that for now.
-    self._function_hook_pre = f_hook_pre
+    self.opcode(
+        'MAKE_CLOSURE' if preload_free(self, code) else 'MAKE_FUNCTION',
+        code,
+        arg=len(defs) + 256 * len(kwdefs),
+        delta=-len(kwdefs) * 2 - len(defs) - bool(code.co_freevars) + 1
+    )
 
-    hook_post and hook_post(mcode)
-    code = mcode.compile('<lambda>')
+
+def preload_free(self, code):
 
     if code.co_freevars:
 
@@ -209,12 +203,7 @@ def function(self, args, code, hook_pre=0, hook_post=0, subf_hook_pre=0):
 
         self.opcode('BUILD_TUPLE', arg=len(code.co_freevars), delta=-len(code.co_freevars) + 1)
 
-    self.opcode(
-        'MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION',
-        code,
-        arg=len(defs) + 256 * len(kwdefs),
-        delta=-len(kwdefs) * 2 - len(defs) - bool(code.co_freevars) + 1
-    )
+    return code.co_freevars
 
 
 @r.builtin('inherit')
@@ -227,25 +216,27 @@ def inherit(self, *stuff):
 
     *args, block = stuff
 
+    mcode = codegen.MutableCode(True, ['__locals__'], cell=self.code)
+    mcode.cellnames.add('__class__')
+    mcode.append('LOAD_FAST', '__locals__', 1)
+    mcode.append('STORE_LOCALS', delta=-1)
+    mcode.append('LOAD_NAME', '__name__', 1)
+    mcode.append('STORE_NAME', '__module__', -1)
+    mcode.f_hook = lambda code: code.freevars.append('__class__')
+
+    self.compile(block, mcode, name='<lambda>')
+
+    # Return the empty __class__ cell.
+    mcode.bytecode.pop()
+    mcode.append('POP_TOP')
+    mcode.append('LOAD_CLOSURE', '__class__', 1)
+    mcode.append('RETURN_VALUE', delta=-1)
+    code = mcode.compile()
+
     self.opcode('LOAD_BUILD_CLASS', delta=1)
-    function(
-        self, tree.Link('__locals__'), block,
-        lambda code: (
-            code.append('LOAD_FAST', '__locals__', 1),
-            code.append('STORE_LOCALS', delta=-1),
-            code.append('LOAD_NAME', '__name__', 1),
-            code.append('STORE_NAME', '__module__', -1),
-        ),
-        lambda code: (
-            code.bytecode.pop(),
-            code.append('POP_TOP'),
-            # LOAD_CLOSURE puts a *cell* onto the stack, not its contents.
-            # The __class__ cell is empty by now.
-            # CPython seems to perform some black magic to fill it.
-            code.append('LOAD_CLOSURE', '__class__', 1),
-            code.append('RETURN_VALUE'),
-        ),
-        lambda code: code.freevars.append('__class__')
+    self.opcode(
+        'MAKE_CLOSURE' if preload_free(self, code) else 'MAKE_FUNCTION',
+        code, arg=0, delta=1 - bool(code.co_freevars)
     )
     self.call(None, '<class>', *args, preloaded=1)
 
