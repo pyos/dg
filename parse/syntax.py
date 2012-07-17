@@ -199,14 +199,10 @@ def call_pre(f, *args):
 
     f, *args2 = uncurry(f, ST_CALL)
     f, *args3 = tree.matchA(f, ST_ARG_KW) or [f]
-    return [f] + args3 + args2 + list(args)
+    attr = tree.matchA(f, ST_ASSIGN_ATTR)
 
-
-def call_attr(f):
-
-    args = tree.matchA(f, ST_ASSIGN_ATTR)
-    ERROR(args and not isinstance(args[1], tree.Link), const.ERR.NONCONST_ATTR)
-    return args
+    ERROR(attr and not isinstance(attr[1], tree.Link), const.ERR.NONCONST_ATTR)
+    return [f, attr] + args3 + args2 + list(args)
 
 
 def call(f, *args):

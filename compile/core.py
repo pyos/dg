@@ -80,13 +80,11 @@ class Compiler:
 
     def call(self, f, *args, preloaded=0):
 
-        f, *args = syntax.call_pre(f, *args)
+        f, attr, *args = syntax.call_pre(f, *args)
 
         if isinstance(f, tree.Link) and f in self.builtins:
 
             return self.builtins[f](self, *args)
-
-        attr = syntax.call_attr(f)
 
         if attr and attr[1] in self.fake_methods:
 
