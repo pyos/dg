@@ -168,7 +168,7 @@ def else_(cond):
     args1 = tree.matchA(cond, ST_EXPR_IF)
     args2 = tree.matchA(cond, ST_EXPR_UNLESS)
     ERROR(not args1 and not args2, const.ERR.NOT_AFTER_IF)
-    return args1 or args2, (const.COND.IF if args1 else const.COND.UNLESS)
+    return args1, args2
 
 
 def switch(cases):

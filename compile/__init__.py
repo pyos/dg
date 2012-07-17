@@ -250,15 +250,12 @@ def inherit(self, *stuff):
 #
 def else_(self, cond, otherwise):
 
-    (then, cond), code = syntax.else_(cond)
+    if_, unless = syntax.else_(cond)
+    then, cond  = if_ or unless
 
-    code = {
-        const.COND.IF:     'POP_JUMP_IF_FALSE',
-        const.COND.UNLESS: 'POP_JUMP_IF_TRUE',
-    }[code]
-
-    ptr = self.opcode(code,           cond, delta=0)
-    jmp = self.opcode('JUMP_FORWARD', then, delta=0)
+    code = 'POP_JUMP_IF_FALSE' if if_ else 'POP_JUMP_IF_TRUE'
+    ptr  = self.opcode(code,           cond, delta=0)
+    jmp  = self.opcode('JUMP_FORWARD', then, delta=0)
     ptr()
     self.load(otherwise)
     jmp()

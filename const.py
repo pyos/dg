@@ -55,6 +55,5 @@ class CO:
     )
 
 
-class AT:   IMPORT, UNPACK, ATTR, ITEM, NAME = range(5)
-class COND: IF, UNLESS = range(2)
+class AT: IMPORT, UNPACK, ATTR, ITEM, NAME = range(5)
 
