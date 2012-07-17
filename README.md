@@ -4,11 +4,13 @@ A (technically) simple language that compiles to CPython bytecode.
 
 ## Interpreter Support
 
-**Supported**: CPython 3.2 onwards, as well as any other Python 3.2+ implementations that use CPython bytecode format (none at the moment, all of them implement Python 2.)
-
-**Probably supported**: CPython 3.1 (lacks `DUP_TOP_TWO` and `DELETE_DEREF` opcodes, which are not used.)
-
-**Unsupported**: CPython 3.0 (lacks various jump instructions) as well as all kinds of Python 2 (the compiler itself is in Python 3.)
+Version      | Compiles | Runs     | Runs flawlessly | Reason
+------------ | -------- | -------- | --------------- | -------------------------------------------------------
+CPython 3.3  | Probably | Probably | Probably        | Not much changed since 3.2
+CPython 3.2  | Yes      | Yes      | Yes (for now)   | Import hooks and other stuff will require 3.3
+CPython 3.1  | Probably | Probably | Probably        | The new opcodes in 3.2 are not used by dg
+CPython 3.0  | Probably | Probably | No              | Old-style jumps (that don't pop items off the stack)
+Any Python 2 | No       | No       | No              | Guess why.
 
 ## TODO
 
