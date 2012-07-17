@@ -179,6 +179,7 @@ def store_top(self, type, var, *args, dup=True):
 
     elif type == const.AT.ATTR:
 
+        syntax.ERROR(var[1] in self.fake_methods, const.ERR.FAKE_METHOD_ASSIGNMENT)
         self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
 
     elif type == const.AT.ITEM:
@@ -187,6 +188,8 @@ def store_top(self, type, var, *args, dup=True):
 
     else:
 
+        syntax.ERROR(var in self.builtins, const.ERR.BUILTIN_ASSIGNMENT)
+        syntax.ERROR(var in self.fake_methods, const.ERR.FAKE_METHOD_ASSIGNMENT)
         syntax.ERROR(var in self.code.cellnames, const.ERR.FREEVAR_ASSIGNMENT)
 
         self.opcode(

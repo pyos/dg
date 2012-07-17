@@ -15,6 +15,10 @@ class ERR:
     # Same as above, but for function arguments.
     NONCONST_ARGUMENT = 'pattern-matching of function arguments is not supported'
 
+    # Tried to assign something to a built-in.
+    BUILTIN_ASSIGNMENT = 'that name is reserved and can\'t be modified'
+    FAKE_METHOD_ASSIGNMENT = 'that attribute is reserved and can\'t be modified'
+
     # Two or more *varargs definitions.
     MULTIPLE_VARARGS = 'multiple *varargs are not allowed'
     # Same as above, but for **varkwargs.
