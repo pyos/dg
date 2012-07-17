@@ -175,17 +175,14 @@ def switch(cases):
 
     cases = unwrap(cases)
     cases = cases if isinstance(cases, tree.Closure) else [cases]
-
-    for case in cases:
-
-        case = tree.matchA(case, ST_ASSIGN)
-        ERROR(not case, const.ERR.INVALID_STMT_IN_SWITCH)
-        yield case
+    cases = list(map(lambda q: tree.matchA(q, ST_ASSIGN), cases))
+    ERROR(not all(cases), const.ERR.INVALID_STMT_IN_SWITCH)
+    return cases
 
 
 def unsafe(cases):
 
-    cases = list(switch(cases))
+    cases = switch(cases)
     ERROR(not cases, const.ERR.DEFAULT)  # there was no `try` clause
 
     if len(cases) < 2 or not tree.matchQ(cases[-1][0], ST_EXC_FINALLY):
