@@ -17,10 +17,10 @@ class Expression (list):
         sub[0] = '`{}`'.format(*sub) if sub[0].isidentifier() else sub[0]
 
         return(
-            ' '.join(sub[::-1])  if len(self) < 3     else
-            ' '.join(sub[1:])    if not self[0]       else
-            sub[0].join(sub[1:]) if self[0] in ('.',) else
-            ' {[0]} '.format(sub).join(sub[1:])
+            ' '.join(sub[::-1])  if len(self) < 3    else
+            ' '.join(sub[1:])    if not self[0]      else
+            sub[0].join(sub[1:]) if self[0] in {'.'} else
+            ' {} '.format(*sub).join(sub[1:])
         )
 
 
@@ -73,8 +73,7 @@ def match(code, pattern, into):
 def matchA(code, pattern):
 
     into = []
-    ok   = match(code, pattern, into)
-    return into if ok else []
+    return into if match(code, pattern, into) else []
 
 
 def matchQ(code, pattern):
@@ -91,4 +90,3 @@ def matchR(code, pattern, f):
         code = f(code, into)
 
     return into + [code]
-

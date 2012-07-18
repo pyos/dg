@@ -2,46 +2,43 @@ from . import r
 from . import tree
 from .. import const
 
-# CONST
-# {
+ST_GROUP = '(_)'
+
+ST_EXC_FINALLY = 'True'
+
+ST_TUPLE_S = '_,'
+ST_TUPLE   = '_, _'
+ST_CALL    = '_ _'
+ST_ASSIGN  = '_ = _'
+
+ST_EXPR_IF     = '_ `if` _'
+ST_EXPR_UNLESS = '_ `unless` _'
+
+ST_ARG_KW       = '_: _'
+ST_ARG_VAR      = '*_'
+ST_ARG_VAR_KW   = '**_'
+ST_ARG_VAR_C    = '(*)'
+ST_ARG_VAR_KW_C = '(**)'
+
+ST_IMPORT     = 'import'
+ST_IMPORT_REL = '_ _'
+ST_IMPORT_SEP = '_._'
+
+ST_ASSIGN_ATTR = '_._'
+ST_ASSIGN_ITEM = '_ !! _'
+
 globals().update({
-    n: next(r().reset(v))[0] for n, v in
-    dict(
-        ST_GROUP = '(_)'
-
-      , ST_EXC_FINALLY = 'True'
-
-      , ST_TUPLE_S = '_,'
-      , ST_TUPLE   = '_, _'
-      , ST_CALL    = '_ _'
-      , ST_ASSIGN  = '_ = _'
-
-      , ST_EXPR_IF     = '_ `if` _'
-      , ST_EXPR_UNLESS = '_ `unless` _'
-
-      , ST_ARG_KW       = '_: _'
-      , ST_ARG_VAR      = '*_'
-      , ST_ARG_VAR_KW   = '**_'
-      , ST_ARG_VAR_C    = '(*)'
-      , ST_ARG_VAR_KW_C = '(**)'
-
-      , ST_IMPORT     = 'import'
-      , ST_IMPORT_REL = '_ _'
-      , ST_IMPORT_SEP = '_._'
-
-      , ST_ASSIGN_ATTR = '_._'
-      , ST_ASSIGN_ITEM = '_ !! _'
-    ).items()
+    n: next(r().reset(v))[0]
+    for n, v in globals().items()
+    if n.startswith('ST_')
 })
-# }
 
-# MISC
-# {
 # Drop outermost parentheses from a syntactic construct `f`.
-unwrap  = lambda f:    tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
+unwrap = lambda f:    tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
 
 # Recursively match `f` with a binary operator `p`, returning all the operands.
-uncurry = lambda f, p: tree.matchR(f, p,        lambda f, q: q.pop(-2))[::-1]
+uncurry = lambda f, p: tree.matchR(f, p, lambda f, q: q.pop(-2))[::-1]
+
 
 # Same as `assert not ...`, but without `AssertionError`.
 def ERROR(pred, msg):
@@ -168,7 +165,7 @@ def else_(cond):
     args1 = tree.matchA(cond, ST_EXPR_IF)
     args2 = tree.matchA(cond, ST_EXPR_UNLESS)
     ERROR(not args1 and not args2, const.ERR.NOT_AFTER_IF)
-    return args1, args2
+    return args1, args1 or args2
 
 
 def switch(cases):
@@ -233,4 +230,3 @@ def call(f, *args):
             kwargs.__setitem__(*kw)
 
     return f, posargs, kwargs, vararg, varkwarg
-

@@ -6,17 +6,10 @@ STATE_AT_FILE_START = 2  # `^`
 STATE_AT_FILE_END   = 4  # `$`
 STATE_CUSTOM        = 8  # lowest unused state bit
 
-Token    = collections.namedtuple('Token',    'regex, state, func')
 Location = collections.namedtuple('Location', 'start, end, filename')
 
 
 class Parser (collections.Iterator):
-
-    @classmethod
-    def make(cls):
-
-        class _(cls): tokens = []
-        return _
 
     @classmethod
     def token(cls, func):
@@ -24,7 +17,7 @@ class Parser (collections.Iterator):
         assert func.__code__.co_argcount >= 2, 'def handler(parser, token)'
         state = func.__annotations__.get(func.__code__.co_varnames[0], 0)
         regex = func.__annotations__.get(func.__code__.co_varnames[1], r'.')
-        cls.tokens.append(Token(re.compile(regex, re.DOTALL).match, state, func))
+        cls.tokens.append((re.compile(regex, re.DOTALL).match, state, func))
         return func
 
     def reset(self, input, filename='<string>'):
@@ -70,10 +63,8 @@ class Parser (collections.Iterator):
             self.state |= self.offset >= len(self.buffer) and STATE_AT_FILE_END
 
             matches = (
-                (
-                    m.func,
-                    m.state & self.state == m.state and m.regex(self.buffer, self.offset)
-                ) for m in self.tokens
+                (func, self.state & state == state and regex(self.buffer, self.offset))
+                for regex, state, func in self.tokens
             )
 
             f, match = next(m for m in matches if m[1])
@@ -89,4 +80,3 @@ class Parser (collections.Iterator):
 
     next_token_at = property(lambda self: self.position(self.offset))
     last_token_at = property(lambda self: self.position(self.pstack[-1]))
-

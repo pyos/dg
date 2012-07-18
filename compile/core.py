@@ -156,4 +156,3 @@ class Compiler:
         finally:
 
             self.code = backup
-

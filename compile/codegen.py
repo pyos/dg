@@ -92,7 +92,7 @@ class MutableCode:
     def freevar(self, v):
 
         if v not in self.freevars:
-        
+
             if v in self.cellnames:
 
                 self.freevars.append(v)

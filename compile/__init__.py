@@ -288,10 +288,9 @@ def inherit(self, *stuff):
 #
 def else_(self, cond, otherwise):
 
-    if_, unless = syntax.else_(cond)
-    then, cond  = if_ or unless
+    is_if, (then, cond) = syntax.else_(cond)
 
-    code = 'POP_JUMP_IF_FALSE' if if_ else 'POP_JUMP_IF_TRUE'
+    code = 'POP_JUMP_IF_FALSE' if is_if else 'POP_JUMP_IF_TRUE'
     ptr  = self.opcode(code,           cond, delta=0)
     jmp  = self.opcode('JUMP_FORWARD', then, delta=0)
     ptr()
@@ -435,4 +434,3 @@ def raise_(self, exception, caused_by=...):
     args = (exception,) if caused_by is ... else (exception, caused_by)
     self.opcode('RAISE_VARARGS', *args, delta=0)
     self.load(None)  # we've got to return something
-

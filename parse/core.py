@@ -93,14 +93,14 @@ class Parser (libparse.Parser):
             #
             # Note that this means that for `a R b -> c Q d` to parse
             # as `a R (b -> (c Q d))` this method should return True for both
-            # (R, Q) and ('->', Q). Otherwise, the output is `a R (b -> c) Q d`.
-            # That's not of concern when doing stuff like `f = x -> print "yay"`
+            # (Q, R) and (Q, ->). Otherwise, the output is `a R (b -> c) Q d`.
+            # That's not of concern when doing stuff like `f = x -> print 1`
             # 'cause `=` has the lowest possible priority.
             #
             # What               How                 Why
             # -----------------------------------------------------------
-            # a b -> c d         a (b -> c) d        ('', '') -> False
-            # a = b -> c = d     a = (b -> c) = d    ('->', '=') -> False
+            # a b -> c d         a (b -> c) d        (, ) is False
+            # a = b -> c = d     a = (b -> c) = d    (=, ->) is False
             # a $ b -> c $ d     a $ (b $ (c $ d))   everything's True
             # a b -> c.d         a (b -> (c.d))      also True
             #
@@ -124,7 +124,7 @@ class Parser (libparse.Parser):
 
         except SyntaxError as e:
 
-            if e.args[0] in ('non-closed block at EOF', 'unclosed string literal'):
+            if e.args[0] in {'non-closed block at EOF', 'unclosed string literal'}:
 
                 # The code is incomplete by definition if there are
                 # unmatched parentheses or quotes in it.
@@ -144,9 +144,8 @@ class Parser (libparse.Parser):
             res
             and not code.endswith('\n')
             and (
-                # If this condition is met, then `len(expr[-1])` must've been 2.
+                # If this condition is met, then `len(expr[-1])` <= 2.
                 expr and isinstance(expr[-1], tree.Expression)
                 or code[code.rfind('\n') + 1] == ' '
             )
         ) else res
-

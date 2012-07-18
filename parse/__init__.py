@@ -11,7 +11,10 @@ SIG_EXPRESSION_BR_HARD = tree.Internal()
 STATE_AFTER_OBJECT = libparse.STATE_CUSTOM << 0
 STATE_PARSE_INDENT = libparse.STATE_CUSTOM << 1
 
-r = core.Parser.make()
+
+class r (core.Parser):
+
+    tokens = []
 
 
 @r.token
@@ -95,7 +98,7 @@ def end(stream, token: r'\)'):
 
 @r.token
 #
-# operator = < some punctuation > + | ( '`', word, '`' ) | word_op
+# operator = < ascii punctuation > + | ( '`', word, '`' ) | word_op
 #
 # word = ( < alphanumeric > | '_' ) +
 # word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
@@ -104,7 +107,7 @@ def operator(stream: STATE_AFTER_OBJECT, token: r'`\w+`|[!$%&*-/:<-@\\^|~]+|if|u
 
     stream.state &= ~STATE_AFTER_OBJECT
 
-    br  = False  # whether there was a soft expression break after the operator.
+    br  = False  # whether there was a soft expression break after the operator
     op  = stream.located(tree.Link(token.group().strip('`') if token else ''))
     lhs = stream.stack
     rhs = next(stream)
@@ -307,4 +310,3 @@ def whitespace(stream, token: '\s'):
 def error(stream, token):
 
     stream.error('invalid input')
-

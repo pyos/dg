@@ -15,17 +15,17 @@ from .. import compile
 #
 def traceback(trace):
 
-    uses_runpy  = False
-    runpy_stuff = {runpy._run_module_as_main.__code__, runpy._run_code.__code__}
+    uses_runpy = False
+    runpy_code = {runpy._run_module_as_main.__code__, runpy._run_code.__code__}
 
     # Skip over all entries in `runpy` module.
-    while trace and trace.tb_frame.f_code in runpy_stuff:
+    while trace and trace.tb_frame.f_code in runpy_code:
 
         trace = trace.tb_next
         uses_runpy = True
 
     # If `runpy` was used, the next line is in `__main__`.
-    trace = trace and trace.tb_next if uses_runpy else trace
+    trace = trace.tb_next if trace and uses_runpy else trace
 
     # If the next lines are in this module, skip them, too.
     while trace and trace.tb_frame.f_code is dg.__code__:
@@ -90,4 +90,3 @@ def dg(fd, name='__main__'):
         except BaseException as e:
 
             sys.excepthook(type(e), e, traceback(e.__traceback__))
-
