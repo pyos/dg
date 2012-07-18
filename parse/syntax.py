@@ -34,7 +34,7 @@ globals().update({
 })
 
 # Drop outermost parentheses from a syntactic construct `f`.
-unwrap = lambda f:    tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
+unwrap = lambda f: tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
 
 # Recursively match `f` with a binary operator `p`, returning all the operands.
 uncurry = lambda f, p: tree.matchR(f, p, lambda f, q: q.pop(-2))[::-1]
