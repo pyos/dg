@@ -3,6 +3,13 @@
 
 
 compile.r.fake_methods !! 'while' = (self, cond, block) ->
+  '''
+    cond.while: block
+
+    Evaluate `block` until `cond` becomes False.
+    `block` is evaluated in the same namespace (it would be useless otherwise.)
+
+  '''
 
   self.load: None
   exit_ptr = self.opcode: 'SETUP_LOOP'             delta: 0
@@ -17,8 +24,20 @@ compile.r.fake_methods !! 'while' = (self, cond, block) ->
 
 
 compile.r.fake_methods !! 'for' = compile.r.callable $ (self, iterable, each, do) ->
+  '''
+    iterable.for: item block
+    iterable.for: item do: block
+    iterable.for: each: item do: block
 
-  self.opcode: 'GET_ITER' None iterable delta: 2
+    A simple for-each loop.
+    `item` may be anything that can be assigned to with `=`.
+    `block` is evaluated in the same namespace; use `map` if that's not
+    desired behavior.
+
+  '''
+
+  self.load: None  # This will be replaced with the return value.
+  self.opcode: 'GET_ITER' iterable delta: 1
 
   loop_ptr = self.opcode: 'JUMP_ABSOLUTE' arg: -1 delta: 0
   end_ptr  = self.opcode: 'FOR_ITER' delta: 1

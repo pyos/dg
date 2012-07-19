@@ -3,13 +3,47 @@
 
 
 varary = (multiple, arg: 0, inplace: False, single: None) -> (self, a, *bs) ->
+  '''
+    If there is one argument, feed to it an opcode; otherwise,
+    do the same thing as `foldl`, but with an opcode instead of a function.
+
+    Examples::
+
+      >>> (varary: 'BINARY_STUFF' single: 'UNARY_STUFF'): compiler a
+        1 LOAD   a
+        2 UNARY_STUFF
+
+      >>> (varary: 'BINARY_STUFF' single: 'UNARY_STUFF'): compiler a b c
+        1 LOAD   a
+        2 LOAD   b
+        3 BINARY_STUFF
+        4 LOAD   c
+        5 BINARY_STUFF
+
+     >>> (varary: 'BINARY_STUFF' inplace: True): compiler a b
+        1 LOAD   a
+        2 LOAD   b
+        3 BINARY_STUFF
+        4 STORE  a
+
+    :param multiple: the opcode to use as a folding function.
+
+    :param arg: the argument to pass to all opcodes (a constant!)
+
+    :param inplace: whether to assign the result of that expression
+      to the first argument.
+
+    :param single: the opcode to insert if there is only one argument.
+      The default value, None, will raise an exception.
+
+  '''
 
   self.load: a
   ps = list $ map: b -> (self.opcode: multiple b arg: arg delta: 0) bs
   self.opcode: single arg: arg delta: 0 unless ps
   compile.store_top: self (*): (parse.syntax.assignment_target: a) if inplace
 
-# `.`, `,`, ``, `:`, `->`, `=`, and `$` are already defined
+# `.`, `,`, ``, `:`, `->`, `=`, and `$` are already defined.
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
 compile.r.builtins !! '<'   = varary: 'COMPARE_OP' '<'
 compile.r.builtins !! '<='  = varary: 'COMPARE_OP' '<='
@@ -51,5 +85,6 @@ compile.r.builtins !! '>>=' = varary: 'INPLACE_RSHIFT'       inplace: True
 compile.r.builtins !! '.~'  = (self, a, b) -> self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a      b delta: 1
 compile.r.builtins !! ':.'  = (self, a, b) ->
+  '''a:.b <=> (a:).b'''
   self.call: a
   self.opcode: 'LOAD_ATTR' arg: b delta: 0
