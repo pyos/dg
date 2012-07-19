@@ -3,7 +3,7 @@
 
 
 compile.r.builtins !! 'raise' = compile.callable $
-  (self, exception, caused_by: Ellipsis) ->
+  (self, exception, caused_by: ...) ->
     '''
       raise: ExceptionType
       raise: exception_instance
@@ -17,7 +17,7 @@ compile.r.builtins !! 'raise' = compile.callable $
 
     '''
 
-    args = (exception,) if caused_by `is` Ellipsis else (exception, caused_by)
+    args = ((exception,) if caused_by `is` ... else (exception, caused_by))
     self.opcode: 'RAISE_VARARGS' (*): args delta: 0
     self.load: None  # We've got to return something.
 

@@ -3,7 +3,7 @@
 ..parse.syntax = import
 
 
-varary = (multiple, arg: 0, inplace: False, single: None) -> (self, a, *bs) ->
+varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None) ->
   '''
     If there is one argument, feed to it an opcode; otherwise,
     do the same thing as `foldl`, but with an opcode instead of a function.
@@ -50,42 +50,42 @@ compile.r.builtins !! ',' = (self, a, *bs) ->
   self.opcode: 'BUILD_TUPLE' (*): (parse.syntax.tuple_: a (*): bs) delta: 1
 
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
-compile.r.builtins !! '<'   = varary: 'COMPARE_OP' '<'
-compile.r.builtins !! '<='  = varary: 'COMPARE_OP' '<='
-compile.r.builtins !! '=='  = varary: 'COMPARE_OP' '=='
-compile.r.builtins !! '!='  = varary: 'COMPARE_OP' '!='
-compile.r.builtins !! '>'   = varary: 'COMPARE_OP' '>'
-compile.r.builtins !! '>='  = varary: 'COMPARE_OP' '>='
-compile.r.builtins !! 'is'  = varary: 'COMPARE_OP' 'is'
-compile.r.builtins !! 'in'  = varary: 'COMPARE_OP' 'in'
+compile.r.builtins !! '<'   = varary ~: 'COMPARE_OP' ~: arg: '<'
+compile.r.builtins !! '<='  = varary ~: 'COMPARE_OP' ~: arg: '<='
+compile.r.builtins !! '=='  = varary ~: 'COMPARE_OP' ~: arg: '=='
+compile.r.builtins !! '!='  = varary ~: 'COMPARE_OP' ~: arg: '!='
+compile.r.builtins !! '>'   = varary ~: 'COMPARE_OP' ~: arg: '>'
+compile.r.builtins !! '>='  = varary ~: 'COMPARE_OP' ~: arg: '>='
+compile.r.builtins !! 'is'  = varary ~: 'COMPARE_OP' ~: arg: 'is'
+compile.r.builtins !! 'in'  = varary ~: 'COMPARE_OP' ~: arg: 'in'
 
-compile.r.builtins !! '!!'  = varary: 'BINARY_SUBSCR'
-compile.r.builtins !! '+'   = varary: 'BINARY_ADD'      single: 'UNARY_POSITIVE'
-compile.r.builtins !! '-'   = varary: 'BINARY_SUBTRACT' single: 'UNARY_NEGATIVE'
-compile.r.builtins !! '*'   = varary: 'BINARY_MULTIPLY'
-compile.r.builtins !! '**'  = varary: 'BINARY_POWER'
-compile.r.builtins !! '/'   = varary: 'BINARY_TRUE_DIVIDE'
-compile.r.builtins !! '//'  = varary: 'BINARY_FLOOR_DIVIDE'
-compile.r.builtins !! '%'   = varary: 'BINARY_MODULO'
-compile.r.builtins !! '&'   = varary: 'BINARY_AND'
-compile.r.builtins !! '^'   = varary: 'BINARY_XOR'
-compile.r.builtins !! '|'   = varary: 'BINARY_OR'
-compile.r.builtins !! '<<'  = varary: 'BINARY_LSHIFT'
-compile.r.builtins !! '>>'  = varary: 'BINARY_RSHIFT'
+compile.r.builtins !! '!!'  = varary ~: 'BINARY_SUBSCR'
+compile.r.builtins !! '+'   = varary ~: 'BINARY_ADD'      ~: single: 'UNARY_POSITIVE'
+compile.r.builtins !! '-'   = varary ~: 'BINARY_SUBTRACT' ~: single: 'UNARY_NEGATIVE'
+compile.r.builtins !! '*'   = varary ~: 'BINARY_MULTIPLY'
+compile.r.builtins !! '**'  = varary ~: 'BINARY_POWER'
+compile.r.builtins !! '/'   = varary ~: 'BINARY_TRUE_DIVIDE'
+compile.r.builtins !! '//'  = varary ~: 'BINARY_FLOOR_DIVIDE'
+compile.r.builtins !! '%'   = varary ~: 'BINARY_MODULO'
+compile.r.builtins !! '&'   = varary ~: 'BINARY_AND'
+compile.r.builtins !! '^'   = varary ~: 'BINARY_XOR'
+compile.r.builtins !! '|'   = varary ~: 'BINARY_OR'
+compile.r.builtins !! '<<'  = varary ~: 'BINARY_LSHIFT'
+compile.r.builtins !! '>>'  = varary ~: 'BINARY_RSHIFT'
 
-compile.r.builtins !! '!!=' = varary: 'BINARY_SUBSCR'        inplace: True
-compile.r.builtins !! '+='  = varary: 'INPLACE_ADD'          inplace: True
-compile.r.builtins !! '-='  = varary: 'INPLACE_SUBTRACT'     inplace: True
-compile.r.builtins !! '*='  = varary: 'INPLACE_MULTIPLY'     inplace: True
-compile.r.builtins !! '**=' = varary: 'INPLACE_POWER'        inplace: True
-compile.r.builtins !! '/='  = varary: 'INPLACE_TRUE_DIVIDE'  inplace: True
-compile.r.builtins !! '//=' = varary: 'INPLACE_FLOOR_DIVIDE' inplace: True
-compile.r.builtins !! '%='  = varary: 'INPLACE_MODULO'       inplace: True
-compile.r.builtins !! '&='  = varary: 'INPLACE_AND'          inplace: True
-compile.r.builtins !! '^='  = varary: 'INPLACE_XOR'          inplace: True
-compile.r.builtins !! '|='  = varary: 'INPLACE_OR'           inplace: True
-compile.r.builtins !! '<<=' = varary: 'INPLACE_LSHIFT'       inplace: True
-compile.r.builtins !! '>>=' = varary: 'INPLACE_RSHIFT'       inplace: True
+compile.r.builtins !! '!!=' = varary ~: 'BINARY_SUBSCR'        ~: inplace: True
+compile.r.builtins !! '+='  = varary ~: 'INPLACE_ADD'          ~: inplace: True
+compile.r.builtins !! '-='  = varary ~: 'INPLACE_SUBTRACT'     ~: inplace: True
+compile.r.builtins !! '*='  = varary ~: 'INPLACE_MULTIPLY'     ~: inplace: True
+compile.r.builtins !! '**=' = varary ~: 'INPLACE_POWER'        ~: inplace: True
+compile.r.builtins !! '/='  = varary ~: 'INPLACE_TRUE_DIVIDE'  ~: inplace: True
+compile.r.builtins !! '//=' = varary ~: 'INPLACE_FLOOR_DIVIDE' ~: inplace: True
+compile.r.builtins !! '%='  = varary ~: 'INPLACE_MODULO'       ~: inplace: True
+compile.r.builtins !! '&='  = varary ~: 'INPLACE_AND'          ~: inplace: True
+compile.r.builtins !! '^='  = varary ~: 'INPLACE_XOR'          ~: inplace: True
+compile.r.builtins !! '|='  = varary ~: 'INPLACE_OR'           ~: inplace: True
+compile.r.builtins !! '<<=' = varary ~: 'INPLACE_LSHIFT'       ~: inplace: True
+compile.r.builtins !! '>>=' = varary ~: 'INPLACE_RSHIFT'       ~: inplace: True
 
 compile.r.builtins !! '.~'  = (self, a, b) -> self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a      b delta: 1

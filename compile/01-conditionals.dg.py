@@ -1,7 +1,7 @@
 ..compile = import
 
 
-varary_cond = (jump, argparse: xs -> xs) -> (self, *xs) ->
+varary_cond = (jump, self, *xs, argparse: xs -> xs) ->
   '''
     Intersperse arguments with jump instructions, then point them
     at the next opcode. The jump instruction is assumed to either jump
@@ -31,7 +31,7 @@ varary_cond = (jump, argparse: xs -> xs) -> (self, *xs) ->
   list: (map: p -> (p:) ps)
 
 
-compile.r.builtins !! 'or'     = varary_cond: 'JUMP_IF_TRUE_OR_POP'
-compile.r.builtins !! 'and'    = varary_cond: 'JUMP_IF_FALSE_OR_POP'
-compile.r.builtins !! 'if'     = varary_cond: 'JUMP_IF_FALSE_OR_POP' reversed
-compile.r.builtins !! 'unless' = varary_cond: 'JUMP_IF_TRUE_OR_POP'  reversed
+compile.r.builtins !! 'or'     = varary_cond ~: 'JUMP_IF_TRUE_OR_POP'
+compile.r.builtins !! 'and'    = varary_cond ~: 'JUMP_IF_FALSE_OR_POP'
+compile.r.builtins !! 'if'     = (compile.r.builtins !! 'and') ~: argparse: reversed
+compile.r.builtins !! 'unless' = (compile.r.builtins !! 'or' ) ~: argparse: reversed
