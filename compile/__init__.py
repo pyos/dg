@@ -133,6 +133,6 @@ for p in sorted(os.listdir(os.path.dirname(__file__))):
         n = os.path.join(os.path.dirname(__file__), p)
         q = parse.r().reset(open(n).read(), n)
         c = r().compile(next(q))
-        eval(c, globals())
+        eval(c, {'__package__': __package__, '__file__': n})
         __debug__ and print('    done')
 

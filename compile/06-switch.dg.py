@@ -1,6 +1,10 @@
-r.builtins !! 'else' = (self, cond, otherwise) ->
+..compile      = import
+..parse.syntax = import
 
-  is_if, (then, cond) = syntax.else_: cond
+
+compile.r.builtins !! 'else' = (self, cond, otherwise) ->
+
+  is_if, (then, cond) = parse.syntax.else_: cond
 
   # Sadly, `if-else` is not available until we define this function.
   code = is_if and 'POP_JUMP_IF_TRUE' or 'POP_JUMP_IF_FALSE'
@@ -11,17 +15,17 @@ r.builtins !! 'else' = (self, cond, otherwise) ->
   jmp:
 
 
-r.builtins !! 'switch' = (self, cases) ->
+compile.r.builtins !! 'switch' = (self, cases) ->
 
-  jumps = list:
-  func  = (c) ->
+  jumps  = list:
+  action = (c) ->
   
     cond, action = c
     jumps.append $ self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
     jumps.append $ self.opcode: 'JUMP_FORWARD'    action delta: 0
     jumps and (jumps.pop: -2):
 
-  list $ map: func $ syntax.switch: cases
+  list $ map: action $ parse.syntax.switch: cases
 
   self.load: None  # in case nothing matched
   list $ map: x -> (x:) jumps

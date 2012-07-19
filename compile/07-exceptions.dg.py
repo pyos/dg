@@ -1,15 +1,19 @@
-r.builtins !! 'raise' = r.callable $ (self, exception, caused_by: Ellipsis) ->
+..compile      = import
+..parse.syntax = import
+
+
+compile.r.builtins !! 'raise' = compile.r.callable $ (self, exception, caused_by: Ellipsis) ->
 
   args = (exception,) if caused_by `is` Ellipsis else (exception, caused_by)
   self.opcode: 'RAISE_VARARGS' (*): args delta: 0
   self.load: None  # We've got to return something.
 
 
-r.builtins !! 'unsafe' = (self, cases) ->
+compile.r.builtins !! 'unsafe' = (self, cases) ->
 
     # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
     # That seems to work, though.
-    (name, try), *cases, (has_finally, finally) = syntax.unsafe: cases
+    (name, try), *cases, (has_finally, finally) = parse.syntax.unsafe: cases
 
     # This will be our return value.
     self.load: None
@@ -23,7 +27,7 @@ r.builtins !! 'unsafe' = (self, cases) ->
     # Er, so there was no exception, let's store None instead.
     # Since we've already POPped_BLOCK, exceptions occured
     # during this assignment will be ignored.
-    store: self name None
+    compile.store: self name None
     # XXX I don't know why is that needed.
     self.code.cstacksize -= 1
 
@@ -36,14 +40,14 @@ r.builtins !! 'unsafe' = (self, cases) ->
     to_else = self.opcode: 'JUMP_FORWARD' delta: 3
     to_except:
     self.opcode: 'ROT_TWO' delta: 0
-    store_top: self (*): (syntax.assignment_target: name)
+    compile.store_top: self (*): (parse.syntax.assignment_target: name)
     self.opcode: 'ROT_TWO' delta: 0
     to_else:
 
     # The same `switch` statement...
     jumps = list:
 
-    for cond, case in cases:
+    cases.for each: (cond, case) do:
 
         jumps.append $ self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
         # FIXME we can't return anything from handlers.
@@ -80,7 +84,7 @@ r.builtins !! 'unsafe' = (self, cases) ->
         self.load: None
 
         to_finally:
-        self.opcode: 'POP_TOP' finally_, delta: 0
-        self.opcode: 'END_FINALLY'       delta: 0
+        self.opcode: 'POP_TOP' finally delta: 0
+        self.opcode: 'END_FINALLY'     delta: 0
 
     # We should be left with a return value by now.

@@ -1,4 +1,7 @@
-r.builtins !! 'inherit' = (self, *stuff) ->
+..compile = import
+
+
+compile.r.builtins !! 'inherit' = (self, *stuff) ->
 
   *args, block = stuff
   
