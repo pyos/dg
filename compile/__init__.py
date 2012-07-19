@@ -25,9 +25,7 @@ for p in sorted(os.listdir(os.path.dirname(__file__))):
 
     if re.match('\d+-', p):
 
-        __debug__ and print('--- bootstrapping', p, end='...')
         n = os.path.join(os.path.dirname(__file__), p)
         q = parser.reset(open(n).read(), n)
         c = compiler.compile(next(q))
         eval(c, {'__package__': __package__, '__file__': n})
-        __debug__ and print('done')
