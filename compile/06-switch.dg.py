@@ -12,8 +12,8 @@ compile.r.builtins !! 'else' = (self, cond, otherwise) ->
   '''
 
   is_if, (then, cond) = parse.syntax.else_: cond
-  ptr = self.opcode: 'POP_JUMP_IF_TRUE'  cond delta: 0 if     is_if
-  ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0 unless is_if
+  ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0 if     is_if
+  ptr = self.opcode: 'POP_JUMP_IF_TRUE'  cond delta: 0 unless is_if
   jmp = self.opcode: 'JUMP_FORWARD'      then delta: 0
 
   ptr:
