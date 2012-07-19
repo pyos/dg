@@ -9,7 +9,7 @@ Version      | Compiles | Runs     | Runs flawlessly | Reason
 CPython 3.3  | Probably | Probably | Probably        | Not much changed since 3.2
 CPython 3.2  | Yes      | Yes      | Yes (for now)   | Import hooks and other stuff will require 3.3
 CPython 3.1  | Probably | Probably | Probably        | The new opcodes in 3.2 are not used by dg
-CPython 3.0  | Probably | Probably | No              | Old-style jumps (that don't pop items off the stack)
+CPython 3.0  | No       | No       | No              | Old-style jumps (that don't pop items off the stack)
 Any Python 2 | No       | No       | No              | Guess why.
 
 ## TODO
