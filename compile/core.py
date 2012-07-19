@@ -16,10 +16,10 @@ class Compiler:
         # An expression currently being processed by innermost `load`.
         self._loading = None
 
-    def opcode(self, opcode, *args, delta, arg=None):
+    def opcode(self, opcode, *args, delta, **kwargs):
 
         self.load(*args)
-        arg = len(args) if arg is None else arg
+        arg = kwargs.get('arg', len(args))
         return self.code.append(opcode, arg, -len(args) + delta)
 
     def store(self, var, expr):
