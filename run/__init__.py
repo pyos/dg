@@ -73,9 +73,10 @@ def dg(fd, name='__main__'):
 
             while not code:
 
-                buf += '\n' + input(sys.ps2 if buf else sys.ps1)
+                buf += input(sys.ps2 if buf else sys.ps1)
                 tree = parser.compile_command(buf)
                 code = tree is not None and compiler.compile(tree, name='<module>')
+                buf += '\n'
 
             sys.displayhook(eval(code, environ))
 
