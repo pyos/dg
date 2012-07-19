@@ -6,9 +6,6 @@ from ..parse import syntax
 
 class Compiler:
 
-    builtins     = {}
-    fake_methods = {}
-
     def __init__(self):
 
         super().__init__()
@@ -19,30 +16,98 @@ class Compiler:
         # An expression currently being processed by innermost `load`.
         self._loading = None
 
-    @classmethod
-    def builtin(cls, name, fake_method=False):
-
-        return lambda f: (
-            cls.fake_methods if fake_method else
-            cls.builtins
-        ).__setitem__(name, f) or f
-
-    @classmethod
-    def callable(cls, func):
-
-        def f(self, *args):
-
-            _, posargs, kwargs, vararg, varkwarg = syntax.call(None, *args)
-            syntax.ERROR(vararg or varkwarg, const.ERR.VARARG_WITH_BUILTIN)
-            return func(self, *posargs, **kwargs)
-
-        return f
-
-    def opcode(self, opcode, *args, delta, **kwargs):
+    def opcode(self, opcode, *args, delta, arg=None):
 
         self.load(*args)
-        arg = kwargs.get('arg', len(args))
+        arg = len(args) if arg is None else arg
         return self.code.append(opcode, arg, -len(args) + delta)
+
+    def store(self, var, expr):
+
+        expr, type, var, *args = syntax.assignment(var, expr)
+
+        if type == const.AT.IMPORT:
+
+            self.opcode('IMPORT_NAME', args[0], None, arg=expr, delta=1)
+
+        else:
+
+            self.load(expr)
+
+        self.store_top(type, var, *args)
+
+    def store_top(self, type, var, *args, dup=True):
+
+        dup and self.opcode('DUP_TOP', delta=1)
+
+        if type == const.AT.UNPACK:
+
+            ln, star = args
+            op  = 'UNPACK_SEQUENCE'            if star <  0 else 'UNPACK_EX'
+            arg = star + 256 * (ln - star - 1) if star >= 0 else ln
+            self.opcode(op, arg=arg, delta=ln - 1)
+
+            for item in var:
+
+                self.store_top(*item, dup=False)
+
+        elif type == const.AT.ATTR:
+
+            syntax.ERROR(var[1] in self.fake_methods, const.ERR.FAKE_METHOD_ASSIGNMENT)
+            self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
+
+        elif type == const.AT.ITEM:
+
+            self.opcode('STORE_SUBSCR', *var, delta=-1)
+
+        else:
+
+            syntax.ERROR(var in self.builtins, const.ERR.BUILTIN_ASSIGNMENT)
+            syntax.ERROR(var in self.fake_methods, const.ERR.BUILTIN_ASSIGNMENT)
+            syntax.ERROR(var in self.code.cellnames, const.ERR.FREEVAR_ASSIGNMENT)
+
+            self.opcode(
+                'STORE_DEREF' if var in self.code.cellvars else
+                'STORE_NAME'  if self.code.slowlocals else
+                'STORE_FAST',
+                arg=var, delta=-1
+            )
+
+    def function(self, args, code):
+
+        args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(args, code)
+        self.load(**kwdefs)
+        self.load(*defs)
+
+        mcode = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
+
+        hasattr(self.code, 'f_hook') and self.code.f_hook(mcode)
+        code = self.compile(code, mcode, name='<lambda>')
+
+        self.opcode(
+            *self.preload_free(code),
+            arg=len(defs) + 256 * len(kwdefs),
+            delta=-len(kwdefs) * 2 - len(defs) - bool(code.co_freevars) + 1
+        )
+
+
+    def preload_free(self, code):
+
+        if code.co_freevars:
+
+            for freevar in code.co_freevars:
+
+                if freevar in self.code.varnames:
+
+                    # Make fast slot accessible from inner scopes.
+                    self.opcode('LOAD_FAST',   arg=freevar, delta=1)
+                    self.opcode('STORE_DEREF', arg=freevar, delta=-1)
+
+                self.opcode('LOAD_CLOSURE', arg=freevar, delta=1)
+
+            self.opcode('BUILD_TUPLE', arg=len(code.co_freevars), delta=-len(code.co_freevars) + 1)
+
+        return ('MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION'), code
 
     def call(self, f, *args, preloaded=0):
 
@@ -156,3 +221,15 @@ class Compiler:
         finally:
 
             self.code = backup
+
+    builtins = {
+        '':   call
+      , ':':  call
+      , '=':  store
+      , '->': function
+      , ',':  lambda self, a, *bs: self.opcode('BUILD_TUPLE', *syntax.tuple_(a, *bs), delta=1)
+      , '.':  lambda self, a, b: self.opcode('LOAD_ATTR', a, arg=b, delta=1)
+      , '$':  lambda self, a, *bs, c=tree.Closure: self.call(a, *[c([b]) for b in bs] or [c()])
+    }
+
+    fake_methods = {}

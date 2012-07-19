@@ -2,7 +2,7 @@
 ..parse.syntax = import
 
 
-compile.r.builtins !! 'raise' = compile.r.callable $
+compile.r.builtins !! 'raise' = compile.callable $
   (self, exception, caused_by: Ellipsis) ->
     '''
       raise: ExceptionType
@@ -59,7 +59,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   # Er, so there was no exception, let's store None instead.
   # Since we've already POPped_BLOCK, exceptions occured
   # during this assignment will be ignored.
-  compile.store: self name None
+  self.store: name None
   # XXX I don't know why is that needed.
   self.code.cstacksize -= 1
 
@@ -72,7 +72,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   to_else = self.opcode: 'JUMP_FORWARD' delta: 3
   to_except:
   self.opcode: 'ROT_TWO' delta: 0
-  compile.store_top: self (*): (parse.syntax.assignment_target: name)
+  self.store_top: (*): (parse.syntax.assignment_target: name)
   self.opcode: 'ROT_TWO' delta: 0
   to_else:
 

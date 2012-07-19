@@ -23,7 +23,7 @@ compile.r.fake_methods !! 'while' = (self, cond, block) ->
   exit_ptr:
 
 
-compile.r.fake_methods !! 'for' = compile.r.callable $ (self, iterable, each, do) ->
+compile.r.fake_methods !! 'for' = compile.callable $ (self, iterable, each, do) ->
   '''
     iterable.for: item block
     iterable.for: item do: block
@@ -42,7 +42,7 @@ compile.r.fake_methods !! 'for' = compile.r.callable $ (self, iterable, each, do
   loop_ptr = self.opcode: 'JUMP_ABSOLUTE' arg: -1 delta: 0
   end_ptr  = self.opcode: 'FOR_ITER' delta: 1
 
-  compile.store_top: self (*): (parse.syntax.assignment_target: each) dup: False
+  self.store_top: (*): (parse.syntax.assignment_target: each) dup: False
   self.load: do
   self.opcode: 'ROT_THREE' delta: 0
   self.opcode: 'ROT_TWO'   delta: 0

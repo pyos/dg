@@ -41,7 +41,7 @@ varary = (multiple, arg: 0, inplace: False, single: None) -> (self, a, *bs) ->
   self.load: a
   ps = list $ map: b -> (self.opcode: multiple b arg: arg delta: 0) bs
   self.opcode: single arg: arg delta: 0 unless ps
-  compile.store_top: self (*): (parse.syntax.assignment_target: a) if inplace
+  self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
 
 # `.`, `,`, ``, `:`, `->`, `=`, and `$` are already defined.
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.

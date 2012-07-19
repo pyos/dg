@@ -32,7 +32,7 @@ compile.r.builtins !! 'inherit' = (self, *stuff) ->
   mcode.append: 'LOAD_CLOSURE' '__class__' delta: 1
   mcode.append: 'RETURN_VALUE'             delta: (-1)
   code = mcode.compile:
-  
+
   self.opcode: 'LOAD_BUILD_CLASS' delta: 1
-  self.opcode: (compile.preload_free: self code) code arg: 0 delta: (1 - bool: code.co_freevars)
+  self.opcode: (*): (self.preload_free: code) arg: 0 delta: (1 - bool: code.co_freevars)
   self.call: None '<class>' (*): args preloaded: 1
