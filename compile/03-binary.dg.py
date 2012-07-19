@@ -1,4 +1,5 @@
 ..compile      = import
+..parse.tree   = import
 ..parse.syntax = import
 
 
@@ -39,11 +40,15 @@ varary = (multiple, arg: 0, inplace: False, single: None) -> (self, a, *bs) ->
   '''
 
   self.load: a
-  ps = list $ map: b -> (self.opcode: multiple b arg: arg delta: 0) bs
+  ps = list: (map: b -> (self.opcode: multiple b arg: arg delta: 0) bs)
   self.opcode: single arg: arg delta: 0 unless ps
   self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
 
-# `.`, `,`, ``, `:`, `->`, `=`, and `$` are already defined.
+# `.`, ``, `:`, `->`, and `=` are already defined.
+compile.r.builtins !! '$' = (self, a, *bs) -> self.call: a (parse.tree.Closure: bs)
+compile.r.builtins !! ',' = (self, a, *bs) ->
+  self.opcode: 'BUILD_TUPLE' (*): (parse.syntax.tuple_: a (*): bs) delta: 1
+
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
 compile.r.builtins !! '<'   = varary: 'COMPARE_OP' '<'
 compile.r.builtins !! '<='  = varary: 'COMPARE_OP' '<='

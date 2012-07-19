@@ -227,9 +227,7 @@ class Compiler:
       , ':':  call
       , '=':  store
       , '->': function
-      , ',':  lambda self, a, *bs: self.opcode('BUILD_TUPLE', *syntax.tuple_(a, *bs), delta=1)
       , '.':  lambda self, a, b: self.opcode('LOAD_ATTR', a, arg=b, delta=1)
-      , '$':  lambda self, a, *bs, c=tree.Closure: self.call(a, *[c([b]) for b in bs] or [c()])
     }
 
     fake_methods = {}
