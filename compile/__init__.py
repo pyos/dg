@@ -1,11 +1,13 @@
 import re
 import os.path
+import marshal
 
 from .core import Compiler as r
 from .. import const
 from .. import parse
 from ..parse import syntax
 
+PRECOMPILED_STORAGE = 'bootstrap.pyc'
 
 def callable(func):
 
@@ -21,11 +23,40 @@ def callable(func):
 parser   = parse.r()
 compiler = r()
 
-for p in sorted(os.listdir(os.path.dirname(__file__))):
+container = os.path.dirname(__file__)
+preloaded = os.path.join(container, PRECOMPILED_STORAGE)
+all_files = sorted(os.listdir(container))
+unparsed  = [os.path.join(container, p) for p in all_files if re.match('\d+-', p)]
 
-    if re.match('\d+-', p):
+# If the precompiled file is up to date, load it instead.
+modified = max(os.stat(p).st_mtime for p in unparsed)
+compiled = os.stat(preloaded).st_mtime if os.path.exists(preloaded) else float('-inf')
 
-        n = os.path.join(os.path.dirname(__file__), p)
-        q = parser.reset(open(n).read(), n)
+try:
+
+    cs = compiled >= modified and marshal.load(open(preloaded, 'rb'))
+
+except Exception:
+
+    cs = False
+
+else:
+
+    if cs:
+
+        for c in cs:
+
+            eval(c, {'__package__': __package__, '__file__': '<frozen>'})
+
+if cs is False:
+
+    codes = []
+
+    for p in unparsed:
+
+        q = parser.reset(open(p).read(), p)
         c = compiler.compile(next(q))
-        eval(c, {'__package__': __package__, '__file__': n})
+        eval(c, {'__package__': __package__, '__file__': p})
+        codes.append(c)
+
+    marshal.dump(codes, open(preloaded, 'wb'))
