@@ -2,14 +2,13 @@ import ast
 
 from . import core
 from . import tree
-from . import libparse
 
 SIG_CLOSURE_END        = tree.Internal()
 SIG_EXPRESSION_BREAK   = tree.Internal()
 SIG_EXPRESSION_BR_HARD = tree.Internal()
 
-STATE_AFTER_OBJECT = libparse.STATE_CUSTOM << 0
-STATE_PARSE_INDENT = libparse.STATE_CUSTOM << 1
+STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
+STATE_PARSE_INDENT = core.STATE_CUSTOM << 1
 
 
 class r (core.Parser):
@@ -21,9 +20,9 @@ class r (core.Parser):
 #
 # bof = ^^
 #
-def bof(stream: libparse.STATE_AT_FILE_START, token: r''):
+def bof(stream: core.STATE_AT_FILE_START, token: r''):
 
-    stream.state |= libparse.STATE_AT_LINE_START
+    stream.state |= core.STATE_AT_LINE_START
     return do(stream, token, indented=True)
 
 
@@ -59,7 +58,7 @@ def comment(stream, token: r'\s*#[^\n]*'):
 #
 # indent = ^ ( ' ' | '\t' ) *
 #
-def indent(stream: libparse.STATE_AT_LINE_START | STATE_PARSE_INDENT, token: r' *'):
+def indent(stream: core.STATE_AT_LINE_START | STATE_PARSE_INDENT, token: r' *'):
 
     indent = len(token.group())
 
@@ -82,7 +81,7 @@ def indent(stream: libparse.STATE_AT_LINE_START | STATE_PARSE_INDENT, token: r' 
 #
 # eof = $
 #
-def eof(stream: libparse.STATE_AT_FILE_END, token: r''):
+def eof(stream: core.STATE_AT_FILE_END, token: r''):
 
     yield SIG_CLOSURE_END
 
@@ -176,7 +175,7 @@ def do(stream, token: r'\(', indented=False):
 
             (
                 not indented
-                and stream.state & libparse.STATE_AT_FILE_END
+                and stream.state & core.STATE_AT_FILE_END
                 and stream.error('non-closed block at EOF')
             )
 
