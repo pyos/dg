@@ -1,48 +1,92 @@
+import os
+import sys
+import runpy
 import builtins
-import operator
-import functools
-import importlib
 
-from .shell import dg
-
-# Choose a function based on the number of arguments.
-varary = lambda *fs: lambda *xs: fs[len(xs) - 1](*xs)
+from .. import parse
+from .. import compile
 
 
-builtins.__dict__.update({
-    # Runtime counterparts of some stuff in `Compiler.builtins`.
-    '$': lambda f, *xs: f(*xs)
-  , ':': lambda f, *xs: f(*xs)
-  , ',': lambda a, *xs: (a,) + xs
+# Preprocess the traceback given its root frame.
+#
+# :param trace: `Exception.__traceback__`
+#
+# :return: a new traceback.
+#
+def traceback(trace):
 
-  , '<':  operator.lt
-  , '<=': operator.le
-  , '==': operator.eq
-  , '!=': operator.ne
-  , '>':  operator.gt
-  , '>=': operator.ge
-  , 'is': operator.is_
-  , 'in': lambda a, b: a in b
+    uses_runpy = False
+    runpy_code = {runpy._run_module_as_main.__code__, runpy._run_code.__code__}
 
-  , 'not': operator.not_
-  , '~':  operator.invert
-  , '+':  varary(operator.pos, operator.add)
-  , '-':  varary(operator.neg, operator.sub)
-  , '*':  operator.mul
-  , '**': operator.pow
-  , '/':  operator.truediv
-  , '//': operator.floordiv
-  , '%':  operator.mod
-  , '!!': operator.getitem
-  , '&':  operator.and_
-  , '^':  operator.xor
-  , '|':  operator.or_
-  , '<<': operator.lshift
-  , '>>': operator.rshift
+    # Skip over all entries in `runpy` module.
+    while trace and trace.tb_frame.f_code in runpy_code:
 
-    # Useful stuff.
-  , 'import': importlib.import_module
-  , 'foldl': functools.reduce
-  , '~:': functools.partial
-  , '...': Ellipsis
-})
+        trace = trace.tb_next
+        uses_runpy = True
+
+    # If `runpy` was used, the next line is in `__main__`.
+    trace = trace.tb_next if trace and uses_runpy else trace
+
+    # If the next lines are in this module, skip them, too.
+    while trace and trace.tb_frame.f_code is dg.__code__:
+
+        trace = trace.tb_next
+
+    return trace
+
+
+# Start an interactive shell.
+#
+# :param name: name of the module.
+#
+# :return: runs indefinitely.
+#
+def dg(fd, name='__main__'):
+
+    parser   = parse.r()
+    compiler = compile.r()
+    environ  = {'__name__': name, '__builtins__': __builtins__}
+
+    if not fd.isatty():
+
+        p = parser.reset(fd.read(), fd.name)
+        c = compiler.compile(next(p), name='<module>')
+        eval(c, environ)
+        return exit(0)
+
+    if fd is sys.stdin:
+
+        # Run PYTHONSTARTUP first.
+        st = os.environ.get('PYTHONSTARTUP', '')
+        st and eval(builtins.compile(open(st).read(), st, 'exec'), environ)
+
+    sys.ps1 = getattr(sys, 'ps1', '>>> ')
+    sys.ps2 = getattr(sys, 'ps2', '... ')
+    sys.stdin = fd
+
+    while True:
+
+        try:
+
+            buf  = ''
+            code = None
+
+            while not code:
+
+                buf += '\n' + input(sys.ps2 if buf else sys.ps1)
+                tree = parser.compile_command(buf)
+                code = tree is not None and compiler.compile(tree, name='<module>')
+
+            sys.displayhook(eval(code, environ))
+
+        except SystemExit:
+
+            raise
+
+        except EOFError:
+
+            exit()
+
+        except BaseException as e:
+
+            sys.excepthook(type(e), e, traceback(e.__traceback__))
