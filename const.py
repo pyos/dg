@@ -4,7 +4,7 @@ class ERR:
 
   ### SYNTAX
 
-    # Attempted to store an imported module in a non-variable (e.g. object attribute.)
+    # Attempted to store an imported module in a non-variable.
     NONCONST_IMPORT = 'can\'t infer module name from variable name'
     # Attempted to pass a kwarg with an invalid name.
     NONCONST_KEYWORD = 'keyword argument names should be constant'
@@ -13,7 +13,7 @@ class ERR:
     # Attempted to assign a value to something but a name.
     NONCONST_VARNAME = 'can\'t assign to non-constant names'
     # Same as above, but for function arguments.
-    NONCONST_ARGUMENT = 'pattern-matching of function arguments is not supported'
+    NONCONST_ARGUMENT = 'function arguments can\'t be pattern-matched'
 
     # Tried to assign something to a built-in.
     BUILTIN_ASSIGNMENT = 'that name is reserved and can\'t be modified'
@@ -23,7 +23,7 @@ class ERR:
     MULTIPLE_VARARGS = 'multiple *varargs are not allowed'
     # Same as above, but for **varkwargs.
     MULTIPLE_VARKWARGS = 'multiple **varkwargs are not allowed'
-    # *varargs or **varkwargs have been assigned a default value in function definition.
+    # *varargs or **varkwargs have been assigned a default value.
     VARARG_DEFAULT = 'neither *varargs nor **varkwargs can have default values'
     # **varkwargs is not the last argument in function definition.
     ARG_AFTER_VARKWARGS = '**varkwargs must be the last argument'
@@ -34,7 +34,7 @@ class ERR:
     NOT_AFTER_IF = 'that should be used only after `if` or `unless`'
 
     # `switch` contains something other than assignments
-    INVALID_STMT_IN_SWITCH = 'all rules in `switch` must be of form `condition = action`'
+    INVALID_STMT_IN_SWITCH = 'switch must only contain `if = then` pairs'
 
   ### UNDEFINED BEHAVIOR
 
