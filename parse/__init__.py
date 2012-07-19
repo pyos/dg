@@ -255,13 +255,13 @@ def int16(stream, token: r'0x([0-9a-fA-F]+)'):
 #
 # int10  = ( '0' .. '9' ) +
 #
-def number(stream, token: r'([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?'):
+def number(stream, token: r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?'):
 
-    integral, fraction, exponent, imag = token.groups()
+    sign, integral, fraction, exponent, imag = token.groups()
     exponent = int(exponent or 0)
     fraction = int(fraction) / 10 ** (len(fraction) - exponent) if fraction else 0
     integral = int(integral) * 10 ** exponent
-    yield (integral + fraction) * (1j if imag else 1)
+    yield (integral + fraction) * (1j if imag else 1) * (-1 if sign == '-' else 1)
 
 
 @r.token
