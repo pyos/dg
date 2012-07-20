@@ -61,7 +61,7 @@ Loader = inherit: str $
       # Attempt to recompile the source code.
       # FIXME should do that when dg or Python version changes.
       tree = dg.parse.r:.reset: filename: (str: self) $ (open: self).read:
-      code = dg.compile.r:.compile $ next: tree
+      code = dg.compile.r:.compile: name: '<module>' $ next: tree
 
       os.makedirs: exist_ok: True $ os.path.dirname: cache
       marshal.dump: code $ open: cache 'wb'
