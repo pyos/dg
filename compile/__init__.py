@@ -7,8 +7,6 @@ from .. import const
 from .. import parse
 from ..parse import syntax
 
-PRECOMPILED_STORAGE = 'bootstrap.pyc'
-
 def callable(func):
 
     def f(self, *args):
@@ -23,10 +21,10 @@ def callable(func):
 parser   = parse.r()
 compiler = r()
 
-container = os.path.dirname(__file__)
-preloaded = os.path.join(container, PRECOMPILED_STORAGE)
+container = os.path.join(os.path.dirname(__file__), 'bootstrap')
+preloaded = os.path.join(container, 'bootstrap.pyc')
 all_files = sorted(os.listdir(container))
-unparsed  = [os.path.join(container, p) for p in all_files if re.match('\d+-', p)]
+unparsed  = [os.path.join(container, p) for p in all_files]
 
 # If the precompiled file is up to date, load it instead.
 modified = max(os.stat(p).st_mtime for p in unparsed)
