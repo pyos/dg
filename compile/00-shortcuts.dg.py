@@ -4,7 +4,7 @@ functools = import
 importlib = import
 
 # Choose a function based on the number of arguments.
-varary = (*fs) -> (*xs) -> (fs !! (len: xs - 1)): (*): xs
+varary = (*fs) -> (*xs) -> (fs !! (len: xs)): (*): xs
 
 builtins . $ = (f, *xs) -> f: (*): xs
 builtins . : = (f, *xs) -> f: (*): xs
@@ -21,8 +21,8 @@ builtins . in = (a, b) -> operator.contains: b a
 
 builtins . not = operator.not_
 builtins . ~   = operator.invert
-builtins . +   = varary: operator.pos operator.add
-builtins . -   = varary: operator.neg operator.sub
+builtins . +   = varary: None operator.pos operator.add
+builtins . -   = varary: None operator.neg operator.sub
 builtins . *   = operator.mul
 builtins . **  = operator.pow
 builtins . /   = operator.truediv
