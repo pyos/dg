@@ -1,0 +1,75 @@
+imp            = import
+sys            = import
+marshal        = import
+os.path        = import
+itertools      = import
+importlib.util = import
+
+dg.compile = import
+dg.parse   = import
+
+
+getmtime = fn ->
+  (os.stat: fn).st_mtime if os.path.exists: fn else float: '-inf'
+
+
+Finder = inherit $
+
+  find_module = (self, mod, path: None) ->
+    # Empty path in `sys.path` is the current directory.
+    path = map: p -> (p or os.curdir) sys.path if path `is` None
+
+    # Search for
+    mods = itertools.chain.from_iterable $ map: p -> (
+      # directory `module`
+      a = os.path.join: p $ mod.rsplit: '.' 1 !! -1
+      yield: a if os.path.isdir: a
+      # or file `module.dg`
+      b = a + os.extsep + 'dg'
+      yield: b if os.path.isfile: b
+      None
+    # in any of the available paths.
+    ) $ filter: os.path.isdir path
+
+    unsafe:
+      e =
+        p = os.path.abspath $ next $ mods
+        Loader: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
+      e `isinstance` StopIteration = None
+
+
+Loader = inherit: str $
+
+  load_module = importlib.util.module_for_loader $ (self, module) ->
+
+    init, _, last = module.__name__.rpartition: '.'
+    is_file = last == (os.path.splitext $ os.path.basename: self) !! 0
+
+    module.__file__    = self
+    module.__path__    = list: (os.path.dirname: self,) if not: is_file
+    module.__loader__  = self
+    module.__package__ = (init or None if is_file else module.__name__)
+
+    code  = None
+    cache = imp.cache_from_source: self
+
+    code = unsafe:
+      _ = (marshal.load $ open: cache 'rb' if getmtime: self <= getmtime: code)
+      _ = None
+
+    not: code and os.path.exists: self and
+      # Attempt to recompile the source code.
+      # FIXME should do that when dg or Python version changes.
+      tree = dg.parse.r:.reset: filename: (str: self) $ (open: self).read:
+      code = dg.compile.r:.compile $ next: tree
+
+      os.makedirs: exist_ok: True $ os.path.dirname: cache
+      marshal.dump: code $ open: cache 'wb'
+
+    # Not having a code completely is not an error;
+    # that means a package did not have the __init__ submodule.
+    # (If there was no module at all, finder would not create this loader.)
+    eval: code module.__dict__ if code
+    module
+
+sys.meta_path.append $ Finder:
