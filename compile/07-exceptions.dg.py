@@ -1,5 +1,19 @@
+..const        = import
 ..compile      = import
+..parse.tree   = import
 ..parse.syntax = import
+
+
+unsafe = cases ->
+
+    cases = parse.syntax.unwrap: cases
+    cases = (cases,) unless cases `isinstance` parse.tree.Closure
+    cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
+    parse.syntax.ERROR (not: cases)       const.ERR.DEFAULT
+    parse.syntax.ERROR (not $ all: cases) const.ERR.INVALID_STMT_IN_SWITCH
+
+    cases.append: (None, None) if len: cases < 2 or not: (parse.tree.matchQ: (cases !! -1 !! 0) parse.syntax.ST_EXC_FINALLY)
+    cases
 
 
 compile.r.builtins !! 'raise' = compile.callable $
@@ -45,7 +59,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
 
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
-  (name, try), *cases, (has_finally, finally) = parse.syntax.unsafe: cases
+  (name, try), *cases, (has_finally, finally) = unsafe: cases
 
   # This will be our return value.
   self.load: None

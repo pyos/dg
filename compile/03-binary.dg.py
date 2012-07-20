@@ -3,6 +3,9 @@
 ..parse.syntax = import
 
 
+tuple_s = (init, *last) -> (parse.syntax.uncurry: init parse.syntax.ST_TUPLE) + (list: last)
+
+
 varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None) ->
   '''
     If there is one argument, feed to it an opcode; otherwise,
@@ -47,7 +50,7 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None) ->
 # `.`, ``, `:`, `->`, and `=` are already defined.
 compile.r.builtins !! '$' = (self, a, *bs) -> self.call: a (parse.tree.Closure: bs)
 compile.r.builtins !! ',' = (self, a, *bs) ->
-  self.opcode: 'BUILD_TUPLE' (*): (parse.syntax.tuple_: a (*): bs) delta: 1
+  self.opcode: 'BUILD_TUPLE' (*): (tuple_s: a (*): bs) delta: 1
 
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
 compile.r.builtins !! '<'   = varary ~: 'COMPARE_OP' ~: arg: '<'

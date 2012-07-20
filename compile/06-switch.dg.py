@@ -1,5 +1,22 @@
+..const        = import
 ..compile      = import
+..parse.tree   = import
 ..parse.syntax = import
+
+
+else = cond ->
+  args1 = parse.tree.matchA: cond parse.syntax.ST_EXPR_IF
+  args2 = parse.tree.matchA: cond parse.syntax.ST_EXPR_UNLESS
+  parse.syntax.ERROR (not: args1 and not: args2) const.ERR.NOT_AFTER_IF
+  args1, args1 or args2
+
+
+switch = cases ->
+  cases = parse.syntax.unwrap: cases
+  cases = (cases,) unless cases `isinstance` parse.tree.Closure
+  cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
+  parse.syntax.ERROR (not $ all: cases) const.ERR.INVALID_STMT_IN_SWITCH
+  cases
 
 
 compile.r.builtins !! 'else' = (self, cond, otherwise) ->
@@ -11,7 +28,7 @@ compile.r.builtins !! 'else' = (self, cond, otherwise) ->
 
   '''
 
-  is_if, (then, cond) = parse.syntax.else_: cond
+  is_if, (then, cond) = else: cond
   ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0 if     is_if
   ptr = self.opcode: 'POP_JUMP_IF_TRUE'  cond delta: 0 unless is_if
   jmp = self.opcode: 'JUMP_FORWARD'      then delta: 0
@@ -39,7 +56,7 @@ compile.r.builtins !! 'switch' = (self, cases) ->
     end  = self.opcode: 'JUMP_FORWARD'    action delta: 0
     next:
     end
-  ) $ parse.syntax.switch: cases
+  ) $ switch: cases
 
   self.load: None  # in case nothing matched
   list $ map: x -> (x:) jumps

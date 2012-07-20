@@ -155,40 +155,6 @@ def function(args, code):
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs, code
 
 
-def tuple_(init, *last):
-
-    return uncurry(init, ST_TUPLE) + list(last)
-
-
-def else_(cond):
-
-    args1 = tree.matchA(cond, ST_EXPR_IF)
-    args2 = tree.matchA(cond, ST_EXPR_UNLESS)
-    ERROR(not args1 and not args2, const.ERR.NOT_AFTER_IF)
-    return args1, args1 or args2
-
-
-def switch(cases):
-
-    cases = unwrap(cases)
-    cases = cases if isinstance(cases, tree.Closure) else [cases]
-    cases = list(map(lambda q: tree.matchA(q, ST_ASSIGN), cases))
-    ERROR(not all(cases), const.ERR.INVALID_STMT_IN_SWITCH)
-    return cases
-
-
-def unsafe(cases):
-
-    cases = switch(cases)
-    ERROR(not cases, const.ERR.DEFAULT)  # there was no `try` clause
-
-    if len(cases) < 2 or not tree.matchQ(cases[-1][0], ST_EXC_FINALLY):
-
-        cases.append((None, None))
-
-    return cases
-
-
 def call_pre(f, *args):
 
     f, *args2 = uncurry(f, ST_CALL)
