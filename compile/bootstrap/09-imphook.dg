@@ -13,9 +13,9 @@ getmtime = fn ->
   (os.stat: fn).st_mtime if os.path.exists: fn else float: '-inf'
 
 
-Finder = inherit $
+sys.meta_path.append $ inherit: str $
 
-  find_module = (self, mod, path: None) ->
+  find_module = classmethod: (cls, mod, path: None) ->
     # Empty path in `sys.path` is the current directory.
     path = map: p -> (p or os.curdir) sys.path if path `is` None
 
@@ -34,11 +34,8 @@ Finder = inherit $
     unsafe:
       e =
         p = os.path.abspath $ next $ mods
-        Loader: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
+        cls: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
       e `isinstance` StopIteration = None
-
-
-Loader = inherit: str $
 
   load_module = importlib.util.module_for_loader $ (self, module) ->
 
@@ -71,5 +68,3 @@ Loader = inherit: str $
     # (If there was no module at all, finder would not create this loader.)
     eval: code module.__dict__ if code
     module
-
-sys.meta_path.append $ Finder:
