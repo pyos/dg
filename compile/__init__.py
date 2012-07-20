@@ -22,7 +22,7 @@ compiler = r()
 
 container = os.path.join(os.path.dirname(__file__), 'bootstrap')
 preloaded = os.path.join(container, 'bootstrap.pyc')
-all_files = sorted(os.listdir(container))
+all_files = sorted(filter(lambda q: q.endswith('.dg'), os.listdir(container)))
 unparsed  = [os.path.join(container, p) for p in all_files]
 
 # If the precompiled file is up to date, load it instead.
