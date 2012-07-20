@@ -1,0 +1,55 @@
+os       = import
+sys      = import
+runpy    = import
+builtins = import
+
+..parse   = import
+..compile = import
+
+
+dg = (fd, name: '__main__') ->
+  '''
+    Start an interactive shell.
+
+    :param name: name of the module.
+
+    :return: runs indefinitely.
+  '''
+
+  parser   = parse.r:
+  compiler = compile.r:
+  environ  = dict: (('__name__', name), ('__builtins__', __builtins__))
+
+  switch:
+    not $ (fd.isatty:) =
+      p = parser.reset: (fd.read:) filename: fd.name
+      c = compiler.compile: (next: p) name: '<module>'
+      # FIXME should strip unnecessary traceback items in non-__debug__ mode.
+      eval: c environ
+      exit: 0
+
+    fd `is` sys.stdin =
+      # Run PYTHONSTARTUP first.
+      st = os.environ.get: 'PYTHONSTARTUP' ''
+      eval: (builtins.compile: ((open: st).read:) st 'exec') environ if st
+
+  sys.ps1 = getattr: sys 'ps1' '>>> '
+  sys.ps2 = getattr: sys 'ps2' '... '
+  sys.stdin = fd
+
+  True.while $ unsafe $
+    e =
+      buf  = ''
+      code = None
+
+      (not code).while:
+        buf += input: (sys.ps2 if buf else sys.ps1)
+        tree = parser.compile_command: buf
+        code = compiler.compile: tree name: '<module>' unless tree `is` None
+        buf += '\n'
+
+      sys.displayhook $ eval: code environ
+    e `isinstance` EOFError = exit:
+    e and not: (e `isinstance` SystemExit) =
+      # The first line of the traceback is in this function.
+      sys.excepthook: (type: e) e e.__traceback__.tb_next
