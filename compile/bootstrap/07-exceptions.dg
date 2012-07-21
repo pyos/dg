@@ -5,15 +5,14 @@
 
 
 unsafe = cases ->
+  cases = parse.syntax.unwrap: cases
+  cases = (cases,) unless cases `isinstance` parse.tree.Closure
+  cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
+  parse.syntax.ERROR (not $ all: cases) const.ERR.INVALID_STMT_IN_SWITCH
+  parse.syntax.ERROR (not: cases)       const.ERR.DEFAULT
 
-    cases = parse.syntax.unwrap: cases
-    cases = (cases,) unless cases `isinstance` parse.tree.Closure
-    cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
-    parse.syntax.ERROR (not: cases)       const.ERR.DEFAULT
-    parse.syntax.ERROR (not $ all: cases) const.ERR.INVALID_STMT_IN_SWITCH
-
-    cases.append: (None, None) if len: cases < 2 or not: (parse.tree.matchQ: (cases !! -1 !! 0) parse.syntax.ST_EXC_FINALLY)
-    cases
+  cases.append: (None, None) if len: cases < 2 or not: (parse.tree.matchQ: (cases !! -1 !! 0) parse.syntax.ST_EXC_FINALLY)
+  cases
 
 
 compile.r.builtins !! 'raise' = compile.callable $
@@ -90,15 +89,15 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   self.opcode: 'ROT_TWO' delta: 0
   to_else:
 
-  # The same `switch` statement...
-  jumps = list:
-
-  cases.for each: (cond, case) do:
-    jumps.append $ self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
-    # FIXME we can't return anything from handlers.
-    self.opcode: 'POP_TOP' case delta: 0
-    jumps.append $ self.opcode: 'JUMP_FORWARD' delta: 0
-    jumps and (jumps.pop: -2):
+  # The `switch` statement.
+  # XXX is that considered "code duplication"?
+  jumps = list $ map: c -> (
+    cond, action = c
+    next = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
+    end  = self.opcode: 'JUMP_FORWARD'    action delta: 0
+    next:
+    end
+  ) cases
 
   # This will re-raise the exception if nothing matched
   # (and there was an exception. And there is no `finally` clause.)
@@ -113,6 +112,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   # Second, check if the exception type is None, in which case
   # there was no exception at all.
   list $ map: x -> (x:) jumps
+  self.opcode: 'POP_TOP' delta: -1  # that was pushed by a handler
   self.opcode: 'DUP_TOP' delta: 1
   self.opcode: 'COMPARE_OP' None arg: 'is' delta: 0
   # Then skip POP_EXCEPT if that is the case.
