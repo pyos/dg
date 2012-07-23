@@ -112,7 +112,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   # Second, check if the exception type is None, in which case
   # there was no exception at all.
   list $ map: x -> (x:) jumps
-  self.opcode: 'POP_TOP' delta: -1  # that was pushed by a handler
+  self.opcode: 'POP_TOP' delta: 0  # that was pushed by a handler
   self.opcode: 'DUP_TOP' delta: 1
   self.opcode: 'COMPARE_OP' None arg: 'is' delta: 0
   # Then skip POP_EXCEPT if that is the case.
