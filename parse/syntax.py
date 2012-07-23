@@ -27,11 +27,9 @@ ST_IMPORT_SEP = '_._'
 ST_ASSIGN_ATTR = '_._'
 ST_ASSIGN_ITEM = '_ !! _'
 
-globals().update({
-    n: r().parse(v)[0]
-    for n, v in globals().items()
-    if n.startswith('ST_')
-})
+consts = [_ for _ in globals() if _.startswith('ST_')]
+values = r().parse('; '.join(map(globals().__getitem__, consts)))
+list(map(globals().__setitem__, consts, values))
 
 # Drop outermost parentheses from a syntactic construct `f`.
 unwrap = lambda f: tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
