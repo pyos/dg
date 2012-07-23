@@ -28,7 +28,7 @@ ST_ASSIGN_ATTR = '_._'
 ST_ASSIGN_ITEM = '_ !! _'
 
 globals().update({
-    n: next(r().reset(v))[0]
+    n: r().parse(v)[0]
     for n, v in globals().items()
     if n.startswith('ST_')
 })

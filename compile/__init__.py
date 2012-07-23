@@ -51,8 +51,7 @@ if cs is False:
 
     for p in unparsed:
 
-        q = parser.reset(open(p).read(), p)
-        c = compiler.compile(next(q))
+        c = compiler.compile(parser.parse(open(p).read(), p))
         eval(c, {'__package__': __package__, '__file__': p})
         codes.append(c)
 

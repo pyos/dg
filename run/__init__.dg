@@ -22,8 +22,8 @@ dg = (fd, name: '__main__') ->
 
   switch:
     not $ (fd.isatty:) =
-      p = parser.reset: (fd.read:) filename: fd.name
-      c = compiler.compile: (next: p) name: '<module>'
+      p = parser.parse: filename: fd.name $ fd.read:
+      c = compiler.compile: p name: '<module>'
       # FIXME should strip unnecessary traceback items in non-__debug__ mode.
       eval: c environ
       exit: 0

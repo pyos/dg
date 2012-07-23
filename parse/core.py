@@ -130,7 +130,7 @@ class Parser (collections.Iterator):
 
         try:
 
-            res = next(self.reset(code, '<stdin>'))
+            res = self.parse(code, '<stdin>')
 
         except SyntaxError as e:
 
@@ -160,7 +160,7 @@ class Parser (collections.Iterator):
             )
         ) else res
 
-    def reset(self, input, filename='<string>'):
+    def parse(self, input, filename='<string>'):
 
         self.state  = STATE_AT_FILE_START | STATE_AT_LINE_START
         self.buffer = input
@@ -170,7 +170,7 @@ class Parser (collections.Iterator):
         self.repeat = collections.deque()
         self.indent = collections.deque([0])
         self.filename = filename
-        return self
+        return next(self)
 
     def position(self, offset):
 
