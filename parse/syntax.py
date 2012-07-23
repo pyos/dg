@@ -36,14 +36,6 @@ unwrap = lambda f: tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
 
 # Recursively match `f` with a binary operator `p`, returning all the operands.
 uncurry = lambda f, p: tree.matchR(f, p, lambda f, q: q.pop(-2))[::-1]
-
-
-# Same as `assert not ...`, but without `AssertionError`.
-def ERROR(pred, msg):
-
-    if pred:
-
-        raise Exception(msg)
 # }
 
 
@@ -51,14 +43,12 @@ def assignment(var, expr):
 
     if tree.matchQ(expr, ST_IMPORT):
 
-        var    = tree.matchA(var, ST_IMPORT_REL) or [tree.Link(), var]
+        var = tree.matchA(var, ST_IMPORT_REL) or [tree.Link(), var]
+        isinstance(var[0], tree.Link) or const.ERR.NONCONST_IMPORT
         parent = var[0].count('.')
-        args   = uncurry(unwrap(var[-1]), ST_IMPORT_SEP)
-
-        ERROR(parent != len(var[0]), const.ERR.NONCONST_IMPORT)
-        ERROR(not isinstance(var[0], tree.Link), const.ERR.NONCONST_IMPORT)
-        ERROR(not all(isinstance(a, tree.Link) for a in args), const.ERR.NONCONST_IMPORT)
-
+        parent == len(var[0]) or const.ERR.NONCONST_IMPORT
+        args = uncurry(unwrap(var[-1]), ST_IMPORT_SEP)
+        all(isinstance(a, tree.Link) for a in args) or const.ERR.NONCONST_IMPORT
         return '.'.join(args), const.AT.IMPORT, args[0], parent
 
     # Other assignment types do not depend on right-hand statement value.
@@ -76,8 +66,8 @@ def assignment_target(var):
 
         # Allow one starred argument that is similar to `varargs`.
         star = [i for i, q in enumerate(pack) if tree.matchQ(q, ST_ARG_VAR)] or [-1]
-        ERROR(len(star) > 1, const.ERR.MULTIPLE_VARARGS)
-        ERROR(star[0] > 255, const.ERR.TOO_MANY_ITEMS_BEFORE_STAR)
+        len(star) > 1 and const.ERR.MULTIPLE_VARARGS
+        star[0] > 255 and const.ERR.TOO_MANY_ITEMS_BEFORE_STAR
 
         if star[0] >= 0:
 
@@ -91,14 +81,14 @@ def assignment_target(var):
 
     if attr:
 
-        ERROR(not isinstance(attr[1], tree.Link), const.ERR.NONCONST_ATTR)
+        isinstance(attr[1], tree.Link) or const.ERR.NONCONST_ATTR
         return const.AT.ATTR, tuple(attr)
 
     if item:
 
         return const.AT.ITEM, tuple(item)
 
-    ERROR(not isinstance(var, tree.Link), const.ERR.NONCONST_VARNAME)
+    isinstance(var, tree.Link) or const.ERR.NONCONST_VARNAME
     return const.AT.NAME, var
 
 
@@ -126,17 +116,17 @@ def function(args, code):
 
             # Syntax checks.
             # 0. varkwargs should be the last argument
-            ERROR(varkwargs, const.ERR.ARG_AFTER_VARKWARGS)
+            varkwargs and const.ERR.ARG_AFTER_VARKWARGS
             # 1. varargs and varkwargs can't have default values.
-            ERROR(default and (vararg or varkw), const.ERR.VARARG_DEFAULT)
+            default and (vararg or varkw) and const.ERR.VARARG_DEFAULT
             # 2. all arguments between the first one with the default value
             #    and the varargs must have default values
-            ERROR(not varargs and defaults and not default, const.ERR.NO_DEFAULT)
+            not varargs and defaults and not default and const.ERR.NO_DEFAULT
             # 3. only one vararg and one varkwarg is allowed
-            ERROR(varargs   and vararg, const.ERR.MULTIPLE_VARARGS)
-            ERROR(varkwargs and varkw,  const.ERR.MULTIPLE_VARKWARGS)
+            varargs   and vararg and const.ERR.MULTIPLE_VARARGS
+            varkwargs and varkw  and const.ERR.MULTIPLE_VARKWARGS
             # 4. guess what
-            ERROR(not isinstance(arg, tree.Link), const.ERR.NONCONST_ARGUMENT)
+            isinstance(arg, tree.Link) or const.ERR.NONCONST_ARGUMENT
 
             # Put the argument into the appropriate list.
             default and not varargs and defaults.extend(default)
@@ -148,8 +138,7 @@ def function(args, code):
                 arguments
             ).append(arg)
 
-    ERROR(len(arguments) > 255, const.ERR.TOO_MANY_ARGS)
-
+    len(arguments) > 255 and const.ERR.TOO_MANY_ARGS
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs, code
 
 
@@ -159,7 +148,7 @@ def call_pre(f, *args):
     f, *args3 = tree.matchA(f, ST_ARG_KW) or [f]
     attr = tree.matchA(f, ST_ASSIGN_ATTR)
 
-    ERROR(attr and not isinstance(attr[1], tree.Link), const.ERR.NONCONST_ATTR)
+    attr and not isinstance(attr[1], tree.Link) and const.ERR.NONCONST_ATTR
     return [f, attr] + args3 + args2 + list(args)
 
 
@@ -180,17 +169,17 @@ def call(f, *args):
 
         elif tree.matchQ(kw[0], ST_ARG_VAR_C):
 
-            ERROR(vararg, const.ERR.MULTIPLE_VARARGS)
+            vararg and const.ERR.MULTIPLE_VARARGS
             vararg.append(kw[1])
 
         elif tree.matchQ(kw[0], ST_ARG_VAR_KW_C):
 
-            ERROR(varkwarg, const.ERR.MULTIPLE_VARKWARGS)
+            varkwarg and const.ERR.MULTIPLE_VARKWARGS
             varkwarg.append(kw[1])
 
         else:
 
-            ERROR(not isinstance(kw[0], tree.Link), const.ERR.NONCONST_KEYWORD)
+            isinstance(kw[0], tree.Link) or const.ERR.NONCONST_KEYWORD
             kwargs.__setitem__(*kw)
 
     return f, posargs, kwargs, vararg, varkwarg

@@ -53,7 +53,7 @@ class Compiler:
 
         elif type == const.AT.ATTR:
 
-            syntax.ERROR(var[1] in self.fake_methods, const.ERR.FAKE_METHOD_ASSIGNMENT)
+            var[1] in self.fake_methods and const.ERR.FAKE_METHOD_ASSIGNMENT
             self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
 
         elif type == const.AT.ITEM:
@@ -62,9 +62,9 @@ class Compiler:
 
         else:
 
-            syntax.ERROR(var in self.builtins, const.ERR.BUILTIN_ASSIGNMENT)
-            syntax.ERROR(var in self.fake_methods, const.ERR.BUILTIN_ASSIGNMENT)
-            syntax.ERROR(var in self.code.cellnames, const.ERR.FREEVAR_ASSIGNMENT)
+            var in self.builtins       and const.ERR.BUILTIN_ASSIGNMENT
+            var in self.fake_methods   and const.ERR.BUILTIN_ASSIGNMENT
+            var in self.code.cellnames and const.ERR.FREEVAR_ASSIGNMENT
 
             self.opcode(
                 'STORE_DEREF' if var in self.code.cellvars else

@@ -7,7 +7,7 @@
 else = cond ->
   args1 = parse.tree.matchA: cond parse.syntax.ST_EXPR_IF
   args2 = parse.tree.matchA: cond parse.syntax.ST_EXPR_UNLESS
-  parse.syntax.ERROR (not: args1 and not: args2) const.ERR.NOT_AFTER_IF
+  args1 or args2 or const.ERR.NOT_AFTER_IF
   args1, args1 or args2
 
 
@@ -15,7 +15,7 @@ switch = cases ->
   cases = parse.syntax.unwrap: cases
   cases = (cases,) unless cases `isinstance` parse.tree.Closure
   cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
-  parse.syntax.ERROR (not $ all: cases) const.ERR.INVALID_STMT_IN_SWITCH
+  all: cases or const.ERR.INVALID_STMT_IN_SWITCH
   cases
 
 

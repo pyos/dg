@@ -1,11 +1,11 @@
+..const        = import
 ..compile      = import
 ..parse.tree   = import
-..parse.syntax = import
 
 
 with = (code) ->
-  parse.syntax.ERROR: (not $ code `isinstance` parse.tree.Closure) 'wtf'
-  parse.syntax.ERROR: (not: code) 'wtf'
+  code `isinstance` parse.tree.Closure or const.ERR.DEFAULT
+  code or const.ERR.DEFAULT
   (code.popleft:), code
 
 

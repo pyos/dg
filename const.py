@@ -1,4 +1,13 @@
-class ERR:
+class ERRMeta (type):
+
+    def __getattribute__(self, name):
+
+        if name.isupper():
+
+            raise Exception(super().__getattribute__(name))
+
+
+class ERR (metaclass=ERRMeta):
 
     DEFAULT = 'invalid syntax'
 

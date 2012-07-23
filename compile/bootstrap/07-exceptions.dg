@@ -8,8 +8,8 @@ unsafe = cases ->
   cases = parse.syntax.unwrap: cases
   cases = (cases,) unless cases `isinstance` parse.tree.Closure
   cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
-  parse.syntax.ERROR (not $ all: cases) const.ERR.INVALID_STMT_IN_SWITCH
-  parse.syntax.ERROR (not: cases)       const.ERR.DEFAULT
+  all: cases or const.ERR.INVALID_STMT_IN_SWITCH
+  cases      or const.ERR.DEFAULT
 
   cases.append: (None, None) if len: cases < 2 or not: (parse.tree.matchQ: (cases !! -1 !! 0) parse.syntax.ST_EXC_FINALLY)
   cases
