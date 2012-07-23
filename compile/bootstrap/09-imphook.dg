@@ -57,8 +57,8 @@ sys.meta_path.append $ inherit: str $
     not: code and os.path.exists: self and
       # Attempt to recompile the source code.
       # FIXME should do that when dg or Python version changes.
-      tree = dg.parse.r:.parse: filename: (str: self) $ (open: self).read:
-      code = dg.compile.r:.compile: tree name: '<module>'
+      code = dg.compile.r:.compile $
+        dg.parse.r:.parse: filename: (str: self) $ (open: self).read:
 
       os.makedirs: exist_ok: True $ os.path.dirname: cache
       marshal.dump: code $ open: cache 'wb'

@@ -10,7 +10,7 @@ def callable(func):
 
     def f(self, *args):
 
-        _, posargs, kwargs, vararg, varkwarg = syntax.call(None, *args)
+        posargs, kwargs, vararg, varkwarg = syntax.call_args(args)
         (vararg or varkwarg) and const.ERR.VARARG_WITH_BUILTIN
         return func(self, *posargs, **kwargs)
 

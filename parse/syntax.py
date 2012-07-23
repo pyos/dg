@@ -142,17 +142,16 @@ def function(args, code):
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs, code
 
 
-def call_pre(f, *args):
+def call_pre(args1):
 
-    f, *args2 = uncurry(f, ST_CALL)
-    f, *args3 = tree.matchA(f, ST_ARG_KW) or [f]
-    attr = tree.matchA(f, ST_ASSIGN_ATTR)
-
+    args2 = uncurry(args1.pop(0), ST_CALL)
+    args3 = uncurry(args2.pop(0), ST_ARG_KW)
+    attr = tree.matchA(args3[0], ST_ASSIGN_ATTR)
     attr and not isinstance(attr[1], tree.Link) and const.ERR.NONCONST_ATTR
-    return [f, attr] + args3 + args2 + list(args)
+    return [attr] + args3 + args2 + args1
 
 
-def call(f, *args):
+def call_args(args):
 
     posargs  = []
     kwargs   = {}
@@ -182,4 +181,4 @@ def call(f, *args):
             isinstance(kw[0], tree.Link) or const.ERR.NONCONST_KEYWORD
             kwargs.__setitem__(*kw)
 
-    return f, posargs, kwargs, vararg, varkwarg
+    return posargs, kwargs, vararg, varkwarg

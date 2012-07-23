@@ -46,10 +46,7 @@ compile.r.fake_methods !! 'for' = compile.callable $ (self, iterable, each, do) 
   self.load: do
   self.opcode: 'ROT_THREE' delta: 0
   self.opcode: 'ROT_TWO'   delta: 0
-  self.opcode: 'POP_TOP'   delta: (-1)
+  self.opcode: 'POP_TOP'   delta: -2  # One for POP_TOP, one for FOR_ITER.
 
   loop_ptr:
   end_ptr:
-
-  # FOR_ITER popped `iterable` off the stack.
-  self.code.cstacksize -= 1

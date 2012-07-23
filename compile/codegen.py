@@ -1,11 +1,17 @@
 import dis
-import math
 import types
 import struct
 import functools
 
 from .. import const
 
+CO_OPTIMIZED = 1
+CO_NEWLOCALS = 2
+CO_VARARGS   = 4
+CO_VARKWARGS = 8
+CO_NESTED    = 16
+CO_GENERATOR = 32
+CO_NOFREE    = 64
 EXTENDED_ARG = functools.partial(struct.pack, '=BH', dis.opmap['EXTENDED_ARG'])
 
 nsplit  = lambda x, q: nsplit(x // q, q) + [x % q] if x >= q else [x]
@@ -18,7 +24,7 @@ codelen = lambda cs: sum(
 
 class MutableCode:
 
-    def __init__(self, isfunc, args=(), kwargs=(), varargs=(), varkwargs=(), cell=None):
+    def __init__(self, isfunc=False, args=(), kwargs=(), varargs=(), varkwargs=(), cell=None):
 
         super().__init__()
 
@@ -31,13 +37,15 @@ class MutableCode:
         self.cellvars = []
         self.varnames = list(args) + list(kwargs) + list(varargs) + list(varkwargs)
 
-        self.flags  = const.CO.OPTIMIZED | const.CO.NEWLOCALS if isfunc else 0
-        self.flags |= const.CO.VARARGS   if varargs   else 0
-        self.flags |= const.CO.VARKWARGS if varkwargs else 0
-        self.bytecode   = []
-        self.stacksize  = 0
-        self.cstacksize = 0
+        self.flags = (
+            CO_OPTIMIZED | CO_NEWLOCALS * bool(isfunc)
+          | CO_VARARGS   * bool(varargs)
+          | CO_VARKWARGS * bool(varkwargs)
+        )
 
+        self.bytecode = []
+        self.m_depth  = 0
+        self.depth    = 0
         self.filename = '<generated>'
         self.lineno   = 1
         self.lnotab   = {}
@@ -52,12 +60,6 @@ class MutableCode:
   ### LNOTAB
 
     def mark(self, e):
-
-        '''Add an entry to the line number table.
-
-        :param e: the statement that will generate the next instruction.
-
-        '''
 
         self.lnotab[len(self.bytecode)] = e.reparse_location.start[1]
 
@@ -81,10 +83,8 @@ class MutableCode:
 
     def name(self, v, container):
 
-        if not isinstance(v, str) and container is not self.consts:
-
-            # FIXME that should be done in `compile.__init__`, not here.
-            raise Exception(const.ERR.NONCONST_ATTR)
+        # FIXME that should be done in `compile.__init__`, not here.
+        isinstance(v, str) or container is self.consts or const.ERR.NONCONST_ATTR
 
         v in container or container.append(v)
         return container.index(v)
@@ -159,7 +159,7 @@ class MutableCode:
 
         '''
 
-        self.flags      |= name == 'YIELD_VALUE' and const.CO.GENERATOR
+        self.flags      |= name == 'YIELD_VALUE' and CO_GENERATOR
         self.slowlocals |= name == 'STORE_LOCALS'
 
         code = dis.opmap[name]
@@ -184,8 +184,8 @@ class MutableCode:
             value
         ))
 
-        self.stacksize  += max(0, delta)
-        self.cstacksize += delta
+        self.m_depth += max(0, delta)
+        self.depth   += delta
         return self.bytecode[-1][1]
 
     def make_bytecode(self):
@@ -216,10 +216,10 @@ class MutableCode:
             self.argc,
             self.kwargc,
             len(self.varnames),
-            self.stacksize,
+            self.m_depth,
             self.flags | (
-                const.CO.NESTED if self.freevars else
-                const.CO.NOFREE if not self.cellvars else 0
+                CO_NESTED * bool(self.freevars)
+              | CO_NOFREE * (not self.cellvars)
             ),
             b''.join(self.make_bytecode()),
             tuple(self.consts),

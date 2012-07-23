@@ -109,9 +109,9 @@ class Compiler:
 
         return ('MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION'), code
 
-    def call(self, f, *args, preloaded=0):
+    def call(self, *argv, preloaded=0):
 
-        f, attr, *args = syntax.call_pre(f, *args)
+        attr, f, *args = syntax.call_pre(list(argv))
 
         if isinstance(f, tree.Link) and f in self.builtins:
 
@@ -121,10 +121,9 @@ class Compiler:
 
             return self.fake_methods[attr[1]](self, attr[0], *args)
 
-        f, posargs, kwargs, vararg, varkwarg = syntax.call(f, *args)
+        posargs, kwargs, vararg, varkwarg = syntax.call_args(args)
         preloaded or self.load(f)
-        self.load(*posargs)
-        self.load(**kwargs)
+        self.load(*posargs, **kwargs)
 
         self.opcode(
             'CALL_FUNCTION_VAR_KW' if vararg and varkwarg else
@@ -140,7 +139,7 @@ class Compiler:
 
         for e in es:
 
-            stacksize = self.code.cstacksize
+            depth = self.code.depth
             _backup = self._loading
 
             if hasattr(e, 'reparse_location'):
@@ -181,16 +180,16 @@ class Compiler:
             # XXX this line is for compiler debugging purposes.
             #     If it triggers an exception, the required stack size
             #     might have been calculated improperly.
-            assert self.code.cstacksize == stacksize + 1, 'stack leaked'
+            assert self.code.depth == depth + 1, 'stack leaked'
 
         for k, v in kws.items():
 
             self.load(str(k), v)
 
-    def compile(self, expr, into=None, name='<lambda>'):
+    def compile(self, expr, into=None, name='<module>'):
 
         backup = self.code
-        self.code = codegen.MutableCode(isfunc=False) if into is None else into
+        self.code = codegen.MutableCode() if into is None else into
 
         if hasattr(expr, 'reparse_location'):
 

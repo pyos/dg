@@ -60,12 +60,4 @@ class ERR (metaclass=ERRMeta):
     NO_DEFAULT = 'one of the arguments lacks the required default value'
 
 
-class CO:
-
-    OPTIMIZED, NEWLOCALS, VARARGS, VARKWARGS, NESTED, GENERATOR, NOFREE = map(
-        lambda x: 2 ** x,
-        range(7)
-    )
-
-
 class AT: IMPORT, UNPACK, ATTR, ITEM, NAME = range(5)

@@ -73,8 +73,6 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   # Since we've already POPped_BLOCK, exceptions occured
   # during this assignment will be ignored.
   self.store: name None
-  # XXX I don't know why is that needed.
-  self.code.cstacksize -= 1
 
   # Jump over that block if there was no exception.
   # Finishing SETUP_EXCEPT with an exception pushes
@@ -82,7 +80,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   #
   # Stack:: [try, None] or [None, traceback, value, type]
   #
-  to_else = self.opcode: 'JUMP_FORWARD' delta: 3
+  to_else = self.opcode: 'JUMP_FORWARD' delta: 2  # one is on the stack already
   to_except:
   self.opcode: 'ROT_TWO' delta: 0
   self.store_top: (*): (parse.syntax.assignment_target: name)
