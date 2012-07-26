@@ -24,11 +24,9 @@ varary_cond = (jump, self, *xs, argparse: xs -> xs) ->
   '''
 
   *as, b = argparse: xs
-  # There is no `$` operator yet.
   ps = list: (map: a -> (self.opcode: jump a delta: 0) as)
   self.load: b
-  # No runtime operators are defined yet, so `map: (:) ps` is not allowed.
-  list: (map: p -> (p:) ps)
+  list: (map: (:) ps)
 
 
 compile.r.builtins !! 'or'     = varary_cond ~: 'JUMP_IF_TRUE_OR_POP'
