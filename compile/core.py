@@ -226,6 +226,7 @@ class Compiler:
       , ':':  call
       , '=':  store
       , '->': function
+      , '\n': lambda self, *xs: [self.opcode('POP_TOP', x, delta=0) for x in xs[:-1]] + [self.load(xs[-1])]
       , '.':  lambda self, a, b: self.opcode('LOAD_ATTR', a, arg=b, delta=1)
     }
 
