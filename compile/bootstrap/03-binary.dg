@@ -6,7 +6,7 @@
 tuple_s = (init, *last) -> (parse.syntax.uncurry: init parse.syntax.ST_TUPLE) + (list: last)
 
 
-varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None) ->
+varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: False) ->
   '''
     If there is one argument, feed to it an opcode; otherwise,
     do the same thing as `foldl`, but with an opcode instead of a function.
@@ -43,8 +43,10 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None) ->
   '''
 
   self.load: a
-  ps = list: (map: b -> (self.opcode: multiple b arg: arg delta: 0) bs)
-  self.opcode: single arg: arg delta: 0 unless ps
+  self.load: (*): bs if rightf
+  list: (map: b -> (self.opcode: multiple b arg: arg delta:  0) bs) unless rightf
+  list: (map: b -> (self.opcode: multiple   arg: arg delta: -1) bs) if     rightf
+  self.opcode: single arg: arg delta: 0 unless bs
   self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
 
 # `.`, ``, `:`, `->`, and `=` are already defined.
@@ -66,7 +68,7 @@ compile.r.builtins !! '!!'  = varary ~: 'BINARY_SUBSCR'
 compile.r.builtins !! '+'   = varary ~: 'BINARY_ADD'      ~: single: 'UNARY_POSITIVE'
 compile.r.builtins !! '-'   = varary ~: 'BINARY_SUBTRACT' ~: single: 'UNARY_NEGATIVE'
 compile.r.builtins !! '*'   = varary ~: 'BINARY_MULTIPLY'
-compile.r.builtins !! '**'  = varary ~: 'BINARY_POWER'
+compile.r.builtins !! '**'  = varary ~: 'BINARY_POWER'    ~: rightf: True
 compile.r.builtins !! '/'   = varary ~: 'BINARY_TRUE_DIVIDE'
 compile.r.builtins !! '//'  = varary ~: 'BINARY_FLOOR_DIVIDE'
 compile.r.builtins !! '%'   = varary ~: 'BINARY_MODULO'
