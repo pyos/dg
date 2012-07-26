@@ -2,6 +2,12 @@
 ..parse.syntax = import
 
 
+callable = f -> (self, *args) ->
+  posargs, kwargs, vararg, varkwarg = parse.syntax.call_args: args
+  const.ERR.VARARG_WITH_BUILTIN if vararg or varkwarg
+  f: self (*): posargs (**): kwargs
+
+
 compile.r.fake_methods !! 'while' = (self, cond, block) ->
   '''
     cond.while: block
@@ -23,7 +29,7 @@ compile.r.fake_methods !! 'while' = (self, cond, block) ->
   exit_ptr:
 
 
-compile.r.fake_methods !! 'for' = compile.callable $ (self, iterable, each, do) ->
+compile.r.fake_methods !! 'for' = callable $ (self, iterable, each, do) ->
   '''
     iterable.for: item block
     iterable.for: item do: block

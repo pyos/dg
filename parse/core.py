@@ -68,6 +68,8 @@ class Parser (collections.Iterator):
        '\n': -100500,
     }.get: q(i, -7)  # Default
 
+    tokens = []
+
     @classmethod
     def token(cls, func):
 
