@@ -4,9 +4,8 @@ from . import core
 from . import tree
 from .core import Parser as r
 
-SIG_CLOSURE_END        = tree.Internal()
-SIG_EXPRESSION_BREAK   = tree.Internal()
-SIG_EXPRESSION_BR_HARD = tree.Internal()
+SIG_CLOSURE_END      = tree.Internal()
+SIG_EXPRESSION_BREAK = tree.Internal()
 
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 
@@ -25,9 +24,9 @@ def bof(stream: core.STATE_AT_FILE_START, token: r''):
 #
 # separator = '\n' | ';'
 #
-def separator(stream, token: r'\s*\n|;'):
+def separator(stream, token: r'\s*\n'):
 
-    yield SIG_EXPRESSION_BR_HARD if ';' in token.group() else SIG_EXPRESSION_BREAK
+    yield SIG_EXPRESSION_BREAK
 
 
 @r.token
@@ -96,31 +95,28 @@ def operator(stream: STATE_AFTER_OBJECT, token: r'`\w+`|[!$%&*-/:<-@\\^|~]+|if|u
     op  = stream.located(tree.Link(token.group().strip('`') if token else ''))
     lhs = stream.stack
     rhs = next(stream)
+    rhsless = False
 
     while rhs is SIG_EXPRESSION_BREAK:
 
         br  = True
         rhs = next(stream)  # Skip soft breaks.
 
-    # rhsless is true:   `lhs R;` or `(lhs R)` or `lhs R \n not_rhs`
+    # rhsless is true:   `(lhs R)` or `lhs R \n not_rhs`
     # rhsless is false:  `lhs R rhs` or `lhs R \n indented_block`
     if isinstance(rhs, tree.Internal):
 
-        # Either an explicit expression break or a block end was encountered.
+        # A block end was encountered.
         yield rhs
         rhsless = True
 
-    elif bool(token) and br and not getattr(rhs, 'indented', False):
+    elif token and br and not getattr(rhs, 'indented', False):
 
         # The operator was followed by something other than an object or
         # an indented block.
         yield SIG_EXPRESSION_BREAK
         yield rhs
         rhsless = True
-
-    else:
-
-        rhsless = False
 
     while isinstance(lhs[-1], tree.Expression) and stream.has_priority(op, lhs[-1][0]):
 
@@ -161,7 +157,7 @@ def do(stream, token: r'\(', indented=False):
 
             break
 
-        elif item in (SIG_EXPRESSION_BREAK, SIG_EXPRESSION_BR_HARD):
+        elif item is SIG_EXPRESSION_BREAK:
 
             stream.state &= ~STATE_AFTER_OBJECT
 

@@ -28,7 +28,7 @@ ST_ASSIGN_ATTR = '_._'
 ST_ASSIGN_ITEM = '_ !! _'
 
 consts = [_ for _ in globals() if _.startswith('ST_')]
-values = r().parse('; '.join(map(globals().__getitem__, consts)))
+values = r().parse('\n'.join(map(globals().__getitem__, consts)))
 list(map(globals().__setitem__, consts, values))
 
 # Drop outermost parentheses from a syntactic construct `f`.
