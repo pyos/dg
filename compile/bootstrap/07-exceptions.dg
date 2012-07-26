@@ -4,6 +4,12 @@
 ..parse.syntax = import
 
 
+callable = f -> (self, *args) ->
+  posargs, kwargs, vararg, varkwarg = parse.syntax.call_args: args
+  const.ERR.VARARG_WITH_BUILTIN if vararg or varkwarg
+  f: self (*): posargs (**): kwargs
+
+
 unsafe = cases ->
   cases = parse.syntax.unwrap: cases
   cases = (cases,) unless cases `isinstance` parse.tree.Closure
@@ -15,8 +21,7 @@ unsafe = cases ->
   cases
 
 
-compile.r.builtins !! 'raise' = compile.callable $
-  (self, exception, caused_by: ...) ->
+compile.r.builtins !! 'raise' = callable $ (self, exception, caused_by: ...) ->
     '''
       raise: ExceptionType
       raise: exception_instance
