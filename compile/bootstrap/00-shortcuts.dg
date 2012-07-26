@@ -39,3 +39,5 @@ builtins.import = importlib.import_module
 builtins.foldl  = functools.reduce
 builtins . ~:   = functools.partial
 builtins . ...  = Ellipsis
+
+setattr: builtins '\n' None
