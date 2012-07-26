@@ -2,17 +2,13 @@ import ast
 
 from . import core
 from . import tree
+from .core import Parser as r
 
 SIG_CLOSURE_END        = tree.Internal()
 SIG_EXPRESSION_BREAK   = tree.Internal()
 SIG_EXPRESSION_BR_HARD = tree.Internal()
 
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
-
-
-class r (core.Parser):
-
-    tokens = []
 
 
 @r.token

@@ -66,6 +66,8 @@ class Parser (collections.Iterator):
      'else': -21,
     }.get: q(i, -7)  # Default
 
+    tokens = []
+
     @classmethod
     def token(cls, func):
 
