@@ -1,3 +1,4 @@
+import glob
 import os.path
 import marshal
 
@@ -22,11 +23,10 @@ compiler = r()
 
 container = os.path.join(os.path.dirname(__file__), 'bootstrap')
 preloaded = os.path.join(container, 'bootstrap.pyc')
-all_files = sorted(filter(lambda q: q.endswith('.dg'), os.listdir(container)))
-unparsed  = [os.path.join(container, p) for p in all_files]
+all_files = sorted(glob.glob(os.path.join(container, '*.dg')))
 
 # If the precompiled file is up to date, load it instead.
-modified = max(os.stat(p).st_mtime for p in unparsed)
+modified = max(os.stat(p).st_mtime for p in all_files)
 compiled = os.stat(preloaded).st_mtime if os.path.exists(preloaded) else float('-inf')
 
 try:
@@ -49,7 +49,7 @@ if cs is False:
 
     codes = []
 
-    for p in unparsed:
+    for p in all_files:
 
         c = compiler.compile(parser.parse(open(p).read(), p))
         eval(c, {'__package__': __package__, '__file__': p})
