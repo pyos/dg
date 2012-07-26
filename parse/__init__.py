@@ -8,7 +8,6 @@ SIG_EXPRESSION_BREAK   = tree.Internal()
 SIG_EXPRESSION_BR_HARD = tree.Internal()
 
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
-STATE_PARSE_INDENT = core.STATE_CUSTOM << 1
 
 
 class r (core.Parser):
@@ -32,16 +31,7 @@ def bof(stream: core.STATE_AT_FILE_START, token: r''):
 #
 def separator(stream, token: r'\s*\n|;'):
 
-    ok = stream.state & STATE_PARSE_INDENT or stream.ALLOW_BREAKS_IN_PARENTHESES
-
-    if ';' in token.group():
-
-        ok or stream.error('can\'t chain expressions here')
-        yield SIG_EXPRESSION_BR_HARD
-
-    elif ok:
-
-        yield SIG_EXPRESSION_BREAK
+    yield SIG_EXPRESSION_BR_HARD if ';' in token.group() else SIG_EXPRESSION_BREAK
 
 
 @r.token
@@ -58,7 +48,7 @@ def comment(stream, token: r'\s*#[^\n]*'):
 #
 # indent = ^ ( ' ' | '\t' ) *
 #
-def indent(stream: core.STATE_AT_LINE_START | STATE_PARSE_INDENT, token: r' *'):
+def indent(stream: core.STATE_AT_LINE_START, token: r' *'):
 
     indent = len(token.group())
 
@@ -156,18 +146,12 @@ def operator(stream: STATE_AFTER_OBJECT, token: r'`\w+`|[!$%&*-/:<-@\\^|~]+|if|u
 #
 def do(stream, token: r'\(', indented=False):
 
-    state_backup = stream.state & (STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
+    state_backup = stream.state & STATE_AFTER_OBJECT
     stack_backup = stream.stack
 
-    stream.state &= ~(STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
+    stream.state &= ~STATE_AFTER_OBJECT
     stream.stack = tree.Closure()
     stream.stack.indented = indented
-
-    if indented or stream.ALLOW_INDENT_IN_PARENTHESES:
-
-        # Only enable indentation when the closure is not parenthesized.
-        # (May also affect expression separators.)
-        stream.state |= STATE_PARSE_INDENT
 
     for item in stream:
 
@@ -204,10 +188,9 @@ def do(stream, token: r'\(', indented=False):
     if indented:
 
         # Don't allow the expression on the next line touch the indented block.
-        yield SIG_EXPRESSION_BREAK
-        # Put that stuff before closure ends yielded by `indent`.
+        # That stuff should be put before closure ends yielded by `indent`.
         # (We already know there's nothing else in the queue.)
-        stream.repeat.appendleft(stream.repeat.pop())
+        stream.repeat.appendleft(SIG_EXPRESSION_BREAK)
 
     yield stream.stack
     # If we don't do that, outer blocks will receive SIG_CLOSURE_END
@@ -216,7 +199,7 @@ def do(stream, token: r'\(', indented=False):
     # expression.
     stream.repeat.appendleft(stream.repeat.pop())
 
-    stream.state &= ~(STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
+    stream.state &= ~STATE_AFTER_OBJECT
     stream.state |= state_backup
     stream.stack = stack_backup
 

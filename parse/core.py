@@ -13,22 +13,6 @@ Location = collections.namedtuple('Location', 'start, end, filename')
 
 class Parser (collections.Iterator):
 
-    # Whether to use indentation to delimit blocks in parentheses
-    #
-    # Requires ALLOW_BREAKS_IN_PARENTHESES
-    #
-    #    on   indent @ unindent
-    #    off  any indent in parentheses is ignored
-    #
-    ALLOW_INDENT_IN_PARENTHESES = True
-
-    # Whether to allow expression breaks in parenthesized closures
-    #
-    #    on   parentheses are syntactically equivalent to indentation
-    #    off  parentheses contain a single expression
-    #
-    ALLOW_BREAKS_IN_PARENTHESES = True or ALLOW_INDENT_IN_PARENTHESES
-
     OPERATOR_RIGHT_FIXITY = {'**', ':', '$', '->', '=', 'if', 'unless', 'else'}
     OPERATOR_PRECEDENCE = lambda self, i, q={
       # Scope resolution
