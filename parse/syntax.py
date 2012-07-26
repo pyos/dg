@@ -3,6 +3,7 @@ from . import tree
 from .. import const
 
 ST_GROUP = '(_)'
+ST_BREAK = '_\n_'
 
 ST_EXC_FINALLY = 'True'
 
@@ -28,11 +29,14 @@ ST_ASSIGN_ATTR = '_._'
 ST_ASSIGN_ITEM = '_ !! _'
 
 consts = [_ for _ in globals() if _.startswith('ST_')]
-values = r().parse('; '.join(map(globals().__getitem__, consts)))
+values = [_[0] for _ in map(r().parse, map(globals().__getitem__, consts))]
 list(map(globals().__setitem__, consts, values))
 
 # Drop outermost parentheses from a syntactic construct `f`.
 unwrap = lambda f: tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
+
+# Unwrap a closure into a list of statements.
+unwrap_m = lambda f: uncurry(f, ST_BREAK)
 
 # Recursively match `f` with a binary operator `p`, returning all the operands.
 uncurry = lambda f, p: tree.matchR(f, p, lambda f, q: q.pop(-2))[::-1]

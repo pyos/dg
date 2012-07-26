@@ -1,12 +1,7 @@
 ..const        = import
 ..compile      = import
 ..parse.tree   = import
-
-
-with = (code) ->
-  code `isinstance` parse.tree.Closure or const.ERR.DEFAULT
-  code or const.ERR.DEFAULT
-  (code.popleft:), code
+..parse.syntax = import
 
 
 compile.r.builtins !! 'with' = (self, code) ->
@@ -22,7 +17,7 @@ compile.r.builtins !! 'with' = (self, code) ->
 
   '''
 
-  context, stuff = with: code
+  context, stuff = parse.tree.matchA: (parse.syntax.unwrap: code) parse.syntax.ST_BREAK
   self.load: None
   end_ptr = self.opcode: 'SETUP_WITH' context delta: 2
   self.opcode: 'POP_TOP'         delta: -1

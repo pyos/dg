@@ -12,8 +12,7 @@ else = cond ->
 
 
 switch = cases ->
-  cases = parse.syntax.unwrap: cases
-  cases = (cases,) unless cases `isinstance` parse.tree.Closure
+  cases = parse.syntax.unwrap_m $ parse.syntax.unwrap: cases
   cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
   all: cases or const.ERR.INVALID_STMT_IN_SWITCH
   cases
