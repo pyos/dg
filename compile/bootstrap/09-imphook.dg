@@ -33,7 +33,7 @@ sys.meta_path.append $ inherit: str $
 
     unsafe:
       e =
-        p = os.path.abspath $ next $ mods
+        p = os.path.abspath $ next: mods
         cls: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
       e `isinstance` StopIteration = None
 
