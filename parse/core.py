@@ -183,7 +183,7 @@ class Parser (collections.Iterator):
     def error(self, description, after=False):
 
         offset, lineno, charno = self.next_token_at if after else self.last_token_at
-        line = self.buffer[self.buffer.rfind('\n', 0, offset) + 1:]
+        line = self.buffer[self.buffer.rfind('\n', 0, offset) + 1:self.buffer.find('\n', offset)]
         raise SyntaxError(description, (self.filename, lineno, charno, line))
 
     def located(self, q):
