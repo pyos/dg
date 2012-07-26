@@ -3,12 +3,9 @@ import ast
 from . import core
 from . import tree
 
-SIG_CLOSURE_END        = tree.Internal()
-SIG_EXPRESSION_BREAK   = tree.Internal()
-SIG_EXPRESSION_BR_HARD = tree.Internal()
+SIG_CLOSURE_END = tree.Internal()
 
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
-STATE_PARSE_INDENT = core.STATE_CUSTOM << 1
 
 
 class r (core.Parser):
@@ -28,37 +25,19 @@ def bof(stream: core.STATE_AT_FILE_START, token: r''):
 
 @r.token
 #
-# separator = '\n' | ';'
+# soft_break = ( ( comment, '\n' ) *, comment ) ?, '\n'
 #
-def separator(stream, token: r'\s*\n|;'):
+def soft_break(stream, token: r'\s*(?:#.*?\s*)*(\n)'):
 
-    ok = stream.state & STATE_PARSE_INDENT or stream.ALLOW_BREAKS_IN_PARENTHESES
-
-    if ';' in token.group():
-
-        ok or stream.error('can\'t chain expressions here')
-        yield SIG_EXPRESSION_BR_HARD
-
-    elif ok:
-
-        yield SIG_EXPRESSION_BREAK
-
-
-@r.token
-#
-# comment = '#', < anything but '\n' > *
-#
-def comment(stream, token: r'\s*#[^\n]*'):
-
-    # Note that any indentation strictly before a comment is ignored.
-    return ()
+    return operator(stream, token) if stream.state & STATE_AFTER_OBJECT \
+      else [tree.Link('\n')]
 
 
 @r.token
 #
 # indent = ^ ( ' ' | '\t' ) *
 #
-def indent(stream: core.STATE_AT_LINE_START | STATE_PARSE_INDENT, token: r' *'):
+def indent(stream: core.STATE_AT_LINE_START, token: r' *'):
 
     indent = len(token.group())
 
@@ -102,39 +81,48 @@ def end(stream, token: r'\)'):
 # word = ( < alphanumeric > | '_' ) +
 # word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
 #
-def operator(stream: STATE_AFTER_OBJECT, token: r'`\w+`|[!$%&*-/:<-@\\^|~]+|if|unless|else|and|or'):
+def operator(stream: STATE_AFTER_OBJECT, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+|if|unless|else|and|or)'):
 
     stream.state &= ~STATE_AFTER_OBJECT
 
-    br  = False  # whether there was a soft expression break after the operator
-    op  = stream.located(tree.Link(token.group().strip('`') if token else ''))
+    lhs = stream.stack
+    dedent = getattr(lhs[-1], 'indented', False)
+
+    while not dedent and isinstance(lhs[-1], tree.Expression):
+
+        lhs = lhs[-1]
+        dedent |= len(lhs) < 3 or getattr(lhs[-1], 'indented', False)
+
+    br  = None
+    op  = token.group(1).strip('`') if token else '\n' if dedent else ''
+    op  = stream.located(tree.Link(op))
     lhs = stream.stack
     rhs = next(stream)
+    rhsless = False
 
-    while rhs is SIG_EXPRESSION_BREAK:
+    while isinstance(rhs, tree.Link) and rhs == '\n':
 
-        br  = True
+        br  = rhs
         rhs = next(stream)  # Skip soft breaks.
 
-    # rhsless is true:   `lhs R;` or `(lhs R)` or `lhs R \n not_rhs`
+    # rhsless is true:   `(lhs R)` or `lhs R \n not_rhs`
     # rhsless is false:  `lhs R rhs` or `lhs R \n indented_block`
     if isinstance(rhs, tree.Internal):
 
-        # Either an explicit expression break or a block end was encountered.
         yield rhs
         rhsless = True
 
-    elif bool(token) and br and not getattr(rhs, 'indented', False):
+        if op == '\n':
+
+            # Chaining a single expression doesn't make sense.
+            return
+
+    elif token and br is not None and op != '\n' and not getattr(rhs, 'indented', False):
 
         # The operator was followed by something other than an object or
         # an indented block.
-        yield SIG_EXPRESSION_BREAK
         yield rhs
         rhsless = True
-
-    else:
-
-        rhsless = False
 
     while isinstance(lhs[-1], tree.Expression) and stream.has_priority(op, lhs[-1][0]):
 
@@ -156,18 +144,12 @@ def operator(stream: STATE_AFTER_OBJECT, token: r'`\w+`|[!$%&*-/:<-@\\^|~]+|if|u
 #
 def do(stream, token: r'\(', indented=False):
 
-    state_backup = stream.state & (STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
+    state_backup = stream.state & STATE_AFTER_OBJECT
     stack_backup = stream.stack
 
-    stream.state &= ~(STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
+    stream.state &= ~STATE_AFTER_OBJECT
     stream.stack = tree.Closure()
     stream.stack.indented = indented
-
-    if indented or stream.ALLOW_INDENT_IN_PARENTHESES:
-
-        # Only enable indentation when the closure is not parenthesized.
-        # (May also affect expression separators.)
-        stream.state |= STATE_PARSE_INDENT
 
     for item in stream:
 
@@ -180,10 +162,6 @@ def do(stream, token: r'\(', indented=False):
             )
 
             break
-
-        elif item in (SIG_EXPRESSION_BREAK, SIG_EXPRESSION_BR_HARD):
-
-            stream.state &= ~STATE_AFTER_OBJECT
 
         elif stream.state & STATE_AFTER_OBJECT:
 
@@ -201,14 +179,6 @@ def do(stream, token: r'\(', indented=False):
     # for more than one level. All other stuff should have been handled.
     assert not set(stream.repeat) - {SIG_CLOSURE_END}
 
-    if indented:
-
-        # Don't allow the expression on the next line touch the indented block.
-        yield SIG_EXPRESSION_BREAK
-        # Put that stuff before closure ends yielded by `indent`.
-        # (We already know there's nothing else in the queue.)
-        stream.repeat.appendleft(stream.repeat.pop())
-
     yield stream.stack
     # If we don't do that, outer blocks will receive SIG_CLOSURE_END
     # from `indent` before they get to this block. That may have some...
@@ -216,7 +186,7 @@ def do(stream, token: r'\(', indented=False):
     # expression.
     stream.repeat.appendleft(stream.repeat.pop())
 
-    stream.state &= ~(STATE_PARSE_INDENT | STATE_AFTER_OBJECT)
+    stream.state &= ~STATE_AFTER_OBJECT
     stream.state |= state_backup
     stream.stack = stack_backup
 
