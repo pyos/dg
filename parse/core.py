@@ -69,13 +69,14 @@ class Parser (collections.Iterator):
     tokens = []
 
     @classmethod
-    def token(cls, func):
+    def token(cls, regex=r'.', state=0):
 
-        assert func.__code__.co_argcount >= 2, 'def handler(parser, token)'
-        state = func.__annotations__.get(func.__code__.co_varnames[0], 0)
-        regex = func.__annotations__.get(func.__code__.co_varnames[1], r'.')
-        cls.tokens.append((re.compile(regex, re.DOTALL).match, state, func))
-        return func
+        def g(f):
+
+            cls.tokens.append((re.compile(regex, re.DOTALL).match, state, f))
+            return f
+
+        return g
 
     # Whether an operator's priority is higher than the other one's.
     #
