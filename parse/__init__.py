@@ -28,6 +28,14 @@ def soft_break(stream, token):
     return operator(stream, token) if stream.state & STATE_AFTER_OBJECT \
       else [tree.Link('\n')]
 
+@r.token(r'\s*#[^\n]*')
+#
+# comment = '#', < anything but line feed >
+#
+def comment(stream, token):
+
+    return ()
+
 
 @r.token(r' *', core.STATE_AT_LINE_START)
 #
