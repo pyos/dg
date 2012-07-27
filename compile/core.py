@@ -221,13 +221,21 @@ class Compiler:
 
             self.code = backup
 
+    def getattr(self, a, *bs):
+
+        self.load(a)
+
+        for b in bs:
+
+            self.opcode('LOAD_ATTR', arg=b, delta=0)
+
     builtins = {
         '':   call
       , ':':  call
       , '=':  store
       , '->': function
+      , '.':  getattr
       , '\n': lambda self, *xs: [self.opcode('POP_TOP', x, delta=0) for x in xs[:-1]] + [self.load(xs[-1])]
-      , '.':  lambda self, a, b: self.opcode('LOAD_ATTR', a, arg=b, delta=1)
     }
 
     fake_methods = {}

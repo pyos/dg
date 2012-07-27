@@ -3,9 +3,6 @@
 ..parse.syntax = import
 
 
-tuple_s = (init, *last) -> (parse.syntax.uncurry: init parse.syntax.ST_TUPLE) + (list: last)
-
-
 varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: False) ->
   '''
     If there is one argument, feed to it an opcode; otherwise,
@@ -50,9 +47,8 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: 
   self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
 
 # `.`, ``, `:`, `->`, and `=` are already defined.
+compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs delta: 1
 compile.r.builtins !! '$' = (self, a, *bs) -> self.call: a (parse.tree.Closure: bs)
-compile.r.builtins !! ',' = (self, a, *bs) ->
-  self.opcode: 'BUILD_TUPLE' (*): (tuple_s: a (*): bs) delta: 1
 
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
 compile.r.builtins !! '<'   = varary ~: 'COMPARE_OP' ~: arg: '<'
@@ -95,6 +91,6 @@ compile.r.builtins !! '>>=' = varary ~: 'INPLACE_RSHIFT'       ~: inplace: True
 compile.r.builtins !! '.~'  = (self, a, b) -> self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a      b delta: 1
 compile.r.builtins !! ':.'  = (self, a, b) ->
-  '''a:.b <=> (a:).b'''
+  # FIXME should be varary.
   self.call: a
   self.opcode: 'LOAD_ATTR' arg: b delta: 0

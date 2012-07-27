@@ -116,12 +116,20 @@ def operator(stream, token):
 
         lhs = lhs[-1]
 
-    # `R`         <=> `Op R`
-    # `R rhs`     <=> `Call (Link R) (Link rhs)`
-    # `lhs R`     <=> `Op R (Link lhs)`
-    # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
-    e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
-    lhs.append(stream.located(e))
+    if isinstance(lhs[-1], tree.Expression) and lhs[-1][0] == op and not rhsless:
+
+        # `a R b R c` <=> `Op R (Link a) (Link b) (Link c)`
+        # unless R is right-fixed.
+        lhs[-1].append(rhs)
+
+    else:
+
+        # `R`         <=> `Op R`
+        # `R rhs`     <=> `Call (Link R) (Link rhs)`
+        # `lhs R`     <=> `Op R (Link lhs)`
+        # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
+        e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
+        lhs.append(stream.located(e))
 
     stream.state |= STATE_AFTER_OBJECT
 
