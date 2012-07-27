@@ -9,31 +9,31 @@ SIG_CLOSURE_END = tree.Internal()
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 
 
-@r.token
+@r.token(r'', core.STATE_AT_FILE_START)
 #
 # bof = ^^
 #
-def bof(stream: core.STATE_AT_FILE_START, token: r''):
+def bof(stream, token):
 
     stream.state |= core.STATE_AT_LINE_START
     return do(stream, token, indented=True)
 
 
-@r.token
+@r.token(r'\s*(?:#.*?\s*)*(\n)')
 #
 # soft_break = ( ( comment, '\n' ) *, comment ) ?, '\n'
 #
-def soft_break(stream, token: r'\s*(?:#.*?\s*)*(\n)'):
+def soft_break(stream, token):
 
     return operator(stream, token) if stream.state & STATE_AFTER_OBJECT \
       else [tree.Link('\n')]
 
 
-@r.token
+@r.token(r' *', core.STATE_AT_LINE_START)
 #
 # indent = ^ ( ' ' | '\t' ) *
 #
-def indent(stream: core.STATE_AT_LINE_START, token: r' *'):
+def indent(stream, token):
 
     indent = len(token.group())
 
@@ -52,32 +52,24 @@ def indent(stream: core.STATE_AT_LINE_START, token: r' *'):
     stream.indent.append(indent)
 
 
-@r.token
+@r.token(r'', core.STATE_AT_FILE_END)
+@r.token(r'\)')
 #
-# eof = $
+# end = ')' | $
 #
-def eof(stream: core.STATE_AT_FILE_END, token: r''):
+def end(stream, token):
 
     yield SIG_CLOSURE_END
 
 
-@r.token
+@r.token(r'(`\w+`|[!$%&*+\--/:<-@\\^|~]+|,+|if|unless|else|and|or)', STATE_AFTER_OBJECT)
 #
-# end = ')'
-#
-def end(stream, token: r'\)'):
-
-    yield SIG_CLOSURE_END
-
-
-@r.token
-#
-# operator = < ascii punctuation > + | ( '`', word, '`' ) | word_op
+# operator = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op
 #
 # word = ( < alphanumeric > | '_' ) +
 # word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
 #
-def operator(stream: STATE_AFTER_OBJECT, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+|if|unless|else|and|or)'):
+def operator(stream, token):
 
     stream.state &= ~STATE_AFTER_OBJECT
 
@@ -134,11 +126,11 @@ def operator(stream: STATE_AFTER_OBJECT, token: r'(`\w+`|[!$%&*-/:<-@\\^|~]+|if|
     stream.state |= STATE_AFTER_OBJECT
 
 
-@r.token
+@r.token('\(')
 #
 # do = '('
 #
-def do(stream, token: r'\(', indented=False):
+def do(stream, token, indented=False):
 
     state_backup = stream.state & STATE_AFTER_OBJECT
     stack_backup = stream.stack
@@ -187,40 +179,40 @@ def do(stream, token: r'\(', indented=False):
     stream.stack = stack_backup
 
 
-@r.token
+@r.token(r'0b([0-1]+)')
 #
 # int2 = '0b', ( '0' .. '1' ) +
 #
-def int2(stream, token: r'0b([0-1]+)'):
+def int2(stream, token):
 
     yield int(token.group(1), 2)
 
 
-@r.token
+@r.token(r'0o([0-7]+)')
 #
 # int8 = '0o', ( '0' .. '7' ) +
 #
-def int8(stream, token: r'0o([0-7]+)'):
+def int8(stream, token):
 
     yield int(token.group(1), 8)
 
 
-@r.token
+@r.token(r'0x([0-9a-fA-F]+)')
 #
 # int16 = '0x', ( '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' ) +
 #
-def int16(stream, token: r'0x([0-9a-fA-F]+)'):
+def int16(stream, token):
 
     yield int(token.group(1), 16)
 
 
-@r.token
+@r.token(r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?')
 #
 # number = int10, ( '.', int10 ) ?, ( [eE], [+-] ?, intpart ) ?, [jJ] ?
 #
 # int10  = ( '0' .. '9' ) +
 #
-def number(stream, token: r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?'):
+def number(stream, token):
 
     sign, integral, fraction, exponent, imag = token.groups()
     exponent = int(exponent or 0)
@@ -229,7 +221,7 @@ def number(stream, token: r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?
     yield (integral + fraction) * (1j if imag else 1) * (-1 if sign == '-' else 1)
 
 
-@r.token
+@r.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
 #
 # string = 'r' ?, 'b' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
@@ -238,40 +230,40 @@ def number(stream, token: r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?
 # sq_string_m = "'''", ( '\\' ?, < any character > ) * ?, "'''"
 # dq_string_m = '"""', ( '\\' ?,  < any character > ) * ?, '"""'
 #
-def string(stream, token: r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2'):
+def string(stream, token):
 
     g = token.group(2) * (4 - len(token.group(2)))
     yield ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups()))
 
 
-@r.token
+@r.token(r'"|\'')
 #
 # string_err = "'" | '"'
 #
-def string_err(stream, token: r'"|\''):
+def string_err(stream, token):
 
     stream.error('unclosed string literal')
 
 
-@r.token
+@r.token(r'\w+|[!$%&*+\--/:<-@\\^|~]+|,+|`\w+`')
 #
 # link = word | operator
 #
-def link(stream, token: r'\w+|[!$%&*-/:<-@\\^|~]+|`\w+`'):
+def link(stream, token):
 
     yield tree.Link(token.group().strip('`'))
 
 
-@r.token
+@r.token('\s')
 #
 # whitespace = < whitespace >
 #
-def whitespace(stream, token: '\s'):
+def whitespace(stream, token):
 
     return ()
 
 
-@r.token
+@r.token()
 def error(stream, token):
 
     stream.error('invalid input')

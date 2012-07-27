@@ -58,4 +58,4 @@ compile.r.builtins !! 'switch' = (self, cases) ->
   ) $ switch: cases
 
   self.load: None  # in case nothing matched
-  list $ map: x -> (x:) jumps
+  list $ map: (:) jumps

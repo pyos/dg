@@ -6,7 +6,7 @@ class Closure (collections.deque):
 
     def __repr__(self):
 
-        return '(' + '; '.join(map(repr, self)) + ')'
+        return '(' + ''.join(map(repr, self)) + ')' if len(self) < 2 else '(...)'
 
 
 class Expression (list):
