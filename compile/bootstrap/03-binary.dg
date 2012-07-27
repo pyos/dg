@@ -48,7 +48,7 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: 
 
 # `.`, ``, `:`, `->`, and `=` are already defined.
 compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs delta: 1
-compile.r.builtins !! '$' = (self, a, b) ->
+compile.r.builtins !! '$' = (self, a, b: None) ->
   # Close `b` and delegate to `call`.
   b.closed = True unless getattr: b 'closed' True
   is_call  = not: (getattr: a 'closed' True) and self.builtins !! (a !! 0) `is` compile.r.call
