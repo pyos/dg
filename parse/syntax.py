@@ -2,7 +2,6 @@ from . import r
 from . import tree
 from .. import const
 
-ST_GROUP = '(_)'
 ST_BREAK = '\n'
 
 ST_EXC_FINALLY = 'True'
@@ -17,8 +16,8 @@ ST_EXPR_UNLESS = '_ `unless` _'
 ST_ARG_KW       = '_: _'
 ST_ARG_VAR      = '*_'
 ST_ARG_VAR_KW   = '**_'
-ST_ARG_VAR_C    = '(*)'
-ST_ARG_VAR_KW_C = '(**)'
+ST_ARG_VAR_C    = '*'
+ST_ARG_VAR_KW_C = '**'
 
 ST_IMPORT     = 'import'
 ST_IMPORT_REL = '_ _'
@@ -28,18 +27,14 @@ ST_ASSIGN_ATTR = '_._'
 ST_ASSIGN_ITEM = '_ !! _'
 
 consts = [_ for _ in globals() if _.startswith('ST_')]
-values = [_[0] for _ in map(r().parse, map(globals().__getitem__, consts))]
+values = map(r().parse, map(globals().__getitem__, consts))
 list(map(globals().__setitem__, consts, values))
 
-# Drop outermost parentheses from a syntactic construct `f`.
-unwrap = lambda f: tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
+# Recursively match `f` with a binary operator `p`, returning all the operands.
+uncurry = lambda f, p: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f]
 
 # Unwrap a closure into a list of statements.
-unwrap_m = lambda f: uncurry(f, ST_BREAK)
-
-# Recursively match `f` with a binary operator `p`, returning all the operands.
-uncurry = lambda f, p: f[1:] if tree.matchQ(f[0], p) else [f]
-# }
+unwrap = lambda f: uncurry(f, ST_BREAK)
 
 
 def assignment(var, expr):
@@ -50,7 +45,7 @@ def assignment(var, expr):
         isinstance(var[0], tree.Link) or const.ERR.NONCONST_IMPORT
         parent = var[0].count('.')
         parent == len(var[0]) or const.ERR.NONCONST_IMPORT
-        args = uncurry(unwrap(var[-1]), ST_IMPORT_SEP)
+        args = uncurry(var[-1], ST_IMPORT_SEP)
         all(isinstance(a, tree.Link) for a in args) or const.ERR.NONCONST_IMPORT
         return '.'.join(args), const.AT.IMPORT, args[0], parent
 
@@ -61,7 +56,6 @@ def assignment(var, expr):
 def assignment_target(var):
 
     # Attempt to do iterable unpacking first.
-    var  = unwrap(var)
     pack = uncurry(var, ST_TUPLE)
     pack = pack if len(pack) > 1 else tree.matchA(var, ST_TUPLE_S)
 
@@ -106,10 +100,10 @@ def function(args, code):
     varargs     = []  # [] or [name of a varargs container]
     varkwargs   = []  # [] or [name of a varkwargs container]
 
-    if not isinstance(args, tree.Closure) or args:
+    if args is not None:
 
         # Either a single argument, or multiple arguments separated by commas.
-        for arg in uncurry(unwrap(args), ST_TUPLE):
+        for arg in uncurry(args, ST_TUPLE):
 
             arg, *default = tree.matchA(arg, ST_ARG_KW) or [arg]
             vararg = tree.matchA(arg, ST_ARG_VAR)
@@ -164,8 +158,12 @@ def call_args(args):
 
         kw = tree.matchA(arg, ST_ARG_KW)
 
-        if not kw:
+        if not kw or arg.closed:
 
+            # The only place where `(a: b)` != `a: b`.
+            # `a: b` is a keyword argument while `(a: b)` is a function call.
+            # Note that `kw` *implies* `hasattr(arg, 'closed')`, since
+            # `ST_ARG_KW` can only match an expression.
             posargs.append(arg)
 
         elif tree.matchQ(kw[0], ST_ARG_VAR_C):

@@ -2,34 +2,30 @@ import itertools
 import collections
 
 
-class Closure (collections.deque):
-
-    def __repr__(self):
-
-        return '(' + ''.join(map(repr, self)) + ')' if len(self) < 2 else '(...)'
-
-
 class Expression (list):
 
+    indented = False
+    closed   = False
+    """
     def __repr__(self):
 
         sub = list(map(repr, self))
         sub[0] = '`{}`'.format(*sub) if sub[0].isidentifier() else sub[0]
 
-        return(
-            ' '.join(sub[::-1])  if len(self) < 3    else
-            ' '.join(sub[1:])    if not self[0]      else
-            sub[0].join(sub[1:]) if self[0] in {'.'} else
+        return (
+            ' '.join(sub[::-1])  if len(self) < 3          else
+            ' '.join(sub[1:])    if not self[0]            else
+            sub[0].join(sub[1:]) if self[0] in {'.', '\n'} else
             ' {} '.format(*sub).join(sub[1:])
         )
-
+    """
 
 class Link (str):
-
+    """
     def __repr__(self):
 
         return self
-
+    """
 
 class Internal:
 
@@ -40,7 +36,7 @@ class Internal:
 
 def format(code):
 
-    if isinstance(code, (Closure, Expression)):
+    if isinstance(code, Expression):
 
         return type(code).__name__ + '\n  ' + '\n'.join(map(format, code)).replace('\n', '\n  ')
 
@@ -59,7 +55,7 @@ def match(code, pattern, into):
         into.append(code)
         return True
 
-    if isinstance(code, (Closure, Expression)):
+    if isinstance(code, Expression):
 
         return (
             isinstance(pattern, type(code)) and

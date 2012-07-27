@@ -17,7 +17,8 @@ compile.r.builtins !! 'with' = (self, code) ->
 
   '''
 
-  context, stuff = parse.tree.matchA: (parse.syntax.unwrap: code) parse.syntax.ST_BREAK
+  context, *stuff = parse.syntax.uncurry: code parse.syntax.ST_BREAK
+  stuff = parse.tree.Expression: ((parse.syntax.ST_BREAK,) + tuple: stuff)
   self.load: None
   end_ptr = self.opcode: 'SETUP_WITH' context delta: 2
   self.opcode: 'POP_TOP'         delta: -1

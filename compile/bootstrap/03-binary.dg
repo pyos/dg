@@ -48,7 +48,10 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: 
 
 # `.`, ``, `:`, `->`, and `=` are already defined.
 compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs delta: 1
-compile.r.builtins !! '$' = (self, a, *bs) -> self.call: a (parse.tree.Closure: bs)
+compile.r.builtins !! '$' = (self, a, b) ->
+  # Close `b` and delegate to `call`.
+  b.closed = True unless getattr: b 'closed' True
+  self.call: a b
 
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
 compile.r.builtins !! '<'   = varary ~: 'COMPARE_OP' ~: arg: '<'

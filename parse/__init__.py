@@ -73,10 +73,10 @@ def operator(stream, token):
 
     stream.state &= ~STATE_AFTER_OBJECT
 
-    lhs = stream.stack
+    lhs = [stream.stuff]
     dedent = getattr(lhs[-1], 'indented', False)
 
-    while not dedent and isinstance(lhs[-1], tree.Expression):
+    while not dedent and not getattr(lhs[-1], 'closed', True):
 
         lhs = lhs[-1]
         dedent |= len(lhs) < 3 or getattr(lhs[-1], 'indented', False)
@@ -84,7 +84,7 @@ def operator(stream, token):
     br  = None
     op  = token.group(1).strip('`') if token else '\n' if dedent else ''
     op  = stream.located(tree.Link(op))
-    lhs = stream.stack
+    lhs = [stream.stuff]
     rhs = next(stream)
     rhsless = False
 
@@ -112,11 +112,11 @@ def operator(stream, token):
         yield rhs
         rhsless = True
 
-    while isinstance(lhs[-1], tree.Expression) and stream.has_priority(op, lhs[-1][0]):
+    while not getattr(lhs[-1], 'closed', True) and stream.has_priority(op, lhs[-1][0]):
 
         lhs = lhs[-1]
 
-    if isinstance(lhs[-1], tree.Expression) and lhs[-1][0] == op and not rhsless:
+    if not getattr(lhs[-1], 'closed', True) and lhs[-1][0] == op and not rhsless:
 
         # `a R b R c` <=> `Op R (Link a) (Link b) (Link c)`
         # unless R is right-fixed.
@@ -129,7 +129,15 @@ def operator(stream, token):
         # `lhs R`     <=> `Op R (Link lhs)`
         # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
         e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
-        lhs.append(stream.located(e))
+
+        if not lhs:
+
+            # That was a fake expression, appending to it is futile.
+            stream.stuff = stream.located(e)
+
+        else:
+
+            lhs.append(stream.located(e))
 
     stream.state |= STATE_AFTER_OBJECT
 
@@ -141,11 +149,10 @@ def operator(stream, token):
 def do(stream, token, indented=False):
 
     state_backup = stream.state & STATE_AFTER_OBJECT
-    stack_backup = stream.stack
+    stuff_backup = stream.stuff
 
     stream.state &= ~STATE_AFTER_OBJECT
-    stream.stack = tree.Closure()
-    stream.stack.indented = indented
+    stream.stuff = None
 
     for item in stream:
 
@@ -168,23 +175,29 @@ def do(stream, token, indented=False):
 
         else:
 
-            stream.stack.append(item)
+            stream.stuff = item
             stream.state |= STATE_AFTER_OBJECT
 
     # These SIG_CLOSURE_END are put there by `indent` when it unindents
     # for more than one level. All other stuff should have been handled.
     assert not set(stream.repeat) - {SIG_CLOSURE_END}
 
-    yield stream.stack
-    # If we don't do that, outer blocks will receive SIG_CLOSURE_END
+    if hasattr(stream.stuff, '__dict__'):
+
+        # Note that constants cannot be marked as indented/closed.
+        # The only objects those marks make sense for are expressions, though.
+        stream.stuff.indented = indented
+        stream.stuff.closed   = True
+
+    # If we use yield instead, outer blocks will receive SIG_CLOSURE_END
     # from `indent` before they get to this block. That may have some...
     # unexpected results, such as *inner* blocks going to the *outermost*
     # expression.
-    stream.repeat.appendleft(stream.repeat.pop())
+    stream.repeat.appendleft(stream.located(stream.stuff))
 
     stream.state &= ~STATE_AFTER_OBJECT
     stream.state |= state_backup
-    stream.stack = stack_backup
+    stream.stuff = stuff_backup
 
 
 @r.token(r'0b([0-1]+)')

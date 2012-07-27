@@ -147,16 +147,7 @@ class Compiler:
                 self.code.mark(e)
                 self._loading = e
 
-            if isinstance(e, tree.Closure):
-
-                for not_at_end, q in enumerate(e, -len(e) + 1):
-
-                    self.load(q)
-                    not_at_end and self.opcode('POP_TOP', delta=-1)
-
-                e or self.load(None)
-
-            elif isinstance(e, tree.Expression):
+            if isinstance(e, tree.Expression):
 
                 self.call(*e)
 
@@ -180,7 +171,7 @@ class Compiler:
             # XXX this line is for compiler debugging purposes.
             #     If it triggers an exception, the required stack size
             #     might have been calculated improperly.
-            assert self.code.depth == depth + 1, 'stack leaked'
+            assert self.code.depth == depth + 1, 'stack leaked at ' + str(getattr(e, 'reparse_location', '?'))
 
         for k, v in kws.items():
 
@@ -196,7 +187,7 @@ class Compiler:
             self.code.filename = expr.reparse_location.filename
             self.code.lineno   = expr.reparse_location.start[1]
 
-        else:
+        elif backup:
 
             self.code.filename = backup.filename
             self.code.lineno   = backup.lnotab[max(backup.lnotab)]

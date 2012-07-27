@@ -11,7 +11,7 @@ callable = f -> (self, *args) ->
 
 
 unsafe = cases ->
-  cases = parse.syntax.unwrap_m $ parse.syntax.unwrap: cases
+  cases = parse.syntax.unwrap: cases
   cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
   all: cases or const.ERR.INVALID_STMT_IN_SWITCH
   cases      or const.ERR.DEFAULT

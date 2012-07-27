@@ -132,19 +132,10 @@ class Parser (collections.Iterator):
             # Other errors are irrepairable.
             raise
 
-        # Search for incomplete operator expressions.
-        expr = res
-
-        while expr and isinstance(expr[-1], tree.Expression) and len(expr[-1]) > 2:
-
-            expr = expr[-1]
-
         return None if (
-            res
-            and not code.endswith('\n')
+            not code.endswith('\n')
             and (
-                # If this condition is met, then `len(expr[-1])` <= 2.
-                expr and isinstance(expr[-1], tree.Expression)
+                isinstance(res, tree.Expression) and len(res) == 2
                 or code[code.rfind('\n') + 1] == ' '
             )
         ) else res
@@ -153,7 +144,7 @@ class Parser (collections.Iterator):
 
         self.state  = STATE_AT_FILE_START | STATE_AT_LINE_START
         self.buffer = input
-        self.stack  = None
+        self.stuff  = None
         self.offset = 0
         self.pstack = collections.deque()
         self.repeat = collections.deque()
