@@ -4,7 +4,8 @@ from . import core
 from . import tree
 from .core import Parser as r
 
-SIG_CLOSURE_END = tree.Internal()
+SIG_CLOSURE_END      = tree.Internal()
+SIG_EXPRESSION_BREAK = tree.Internal()
 
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 
@@ -18,15 +19,6 @@ def bof(stream, token):
     stream.state |= core.STATE_AT_LINE_START
     return do(stream, token, indented=True)
 
-
-@r.token(r'\s*(?:#.*?\s*)*(\n)')
-#
-# soft_break = ( ( comment, '\n' ) *, comment ) ?, '\n'
-#
-def soft_break(stream, token):
-
-    return operator(stream, token) if stream.state & STATE_AFTER_OBJECT \
-      else [tree.Link('\n')]
 
 @r.token(r'\s*#[^\n]*')
 #
@@ -70,9 +62,10 @@ def end(stream, token):
     yield SIG_CLOSURE_END
 
 
+@r.token(r'\s*(\n)', STATE_AFTER_OBJECT)
 @r.token(r'(`\w+`|[!$%&*+\--/:<-@\\^|~]+|,+|if|unless|else|and|or)', STATE_AFTER_OBJECT)
 #
-# operator = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op
+# operator = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op | '\n'
 #
 # word = ( < alphanumeric > | '_' ) +
 # word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
@@ -89,16 +82,16 @@ def operator(stream, token):
         lhs = lhs[-1]
         dedent |= len(lhs) < 3 or getattr(lhs[-1], 'indented', False)
 
-    br  = None
+    br  = False
     op  = token.group(1).strip('`') if token else '\n' if dedent else ''
     op  = stream.located(tree.Link(op))
     lhs = [stream.stuff]
     rhs = next(stream)
     rhsless = False
 
-    while isinstance(rhs, tree.Link) and rhs == '\n':
+    while rhs is SIG_EXPRESSION_BREAK:
 
-        br  = rhs
+        br  = True
         rhs = next(stream)  # Skip soft breaks.
 
     # rhsless is true:   `(lhs R)` or `lhs R \n not_rhs`
@@ -113,7 +106,7 @@ def operator(stream, token):
             # Chaining a single expression doesn't make sense.
             return
 
-    elif token and br is not None and op != '\n' and not getattr(rhs, 'indented', False):
+    elif br and op != '\n' and not getattr(rhs, 'indented', False):
 
         # The operator was followed by something other than an object or
         # an indented block.
@@ -150,6 +143,15 @@ def operator(stream, token):
     stream.state |= STATE_AFTER_OBJECT
 
 
+@r.token(r'\s*\n')
+#
+# soft_break = '\n'
+#
+def soft_break(stream, token):
+
+    yield SIG_EXPRESSION_BREAK
+
+
 @r.token('\(')
 #
 # do = '('
@@ -173,6 +175,11 @@ def do(stream, token, indented=False):
             )
 
             break
+
+        elif item is SIG_EXPRESSION_BREAK:
+
+            # That was intended for `operator`.
+            pass
 
         elif stream.state & STATE_AFTER_OBJECT:
 

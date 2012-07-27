@@ -2,8 +2,6 @@ from . import r
 from . import tree
 from .. import const
 
-ST_BREAK = '\n'
-
 ST_EXC_FINALLY = 'True'
 
 ST_TUPLE_S = '_,'
@@ -34,7 +32,7 @@ list(map(globals().__setitem__, consts, values))
 uncurry = lambda f, p: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f]
 
 # Unwrap a closure into a list of statements.
-unwrap = lambda f: uncurry(f, ST_BREAK)
+unwrap = lambda f: uncurry(f, tree.Link('\n'))
 
 
 def assignment(var, expr):
