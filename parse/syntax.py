@@ -3,7 +3,7 @@ from . import tree
 from .. import const
 
 ST_GROUP = '(_)'
-ST_BREAK = '_\n_'
+ST_BREAK = '\n'
 
 ST_EXC_FINALLY = 'True'
 
