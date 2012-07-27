@@ -132,10 +132,14 @@ class Parser (collections.Iterator):
             # Other errors are irrepairable.
             raise
 
+        # Search for incomplete operator expressions.
+        expr = res
+        while not getattr(expr, 'closed', True) and len(expr) > 2: expr = expr[-1]
+
         return None if (
             not code.endswith('\n')
             and (
-                isinstance(res, tree.Expression) and len(res) == 2
+                not getattr(expr, 'closed', True)
                 or code[code.rfind('\n') + 1] == ' '
             )
         ) else res
