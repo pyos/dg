@@ -7,8 +7,7 @@ ST_GROUP = '(_)'
 ST_EXC_FINALLY = 'True'
 
 ST_TUPLE_S = '_,'
-ST_TUPLE   = '_, _'
-ST_CALL    = '_ _'
+ST_TUPLE   = ','
 ST_ASSIGN  = '_ = _'
 
 ST_EXPR_IF     = '_ `if` _'
@@ -22,7 +21,7 @@ ST_ARG_VAR_KW_C = '(**)'
 
 ST_IMPORT     = 'import'
 ST_IMPORT_REL = '_ _'
-ST_IMPORT_SEP = '_._'
+ST_IMPORT_SEP = '.'
 
 ST_ASSIGN_ATTR = '_._'
 ST_ASSIGN_ITEM = '_ !! _'
@@ -35,7 +34,7 @@ list(map(globals().__setitem__, consts, values))
 unwrap = lambda f: tree.matchR(f, ST_GROUP, lambda f, q: q.pop(-1))[-1]
 
 # Recursively match `f` with a binary operator `p`, returning all the operands.
-uncurry = lambda f, p: tree.matchR(f, p, lambda f, q: q.pop(-2))[::-1]
+uncurry = lambda f, p: f[1:] if tree.matchQ(f[0], p) else [f]
 # }
 
 
@@ -144,11 +143,10 @@ def function(args, code):
 
 def call_pre(args1):
 
-    args2 = uncurry(args1.pop(0), ST_CALL)
-    args3 = uncurry(args2.pop(0), ST_ARG_KW)
-    attr = tree.matchA(args3[0], ST_ASSIGN_ATTR)
+    args2 = tree.matchA(args1[0], ST_ARG_KW) or args1[:1]
+    attr  = tree.matchA(args2[0], ST_ASSIGN_ATTR)
     attr and not isinstance(attr[1], tree.Link) and const.ERR.NONCONST_ATTR
-    return [attr] + args3 + args2 + args1
+    return [attr] + args2 + args1[1:]
 
 
 def call_args(args):
