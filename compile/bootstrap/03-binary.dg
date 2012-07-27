@@ -51,7 +51,11 @@ compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs de
 compile.r.builtins !! '$' = (self, a, b) ->
   # Close `b` and delegate to `call`.
   b.closed = True unless getattr: b 'closed' True
-  self.call: a b
+  is_call  = not: (getattr: a 'closed' True) and self.builtins !! (a !! 0) `is` compile.r.call
+  # Now we can either call the result of `a` with `b`...
+  self.call: a b unless is_call
+  # ...or join the argument lists.
+  self.call: (*): (a + (list: (b,))) if is_call
 
 # FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
 compile.r.builtins !! '<'   = varary ~: 'COMPARE_OP' ~: arg: '<'
