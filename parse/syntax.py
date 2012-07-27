@@ -28,11 +28,10 @@ consts = [_ for _ in globals() if _.startswith('ST_')]
 values = map(r().parse, map(globals().__getitem__, consts))
 list(map(globals().__setitem__, consts, values))
 
-# Recursively match `f` with a binary operator `p`, returning all the operands.
-uncurry = lambda f, p: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f]
+ST_BREAK = tree.Link('\n')
 
-# Unwrap a closure into a list of statements.
-unwrap = lambda f: uncurry(f, tree.Link('\n'))
+# Match `f` with a varary operator `p`, returning either the operands or `f`.
+uncurry = lambda f, p: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f]
 
 
 def assignment(var, expr):
