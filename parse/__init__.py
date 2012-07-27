@@ -17,7 +17,7 @@ STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 def bof(stream, token):
 
     stream.state |= core.STATE_AT_LINE_START
-    return do(stream, token, indented=True)
+    return do(stream, token, indented=True, closed=False)
 
 
 @r.token(r'\s*#[^\n]*')
@@ -156,7 +156,7 @@ def soft_break(stream, token):
 #
 # do = '('
 #
-def do(stream, token, indented=False):
+def do(stream, token, indented=False, closed=True):
 
     state_backup = stream.state & STATE_AFTER_OBJECT
     stuff_backup = stream.stuff
@@ -202,7 +202,7 @@ def do(stream, token, indented=False):
         # Note that constants cannot be marked as indented/closed.
         # The only objects those marks make sense for are expressions, though.
         stream.stuff.indented = indented
-        stream.stuff.closed   = True
+        stream.stuff.closed   = closed
 
     # If we use yield instead, outer blocks will receive SIG_CLOSURE_END
     # from `indent` before they get to this block. That may have some...
