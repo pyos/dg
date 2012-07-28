@@ -20,15 +20,6 @@ def bof(stream, token):
     return do(stream, token, indented=True, closed=False)
 
 
-@r.token(r'\s*#[^\n]*')
-#
-# comment = '#', < anything but line feed >
-#
-def comment(stream, token):
-
-    return ()
-
-
 @r.token(r' *', core.STATE_AT_LINE_START)
 #
 # indent = ^ ( ' ' | '\t' ) *
@@ -50,16 +41,6 @@ def indent(stream, token):
         stream.indent or stream.error('no matching indentation level', after=True)
 
     stream.indent.append(indent)
-
-
-@r.token(r'', core.STATE_AT_FILE_END)
-@r.token(r'\)')
-#
-# end = ')' | $
-#
-def end(stream, token):
-
-    yield SIG_CLOSURE_END
 
 
 @r.token(r'\s*(\n)', STATE_AFTER_OBJECT)
@@ -165,15 +146,6 @@ def operator_(stream, op):
         for _ in operator_(stream, rhs): yield _
 
 
-@r.token(r'\s*\n')
-#
-# soft_break = '\n'
-#
-def soft_break(stream, token):
-
-    yield SIG_EXPRESSION_BREAK
-
-
 @r.token('\(')
 #
 # do = '('
@@ -237,6 +209,34 @@ def do(stream, token, indented=False, closed=True):
     stream.stuff = stuff_backup
 
 
+@r.token(r'', core.STATE_AT_FILE_END)
+@r.token(r'\)')
+#
+# end = ')' | $
+#
+def end(stream, token):
+
+    yield SIG_CLOSURE_END
+
+
+@r.token(r'\s*\n')
+#
+# soft_break = '\n'
+#
+def soft_break(stream, token):
+
+    yield SIG_EXPRESSION_BREAK
+
+
+@r.token(r'\s*#[^\n]*')
+#
+# comment = '#', < anything but line feed >
+#
+def comment(stream, token):
+
+    return ()
+
+
 @r.token(r'0b([0-1]+)')
 #
 # int2 = '0b', ( '0' .. '1' ) +
@@ -266,7 +266,7 @@ def int16(stream, token):
 
 @r.token(r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?')
 #
-# number = int10, ( '.', int10 ) ?, ( [eE], [+-] ?, intpart ) ?, [jJ] ?
+# number = int10, ( '.', int10 ) ?, ( [eE], [+-] ?, int10 ) ?, [jJ] ?
 #
 # int10  = ( '0' .. '9' ) +
 #
