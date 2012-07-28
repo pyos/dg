@@ -25,7 +25,7 @@ ST_ASSIGN_ATTR = '_._'
 ST_ASSIGN_ITEM = '_ !! _'
 
 consts = [_ for _ in globals() if _.startswith('ST_')]
-values = map(r().parse, map(globals().__getitem__, consts))
+values = r().parse('\n'.join(map(globals().__getitem__, consts)))[1:]
 list(map(globals().__setitem__, consts, values))
 
 ST_BREAK = tree.Link('\n')
