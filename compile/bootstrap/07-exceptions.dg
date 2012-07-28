@@ -20,7 +20,7 @@ unsafe = cases ->
   cases
 
 
-compile.r.builtins !! 'raise' = callable $ (self, exception, caused_by: ...) ->
+compile.r.builtins !! 'raise' = callable $ (self, exception, caused_by: (...)) ->
     '''
       raise: ExceptionType
       raise: exception_instance
@@ -34,7 +34,7 @@ compile.r.builtins !! 'raise' = callable $ (self, exception, caused_by: ...) ->
 
     '''
 
-    args = ((exception,) if caused_by `is` ... else (exception, caused_by))
+    args = ((exception,) if caused_by `is` (...) else (exception, caused_by))
     self.opcode: 'RAISE_VARARGS' (*): args delta: 0
     self.load: None  # We've got to return something.
 
