@@ -152,7 +152,7 @@ class Parser (collections.Iterator):
         self.offset = 0
         self.pstack = collections.deque()
         self.repeat = collections.deque()
-        self.indent = collections.deque([0])
+        self.indent = collections.deque([-1])
         self.filename = filename
         return next(self)
 

@@ -10,17 +10,8 @@ SIG_EXPRESSION_BREAK = tree.Internal()
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 
 
-@r.token(r'', core.STATE_AT_FILE_START)
-#
-# bof = ^^
-#
-def bof(stream, token):
-
-    stream.state |= core.STATE_AT_LINE_START
-    return do(stream, token, indented=True, closed=False)
-
-
 @r.token(r' *', core.STATE_AT_LINE_START)
+@r.token(r'',   core.STATE_AT_FILE_START)  # Always start with an indent of 0.
 #
 # indent = ^ ( ' ' | '\t' ) *
 #
@@ -31,8 +22,8 @@ def indent(stream, token):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-      # yield from do(stream, token, indented=True)
-        for _ in do(stream, token, indented=True): yield _
+      # yield from do(stream, token, indented=True, closed=bool(indent))
+        for _ in do(stream, token, indented=True, closed=bool(indent)): yield _
         return
 
     while indent != stream.indent.pop():
