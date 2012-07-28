@@ -10,7 +10,7 @@ class Expression (list):
     def __repr__(self):
 
         sub = list(map(repr, self))
-        sub[0] = '`{}`'.format(*sub) if sub[0].isidentifier() else sub[0]
+        sub[0] = '`{}`'.format(*sub) if sub[0].operator else sub[0]
 
         return (
             ' '.join(sub[::-1])  if len(self) < 3          else
@@ -21,6 +21,12 @@ class Expression (list):
     """
 
 class Link (str):
+
+    @property
+    def operator(self):
+
+        return not self.isidentifier() \
+            or self in {'if', 'else', 'unless', 'or', 'and'}
     """
     def __repr__(self):
 
