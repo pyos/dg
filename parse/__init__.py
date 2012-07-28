@@ -72,32 +72,41 @@ def end(stream, token):
 #
 def operator(stream, token):
 
+    if not token:
+
+        lhs = stream.stuff
+        op  = '\n' if getattr(lhs, 'indented', False) else ''
+
+        while not op and not getattr(lhs, 'closed', True):
+
+            op  = '\n' if len(lhs) < 3 or getattr(lhs[-1], 'indented', False) else ''
+            lhs = lhs[-1]
+
+    else:
+
+        op = token.group(1).strip('`')
+
+    return operator_(stream, stream.located(tree.Link(op)))
+
+
+def operator_(stream, op):
+
     stream.state &= ~STATE_AFTER_OBJECT
 
-    lhs = [stream.stuff]
-    dedent = getattr(lhs[-1], 'indented', False)
-
-    while not dedent and not getattr(lhs[-1], 'closed', True):
-
-        lhs = lhs[-1]
-        dedent |= len(lhs) < 3 or getattr(lhs[-1], 'indented', False)
-
     br  = False
-    op  = token.group(1).strip('`') if token else '\n' if dedent else ''
-    op  = stream.located(tree.Link(op))
     lhs = [stream.stuff]
     rhs = next(stream)
     rhsless = False
+    rhsbound = False
 
     while rhs is SIG_EXPRESSION_BREAK:
 
         br  = True
         rhs = next(stream)  # Skip soft breaks.
 
-    # rhsless is true:   `(lhs R)` or `lhs R \n not_rhs`
-    # rhsless is false:  `lhs R rhs` or `lhs R \n indented_block`
     if isinstance(rhs, tree.Internal):
 
+        # `(a R)`
         yield rhs
         rhsless = True
 
@@ -113,8 +122,16 @@ def operator(stream, token):
         yield rhs
         rhsless = True
 
+    elif isinstance(rhs, tree.Link) and not hasattr(rhs, 'closed') and rhs.operator:
+
+        # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
+        # `a R (Q b)` otherwise.
+        rhsless = rhsbound = stream.has_priority(op, rhs)
+
     while not getattr(lhs[-1], 'closed', True) and stream.has_priority(op, lhs[-1][0]):
 
+        # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R,
+        # `(a R b) Q c` otherwise.
         lhs = lhs[-1]
 
     if not getattr(lhs[-1], 'closed', True) and lhs[-1][0] == op and not rhsless:
@@ -141,6 +158,11 @@ def operator(stream, token):
             lhs.append(stream.located(e))
 
     stream.state |= STATE_AFTER_OBJECT
+
+    if rhsbound:
+
+      # yield from operator_(rhs)
+        for _ in operator_(stream, rhs): yield _
 
 
 @r.token(r'\s*\n')
