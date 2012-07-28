@@ -34,7 +34,6 @@ def indent(stream, token):
     stream.indent.append(indent)
 
 
-@r.token(r'\s*(\n)', STATE_AFTER_OBJECT)
 @r.token(r'(`\w+`|[!$%&*+\--/:<-@\\^|~]+|,+|if|unless|else|and|or)', STATE_AFTER_OBJECT)
 #
 # operator = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op | '\n'
@@ -44,20 +43,7 @@ def indent(stream, token):
 #
 def operator(stream, token):
 
-    if not token:
-
-        lhs = stream.stuff
-        op  = '\n' if getattr(lhs, 'indented', False) else ''
-
-        while not op and not getattr(lhs, 'closed', True):
-
-            op  = '\n' if len(lhs) < 3 or getattr(lhs[-1], 'indented', False) else ''
-            lhs = lhs[-1]
-
-    else:
-
-        op = token.group(1).strip('`')
-
+    op = token if isinstance(token, str) else token.group(1).strip('`')
     return operator_(stream, stream.located(tree.Link(op)))
 
 
@@ -79,19 +65,15 @@ def operator_(stream, op):
     if isinstance(rhs, tree.Internal):
 
         # `(a R)`
-        yield rhs
+        stream.repeat.appendleft(rhs)
         rhsless = True
-
-        if op == '\n':
-
-            # Chaining a single expression doesn't make sense.
-            return
 
     elif br and op != '\n' and not getattr(rhs, 'indented', False):
 
         # The operator was followed by something other than an object or
         # an indented block.
-        yield rhs
+        stream.repeat.appendleft(rhs)
+        stream.repeat.appendleft(SIG_EXPRESSION_BREAK)
         rhsless = True
 
     elif isinstance(rhs, tree.Link) and not hasattr(rhs, 'closed') and rhs.operator:
@@ -99,6 +81,11 @@ def operator_(stream, op):
         # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
         # `a R (Q b)` otherwise.
         rhsless = rhsbound = stream.has_priority(op, rhs)
+
+    if rhsless and (op == '\n' or op == ''):
+
+        # Chaining a single expression doesn't make sense.
+        return
 
     while not getattr(lhs[-1], 'closed', True) and stream.has_priority(op, lhs[-1][0]):
 
@@ -163,15 +150,16 @@ def do(stream, token, indented=False, closed=True):
 
         elif item is SIG_EXPRESSION_BREAK:
 
-            # That was intended for `operator`.
-            pass
+            # Two expressions in a row should be joined with a line feed operator.
+          # yield from operator(stream, None)
+            for _ in operator(stream, '\n'): yield _
 
         elif stream.state & STATE_AFTER_OBJECT:
 
             # Two objects in a row should be joined with an empty operator.
             stream.repeat.appendleft(item)
           # yield from operator(stream, None)
-            for _ in operator(stream, None): yield _
+            for _ in operator(stream, ''): yield _
 
         else:
 
@@ -188,6 +176,11 @@ def do(stream, token, indented=False, closed=True):
         # The only objects those marks make sense for are expressions, though.
         stream.stuff.indented = indented
         stream.stuff.closed   = closed
+
+    if indented:
+
+        # Further expressions should not touch this block.
+        stream.repeat.appendleft(SIG_EXPRESSION_BREAK)
 
     # If we use yield instead, outer blocks will receive SIG_CLOSURE_END
     # from `indent` before they get to this block. That may have some...
