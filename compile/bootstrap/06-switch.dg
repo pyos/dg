@@ -4,14 +4,14 @@
 ..parse.syntax = import
 
 
-else = cond ->
+else_s = cond ->
   args1 = parse.tree.matchA: cond parse.syntax.ST_EXPR_IF
   args2 = parse.tree.matchA: cond parse.syntax.ST_EXPR_UNLESS
   args1 or args2 or const.ERR.NOT_AFTER_IF
   args1, args1 or args2
 
 
-switch = cases ->
+switch_s = cases ->
   cases = parse.syntax.uncurry: cases parse.syntax.ST_BREAK
   cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
   all: cases or const.ERR.INVALID_STMT_IN_SWITCH
@@ -27,7 +27,7 @@ compile.r.builtins !! 'else' = (self, cond, otherwise) ->
 
   '''
 
-  is_if, (then, cond) = else: cond
+  is_if, (then, cond) = else_s: cond
   ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0 if     is_if
   ptr = self.opcode: 'POP_JUMP_IF_TRUE'  cond delta: 0 unless is_if
   jmp = self.opcode: 'JUMP_FORWARD'      then delta: 0
@@ -55,7 +55,7 @@ compile.r.builtins !! 'switch' = (self, cases) ->
     end  = self.opcode: 'JUMP_FORWARD'    action delta: 0
     next:
     end
-  ) $ switch: cases
+  ) $ switch_s: cases
 
   self.load: None  # in case nothing matched
   list $ map: (:) jumps
