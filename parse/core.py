@@ -140,7 +140,7 @@ class Parser (collections.Iterator):
             not code.endswith('\n')
             and (
                 not getattr(expr, 'closed', True)
-                or code[code.rfind('\n') + 1] == ' '
+                or code.rfind('\n ') == code.rfind('\n') > 0
             )
         ) else res
 
