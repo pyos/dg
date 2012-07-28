@@ -51,7 +51,7 @@ sys.meta_path.append $ inherit: str $
     cache = imp.cache_from_source: self
 
     code = unsafe:
-      _ = (marshal.load $ open: cache 'rb' if getmtime: self <= getmtime: code)
+      _ = (marshal.load $ open: cache 'rb' if getmtime: self <= getmtime: cache)
       _ = None
 
     not: code and os.path.exists: self and
