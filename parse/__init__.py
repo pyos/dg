@@ -148,6 +148,11 @@ def do(stream, token, indented=False, closed=True):
 
             break
 
+        elif item is SIG_EXPRESSION_BREAK and not stream.state & STATE_AFTER_OBJECT:
+
+            # Ignore line feeds directly following an opening parentheses.
+            pass
+
         elif item is SIG_EXPRESSION_BREAK:
 
             # Two expressions in a row should be joined with a line feed operator.
