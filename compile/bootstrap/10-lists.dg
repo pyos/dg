@@ -5,7 +5,8 @@
 
 isconst = q -> not $ any $ map: y -> (y :: (parse.tree.Link, parse.tree.Expression)) q
 list_s  = x ->
-  q = parse.syntax.uncurry: x parse.syntax.ST_TUPLE
+  q = list: (x,)
+  q = parse.syntax.uncurry: x parse.syntax.ST_TUPLE unless getattr: x 'closed' True
   q = parse.syntax.uncurry: x parse.syntax.ST_BREAK if q == list: (x,)
   q
 
