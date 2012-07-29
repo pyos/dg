@@ -181,7 +181,7 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
     # for more than one level. All other stuff should have been handled.
     assert not set(stream.repeat) - {SIG_CLOSURE_END}
 
-    if hasattr(stream.stuff, '__dict__'):
+    if hasattr(stream.stuff, '__dict__') and closed is not None:
 
         # Note that constants cannot be marked as indented/closed.
         # The only objects those marks make sense for are expressions, though.
@@ -210,8 +210,8 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
 #
 def list_do(stream, token):
 
-  # yield from do(stream, token, closed=False, until=SIG_LIST_END)
-    for _ in do(stream, token, closed=False, until=SIG_LIST_END): yield _
+  # yield from do(stream, token, closed=None, until=SIG_LIST_END)
+    for _ in do(stream, token, closed=None, until=SIG_LIST_END): yield _
     e = tree.Expression([stream.located(tree.Link('[]')), next(stream)])
     e.closed = True
     yield e
@@ -223,8 +223,8 @@ def list_do(stream, token):
 #
 def set_do(stream, token):
 
-  # yield from do(stream, token, closed=False, until=SIG_SET_END)
-    for _ in do(stream, token, closed=False, until=SIG_SET_END): yield _
+  # yield from do(stream, token, closed=None, until=SIG_LIST_END)
+    for _ in do(stream, token, closed=None, until=SIG_LIST_END): yield _
     e = tree.Expression([stream.located(tree.Link('{}')), next(stream)])
     e.closed = True
     yield e
