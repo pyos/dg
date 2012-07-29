@@ -4,6 +4,8 @@ from . import core
 from . import tree
 from .core import Parser as r
 
+SIG_SET_END          = tree.Internal()
+SIG_LIST_END         = tree.Internal()
 SIG_CLOSURE_END      = tree.Internal()
 SIG_EXPRESSION_BREAK = tree.Internal()
 
@@ -128,7 +130,7 @@ def operator_(stream, op):
 #
 # do = '('
 #
-def do(stream, token, indented=False, closed=True):
+def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
 
     state_backup = stream.state & STATE_AFTER_OBJECT
     stuff_backup = stream.stuff
@@ -138,7 +140,7 @@ def do(stream, token, indented=False, closed=True):
 
     for item in stream:
 
-        if item is SIG_CLOSURE_END:
+        if item is until:
 
             (
                 not indented
@@ -158,6 +160,10 @@ def do(stream, token, indented=False, closed=True):
             # Two expressions in a row should be joined with a line feed operator.
           # yield from operator(stream, None)
             for _ in operator(stream, '\n'): yield _
+
+        elif isinstance(item, tree.Internal):
+
+            stream.error('non-closed block at EOF', after=True)
 
         elif stream.state & STATE_AFTER_OBJECT:
 
@@ -198,6 +204,32 @@ def do(stream, token, indented=False, closed=True):
     stream.stuff = stuff_backup
 
 
+@r.token(r'\[')
+#
+# list_do = '['
+#
+def list_do(stream, token):
+
+  # yield from do(stream, token, closed=False, until=SIG_LIST_END)
+    for _ in do(stream, token, closed=False, until=SIG_LIST_END): yield _
+    e = tree.Expression([stream.located(tree.Link('[]')), next(stream)])
+    e.closed = True
+    yield e
+
+
+@r.token(r'\{')
+#
+# set_do = '{'
+#
+def set_do(stream, token):
+
+  # yield from do(stream, token, closed=False, until=SIG_SET_END)
+    for _ in do(stream, token, closed=False, until=SIG_SET_END): yield _
+    e = tree.Expression([stream.located(tree.Link('{}')), next(stream)])
+    e.closed = True
+    yield e
+
+
 @r.token(r'', core.STATE_AT_FILE_END)
 @r.token(r'\)')
 #
@@ -206,6 +238,24 @@ def do(stream, token, indented=False, closed=True):
 def end(stream, token):
 
     yield SIG_CLOSURE_END
+
+
+@r.token(r'\]')
+#
+# list_end = ']'
+#
+def list_end(stream, token):
+
+    yield SIG_LIST_END
+
+
+@r.token(r'\}')
+#
+# set_end = '}'
+#
+def list_end(stream, token):
+
+    yield SIG_SET_END
 
 
 @r.token(r'\s*\n')
