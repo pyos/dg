@@ -154,7 +154,9 @@ class Parser (collections.Iterator):
         self.repeat = collections.deque()
         self.indent = collections.deque([-1])
         self.filename = filename
-        return next(self)
+        q = next(self)
+        self.state & STATE_AT_FILE_END or self.error('junk after the end of input', after=True)
+        return q
 
     def position(self, offset):
 
@@ -167,7 +169,7 @@ class Parser (collections.Iterator):
     def error(self, description, after=False):
 
         offset, lineno, charno = self.next_token_at if after else self.last_token_at
-        line = self.buffer[self.buffer.rfind('\n', 0, offset) + 1:self.buffer.find('\n', offset)]
+        line = self.buffer[self.buffer.rfind('\n', 0, offset) + 1:self.buffer.find('\n', offset) + 1 or None]
         raise SyntaxError(description, (self.filename, lineno, charno, line))
 
     def located(self, q):
