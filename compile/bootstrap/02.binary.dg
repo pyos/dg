@@ -43,7 +43,7 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: 
   self.load: (*): bs if rightf
   list: (map: b -> (self.opcode: multiple b arg: arg delta:  0) bs) unless rightf
   list: (map: b -> (self.opcode: multiple   arg: arg delta: -1) bs) if     rightf
-  self.opcode: single arg: arg delta: 0 unless bs
+  self.opcode: single arg: arg delta: 0 unless bs or single `is` None
   self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
 
 # `.`, ``, `:`, `->`, and `=` are already defined.
@@ -97,7 +97,9 @@ compile.r.builtins !! '>>=' = varary ~: 'INPLACE_RSHIFT'       ~: inplace: True
 
 compile.r.builtins !! '.~'  = (self, a, b) -> self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a      b delta: 1
-compile.r.builtins !! ':.'  = (self, a, b) ->
-  # FIXME should be varary.
-  self.call: a
-  self.opcode: 'LOAD_ATTR' arg: b delta: 0
+compile.r.builtins !! ':.'  = (self, a, *bs) ->
+  self.load: a
+  list $ map: b -> (
+    self.call: None preloaded: 0
+    self.opcode: 'LOAD_ATTR' arg: b delta: 0
+  ) bs

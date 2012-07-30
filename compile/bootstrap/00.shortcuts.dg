@@ -1,43 +1,50 @@
 builtins  = import
 operator  = import
 functools = import
+itertools = import
 importlib = import
 
 # Choose a function based on the number of arguments.
-varary = (*fs) -> (*xs) -> (fs !! (len: xs)): (*): xs
+varary = (*fs) -> (*xs) -> (fs !! ((len: xs) > 1)): (*): xs
+
+# Reduce a varary left-fixed operator to a binary one.
+reduce = f -> (a, *xs) -> foldl: f xs a
+
 
 builtins.($) = (f, *xs) -> f: (*): xs
 builtins.(:) = (f, *xs) -> f: (*): xs
 builtins.(,) = (*xs) -> xs
 
-builtins.(<)  = operator.lt
-builtins.(<=) = operator.le
-builtins.(==) = operator.eq
-builtins.(!=) = operator.ne
-builtins.(>)  = operator.gt
-builtins.(>=) = operator.ge
-builtins.is   = operator.is_
-builtins.in   = (a, b) -> operator.contains: b a
+builtins.(<)  = reduce: operator.lt
+builtins.(<=) = reduce: operator.le
+builtins.(==) = reduce: operator.eq
+builtins.(!=) = reduce: operator.ne
+builtins.(>)  = reduce: operator.gt
+builtins.(>=) = reduce: operator.ge
+builtins.is   = reduce: operator.is_
+builtins.in   = reduce: (a, b) -> (operator.contains: b a)
 
-builtins.not  = operator.not_
-builtins.(~)  = operator.invert
-builtins.(+)  = varary: None operator.pos operator.add
-builtins.(-)  = varary: None operator.neg operator.sub
-builtins.(*)  = operator.mul
-builtins.(**) = operator.pow
-builtins.(/)  = operator.truediv
-builtins.(//) = operator.floordiv
-builtins.(%)  = operator.mod
-builtins.(!!) = operator.getitem
-builtins.(!@) = (*xs) -> foldl: (a, b) -> (a !! (slice: (*): b)) xs
-builtins.(&)  = operator.and_
-builtins.(^)  = operator.xor
-builtins.(|)  = operator.or_
-builtins.(<<) = operator.lshift
-builtins.(>>) = operator.rshift
+builtins.not  = reduce: operator.not_
+builtins.(~)  = reduce: operator.invert
+builtins.(+)  = varary: operator.pos (reduce: operator.add)
+builtins.(-)  = varary: operator.neg (reduce: operator.sub)
+builtins.(*)  = reduce: operator.mul
+builtins.(**) = reduce: operator.pow
+builtins.(/)  = reduce: operator.truediv
+builtins.(//) = reduce: operator.floordiv
+builtins.(%)  = reduce: operator.mod
+builtins.(!!) = reduce: operator.getitem
+builtins.(!@) = (a, *xs) -> (!!) a (*): (itertools.starmap: slice xs)
+builtins.(&)  = reduce: operator.and_
+builtins.(^)  = reduce: operator.xor
+builtins.(|)  = reduce: operator.or_
+builtins.(<<) = reduce: operator.lshift
+builtins.(>>) = reduce: operator.rshift
 
 builtins.import = importlib.import_module
 builtins.foldl  = functools.reduce
+# FIXME should also defined foldr (and scanl (and scanr, lol.))
+# Not-actually-operators.
 builtins.(~:)   = functools.partial
 builtins.(...)  = Ellipsis
 builtins.(..)   = range
