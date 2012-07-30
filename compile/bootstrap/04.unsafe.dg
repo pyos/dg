@@ -10,10 +10,9 @@ callable = f -> (self, *args) ->
 
 
 unsafe = cases ->
-  cases = parse.syntax.ST_BREAK: cases
-  cases = list $ map: parse.syntax.ST_ASSIGN cases
-  all: cases or const.ERR.INVALID_STMT_IN_SWITCH
-  cases      or const.ERR.DEFAULT
+  cases = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
+  const.ERR.INVALID_STMT_IN_SWITCH unless all: cases
+  const.ERR.DEFAULT                unless      cases
 
   cases.append: (None, None) if len: cases < 2 or not: (parse.syntax.ST_EXC_FINALLY $ cases !! -1 !! 0)
   cases
@@ -33,8 +32,8 @@ compile.r.builtins !! 'raise' = callable $ (self, exception, caused_by: (...)) -
 
     '''
 
-    args = ((exception,) if caused_by `is` (...) else (exception, caused_by))
-    self.opcode: 'RAISE_VARARGS' (*): args delta: 0
+    args = (tuple: if caused_by `is` (...) else (caused_by,))
+    self.opcode: 'RAISE_VARARGS' exception (*): args delta: 0
     self.load: None  # We've got to return something.
 
 

@@ -6,14 +6,13 @@
 else_s = cond ->
   args1 = parse.syntax.ST_EXPR_IF:     cond
   args2 = parse.syntax.ST_EXPR_UNLESS: cond
-  args1 or args2 or const.ERR.NOT_AFTER_IF
+  const.ERR.NOT_AFTER_IF unless args1 or args2
   args1, args1 or args2
 
 
 switch_s = cases ->
-  cases = parse.syntax.ST_BREAK: cases
-  cases = list $ map: parse.syntax.ST_ASSIGN cases
-  all: cases or const.ERR.INVALID_STMT_IN_SWITCH
+  cases = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
+  const.ERR.INVALID_STMT_IN_SWITCH unless all: cases
   cases
 
 
