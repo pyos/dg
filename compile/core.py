@@ -109,7 +109,7 @@ class Compiler:
 
         return ('MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION'), code
 
-    def call(self, *argv, preloaded=0):
+    def call(self, *argv, preloaded=None):
 
         attr, f, *args = syntax.call_pre(list(argv))
 
@@ -122,7 +122,7 @@ class Compiler:
             return self.fake_methods[attr[1]](self, attr[0], *args)
 
         posargs, kwargs, vararg, varkwarg = syntax.call_args(args)
-        preloaded or self.load(f)
+        preloaded is None and self.load(f)
         self.load(*posargs, **kwargs)
 
         self.opcode(
@@ -131,8 +131,8 @@ class Compiler:
             'CALL_FUNCTION_KW'     if varkwarg else
             'CALL_FUNCTION',
             *vararg + varkwarg,
-            arg=len(posargs) + 256 * len(kwargs) + preloaded,
-            delta=-len(posargs) - 2 * len(kwargs) - preloaded
+            arg=len(posargs) + 256 * len(kwargs) + (preloaded or 0),
+            delta=-len(posargs) - 2 * len(kwargs) - (preloaded or 0)
         )
 
     def load(self, *es, **kws):
