@@ -140,13 +140,11 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
 
     for item in stream:
 
-        if item is until:
+        if not indented and stream.state & core.STATE_AT_FILE_END:
 
-            (
-                not indented
-                and stream.state & core.STATE_AT_FILE_END
-                and stream.error('non-closed block at EOF')
-            )
+            stream.error('mismatched parentheses')
+
+        if item is until:
 
             break
 
@@ -163,7 +161,7 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
 
         elif isinstance(item, tree.Internal):
 
-            stream.error('non-closed block at EOF', after=True)
+            stream.error('invalid indentation or mismatched parentheses')
 
         elif stream.state & STATE_AFTER_OBJECT:
 
@@ -339,7 +337,7 @@ def string(stream, token):
 #
 def string_err(stream, token):
 
-    stream.error('unclosed string literal')
+    stream.error('mismatched quote')
 
 
 @r.token(r'\w+|[!$%&*+\--/:<-@\\^|~]+|,+|`\w+`')

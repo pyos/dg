@@ -123,7 +123,7 @@ class Parser (collections.Iterator):
 
         except SyntaxError as e:
 
-            if e.args[0] in {'non-closed block at EOF', 'unclosed string literal'}:
+            if e.args[0] in {'mismatched parentheses', 'mismatched quote'}:
 
                 # The code is incomplete by definition if there are
                 # unmatched parentheses or quotes in it.
