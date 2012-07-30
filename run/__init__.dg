@@ -21,11 +21,13 @@ dg = (fd, name: '__main__') ->
   environ  = dict: [('__name__', name), ('__builtins__', __builtins__)]
 
   switch:
-    not $ fd.isatty: =
-      c = compiler.compile $ parser.parse: filename: fd.name $ fd.read:
-      # FIXME should strip unnecessary traceback items in non-__debug__ mode.
-      eval: c environ
-      exit: 0
+    not $ fd.isatty: = unsafe $
+      e =
+        eval: (compiler.compile $ parser.parse: filename: fd.name $ fd.read:) environ
+        exit: 0
+      e and not: (e :: SystemExit) =
+        sys.excepthook: (type: e) e e.__traceback__.tb_next
+        exit: 1
 
     fd `is` sys.stdin =
       # Run PYTHONSTARTUP first.
@@ -48,7 +50,7 @@ dg = (fd, name: '__main__') ->
         buf += '\n'
 
       sys.displayhook $ eval: code environ
-    e `isinstance` EOFError = exit:
-    e and not: (e `isinstance` SystemExit) =
+    e :: EOFError = exit:
+    e and not: (e :: SystemExit) =
       # The first line of the traceback is in this function.
       sys.excepthook: (type: e) e e.__traceback__.tb_next
