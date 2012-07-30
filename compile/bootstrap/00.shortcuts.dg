@@ -48,4 +48,4 @@ builtins.foldl  = functools.reduce
 builtins.(~:)   = functools.partial
 builtins.(...)  = Ellipsis
 builtins.(..)   = range
-builtins.(::)   = isinstance
+builtins.(::)   = (a, *xs) -> a `isinstance` xs
