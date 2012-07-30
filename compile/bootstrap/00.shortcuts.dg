@@ -43,7 +43,7 @@ builtins.(>>) = reduce: operator.rshift
 
 builtins.import = importlib.import_module
 builtins.foldl  = functools.reduce
-# FIXME should also defined foldr (and scanl (and scanr, lol.))
+# FIXME should also define foldr (and scanl (and scanr, lol.))
 # Not-actually-operators.
 builtins.(~:)   = functools.partial
 builtins.(...)  = Ellipsis
