@@ -35,7 +35,7 @@ sys.meta_path.append $ inherit: str $
       e =
         p = os.path.abspath $ next: mods
         cls: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
-      e `isinstance` StopIteration = None
+      e :: StopIteration = None
 
   load_module = importlib.util.module_for_loader $ (self, module) ->
 
