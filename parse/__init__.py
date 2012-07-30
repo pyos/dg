@@ -179,7 +179,7 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
     # for more than one level. All other stuff should have been handled.
     assert not set(stream.repeat) - {SIG_CLOSURE_END}
 
-    if isinstance(stream.stuff, tree.Expression) and closed is not None:
+    if hasattr(stream.stuff, '__dict__') and closed is not None:
 
         # Note that constants cannot be marked as indented/closed.
         # The only objects those marks make sense for are expressions, though.
