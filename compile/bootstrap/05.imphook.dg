@@ -43,7 +43,7 @@ sys.meta_path.append $ inherit: str $
     is_file = last == (os.path.splitext $ os.path.basename: self) !! 0
 
     module.__file__    = self
-    module.__path__    = list: (os.path.dirname: self,) if not: is_file
+    module.__path__    = [os.path.dirname: self] if not: is_file
     module.__loader__  = self
     module.__package__ = (init or None if is_file else module.__name__)
 

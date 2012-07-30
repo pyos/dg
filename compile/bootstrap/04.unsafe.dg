@@ -69,8 +69,8 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   to_except  = self.opcode: 'SETUP_EXCEPT'  delta: 0
   # Replace that None with the value returned by `try_`
   # to fool the POP_BLOCK instruction.
-  self.opcode: 'ROT_TWO' try delta: 1
-  self.opcode: 'POP_BLOCK'   delta: (-1)
+  self.opcode: 'ROT_TWO' try delta:  1
+  self.opcode: 'POP_BLOCK'   delta: -1
   # Er, so there was no exception, let's store None instead.
   # Since we've already POPped_BLOCK, exceptions occured
   # during this assignment will be ignored.
@@ -101,7 +101,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
 
   # This will re-raise the exception if nothing matched
   # (and there was an exception. And there is no `finally` clause.)
-  self.opcode: 'END_FINALLY' delta: (-3)
+  self.opcode: 'END_FINALLY' delta: -3
 
   # The problem is, now we need to POP_EXCEPT, but only
   # if there was a handled exception.
@@ -116,7 +116,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   self.opcode: 'DUP_TOP' delta: 1
   self.opcode: 'COMPARE_OP' None arg: 'is' delta: 0
   # Then skip POP_EXCEPT if that is the case.
-  no_exception = self.opcode: 'POP_JUMP_IF_TRUE' delta: (-1)
+  no_exception = self.opcode: 'POP_JUMP_IF_TRUE' delta: -1
 
   self.opcode: 'POP_EXCEPT' delta: 0
   unhandled_exception:
@@ -124,7 +124,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
 
   has_finally and
     # If the interpreter made it here, one of the `except` clauses matched.
-    self.opcode: 'POP_BLOCK' delta: (-1)
+    self.opcode: 'POP_BLOCK' delta: -1
     self.load: None
 
     to_finally:

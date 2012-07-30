@@ -18,10 +18,10 @@ dg = (fd, name: '__main__') ->
 
   parser   = parse.r:
   compiler = compile.r:
-  environ  = dict: (('__name__', name), ('__builtins__', __builtins__))
+  environ  = dict: [('__name__', name), ('__builtins__', __builtins__)]
 
   switch:
-    not $ (fd.isatty:) =
+    not $ fd.isatty: =
       c = compiler.compile $ parser.parse: filename: fd.name $ fd.read:
       # FIXME should strip unnecessary traceback items in non-__debug__ mode.
       eval: c environ
@@ -41,7 +41,7 @@ dg = (fd, name: '__main__') ->
       buf  = ''
       code = None
 
-      (not code).while:
+      (not: code).while:
         buf += input: (sys.ps2 if buf else sys.ps1)
         tree = parser.compile_command: buf
         code = compiler.compile: tree unless tree `is` None
