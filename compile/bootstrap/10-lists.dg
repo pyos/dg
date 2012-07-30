@@ -8,7 +8,7 @@ list_s  = x ->
   q = list: (x,)
   q = parse.syntax.uncurry: x parse.syntax.ST_TUPLE unless getattr: x 'closed' True
   q = parse.syntax.uncurry: x parse.syntax.ST_BREAK if q == list: (x,)
-  q
+  list: if x `is` None else q
 
 
 compile.r.builtins !! '[]' = (self, x) ->
