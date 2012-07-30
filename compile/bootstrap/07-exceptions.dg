@@ -1,6 +1,5 @@
 ..const        = import
 ..compile      = import
-..parse.tree   = import
 ..parse.syntax = import
 
 
@@ -11,12 +10,12 @@ callable = f -> (self, *args) ->
 
 
 unsafe = cases ->
-  cases = parse.syntax.uncurry: cases parse.syntax.ST_BREAK
-  cases = list $ map: q -> (parse.tree.matchA: q parse.syntax.ST_ASSIGN) cases
+  cases = parse.syntax.ST_BREAK: cases
+  cases = list $ map: parse.syntax.ST_ASSIGN cases
   all: cases or const.ERR.INVALID_STMT_IN_SWITCH
   cases      or const.ERR.DEFAULT
 
-  cases.append: (None, None) if len: cases < 2 or not: (parse.tree.matchQ: (cases !! -1 !! 0) parse.syntax.ST_EXC_FINALLY)
+  cases.append: (None, None) if len: cases < 2 or not: (parse.syntax.ST_EXC_FINALLY $ cases !! -1 !! 0)
   cases
 
 

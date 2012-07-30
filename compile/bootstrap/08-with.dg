@@ -1,4 +1,3 @@
-..const        = import
 ..compile      = import
 ..parse.tree   = import
 ..parse.syntax = import
@@ -17,14 +16,14 @@ compile.r.builtins !! 'with' = (self, code) ->
 
   '''
 
-  context, *stuff = parse.syntax.uncurry: code parse.syntax.ST_BREAK
-  stuff = parse.tree.Expression: ((parse.syntax.ST_BREAK,) + tuple: stuff)
+  context, *stuff = parse.syntax.ST_BREAK: code
   self.load: None
   end_ptr = self.opcode: 'SETUP_WITH' context delta: 2
-  self.opcode: 'POP_TOP'         delta: -1
-  self.opcode: 'ROT_THREE' stuff delta:  1
-  self.opcode: 'ROT_TWO'         delta:  0
-  self.opcode: 'POP_BLOCK'       delta: -1
+  self.opcode: 'POP_TOP'   delta: -1  # FIXME should store that somewhere.
+  self.call: (parse.tree.Link: '\n') (*): stuff
+  self.opcode: 'ROT_THREE' delta:  0
+  self.opcode: 'ROT_TWO'   delta:  0
+  self.opcode: 'POP_BLOCK' delta: -1
   self.load: None
   end_ptr:
   self.opcode: 'WITH_CLEANUP' delta: 1

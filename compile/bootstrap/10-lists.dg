@@ -1,27 +1,22 @@
 ..compile      = import
-..parse.tree   = import
 ..parse.syntax = import
 
 
-isconst = q -> not $ any $ map: y -> (y :: (parse.tree.Link, parse.tree.Expression)) q
 list_s  = x ->
-  q = list: (x,)
-  q = parse.syntax.uncurry: x parse.syntax.ST_TUPLE unless getattr: x 'closed' True
-  q = parse.syntax.uncurry: x parse.syntax.ST_BREAK if q == list: (x,)
+  q = parse.syntax.ST_TUPLE: x None unless getattr: x 'closed' True else q = None
+  q = parse.syntax.ST_BREAK: x if q `is` None
   list: if x `is` None else q
 
 
 compile.r.builtins !! '[]' = (self, x) ->
-  q = list_s: x
-  self.load: q if isconst: q else self.opcode: 'BUILD_LIST' (*): q delta: 1
+  self.opcode: 'BUILD_LIST' (*): (list_s: x) delta: 1
 
 
 compile.r.builtins !! '{}' = (self, x) ->
-  q = list_s: x
   # FIXME should have some way of defining dicts here.
   # The key-value pairing should be done with an operator that has
   # higher priority than `,`, or else `{ a R b, c R d }` won't parse
   # as expected.
   # (Another option is to use a different kind of parentheses.)
   # (Or some kind of flags.)
-  self.load $ set: q if isconst: q else self.opcode: 'BUILD_SET' (*): q delta: 1
+  self.opcode: 'BUILD_SET' (*): (list_s: x) delta: 1

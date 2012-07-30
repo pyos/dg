@@ -1,48 +1,37 @@
-from . import r
 from . import tree
 from .. import const
 
-ST_EXC_FINALLY = 'True'
+MATCH_A = lambda p: lambda f: tree.matchA(f, p)
+MATCH_Q = lambda p: lambda f: tree.matchQ(f, p)
+UNCURRY = lambda p: lambda f, n=None: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f] if n is None else n
 
-ST_TUPLE_S = '_,'
-ST_TUPLE   = ','
-ST_ASSIGN  = '_ = _'
-
-ST_EXPR_IF     = '_ `if` _'
-ST_EXPR_UNLESS = '_ `unless` _'
-
-ST_ARG_KW       = '_: _'
-ST_ARG_VAR      = '*_'
-ST_ARG_VAR_KW   = '**_'
-ST_ARG_VAR_C    = '*'
-ST_ARG_VAR_KW_C = '**'
-
-ST_IMPORT     = 'import'
-ST_IMPORT_REL = '_ _'
-ST_IMPORT_SEP = '.'
-
-ST_ASSIGN_ATTR = '_._'
-ST_ASSIGN_ITEM = '_ !! _'
-
-consts = [_ for _ in globals() if _.startswith('ST_')]
-values = r().parse('\n'.join(map(globals().__getitem__, consts)))[1:]
-list(map(globals().__setitem__, consts, values))
-
-ST_BREAK = tree.Link('\n')
-
-# Match `f` with a varary operator `p`, returning either the operands or `f`.
-uncurry = lambda f, p: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f]
+ST_BREAK        = UNCURRY(tree.Link('\n'))
+ST_EXC_FINALLY  = MATCH_Q(tree.Link('True'))
+ST_TUPLE        = UNCURRY(tree.Link(','))
+ST_ASSIGN       = MATCH_A(tree.Expression((tree.Link('='),      tree.Link('_'),  tree.Link('_'))))
+ST_EXPR_IF      = MATCH_A(tree.Expression((tree.Link('if'),     tree.Link('_'),  tree.Link('_'))))
+ST_EXPR_UNLESS  = MATCH_A(tree.Expression((tree.Link('unless'), tree.Link('_'),  tree.Link('_'))))
+ST_ARG_KW       = MATCH_A(tree.Expression((tree.Link(':'),      tree.Link('_'),  tree.Link('_'))))
+ST_ARG_VAR      = MATCH_A(tree.Expression((tree.Link(''),       tree.Link('*'),  tree.Link('_'))))
+ST_ARG_VAR_KW   = MATCH_A(tree.Expression((tree.Link(''),       tree.Link('**'), tree.Link('_'))))
+ST_ARG_VAR_C    = MATCH_Q(tree.Link('*'))
+ST_ARG_VAR_KW_C = MATCH_Q(tree.Link('**'))
+ST_IMPORT       = MATCH_Q(tree.Link('import'))
+ST_IMPORT_SEP   = UNCURRY(tree.Link('.'))
+ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''),   tree.Link('_'), tree.Link('_'))))
+ST_ASSIGN_ATTR  = MATCH_A(tree.Expression((tree.Link('.'),  tree.Link('_'), tree.Link('_'))))
+ST_ASSIGN_ITEM  = MATCH_A(tree.Expression((tree.Link('!!'), tree.Link('_'), tree.Link('_'))))
 
 
 def assignment(var, expr):
 
-    if tree.matchQ(expr, ST_IMPORT):
+    if ST_IMPORT(expr):
 
-        var = tree.matchA(var, ST_IMPORT_REL) or [tree.Link(), var]
+        var = ST_IMPORT_REL(var) or [tree.Link(), var]
         isinstance(var[0], tree.Link) or const.ERR.NONCONST_IMPORT
         parent = var[0].count('.')
         parent == len(var[0]) or const.ERR.NONCONST_IMPORT
-        args = uncurry(var[-1], ST_IMPORT_SEP)
+        args = ST_IMPORT_SEP(var[-1])
         all(isinstance(a, tree.Link) for a in args) or const.ERR.NONCONST_IMPORT
         return '.'.join(args), const.AT.IMPORT, args[0], parent
 
@@ -53,25 +42,24 @@ def assignment(var, expr):
 def assignment_target(var):
 
     # Attempt to do iterable unpacking first.
-    pack = uncurry(var, ST_TUPLE)
-    pack = pack if len(pack) > 1 else tree.matchA(var, ST_TUPLE_S)
+    pack = ST_TUPLE(var, ())
 
     if pack:
 
         # Allow one starred argument that is similar to `varargs`.
-        star = [i for i, q in enumerate(pack) if tree.matchQ(q, ST_ARG_VAR)] or [-1]
+        star = [i for i, q in enumerate(pack) if ST_ARG_VAR(q)] or [-1]
         len(star) > 1 and const.ERR.MULTIPLE_VARARGS
         star[0] > 255 and const.ERR.TOO_MANY_ITEMS_BEFORE_STAR
 
         if star[0] >= 0:
 
             # Remove the star. We know it's there, that's enough.
-            pack[star[0]], = tree.matchA(pack[star[0]], ST_ARG_VAR)
+            pack[star[0]], = ST_ARG_VAR(pack[star[0]])
 
         return const.AT.UNPACK, map(assignment_target, pack), len(pack), star[0]
 
-    attr = tree.matchA(var, ST_ASSIGN_ATTR)
-    item = tree.matchA(var, ST_ASSIGN_ITEM)
+    attr = ST_ASSIGN_ATTR(var)
+    item = ST_ASSIGN_ITEM(var)
 
     if attr:
 
@@ -100,11 +88,11 @@ def function(args, code):
     if args is not None:
 
         # Either a single argument, or multiple arguments separated by commas.
-        for arg in uncurry(args, ST_TUPLE):
+        for arg in ST_TUPLE(args):
 
-            arg, *default = tree.matchA(arg, ST_ARG_KW) or [arg]
-            vararg = tree.matchA(arg, ST_ARG_VAR)
-            varkw  = tree.matchA(arg, ST_ARG_VAR_KW)
+            arg, *default = ST_ARG_KW(arg) or [arg]
+            vararg = ST_ARG_VAR(arg)
+            varkw  = ST_ARG_VAR_KW(arg)
             # Extract argument name from `vararg` or `varkw`.
             arg, = vararg or varkw or [arg]
 
@@ -138,8 +126,8 @@ def function(args, code):
 
 def call_pre(args1):
 
-    args2 = tree.matchA(args1[0], ST_ARG_KW) or args1[:1]
-    attr  = tree.matchA(args2[0], ST_ASSIGN_ATTR)
+    args2 = ST_ARG_KW(args1[0]) or args1[:1]
+    attr  = ST_ASSIGN_ATTR(args2[0])
     attr and not isinstance(attr[1], tree.Link) and const.ERR.NONCONST_ATTR
     return [attr] + args2 + args1[1:]
 
@@ -153,7 +141,7 @@ def call_args(args):
 
     for arg in args:
 
-        kw = tree.matchA(arg, ST_ARG_KW)
+        kw = ST_ARG_KW(arg)
 
         if not kw or arg.closed:
 
@@ -163,12 +151,12 @@ def call_args(args):
             # `ST_ARG_KW` can only match an expression.
             posargs.append(arg)
 
-        elif tree.matchQ(kw[0], ST_ARG_VAR_C):
+        elif ST_ARG_VAR_C(kw[0]):
 
             vararg and const.ERR.MULTIPLE_VARARGS
             vararg.append(kw[1])
 
-        elif tree.matchQ(kw[0], ST_ARG_VAR_KW_C):
+        elif ST_ARG_VAR_KW_C(kw[0]):
 
             varkwarg and const.ERR.MULTIPLE_VARKWARGS
             varkwarg.append(kw[1])
