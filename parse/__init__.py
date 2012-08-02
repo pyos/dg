@@ -221,8 +221,8 @@ def list_do(stream, token):
 #
 def set_do(stream, token):
 
-  # yield from do(stream, token, closed=None, until=SIG_LIST_END)
-    for _ in do(stream, token, closed=None, until=SIG_LIST_END): yield _
+  # yield from do(stream, token, closed=None, until=SIG_SET_END)
+    for _ in do(stream, token, closed=None, until=SIG_SET_END): yield _
     e = tree.Expression([stream.located(tree.Link('{}')), next(stream)])
     e.closed = True
     yield e
