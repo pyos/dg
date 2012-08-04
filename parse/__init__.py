@@ -332,7 +332,11 @@ def number(stream, token):
 def string(stream, token):
 
     g = token.group(2) * (4 - len(token.group(2)))
-    yield tree.String(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
+    v = ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups()))
+    yield {
+        str:   tree.String,
+        bytes: tree.Bytes
+    }[type(v)](v)
 
 
 @r.token(r'"|\'')

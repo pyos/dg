@@ -36,6 +36,7 @@ class Link (str):
 
 class Constant: pass
 class String  (str,     Constant): pass
+class Bytes   (bytes,   Constant): pass
 class Integer (int,     Constant): pass
 class Float   (float,   Constant): pass
 class Complex (complex, Constant): pass
