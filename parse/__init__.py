@@ -181,10 +181,8 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
 
     if hasattr(stream.stuff, '__dict__') and closed is not None:
 
-        # Note that constants cannot be marked as indented/closed.
-        # The only objects those marks make sense for are expressions, though.
         stream.stuff.indented = indented
-        stream.stuff.closed   = closed
+        stream.stuff.closed   = closed or isinstance(stream.stuff, tree.Constant)
 
     if indented:
 
@@ -280,7 +278,7 @@ def comment(stream, token):
 #
 def int2(stream, token):
 
-    yield int(token.group(1), 2)
+    yield tree.Integer(token.group(1), 2)
 
 
 @r.token(r'0o([0-7]+)')
@@ -289,7 +287,7 @@ def int2(stream, token):
 #
 def int8(stream, token):
 
-    yield int(token.group(1), 8)
+    yield tree.Integer(token.group(1), 8)
 
 
 @r.token(r'0x([0-9a-fA-F]+)')
@@ -298,7 +296,7 @@ def int8(stream, token):
 #
 def int16(stream, token):
 
-    yield int(token.group(1), 16)
+    yield tree.Integer(token.group(1), 16)
 
 
 @r.token(r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?')
@@ -310,10 +308,16 @@ def int16(stream, token):
 def number(stream, token):
 
     sign, integral, fraction, exponent, imag = token.groups()
+    sign = -1 if sign == '-' else 1
     exponent = int(exponent or 0)
-    fraction = int(fraction) / 10 ** (len(fraction) - exponent) if fraction else 0
-    integral = int(integral) * 10 ** exponent
-    yield (integral + fraction) * (1j if imag else 1) * (-1 if sign == '-' else 1)
+    result   = tree.Integer(int(integral) * 10 ** exponent * sign)
+
+    if fraction:
+
+        fraction = int(fraction) / 10 ** (len(fraction) - exponent)
+        result   = tree.Float(result + fraction * sign)
+
+    yield tree.Complex(0, result) if imag else result
 
 
 @r.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
@@ -328,7 +332,7 @@ def number(stream, token):
 def string(stream, token):
 
     g = token.group(2) * (4 - len(token.group(2)))
-    yield ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups()))
+    yield tree.String(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
 
 
 @r.token(r'"|\'')

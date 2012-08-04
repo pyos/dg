@@ -33,6 +33,14 @@ class Link (str):
         return self
     """
 
+
+class Constant: pass
+class String  (str,     Constant): pass
+class Integer (int,     Constant): pass
+class Float   (float,   Constant): pass
+class Complex (complex, Constant): pass
+
+
 class Internal:
 
     def __repr__(self):
