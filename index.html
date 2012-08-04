@@ -44,9 +44,8 @@
         <div id="overview" class="section">
           <h2>Overview</h2>
           <p>
-            dg is a (not so) simple language that compiles to CPython bytecode.
-            In fact, you can think of it as of an alternative syntax for Python 3.
-            The key feature of dg is the ability to use whatever Python library you want.
+            dg is a simple-as-in-KISS (not as in "almost plain English", yet close) language
+            that compiles to CPython bytecode.
           </p>
         </div>
 
@@ -59,15 +58,12 @@
             <code>git clone https://github.com/pyos/dg.git</code>) and extract
             the archive in a directory somewhere in your <code>$PYTHONPATH</code>
             (e.g. <code>/usr/lib/python3.2/site-packages/</code>).
-            Don't forget to run <code>git submodule init</code> and
-            <code>git submodule update</code>!
           </p>
         </div>
 
         <div id="usage" class="section">
           <h2>Usage</h2>
-          <p>Usage: <code>python3 -m dg [options] [file [arguments]]</code></p>
-          <p>There are no options except for <code>-h</code>/<code>--help</code> (yet.)</p>
+          <p><code>python3 [VM options] -m dg [file [arguments]]</code></p>
         </div>
 
         <div id="introduction" class="section">
@@ -81,28 +77,30 @@
 <span class="par">(</span><span class="par">)</span> <span class="op">-></span> <span class="par">(</span><span class="str">'Still a function!'</span><span class="par">)</span>
 </pre>
           </div>
-          <p>Parentheses are not required in most cases, though.</p>
-          <div class="example-dg">
-            <pre class="prettyprint lang-dg">
-<span class="par">(</span><span class="par">)</span> <span class="op">-></span> <span class="str">'A function, too!'
-</pre>
-          </div>
           <p>
-            Line breaks and semicolons in both parentheses and indented blocks
-            separate different expressions, and indentation can be used
-            inside parentheses, so it's better to be cautious when it comes
-            to adding whitespace.
+            Parentheses are not required in most cases, though.
+            Note that in contrast to Python, parentheses <i>do not imply
+            line continuation</i> — each line in parentheses is a complete
+            statement, and the indentation still affects how the code is parsed.
+            The first line (i.e. everything after an opening parenthesis,
+            but before a line break) is assumed to have the same indentation
+            level as the line it appears in, so be careful not to dedent
+            some code.
           </p>
           <p>
             Also, dg doesn't require you to use parentheses when <i>calling</i>
             functions. In fact, it doesn't support that at all.
-            <a href="#functions">The only syntax for calls is a mix of Haskell
-            and Smalltalk.</a>
+            <a href="#functions">The only syntax for calls</a> is a mix of Haskell
+            and Smalltalk.
           </p>
           <h3>Comments</h3>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
 <span class="com"># are sh-style up to the end of the line</span>
+<span class="str">"Strings that aren't passed anywhere can be treated as comments, too."</span>
+<span class="par">(</span><span class="par">)</span> <span class="op">-&gt;</span>
+  <span class="str">"The first constant used in a function is considered to be a <a href="http://www.python.org/dev/peps/pep-0257/#what-is-a-docstring">docstring</a>."</span>
+  <span class="str">"If it's not a string, None is used instead."</span>
 </pre>
           </div>
           <h3>Assignment</h3>
@@ -114,8 +112,7 @@
           <p>
             Everything is an expression. That doesn't mean that everything
             returns a value that makes sense, though. For example,
-            <code>while</code> always returns <code>None</code> due to limitations
-            of the CPython virtual machine.
+            <code>return</code> always returns <code>None</code>.
           </p>
           <h3>Namespaces</h3>
           <p>
@@ -169,12 +166,29 @@
 
 <span class="com"># Tuples</span>
 <span class="typ">1</span><span class="op">,</span> <span class="com"># with a single item</span>
-<span class="typ">2</span><span class="op">,</span> <span class="typ">True</span><span class="op">,</span> <span class="str">'hi'</span> <span class="com"># with multiple items (and an optional comma at the end)</span>
-<span class="blt">tuple</span><span class="op">:</span> <span class="com"># empty</span>
+<span class="typ">2</span><span class="op">,</span> <span class="spc">True</span><span class="op">,</span> <span class="str">'hi'</span> <span class="com"># with multiple items</span>
+<span class="cls">tuple</span><span class="op">:</span> <span class="com"># empty</span>
 
-<span class="com"># Since the comma operator has the lowest priority (slightly higher than =, though), you may need to wrap it in parentheses.</span>
+<span class="com"># Since the comma operator has very low priority, you</span>
+<span class="com"># will probably need to wrap it in parentheses.</span>
 print<span class="op">:</span>  <span class="spc">True</span><span class="op">,</span> <span class="typ">1</span>  <span class="com"># Prints True, returns (None, 1)</span>
 print<span class="op">:</span> <span class="par">(</span><span class="spc">True</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span> <span class="com"># Prints (True, 1), returns None</span>
+
+<span class="com"># Lists are essentially tuples in square brackets.</span>
+<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span>
+<span class="com"># To create a list containing a single tuple, use parentheses.</span>
+<span class="par">[</span><span class="par">(</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">)</span><span class="par">]</span>
+<span class="com"># If items are too long, put each one on a separate line</span>
+<span class="com"># of an indented block, but do not use commas.</span>
+<span class="par">[</span>
+  <span class="str">'I prithee, take thy fingers from my throat;'</span>
+  <span class="str">'For, though I am not splenitive and rash,'</span>
+  <span class="str">'Yet have I in me something dangerous,'</span>
+  <span class="str">'Which let thy wisdom fear. Hold off thy hand!'</span>
+<span class="par">]</span>
+
+<span class="com"># Unordered sets are just like lists, but with curly brackets.</span>
+<span class="par">{</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">2</span><span class="par">}</span>  <span class="com"># same as {1, 2, 3}</span>
 </pre>
           </div>
         </div>
@@ -199,12 +213,13 @@ greet<span class="op">:</span> <span class="str">'World'</span>
 
 <span class="com"># Our good friends *starred **arguments are still with us.</span>
 <span class="com"># As always, * means "the rest of positional arguments" and ** is "the rest of keyword arguments."</span>
-a <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span>
+a <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span>
 print<span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> a
 
 <span class="com"># Define functions with -> operator</span>
-function <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> print<span class="op">:</span> <span class="str">'Yay, '</span> x
+function <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> print<span class="op">:</span> <span class="str">'Yay,'</span> x
 
+<span class="com"># Functions return the last value they evaluate, unless explicitly told to do otherwise.</span>
 <span class="com"># You may omit parentheses if there's only one (unambiguous) argument:</span>
 double <span class="op">=</span> x <span class="op">-></span> x <span class="op">*</span> 2
 <span class="com"># This is invalid because `whom: 'world' -> ...` is parsed as `whom: ('world' -> ...)`.</span>
@@ -224,37 +239,28 @@ double_all <span class="op">=</span> <span class="par">(</span><span class="op">
 
 <span class="com"># There is no special syntax for decorators.</span>
 <span class="com"># Just call them with the function as an argument.</span>
-wtf <span class="op">=</span> <span class="blt">staticmethod</span><span class="op">:</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+wtf <span class="op">=</span> <span class="cls">staticmethod</span> <span class="op">$</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
   print<span class="op">:</span> <span class="str">'A static method outside of a class?!'</span>
 
-<span class="com"># Functions return the last value they evaluate, unless explicitly told to do otherwise.</span>
-do_something <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
-  <span class="typ">1</span>
-  <span class="typ">2</span>
-  <span class="typ">3</span>  <span class="com"># do_something will return 3</span>
+<span class="com"># `return` takes one argument (the value to return)</span>
+<span class="com"># and aborts the evaluation immediately.</span>
+hello <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  <span class="kwd">return</span> <span class="op">$</span> print<span class="op">:</span> <span class="str">'Hi!'</span>
+  print<span class="op">:</span> <span class="str">'F**k you.'</span>
 
-<span class="com"># Remember about parentheses meaning the same thing as indentation?</span>
-do_something2 <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span> <span class="par">(</span><span class="typ">1</span><span class="sep">;</span> <span class="typ">2</span><span class="sep">;</span> <span class="typ">3</span><span class="par">)</span>
-
-<span class="com"># You can even use indentation in them. (So don't insert line breaks just everywhere.)</span>
-do_something3 <span class="op">=</span> <span class="par">(</span><span class="par">(</span><span class="par">)</span> <span class="op">-></span>
-  <span class="typ">1</span>
-  <span class="typ">2</span>
-  <span class="typ">3</span>
-<span class="par">)</span>
-
-do_something4 <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
-  <span class="typ">1</span>
-  <span class="kwd">return</span><span class="op">:</span> <span class="typ">2</span>  <span class="com"># do_something4 will return 2 and ignore everything after that line</span>
-  <span class="typ">3</span>  <span class="com"># Well, the bytecode will still be generated. There's no optimizer yet.</span>
-
-do_something5 <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
-  <span class="com"># And do_something5 is a generator.</span>
-  <span class="kwd">yield</span><span class="op">:</span> <span class="typ">1</span>
-  <span class="com"># That's how you handle `generator.send(...)`:</span>
-  somebody_sent_something_here <span class="op">=</span> <span class="kwd">yield</span><span class="op">:</span> <span class="typ">2</span>
-  <span class="kwd">yield</span><span class="op">:</span> <span class="typ">3</span>
-  <span class="com"># All returned values but None also get yielded, so it's better to explicitly return None. Just in case.</span>
+<span class="com"># <a href="http://docs.python.org/py3k/reference/simple_stmts.html#the-yield-statement">`yield`</a> turns a function into a <a href="http://docs.python.org/dev/glossary.html#term-generator">generator</a>.</span>
+count <span class="op">=</span> start <span class="op">-></span>
+  <span class="com"># `yield` is a function of two arguments, `item` and `from`.</span>
+  <span class="com"># Only one of them can be specified at a time.</span>
+  <span class="kwd">yield</span><span class="op">:</span> start
+  <span class="com"># Note that `from` requires Python >= 3.3.</span>
+  <span class="com"># Older versions will crash!</span>
+  <span class="kwd">yield</span> from<span class="op">:</span> <span class="par">(</span>count <span class="op">$</span> start <span class="op">+</span> <span class="typ">1</span><span class="par">)</span>
+  <span class="com"># Returning a value from a generator is allowed,</span>
+  <span class="com"># but the effect will differ depending on the VM version.</span>
+  <span class="com">#   <= 3.2: if that value is not None, it will be yielded.</span>
+  <span class="com">#   >= 3.3: that value is passed as the first argument to StopIteration.</span>
+  <span class="com"># You may want to return None for compatibility.</span>
   <span class="spc">None</span>
 </pre>
           </div>
@@ -265,9 +271,9 @@ do_something5 <span class="op">=</span> <span class="par">(</span><span class="p
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
 <span class="com"># Function calls are preferred over other operators</span>
-double_all<span class="op">:</span> <span class="typ">2</span> <span class="typ">4</span> <span class="op">*</span> <span class="typ">3</span>
+double<span class="op">:</span> <span class="typ">2</span> <span class="op">*</span> <span class="typ">3</span>
 <span class="com"># i.e. that line is the same as</span>
-<span class="par">(</span>double_all<span class="op">:</span> <span class="typ">2</span> <span class="typ">4</span><span class="par">)</span> <span class="op">*</span> <span class="typ">3</span>
+<span class="par">(</span>double<span class="op">:</span> <span class="typ">2</span><span class="par">)</span> <span class="op">*</span> <span class="typ">3</span>
 
 <span class="com"># Attribute access is the only exception to that rule.</span>
 print<span class="op">:</span> object<span class="op">.</span>__class__
@@ -276,13 +282,12 @@ print<span class="op">:</span> <span class="par">(</span>object<span class="op">
 <span class="com"># Most of the operators deal with numbers.</span>
 <span class="typ">1</span> <span class="op">+</span> <span class="typ">2</span> <span class="op">**</span> <span class="typ">3</span>
 <span class="com"># Binary stuff:</span>
-<span class="typ">6</span> <span class="op">|</span> <span class="par">(</span><span class="typ">2</span> <span class="op">&lt;&lt;</span> <span class="typ">3</span><span class="par">)</span>
+<span class="typ">4</span> <span class="op">|</span> <span class="par">(</span><span class="typ">5</span> <span class="op">&lt;&lt;</span> <span class="typ">6</span><span class="par">)</span>
 
 <span class="com"># Unsurprisingly, subitem access is just like in Haskell.</span>
 <span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="str">'b'</span><span class="par">)</span> <span class="op">!!</span> <span class="typ">1</span>
-<span class="com"># There is no special syntax for slices yet, sorry.</span>
-<span class="com"># `'abcdefghijklmnopqrstuvwxyz'[:5]` is written like this:</span>
-<span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!!</span> slice<span class="op">:</span> <span class="spc">None</span> <span class="typ">5</span>
+<span class="com"># `a !@ b` is like `a !! slice: (*): b` (i.e. `a[slice(*b)]` in Python).</span>
+<span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!@</span> <span class="par">(</span><span class="spc">None</span><span class="op">,</span> <span class="typ">5</span><span class="par">)</span>
 
 <span class="com"># Assignment can work with names, attributes, subitems, and tuples:</span>
 a <span class="op">=</span> <span class="str">'Hello'</span>
@@ -292,17 +297,29 @@ a <span class="op">!!</span> b <span class="op">=</span> <span class="str">'this
 a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> c <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">4</span>
 print<span class="op">:</span> a b c  <span class="com"># 1 [2, 3] 4</span>
 
-<span class="com"># Any binary function can be transformed into an operator by wrapping its name in backticks:</span>
-do_stuff <span class="op">=</span> <span class="par">(</span>a<span class="op">,</span> b<span class="par">)</span> <span class="op">-></span> print<span class="op">:</span> a b
-<span class="typ">1</span> <span class="iop"</span>`do_stuff`</span> <span class="typ">2</span>  <span class="com"># Prints "1 2"</span>
-<span class="spc">False</span> <span class="iop"</span>`is`</span> <span class="spc">True</span>  <span class="com"># Returns False</span>
+<span class="com"># Any function can be transformed into an operator by wrapping its name in backticks.</span>
+<span class="typ">1</span> <span class="iop"</span>`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2 3"</span>
+<span class="com"># The same thing:</span>
+print<span class="op">:</span> <span class="typ">1</span> <span class="typ">2</span> <span class="typ">3</span>
+<span class="com"># NOT the same thing:</span>
+print<span class="op">:</span> <span class="par">(</span>print<span class="op">:</span> <span class="typ">1</span> <span class="typ">2</span><span class="par">)</span> <span class="typ">3</span>
+<span class="com"># `is` and `in` are names, not operators, so this notation can be useful:</span>
+<span class="spc">False</span> <span class="iop"</span>`is`</span> <span class="spc">True</span>
 
 <span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
 dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
 
-<span class="com"># And you can define your own if you think these are not enough. Don't consider that a very good practice, though.</span>
-<span class="par">(</span><span class="op">$%^&*/|\@!+-:.,?</span><span class="par">)</span> <span class="op">=</span> do_stuff
-<span class="typ">1</span> <span class="op"</span>$%^&*/|\@!+-:.,?</span> <span class="typ">2</span>  <span class="com"># Also prints "1 2"</span>
+<span class="com"># And you can define your own if you think these are not enough.</span>
+<span class="com"># Don't consider that a very good practice, though.</span>
+<span class="par">(</span><span class="op">$%^&*/|\@!+-:.?</span><span class="par">)</span> <span class="op">=</span> print
+<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op"</span>$%^&*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2 3"</span>
+
+<span class="com"># Note that all runtime operators accept keyword arguments.</span>
+<span class="com"># Be careful with the use of colons.</span>
+<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span>  sep<span class="op">:</span> <span class="str">'\n'</span>   <span class="com"># ($%^&*/|\@!+-:.?): 1  sep: '\n'</span>
+<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="par">(</span>sep<span class="op">:</span> <span class="str">'\n'</span><span class="par">)</span>  <span class="com"># ($%^&*/|\@!+-:.?): 1 (sep: '\n')</span>
+<span class="typ">1</span> <span class="op">+</span>  sep<span class="op">:</span> <span class="str">'\n'</span>   <span class="com"># (+): 1 (sep: '\n')</span>
+<span class="typ">1</span> <span class="op">+</span> <span class="par">(</span>sep<span class="op">:</span> <span class="str">'\n'</span><span class="par">)</span>  <span class="com"># (+): 1 (sep: '\n')</span>
 </pre>
           </div>
 
@@ -354,6 +371,11 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
               <td class="no">No</td>
             </tr>
             <tr>
+              <td><code>!@</code></td>
+              <td>Slice notation</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
               <td><code>&lt; &lt;= == != > >=</code></td>
               <td>Built-in comparison operators</td>
               <td class="yes">Yes</td>
@@ -381,16 +403,21 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
             <tr>
               <td><code>.</code></td>
               <td>Attribute lookup</td>
+              <td class="maybe"><code>getattr</code></td>
+            </tr>
+            <tr>
+              <td><code>:.</code></td>
+              <td>Call a function with no arguments, then fetch an attribute.</td>
               <td class="no">No</td>
             </tr>
             <tr>
               <td><code>.~</code></td>
-              <td>Attribute removal. Returns None</td>
+              <td>Attribute removal. Returns None, can't be chained.</td>
               <td class="no">No</td>
             </tr>
             <tr>
               <td><code>!!~</code></td>
-              <td>Subitem removal. Returns None</td>
+              <td>Subitem removal. Returns None, can't be chained.</td>
               <td class="no">No</td>
             </tr>
             <tr>
@@ -405,7 +432,22 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
             </tr>
             <tr>
               <td><code>~:</code></td>
-              <td>Partial function application</td>
+              <td>Alias for <code>functools.partial</code></td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>..</code></td>
+              <td>Alias for <code>range</code></td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>::</code></td>
+              <td>Alias for <code>isinstance</code></td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td><code>...</code></td>
+              <td>Alias for <code>Ellipsis</code>, <b>not callable</b></td>
               <td class="yes">Yes</td>
             </tr>
           </table>
@@ -419,13 +461,12 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
 module <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span> <span class="str">'os'</span>
 
 <span class="com"># You can omit the module name if it can be inferred.</span>
-<span class="com"># (Note the absence of `:`, that will be fixed later)</span>
+<span class="com"># (Note the absence of a colon at the end: `import` is not a function here!)</span>
 sys <span class="op">=</span> <span class="kwd">import</span>
 os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">import</span>
 <span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span>
 
 <span class="com"># Not much else to show here. Star-imports will never be supported.</span>
-<span class="com"># dg modules don't work, 'cause there's no import hook yet.</span>
 </pre>
           </div>
         </div>
@@ -472,6 +513,33 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 
         <div id="loops" class="section">
           <h2>Loops</h2>
+          <div class="example-dg">
+            <pre class="prettyprint lang-dg">
+<span class="com"># (Don't expect anything cool here.)</span>
+<span class="com"># Loops are implemented as pseudomethods on objects.</span>
+<span class="com"># (Yes, methods, not attributes. You can call them, but you can't access them.)</span>
+<span class="com"># The simpliest loop, `while`, is pretty obvious:</span>
+<span class="spc">True</span><span class="op">.</span><span class="kwd">while</span> <span class="op">$</span>
+  print<span class="op">:</span> <span class="str">'Help!'</span>
+<span class="com"># Loop conditions don't have to be constant.</span>
+<span class="par">(</span><span class="blt">not</span><span class="op">:</span> resource_is_available<span class="par">)</span><span class="op">.</span><span class="kwd">while</span><span class="op">:</span> <span class="par">(</span><span class="par">)</span>  <span class="com"># Rollin'</span>
+
+<span class="com"># Iterating over a sequence is done</span>
+<span class="com"># using the <s>`map` built-in</s> `for` pseudomethod.</span>
+<span class="com"># `for` accepts 2 named arguments: `each` and `do`.</span>
+<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span><span class="op">:</span> x <span class="par">(</span>print<span class="op">:</span> x<span class="par">)</span>
+<span class="com"># You may want to use them by name to improve readability.</span>
+<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span> each<span class="op">:</span> x do<span class="op">:</span>
+  print<span class="op">:</span> x
+
+<span class="com"># Both `for` and `while` return the result of the last iteration.</span>
+<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span><span class="op">:</span> x <span class="par">(</span>x <span class="op">*</span> <span class="typ">2</span><span class="par">)</span> <span class="op">==</span> <span class="typ">6</span>
+
+<span class="com"># But, seriously, use `map`, `filter`, and other</span>
+<span class="com"># functional stuff whenever possible instead.</span>
+<span class="cls">list</span> <span class="op">$</span> <span class="blt">map</span><span class="op">:</span> print <span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span>
+</pre>
+          </div>
         </div>
 
         <div id="exceptions" class="section">
@@ -481,10 +549,15 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 <span class="com"># Raise exceptions with the `raise` built-in.</span>
 <span class="kwd">raise</span><span class="op">:</span> <span class="exc">Exception</span>
 
-<span class="com"># Raise accepts classes that derive from BaseException</span>
+<span class="com"># It accepts classes that derive from BaseException</span>
 <span class="com"># as well as their instances.</span>
 <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">Exception</span><span class="op">:</span> <span class="str">'Ow!'</span>
 <span class="kwd">raise</span><span class="op">:</span> <span class="par">(</span><span class="exc">OblivionError</span><span class="op">:</span> <span class="str">'Stop right there, criminal scum'</span><span class="par">)</span>
+
+<span class="com"># `raise` takes 2 arguments: `exception` and `caused_by`.</span>
+<span class="com"># The former is what to raise, and the latter is <a href="http://www.python.org/dev/peps/pep-3134/">its cause</a>.</span>
+<span class="com"># Setting the cause to `None` in Python >= 3.3 silences the context.</span>
+<span class="kwd">raise</span><span class="op">:</span> <span class="exc">ValueError</span> caused_by<span class="op">:</span> <span class="exc">KeyError</span>
 
 <span class="com"># Catch thrown exceptions with the `unsafe` conditional.</span>
 <span class="com"># Its syntax is similar to `switch`.</span>
@@ -493,15 +566,15 @@ factorial <span class="op">=</span> n <span class="op">-></span>
   <span class="com"># where `expression` is what you want to do</span>
   <span class="com"># and `name` is where to store the raised exception, if any.</span>
   error <span class="op">=</span>
-    i <span class="op">=</span> <span class="blt">int</span><span class="op">:</span> <span class="str">'1234567890a'</span>
+    i <span class="op">=</span> <span class="cls">int</span><span class="op">:</span> <span class="str">'1234567890a'</span>
     f <span class="op">=</span> <span class="blt">open</span><span class="op">:</span> <span class="str">'/etc/hostname'</span> <span class="str">'wb'</span>
     f<span class="op">.</span>write<span class="op">:</span> i
   <span class="com"># All other lines are conditional expressions.</span>
   <span class="com"># Use `isinstance` to match exception types:</span>
-  error <span class="iop">`isinstance`</span> <span class="exc">ValueError</span> <span class="op">=</span>
+  error <span class="op">::</span> <span class="exc">ValueError</span> <span class="op">=</span>
     print<span class="op">:</span> <span class="str">'Hey, that wasn\'t a decimal number!'</span>
   <span class="com"># You may also check the exception's attributes if you want:</span>
-  error <span class="iop">`isinstance`</span> <span class="exc">IOError</span> <span class="op">and</span> error<span class="op">.</span>errno <span class="op">==</span> <span class="typ">13</span> <span class="op">=</span>
+  error <span class="op">::</span> <span class="exc">OSError</span> <span class="op">::</span> <span class="exc">IOError</span> <span class="op">and</span> error<span class="op">.</span>errno <span class="op">==</span> <span class="typ">13</span> <span class="op">=</span>
     print<span class="op">:</span> <span class="str">'Permission denied'</span>
   <span class="com"># As in `switch`, conditions may be completely unrelated.</span>
   <span class="com"># Any matching condition will silence the exception.</span>
@@ -525,7 +598,7 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 file <span class="op">=</span> <span class="kwd">unsafe</span><span class="op">:</span>
   e <span class="op">=</span> <span class="blt">open</span><span class="op">:</span> <span class="str">'README.md'</span>
   <span class="com"># Not having a README isn't critical, but `file` will be `None`.</span>
-  e <span class="iop">`isinstance`</span> <span class="exc">IOError</span> <span class="op">=</span> <span class="par">(</span><span class="par">)</span>
+  e <span class="op">::</span> <span class="exc">IOError</span> <span class="op">=</span> <span class="par">(</span><span class="par">)</span>
 </pre>
           </div>
         </div>
@@ -538,14 +611,20 @@ file <span class="op">=</span> <span class="kwd">unsafe</span><span class="op">:
 <span class="cls">MyType</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
   a <span class="op">=</span> <span class="typ">1</span>
 
-MyType<span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
+<span class="cls">MyType</span><span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
+
+<span class="com"># If you read a section on <a href="#operators">operators</a> carefully,</span>
+<span class="com"># you probably already noticed, that you don't have to use `$`.</span>
+<span class="cls">MyType2</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span>a <span class="op">=</span> <span class="typ">1</span><span class="par">)</span>
+<span class="com"># But if you do use it, then the class body can be omitted.</span>
+<span class="cls">Object</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
 
 <span class="com"># `inherit` also accepts any amount of base classes.</span>
-<span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="cls">MyType</span> <span class="blt">list</span> <span class="op">$</span>
+<span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="cls">MyType</span> <span class="cls">list</span> <span class="op">$</span>
   b <span class="op">=</span> <span class="typ">2</span>
 
-MyList<span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
-MyList<span class="op">.</span>b <span class="op">==</span> <span class="typ">2</span>
+<span class="cls">MyList</span><span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
+<span class="cls">MyList</span><span class="op">.</span>b <span class="op">==</span> <span class="typ">2</span>
 
 <span class="com"># The syntax for calling functions applies to `inherit`, too.</span>
 <span class="cls">MyTypeWithMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> <span class="cls">MyMetaclass</span> <span class="par">(</span><span class="par">)</span>
@@ -553,10 +632,9 @@ MyList<span class="op">.</span>b <span class="op">==</span> <span class="typ">2<
 <span class="cls">Animal</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
   <span class="com"># Classes can have methods, which are actually functions.</span>
   __init__ <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="op">,</span> name<span class="par">)</span> <span class="op">-></span>
-    <span class="com"># One of the most awful syntactic constructs</span>
-    <span class="com"># (just a runtime function call, actually)</span>
-    <span class="com"># is a call to one of the superclasses' methods:</span>
-    <span class="par">(</span><span class="blt">super</span><span class="op">:</span><span class="par">)</span><span class="op">.</span>__init__<span class="op">:</span>  <span class="com"># See <a href="http://docs.python.org/dev/library/functions.html#super">Python docs</a> for details</span>
+    <span class="com"># Retrieving an attribute of a value returned by a function</span>
+    <span class="com"># is pretty common, so there is a special operator for that.</span>
+    <span class="cls">super</span><span class="op">:.</span>__init__<span class="op">:</span>  <span class="com"># See <a href="http://docs.python.org/dev/library/functions.html#super">Python docs</a> for details</span>
 
     <span class="spc">self</span><span class="op">.</span>name <span class="op">=</span> name
     <span class="com"># __init__ must always return None.</span>
@@ -588,10 +666,8 @@ bob<span class="op">.</span>eat<span class="op">:</span>
           <h2>Performance</h2>
           <p>
             dg should be on par with Python 3 in terms of evaluation speed.
-            But the compilation stage is...pretty slow. It takes nearly 150ms
-            to set up the Python interpreter, load the compiler and parse
-            <a href="https://gist.github.com/3068335">a real-world 169 LOC file</a>
-            on my computer.
+            But the compilation stage is...pretty slow. Compiling parts of
+            dg itself takes nearly 300 ms on my not so crappy desktop PC.
           </p>
           <p>
             To be exact, dg-generated bytecode may or may not be slower than Python 3 —
@@ -616,7 +692,7 @@ bob<span class="op">.</span>eat<span class="op">:</span>
         <div id="thanks" class="section">
           <h2>Thanks</h2>
           <p>
-            Thanks to me. <span style="color: white">And /pr/.</span>
+            Thanks to me.
             Special thanks to Python developers who, as always,
             <a href="http://docs.python.org/dev/whatsnew/3.3.html">do implement cool features</a>,
             but release them 2 or 3 months after I want to try them out. :-)

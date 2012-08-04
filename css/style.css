@@ -45,15 +45,9 @@ p
     margin-right: 1em;
 }
 
-.table td.yes
-{
-    background-color: rgba(0, 255, 0, 0.1) !important;
-}
-
-.table td.no
-{
-    background-color: rgba(255, 0, 0, 0.1) !important;
-}
+.table td.yes   { background-color: rgba(  0, 255,   0, 0.1) !important; }
+.table td.maybe { background-color: rgba(255, 255,   0, 0.1) !important; }
+.table td.no    { background-color: rgba(255,   0,   0, 0.1) !important; }
 
 @media(min-width: 767px)
 {
