@@ -2,13 +2,10 @@ import ast
 
 from . import core
 from . import tree
-from .core import Parser as r
 
-SIG_SET_END          = tree.Internal()
-SIG_LIST_END         = tree.Internal()
-SIG_CLOSURE_END      = tree.Internal()
-SIG_EXPRESSION_BREAK = tree.Internal()
+r = core.Parser
 
+SIG_CLOSURE_END    = type('SIG_CLOSURE_END', (str, tree.Internal), {})
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 
 
@@ -30,13 +27,15 @@ def indent(stream, token):
 
     while indent != stream.indent.pop():
 
-        yield SIG_CLOSURE_END
+        yield SIG_CLOSURE_END('')
         stream.indent or stream.error('no matching indentation level', after=True)
 
     stream.indent.append(indent)
 
 
-@r.token(r'(`\w+`|[!$%&*+\--/:<-@\\^|~]+|,+|if|unless|else|and|or)', STATE_AFTER_OBJECT)
+@r.token(r'([!$%&*+\--/:<-@\\^|~]+|,+|if|unless|else|and|or)', STATE_AFTER_OBJECT)
+@r.token(r'`(\w+)`', STATE_AFTER_OBJECT)
+@r.token(r'\s*(\n)', STATE_AFTER_OBJECT)
 #
 # operator = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op | '\n'
 #
@@ -45,7 +44,7 @@ def indent(stream, token):
 #
 def operator(stream, token):
 
-    op = token if isinstance(token, str) else token.group(1).strip('`')
+    op = token if isinstance(token, str) else token.group(1)
     return operator_(stream, stream.located(tree.Link(op)))
 
 
@@ -59,7 +58,7 @@ def operator_(stream, op):
     rhsless = False
     rhsbound = False
 
-    while rhs is SIG_EXPRESSION_BREAK:
+    while isinstance(rhs, tree.Link) and rhs == '\n':
 
         br  = True
         rhs = next(stream)  # Skip soft breaks.
@@ -75,8 +74,8 @@ def operator_(stream, op):
         # The operator was followed by something other than an object or
         # an indented block.
         stream.repeat.appendleft(rhs)
-        stream.repeat.appendleft(SIG_EXPRESSION_BREAK)
-        rhsless = True
+        rhsless = rhsbound = True
+        rhs = tree.Link('\n')
 
     elif isinstance(rhs, tree.Link) and not hasattr(rhs, 'closed') and rhs.operator:
 
@@ -84,54 +83,54 @@ def operator_(stream, op):
         # `a R (Q b)` otherwise.
         rhsless = rhsbound = stream.has_priority(op, rhs)
 
-    if rhsless and (op == '\n' or op == ''):
+    # Chaining a single expression doesn't make sense.
+    if not rhsless or op not in ('\n', ''):
 
-        # Chaining a single expression doesn't make sense.
-        return
+        while not getattr(lhs[-1], 'closed', True) and stream.has_priority(op, lhs[-1][0]):
 
-    while not getattr(lhs[-1], 'closed', True) and stream.has_priority(op, lhs[-1][0]):
+            # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R,
+            # `(a R b) Q c` otherwise.
+            lhs = lhs[-1]
 
-        # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R,
-        # `(a R b) Q c` otherwise.
-        lhs = lhs[-1]
+        if not getattr(lhs[-1], 'closed', True) and lhs[-1][0] == op and not rhsless:
 
-    if not getattr(lhs[-1], 'closed', True) and lhs[-1][0] == op and not rhsless:
-
-        # `a R b R c` <=> `Op R (Link a) (Link b) (Link c)`
-        # unless R is right-fixed.
-        lhs[-1].append(rhs)
-
-    else:
-
-        # `R`         <=> `Op R`
-        # `R rhs`     <=> `Call (Link R) (Link rhs)`
-        # `lhs R`     <=> `Op R (Link lhs)`
-        # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
-        e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
-
-        if not lhs:
-
-            # That was a fake expression, appending to it is futile.
-            stream.stuff = stream.located(e)
+            # `a R b R c` <=> `Op R (Link a) (Link b) (Link c)`
+            # unless R is right-fixed.
+            lhs[-1].append(rhs)
 
         else:
 
-            lhs.append(stream.located(e))
+            # `R`         <=> `Op R`
+            # `R rhs`     <=> `Call (Link R) (Link rhs)`
+            # `lhs R`     <=> `Op R (Link lhs)`
+            # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
+            e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
+
+            if lhs:
+
+                lhs.append(stream.located(e))
+
+            else:
+
+                # That was a fake expression, appending to it is futile.
+                stream.stuff = stream.located(e)
 
     stream.state |= STATE_AFTER_OBJECT
 
     if rhsbound:
 
-      # yield from operator_(rhs)
+      # yield from operator_(stream, rhs)
         for _ in operator_(stream, rhs): yield _
 
 
-@r.token('\(')
+@r.token('\(|\[|\{')
 #
-# do = '('
+# do = '(' | '[' | '{'
 #
-def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
+def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '[': ']'}):
 
+    par = token.group() if token else ''
+    closed = None if par in ('{', '[') else closed
     state_backup = stream.state & STATE_AFTER_OBJECT
     stuff_backup = stream.stuff
 
@@ -144,50 +143,40 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
 
             stream.error('mismatched parentheses')
 
-        if item is until:
+        elif isinstance(item, SIG_CLOSURE_END) and item == pars.get(par, ''):
 
             break
 
-        elif item is SIG_EXPRESSION_BREAK and not stream.state & STATE_AFTER_OBJECT:
-
-            # Ignore line feeds directly following an opening parentheses.
-            pass
-
-        elif item is SIG_EXPRESSION_BREAK:
-
-            # Two expressions in a row should be joined with a line feed operator.
-          # yield from operator(stream, None)
-            for _ in operator(stream, '\n'): yield _
-
         elif isinstance(item, tree.Internal):
 
-            stream.error('invalid indentation or mismatched parentheses')
+            stream.error('invalid indentation or mismatched parentheses', after=True)
 
         elif stream.state & STATE_AFTER_OBJECT:
 
             # Two objects in a row should be joined with an empty operator.
             stream.repeat.appendleft(item)
-          # yield from operator(stream, None)
+          # yield from operator(stream, '')
             for _ in operator(stream, ''): yield _
 
-        else:
+        # Ignore line feeds directly following an opening parentheses.
+        elif not isinstance(item, tree.Link) or item != '\n':
 
             stream.stuff = item
             stream.state |= STATE_AFTER_OBJECT
-
-    # These SIG_CLOSURE_END are put there by `indent` when it unindents
-    # for more than one level. All other stuff should have been handled.
-    assert not set(stream.repeat) - {SIG_CLOSURE_END}
 
     if hasattr(stream.stuff, '__dict__') and closed is not None:
 
         stream.stuff.indented = indented
         stream.stuff.closed   = closed or isinstance(stream.stuff, tree.Constant)
 
-    if indented:
+    # Further expressions should not touch this block.
+    indented and stream.repeat.appendleft(tree.Link('\n'))
 
-        # Further expressions should not touch this block.
-        stream.repeat.appendleft(SIG_EXPRESSION_BREAK)
+    # When handling literals, wrap the block into an unary operator call.
+    if par in ('{', '['):
+
+        stream.stuff = tree.Expression([stream.located(tree.Link(par + pars[par])), stream.stuff])
+        stream.stuff.closed = True
 
     # If we use yield instead, outer blocks will receive SIG_CLOSURE_END
     # from `indent` before they get to this block. That may have some...
@@ -200,103 +189,28 @@ def do(stream, token, indented=False, closed=True, until=SIG_CLOSURE_END):
     stream.stuff = stuff_backup
 
 
-@r.token(r'\[')
-#
-# list_do = '['
-#
-def list_do(stream, token):
-
-  # yield from do(stream, token, closed=None, until=SIG_LIST_END)
-    for _ in do(stream, token, closed=None, until=SIG_LIST_END): yield _
-    e = tree.Expression([stream.located(tree.Link('[]')), next(stream)])
-    e.closed = True
-    yield e
-
-
-@r.token(r'\{')
-#
-# set_do = '{'
-#
-def set_do(stream, token):
-
-  # yield from do(stream, token, closed=None, until=SIG_SET_END)
-    for _ in do(stream, token, closed=None, until=SIG_SET_END): yield _
-    e = tree.Expression([stream.located(tree.Link('{}')), next(stream)])
-    e.closed = True
-    yield e
-
-
 @r.token(r'', core.STATE_AT_FILE_END)
-@r.token(r'\)')
+@r.token(r'\)|\]|\}')
 #
-# end = ')' | $
+# end = ')' | ']' | '}' | $
 #
 def end(stream, token):
 
-    yield SIG_CLOSURE_END
+    yield SIG_CLOSURE_END(token.group())
 
 
-@r.token(r'\]')
+@r.token(r'0(b)([0-1]+)')
+@r.token(r'0(o)([0-7]+)')
+@r.token(r'0(x)([0-9a-fA-F]+)')
 #
-# list_end = ']'
-#
-def list_end(stream, token):
-
-    yield SIG_LIST_END
-
-
-@r.token(r'\}')
-#
-# set_end = '}'
-#
-def list_end(stream, token):
-
-    yield SIG_SET_END
-
-
-@r.token(r'\s*\n')
-#
-# soft_break = '\n'
-#
-def soft_break(stream, token):
-
-    yield SIG_EXPRESSION_BREAK
-
-
-@r.token(r'\s*#[^\n]*')
-#
-# comment = '#', < anything but line feed >
-#
-def comment(stream, token):
-
-    return ()
-
-
-@r.token(r'0b([0-1]+)')
-#
+# intb = int2 | int8 | int16
 # int2 = '0b', ( '0' .. '1' ) +
-#
-def int2(stream, token):
-
-    yield tree.Integer(token.group(1), 2)
-
-
-@r.token(r'0o([0-7]+)')
-#
 # int8 = '0o', ( '0' .. '7' ) +
-#
-def int8(stream, token):
-
-    yield tree.Integer(token.group(1), 8)
-
-
-@r.token(r'0x([0-9a-fA-F]+)')
-#
 # int16 = '0x', ( '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' ) +
 #
-def int16(stream, token):
+def intb(stream, token, bases={'b': 2, 'o': 8, 'x': 16}):
 
-    yield tree.Integer(token.group(1), 16)
+    yield tree.Integer(token.group(2), bases[token.group(1)])
 
 
 @r.token(r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?')
@@ -348,25 +262,32 @@ def string_err(stream, token):
     stream.error('mismatched quote')
 
 
-@r.token(r'\w+|[!$%&*+\--/:<-@\\^|~]+|,+|`\w+`')
+# Note that "\w+" implies "if" and other word operators.
+@r.token(r'(\w+|[!$%&*+\--/:<-@\\^|~]+|,+)')
+@r.token(r'`(\w+)`')
+@r.token(r'\s*(\n)')
 #
 # link = word | operator
 #
 def link(stream, token):
 
-    yield tree.Link(token.group().strip('`'))
+    yield tree.Link(token.group(1))
 
 
-@r.token('\s')
+@r.token(r'\s')
+@r.token(r'\s*#[^\n]*')
 #
-# whitespace = < whitespace >
+# whitespace = < whitespace > | '#', < anything but line feed >
 #
 def whitespace(stream, token):
 
     return ()
 
 
-@r.token()
+@r.token(r'.')
+#
+# error = < unmatched symbol >
+#
 def error(stream, token):
 
     stream.error('invalid input')
