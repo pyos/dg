@@ -2,6 +2,8 @@ import dis
 import types
 import struct
 import functools
+import itertools
+import collections
 
 from .. import const
 
@@ -12,12 +14,15 @@ CO_VARKWARGS = 8
 CO_NESTED    = 16
 CO_GENERATOR = 32
 CO_NOFREE    = 64
-EXTENDED_ARG = functools.partial(struct.pack, '=BH', dis.opmap['EXTENDED_ARG'])
+
+OPCODE   = struct.Struct('=B').pack
+OPCODE_A = struct.Struct('=BH').pack
+EXTEND_A = functools.partial(OPCODE_A, dis.opmap['EXTENDED_ARG'])
 
 nsplit  = lambda x, q: nsplit(x // q, q) + [x % q] if x >= q else [x]
 delay   = lambda f, g=None: type('delay', (), {'__int__': f, '__call__': g})()
 codelen = lambda cs: sum(
-    1 + (c >= dis.HAVE_ARGUMENT and (3 * len(nsplit(int(v), 0x10000)) - 1))
+    1 + (c >= dis.HAVE_ARGUMENT and (((int(v) or 1).bit_length() - 1) // 16 * 3 + 2))
     for c, v in cs
 )
 
@@ -31,11 +36,15 @@ class MutableCode:
         self.argc   = len(args)
         self.kwargc = len(kwargs)
 
-        self.names    = []
-        self.consts   = []
-        self.freevars = []
-        self.cellvars = []
-        self.varnames = list(args) + list(kwargs) + list(varargs) + list(varkwargs)
+        self.names    = collections.defaultdict(itertools.count().__next__)
+        self.consts   = collections.defaultdict(itertools.count().__next__)
+        self.freevars = collections.defaultdict(itertools.count().__next__)
+        self.cellvars = collections.defaultdict(itertools.count().__next__)
+        self.varnames = collections.defaultdict(itertools.count().__next__)
+
+        for name in itertools.chain(args, kwargs, varargs, varkwargs):
+
+            self.varnames[name]
 
         self.flags = (
             CO_OPTIMIZED | CO_NEWLOCALS * bool(isfunc)
@@ -51,13 +60,11 @@ class MutableCode:
         self.lnotab   = {}
 
         # Names of variables that could be added to `freevars`.
-        self.cellnames = set(cell.varnames) | cell.cellnames if cell else set()
+        self.cellnames = cell.varnames.keys() | cell.cellnames if cell else set()
 
         # Whether to use the `f_locals` hashmap instead of fast locals.
         # Enabled for global NS and functions that do STORE_LOCALS.
         self.slowlocals = not isfunc
-
-  ### LNOTAB
 
     def mark(self, e):
 
@@ -79,32 +86,6 @@ class MutableCode:
                 yield bytes((bytediff % 256, linediff % 256))
                 offset, lineno = offset_, lineno_
 
-  ### OPCODE ARGUMENTS
-
-    def name(self, v, container):
-
-        # FIXME that should be done in `compile.__init__`, not here.
-        isinstance(v, str) or container is self.consts or const.ERR.NONCONST_ATTR
-
-        v in container or container.append(v)
-        return container.index(v)
-
-    def freevar(self, v):
-
-        if v not in self.freevars:
-
-            if v in self.cellnames:
-
-                self.freevars.append(v)
-
-            elif v not in self.cellvars:
-
-                self.cellvars.append(v)
-
-        # Free and cell variables use the same index space, so we
-        # don't know their indices right now.
-        return delay(lambda _: (self.cellvars + self.freevars).index(v))
-
     def jump(self, absolute, reverse=False):
 
         start = len(self.bytecode)
@@ -116,10 +97,6 @@ class MutableCode:
             hasattr(v, '_c') and delattr(v, '_c')
 
         def to_int(v):
-
-            if not (reverse or hasattr(v, 'end')):
-
-                raise Exception(dis.opname[self.bytecode[start][0]])
 
             if not hasattr(v, '_c'):
 
@@ -135,29 +112,25 @@ class MutableCode:
 
         return delay(to_int, finish)
 
-  ### OPCODE MANIPULATION
-
+    # Append a new opcode to the bytecode sequence.
+    #
+    # :param name: name of the bytecode (should be in `dis.opmap`.)
+    #
+    # :param value: opcode-dependent.
+    #
+    #   argumentless opcodes: ignored
+    #   relative jumps:: ignored
+    #   absolute jumps:: the jump is in reverse direction when negative
+    #   name ops::       name of the variable to use
+    #   LOAD_CONST::     the value to load
+    #   COMPARE_OP::     the operator name
+    #   all others::     passed as is (must be an integer)
+    #
+    # :param delta: how much items will this opcode push onto the stack.
+    #
+    # :return: the argument to that opcode.
+    #
     def append(self, name, value=0, delta=0):
-
-        '''Append a new opcode to the bytecode sequence.
-
-        :param name: name of the bytecode (should be in `dis.opmap`.)
-
-        :param value: opcode-dependent.
-
-          argumentless opcodes: ignored
-          relative jumps:: ignored
-          absolute jumps:: the jump is in reverse direction when negative
-          name ops::       name of the variable to use
-          LOAD_CONST::     the value to load
-          COMPARE_OP::     the operator name
-          all others::     passed as is (must be an integer)
-
-        :param delta: how much items will this opcode push onto the stack.
-
-        :return: the argument to that opcode.
-
-        '''
 
         self.flags      |= name == 'YIELD_VALUE' and CO_GENERATOR
         self.slowlocals |= name == 'STORE_LOCALS'
@@ -174,13 +147,18 @@ class MutableCode:
 
         self.bytecode.append((
             code,
+            dis.cmp_op.index(value)         if code in dis.hascompare else
             self.jump(absolute=False)       if code in dis.hasjrel    else
             self.jump(absolute=True)        if code in dis.hasjabs    else
-            self.name(value, self.names)    if code in dis.hasname    else
-            self.name(value, self.varnames) if code in dis.haslocal   else
-            self.name(value, self.consts)   if code in dis.hasconst   else
-            self.freevar(value)             if code in dis.hasfree    else
-            dis.cmp_op.index(value)         if code in dis.hascompare else
+            self.names[value]               if code in dis.hasname    else
+            self.varnames[value]            if code in dis.haslocal   else
+            self.consts[value]              if code in dis.hasconst   else
+            (
+                # Free and cell variables use the same index space, so we
+                # don't know their indices right now.
+                delay(lambda _, i=self.freevars[value]: i + len(self.cellvars))
+                if value in self.cellnames else self.cellvars[value]
+            )                               if code in dis.hasfree    else
             value
         ))
 
@@ -193,24 +171,14 @@ class MutableCode:
         for code, value in self.bytecode:
 
             oparg = nsplit(int(value), 0x10000)
-          # yield from map(EXTENDED_ARG, oparg[:-1])
-            yield b''.join(map(EXTENDED_ARG, oparg[:-1]))
-            yield struct.pack(*
-                ('=BH', code, oparg[-1]) if code >= dis.HAVE_ARGUMENT else
-                ('=B',  code)
+          # yield from map(EXTEND_A, oparg[:-1])
+            yield b''.join(map(EXTEND_A, oparg[:-1]))
+            yield (OPCODE_A if code >= dis.HAVE_ARGUMENT else OPCODE)(
+                code,
+                *(oparg[-1],) if code >= dis.HAVE_ARGUMENT else ()
             )
 
-  ### MAIN
-
     def compile(self, name='<lambda>'):
-
-        '''Compile the mutable code into an immutable code.
-
-        :param name: name of the function/module/other stuff this code implements.
-
-        :return: a Python code object.
-
-        '''
 
         return types.CodeType(
             self.argc,
@@ -222,13 +190,13 @@ class MutableCode:
               | CO_NOFREE * (not self.cellvars)
             ),
             b''.join(self.make_bytecode()),
-            tuple(self.consts),
-            tuple(self.names),
-            tuple(self.varnames),
+            tuple(sorted(self.consts,   key=self.consts.__getitem__)),
+            tuple(sorted(self.names,    key=self.names.__getitem__)),
+            tuple(sorted(self.varnames, key=self.varnames.__getitem__)),
             self.filename,
             name,
             self.lineno,
             b''.join(self.make_lnotab()),
-            tuple(self.freevars),
-            tuple(self.cellvars)
+            tuple(sorted(self.freevars, key=self.freevars.__getitem__)),
+            tuple(sorted(self.cellvars, key=self.cellvars.__getitem__))
         )

@@ -221,6 +221,7 @@ class Compiler:
 
         for b in bs:
 
+            isinstance(b, tree.Link) or const.ERR.NONCONST_ATTR
             self.opcode('LOAD_ATTR', arg=b, delta=0)
 
     builtins = {

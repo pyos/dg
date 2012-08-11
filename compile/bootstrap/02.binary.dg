@@ -1,3 +1,4 @@
+..const        = import
 ..compile      = import
 ..parse.tree   = import
 ..parse.syntax = import
@@ -95,8 +96,11 @@ compile.r.builtins !! '|='  = varary ~: 'INPLACE_OR'           ~: inplace: True
 compile.r.builtins !! '<<=' = varary ~: 'INPLACE_LSHIFT'       ~: inplace: True
 compile.r.builtins !! '>>=' = varary ~: 'INPLACE_RSHIFT'       ~: inplace: True
 
-compile.r.builtins !! '.~'  = (self, a, b) -> self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a      b delta: 1
+compile.r.builtins !! '.~'  = (self, a, b) ->
+  const.ERR.NONCONST_ATTR unless b :: parse.tree.Link
+  self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
+
 compile.r.builtins !! ':.'  = (self, a, *bs) ->
   self.load: a
   list $ map: b -> (

@@ -20,7 +20,9 @@ compile.r.builtins !! 'inherit' = (self, *stuff) ->
   mcode.append: 'STORE_LOCALS'            delta: -1
   mcode.append: 'LOAD_NAME'  '__name__'   delta:  1
   mcode.append: 'STORE_NAME' '__module__' delta: -1
-  mcode.f_hook = code -> code.freevars.append: '__class__'
+  mcode.f_hook = code ->
+    code.cellnames.add: '__class__'
+    code.freevars !! '__class__'
   
   self.compile: block into: mcode name: '<lambda>'
   
