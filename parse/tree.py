@@ -1,5 +1,4 @@
 import itertools
-import collections
 
 
 class Expression (list):
