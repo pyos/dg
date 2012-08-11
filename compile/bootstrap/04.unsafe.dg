@@ -19,22 +19,22 @@ unsafe = cases ->
 
 
 compile.r.builtins !! 'raise' = callable $ (self, exception, caused_by: (...)) ->
-    '''
-      raise: ExceptionType
-      raise: exception_instance
-      raise: ... caused_by: another_exception_or_Ellipsis_or_None
+  '''
+    raise: ExceptionType
+    raise: exception_instance
+    raise: ... caused_by: another_exception_or_Ellipsis_or_None
 
-      Raise an exception. If the exception is a subclass of BaseException,
-      instantiate it beforehand. If the `caused_by` argument is not an
-      `Ellipsis`, make it the __cause__ of that exception.
+    Raise an exception. If the exception is a subclass of BaseException,
+    instantiate it beforehand. If the `caused_by` argument is not an
+    `Ellipsis`, make it the __cause__ of that exception.
 
-      In CPython 3.3, `raise: exception caused_by: None` silences the context.
+    In CPython 3.3, `raise: exception caused_by: None` silences the context.
 
-    '''
+  '''
 
-    args = (tuple: if caused_by `is` (...) else (caused_by,))
-    self.opcode: 'RAISE_VARARGS' exception (*): args delta: 0
-    self.load: None  # We've got to return something.
+  args = (tuple: if caused_by `is` (...) else (caused_by,))
+  self.opcode: 'RAISE_VARARGS' exception (*): args delta: 0
+  self.load: None  # We've got to return something.
 
 
 compile.r.builtins !! 'unsafe' = (self, cases) ->
