@@ -10,9 +10,8 @@ STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 
 
 @r.token(r' *', core.STATE_AT_LINE_START)
-@r.token(r'',   core.STATE_AT_FILE_START)  # Always start with an indent of 0.
 #
-# indent = ^ ( ' ' | '\t' ) *
+# indent = ^ ' ' *
 #
 def indent(stream, token):
 
