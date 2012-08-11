@@ -5,7 +5,7 @@ from . import tree
 
 r = core.Parser
 
-SIG_CLOSURE_END    = type('SIG_CLOSURE_END', (str, tree.Internal), {})
+SIG_CLOSURE_END    = type('SIG_CLOSURE_END', (tree.Constant, tree.Internal), {})
 STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
 
 
@@ -58,7 +58,9 @@ def infixl(stream, op):
     rhsless = False
     rhsbound = False
 
-    while isinstance(rhs, tree.Link) and rhs == '\n':
+    # Note that constant strings aren't equal to anything but themselves.
+    # This will only return True for a link.
+    while rhs == '\n':
 
         br  = True
         rhs = next(stream)
@@ -130,12 +132,11 @@ def infixl(stream, op):
 def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '[': ']'}):
 
     par = token.group() if token else ''
-    closed = None if par in ('{', '[') else closed
     state_backup = stream.state & STATE_AFTER_OBJECT
     stuff_backup = stream.stuff
 
     stream.state &= ~STATE_AFTER_OBJECT
-    stream.stuff = None
+    stream.stuff = tree.Constant(None)
 
     for item in stream:
 
@@ -143,7 +144,7 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
 
             stream.error('mismatched parentheses')
 
-        elif isinstance(item, SIG_CLOSURE_END) and item == pars.get(par, ''):
+        elif isinstance(item, SIG_CLOSURE_END) and item.value == pars.get(par, ''):
 
             break
 
@@ -159,18 +160,10 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
             for _ in infix(stream, ''): yield _
 
         # Ignore line feeds directly following an opening parentheses.
-        elif not isinstance(item, tree.Link) or item != '\n':
+        elif item != '\n':
 
             stream.stuff = item
             stream.state |= STATE_AFTER_OBJECT
-
-    if hasattr(stream.stuff, '__dict__') and closed is not None:
-
-        stream.stuff.indented = indented
-        stream.stuff.closed   = closed or isinstance(stream.stuff, tree.Constant)
-
-    # Further expressions should not touch this block.
-    indented and stream.repeat.appendleft(tree.Link('\n'))
 
     # When handling literals, wrap the block into a prefix function call.
     if par in ('{', '['):
@@ -178,12 +171,13 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
         op  = stream.located(tree.Link(''))
         lhs = stream.located(tree.Link(par + pars[par]))
         stream.stuff = tree.Expression([op, lhs, stream.stuff])
-        stream.stuff.closed = True
 
-    # If we use yield instead, outer blocks will receive SIG_CLOSURE_END
-    # from `indent` before they get to this block. That may have some...
-    # unexpected results, such as *inner* blocks going to the *outermost*
-    # expression.
+    stream.stuff.indented = indented
+    stream.stuff.closed   = closed or isinstance(stream.stuff, tree.Constant)
+
+    # Further expressions should not touch this block.
+    indented and stream.repeat.appendleft(tree.Link('\n'))
+
     stream.repeat.appendleft(stream.located(stream.stuff))
 
     stream.state &= ~STATE_AFTER_OBJECT
