@@ -212,7 +212,7 @@ def end(stream, token):
 #
 def intb(stream, token, bases={'b': 2, 'o': 8, 'x': 16}):
 
-    yield tree.Integer(token.group(2), bases[token.group(1)])
+    yield tree.Constant(int(token.group(2), bases[token.group(1)]))
 
 
 @r.token(r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?')

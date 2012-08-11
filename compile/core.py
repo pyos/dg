@@ -162,11 +162,12 @@ class Compiler:
                     arg=e, delta=1
                 )
 
+            elif isinstance(e, tree.Constant):
+
+                self.opcode('LOAD_CONST', arg=e.value, delta=1)
+
             else:
 
-                # Marshal can't handle that class, we need to coerce
-                # constants to their original types first.
-                e = type(e).__bases__[0](e) if isinstance(e, tree.Constant) else e
                 self.opcode('LOAD_CONST', arg=e, delta=1)
 
             # NOTE `self._loading` may become garbage because of exceptions.

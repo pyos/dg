@@ -16,18 +16,17 @@ class Link (str):
         return not self.isidentifier() or self in {'if', 'else', 'unless', 'or', 'and'}
 
 
-class Internal: pass
 class Constant:
 
-    # That works because built-in constant types override __new__.
-    __new__ = lambda cls, x: next(c for c in cls.__subclasses__() if issubclass(c, type(x)))(x)
+    def __init__(self, value):
 
-class String  (str,     Constant): pass
-class Bytes   (bytes,   Constant): pass
-class Integer (int,     Constant): pass
-class Float   (float,   Constant): pass
-class Complex (complex, Constant): pass
-    
+        super().__init__()
+        self.value = value
+
+
+class Internal:
+
+    pass
 
 
 def format(code):
