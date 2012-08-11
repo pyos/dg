@@ -497,7 +497,7 @@ never_assigned_to <span class="op">=</span> <span class="typ">2</span> <span cla
 factorial <span class="op">=</span> n <span class="op">-></span>
   <span class="com"># The most powerful (and the simpliest, actually)</span>
   <span class="com"># conditional is `switch`.</span>
-  <span class="kwd">switch</span><span class="op">:</span>
+  <span class="kwd">switch</span> <span class="op">$</span>
     <span class="com"># Switch only accepts expressions in form `condition = action`.</span>
     n <span class="op">&lt;</span> <span class="typ">0</span> <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">ValueError</span></span class="op">:</span> <span class="str">'n >= 0'</span>
     <span class="com"># It evaluates the first action to be assigned to a true condition.</span>
@@ -522,13 +522,14 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 <span class="spc">True</span><span class="op">.</span><span class="kwd">while</span> <span class="op">$</span>
   print<span class="op">:</span> <span class="str">'Help!'</span>
 <span class="com"># Loop conditions don't have to be constant.</span>
-<span class="par">(</span><span class="blt">not</span><span class="op">:</span> resource_is_available<span class="par">)</span><span class="op">.</span><span class="kwd">while</span><span class="op">:</span> <span class="par">(</span><span class="par">)</span>  <span class="com"># Rollin'</span>
+<span class="par">(</span><span class="blt">not</span><span class="op">:</span> resource_is_available<span class="par">)</span><span class="op">.</span><span class="kwd">while</span> <span class="op">$</span>  <span class="com"># Rollin'</span>
 
 <span class="com"># Iterating over a sequence is done</span>
 <span class="com"># using the <s>`map` built-in</s> `for` pseudomethod.</span>
 <span class="com"># `for` accepts 2 named arguments: `each` and `do`.</span>
-<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span><span class="op">:</span> x <span class="par">(</span>print<span class="op">:</span> x<span class="par">)</span>
-<span class="com"># You may want to use them by name to improve readability.</span>
+<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span><span class="op">:</span> x <span class="op">$</span>
+  print<span class="op">:</span> x
+<span class="com"># You may use them by name if it looks nicer to you.</span>
 <span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span> each<span class="op">:</span> x do<span class="op">:</span>
   print<span class="op">:</span> x
 
@@ -561,7 +562,7 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 
 <span class="com"># Catch thrown exceptions with the `unsafe` conditional.</span>
 <span class="com"># Its syntax is similar to `switch`.</span>
-<span class="kwd">unsafe</span><span class="op">:</span>
+<span class="kwd">unsafe</span> <span class="op">$</span>
   <span class="com"># The first expression is in form `name = expression`,</span>
   <span class="com"># where `expression` is what you want to do</span>
   <span class="com"># and `name` is where to store the raised exception, if any.</span>
@@ -595,7 +596,7 @@ factorial <span class="op">=</span> n <span class="op">-></span>
 <span class="com">#   * the value of the unsafe expression if no exception was raised;</span>
 <span class="com">#   * None if an exception was raised, but handled;</span>
 <span class="com">#   * nothing if there was an unhandled exception.</span>
-file <span class="op">=</span> <span class="kwd">unsafe</span><span class="op">:</span>
+file <span class="op">=</span> <span class="kwd">unsafe</span> <span class="op">$</span>
   e <span class="op">=</span> <span class="blt">open</span><span class="op">:</span> <span class="str">'README.md'</span>
   <span class="com"># Not having a README isn't critical, but `file` will be `None`.</span>
   e <span class="op">::</span> <span class="exc">IOError</span> <span class="op">=</span> <span class="par">(</span><span class="par">)</span>
@@ -614,7 +615,7 @@ file <span class="op">=</span> <span class="kwd">unsafe</span><span class="op">:
 <span class="cls">MyType</span><span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
 
 <span class="com"># If you read a section on <a href="#operators">operators</a> carefully,</span>
-<span class="com"># you probably already noticed, that you don't have to use `$`.</span>
+<span class="com"># you probably already noticed that you don't have to use `$`.</span>
 <span class="cls">MyType2</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span>a <span class="op">=</span> <span class="typ">1</span><span class="par">)</span>
 <span class="com"># But if you do use it, then the class body can be omitted.</span>
 <span class="cls">Object</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
