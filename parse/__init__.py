@@ -153,7 +153,7 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
 
         elif stream.state & STATE_AFTER_OBJECT:
 
-            # Two objects in a row should be joined with an empty infix.
+            # Two objects in a row should be joined with an empty infix link.
             stream.repeat.appendleft(item)
           # yield from infix(stream, '')
             for _ in infix(stream, ''): yield _
@@ -172,7 +172,7 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
     # Further expressions should not touch this block.
     indented and stream.repeat.appendleft(tree.Link('\n'))
 
-    # When handling literals, wrap the block into an prefix function call.
+    # When handling literals, wrap the block into a prefix function call.
     if par in ('{', '['):
 
         op  = stream.located(tree.Link(''))
