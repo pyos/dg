@@ -225,12 +225,15 @@ def number(stream, token):
 
     sign, integral, fraction, exponent, imag = token.groups()
     sign = -1 if sign == '-' else 1
-    exponent = int(exponent or 0)
-    result   = tree.Integer(int(integral) * 10 ** exponent * sign)
+    result = tree.Integer(int(integral) * sign)
+
+    if exponent:
+
+        result = tree.Float(result * 10 ** int(exponent))
 
     if fraction:
 
-        fraction = int(fraction) / 10 ** (len(fraction) - exponent)
+        fraction = int(fraction) / 10 ** (len(fraction) - int(exponent or 0))
         result   = tree.Float(result + fraction * sign)
 
     yield tree.Complex(0, result) if imag else result
