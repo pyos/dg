@@ -17,12 +17,17 @@ class Link (str):
 
 
 class Internal: pass
-class Constant: pass
+class Constant:
+
+    # That works because built-in constant types override __new__.
+    __new__ = lambda cls, x: next(c for c in cls.__subclasses__() if issubclass(c, type(x)))(x)
+
 class String  (str,     Constant): pass
 class Bytes   (bytes,   Constant): pass
 class Integer (int,     Constant): pass
 class Float   (float,   Constant): pass
 class Complex (complex, Constant): pass
+    
 
 
 def format(code):

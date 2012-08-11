@@ -224,19 +224,11 @@ def intb(stream, token, bases={'b': 2, 'o': 8, 'x': 16}):
 def number(stream, token):
 
     sign, integral, fraction, exponent, imag = token.groups()
-    sign = -1 if sign == '-' else 1
-    result = tree.Integer(int(integral) * sign)
-
-    if exponent:
-
-        result = tree.Float(result * 10 ** int(exponent))
-
-    if fraction:
-
-        fraction = int(fraction) / 10 ** (len(fraction) - int(exponent or 0))
-        result   = tree.Float(result + fraction * sign)
-
-    yield tree.Complex(0, result) if imag else result
+    sign     = -1 if sign == '-' else 1
+    imag     = 1j if imag        else 1
+    exponent = int(exponent or 0)
+    fraction = int(fraction) / 10 ** (len(fraction) - exponent) if fraction else 0
+    yield tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
 
 
 @r.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
@@ -251,11 +243,7 @@ def number(stream, token):
 def string(stream, token):
 
     g = token.group(2) * (4 - len(token.group(2)))
-    v = ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups()))
-    yield {
-        str:   tree.String,
-        bytes: tree.Bytes
-    }[type(v)](v)
+    yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
 
 
 @r.token(r'"|\'')
