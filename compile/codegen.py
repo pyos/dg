@@ -5,8 +5,6 @@ import functools
 import itertools
 import collections
 
-from .. import const
-
 CO_OPTIMIZED = 1
 CO_NEWLOCALS = 2
 CO_VARARGS   = 4
