@@ -6,47 +6,23 @@ class Expression (list):
 
     indented = False
     closed   = False
-    """
-    def __repr__(self):
 
-        sub = list(map(repr, self))
-        sub[0] = '`{}`'.format(*sub) if sub[0].operator else sub[0]
-
-        return (
-            ' '.join(sub[::-1])  if len(self) < 3          else
-            ' '.join(sub[1:])    if not self[0]            else
-            sub[0].join(sub[1:]) if self[0] in {'.', '\n'} else
-            ' {} '.format(*sub).join(sub[1:])
-        )
-    """
 
 class Link (str):
 
     @property
     def operator(self):
 
-        return not self.isidentifier() \
-            or self in {'if', 'else', 'unless', 'or', 'and'}
-    """
-    def __repr__(self):
-
-        return self
-    """
+        return not self.isidentifier() or self in {'if', 'else', 'unless', 'or', 'and'}
 
 
+class Internal: pass
 class Constant: pass
 class String  (str,     Constant): pass
 class Bytes   (bytes,   Constant): pass
 class Integer (int,     Constant): pass
 class Float   (float,   Constant): pass
 class Complex (complex, Constant): pass
-
-
-class Internal:
-
-    def __repr__(self):
-
-        return '#INTERNAL {}'.format(id(self))
 
 
 def format(code):
