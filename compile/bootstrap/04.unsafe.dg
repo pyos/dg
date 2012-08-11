@@ -73,7 +73,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   self.opcode: 'POP_BLOCK'   delta: -1
   # Er, so there was no exception, let's store None instead.
   # Since we've already POPped_BLOCK, exceptions occured
-  # during this assignment will be ignored.
+  # during this assignment won't be caught.
   self.store: name None
 
   # Jump over that block if there was no exception.
