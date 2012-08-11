@@ -37,18 +37,18 @@ def indent(stream, token):
 @r.token(r'`(\w+)`', STATE_AFTER_OBJECT)
 @r.token(r'\s*(\n)', STATE_AFTER_OBJECT)
 #
-# operator = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op | '\n'
+# infix = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op | '\n'
 #
 # word = ( < alphanumeric > | '_' ) +
 # word_op = 'if' | 'else' | 'unless' | 'or' | 'and'
 #
-def operator(stream, token):
+def infix(stream, token):
 
     op = token if isinstance(token, str) else token.group(1)
-    return operator_(stream, stream.located(tree.Link(op)))
+    return infixl(stream, stream.located(tree.Link(op)))
 
 
-def operator_(stream, op):
+def infixl(stream, op):
 
     stream.state &= ~STATE_AFTER_OBJECT
 
@@ -61,7 +61,7 @@ def operator_(stream, op):
     while isinstance(rhs, tree.Link) and rhs == '\n':
 
         br  = True
-        rhs = next(stream)  # Skip soft breaks.
+        rhs = next(stream)
 
     if isinstance(rhs, tree.Internal):
 
@@ -71,17 +71,17 @@ def operator_(stream, op):
 
     elif br and op != '\n' and not getattr(rhs, 'indented', False):
 
-        # The operator was followed by something other than an object or
-        # an indented block.
+        # `a R \n b` <=> `a R (\n b)` <=> `a R b` if `b` is indented,
+        #                `(a R) \n b`             otherwise.
         stream.repeat.appendleft(rhs)
         rhsless = rhsbound = True
         rhs = tree.Link('\n')
 
-    elif isinstance(rhs, tree.Link) and not hasattr(rhs, 'closed') and rhs.operator:
+    elif isinstance(rhs, tree.Link) and not hasattr(rhs, 'closed') and rhs.infix:
 
         # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
         # `a R (Q b)` otherwise.
-        rhsless = rhsbound = stream.has_priority(op, rhs)
+        rhsless = rhsbound = not stream.has_priority(rhs, op)
 
     # Chaining a single expression doesn't make sense.
     if not rhsless or op not in ('\n', ''):
@@ -104,7 +104,7 @@ def operator_(stream, op):
             # `R rhs`     <=> `Call (Link R) (Link rhs)`
             # `lhs R`     <=> `Op R (Link lhs)`
             # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
-            e = tree.Expression((op, lhs.pop()) if rhsless else (op, lhs.pop(), rhs))
+            e = tree.Expression([op, lhs.pop()] + [rhs] * (not rhsless))
 
             if lhs:
 
@@ -119,8 +119,8 @@ def operator_(stream, op):
 
     if rhsbound:
 
-      # yield from operator_(stream, rhs)
-        for _ in operator_(stream, rhs): yield _
+      # yield from infixl(stream, rhs)
+        for _ in infixl(stream, rhs): yield _
 
 
 @r.token('\(|\[|\{')
@@ -153,10 +153,10 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
 
         elif stream.state & STATE_AFTER_OBJECT:
 
-            # Two objects in a row should be joined with an empty operator.
+            # Two objects in a row should be joined with an empty infix.
             stream.repeat.appendleft(item)
-          # yield from operator(stream, '')
-            for _ in operator(stream, ''): yield _
+          # yield from infix(stream, '')
+            for _ in infix(stream, ''): yield _
 
         # Ignore line feeds directly following an opening parentheses.
         elif not isinstance(item, tree.Link) or item != '\n':
@@ -172,10 +172,12 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
     # Further expressions should not touch this block.
     indented and stream.repeat.appendleft(tree.Link('\n'))
 
-    # When handling literals, wrap the block into an unary operator call.
+    # When handling literals, wrap the block into an prefix function call.
     if par in ('{', '['):
 
-        stream.stuff = tree.Expression([stream.located(tree.Link(par + pars[par])), stream.stuff])
+        op  = stream.located(tree.Link(''))
+        lhs = stream.located(tree.Link(par + pars[par]))
+        stream.stuff = tree.Expression([op, lhs, stream.stuff])
         stream.stuff.closed = True
 
     # If we use yield instead, outer blocks will receive SIG_CLOSURE_END
@@ -262,12 +264,12 @@ def string_err(stream, token):
     stream.error('mismatched quote')
 
 
-# Note that "\w+" implies "if" and other word operators.
+# Note that "\w+" implies "if" and other infix links.
 @r.token(r'(\w+|[!$%&*+\--/:<-@\\^|~]+|,+)')
 @r.token(r'`(\w+)`')
 @r.token(r'\s*(\n)')
 #
-# link = word | operator
+# link = word | infix
 #
 def link(stream, token):
 

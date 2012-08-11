@@ -11,7 +11,7 @@ class Expression (list):
 class Link (str):
 
     @property
-    def operator(self):
+    def infix(self):
 
         return not self.isidentifier() or self in {'if', 'else', 'unless', 'or', 'and'}
 

@@ -13,8 +13,8 @@ Location = collections.namedtuple('Location', 'start, end, filename')
 
 class Parser (collections.Iterator):
 
-    OPERATOR_RIGHT_FIXITY = {'**', ':', '$', '->', '=', 'if', 'unless', 'else'}
-    OPERATOR_PRECEDENCE = lambda self, i, q={
+    INFIX_RIGHT_FIXITY = {'**', ':', '$', '->', '=', 'if', 'unless', 'else'}
+    INFIX_PRECEDENCE = lambda self, i, q={
       # Scope resolution
         '.':   0,
        ':.':   0,
@@ -80,13 +80,13 @@ class Parser (collections.Iterator):
 
         return g
 
-    # Whether an operator's priority is higher than the other one's.
+    # Whether an infix link's priority is higher than the other one's.
     #
-    # :param in_relation_to: operator to the left.
+    # :param in_relation_to: link to the left.
     #
-    def has_priority(self, operator, in_relation_to):
+    def has_priority(self, link, in_relation_to):
 
-        if operator == '->':
+        if link == '->':
 
             # `a R b -> c` should always parse as `a R (b -> c)`.
             #
@@ -105,9 +105,9 @@ class Parser (collections.Iterator):
             #
             return True
 
-        p1 = self.OPERATOR_PRECEDENCE(operator)
-        p2 = self.OPERATOR_PRECEDENCE(in_relation_to)
-        return p1 + (operator in self.OPERATOR_RIGHT_FIXITY) > p2
+        p1 = self.INFIX_PRECEDENCE(link)
+        p2 = self.INFIX_PRECEDENCE(in_relation_to)
+        return p1 + (link in self.INFIX_RIGHT_FIXITY) > p2
 
     # A compiler function for `interactive`, similar to `code.compile_command`.
     #
@@ -132,7 +132,7 @@ class Parser (collections.Iterator):
             # Other errors are irrepairable.
             raise
 
-        # Search for incomplete operator expressions.
+        # Search for incomplete infix expressions.
         expr = res
         while isinstance(expr, tree.Expression) and not getattr(expr, 'closed', True) and len(expr) > 2: expr = expr[-1]
 
