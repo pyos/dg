@@ -15,7 +15,7 @@ getmtime = fn ->
 
 sys.meta_path.append $ inherit: str $
 
-  find_module = classmethod: (cls, mod, path: None) ->
+  find_module = classmethod $ (cls, mod, path: None) ->
     # Empty path in `sys.path` is the current directory.
     path = map: p -> (p or os.curdir) sys.path if path `is` None
 
@@ -31,7 +31,7 @@ sys.meta_path.append $ inherit: str $
     # in any of the available paths.
     ) $ filter: os.path.isdir path
 
-    unsafe:
+    unsafe $
       e =
         p = os.path.abspath $ next: mods
         cls: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
@@ -50,7 +50,7 @@ sys.meta_path.append $ inherit: str $
     code  = None
     cache = imp.cache_from_source: self
 
-    code = unsafe:
+    code = unsafe $
       _ = (marshal.load $ open: cache 'rb' if getmtime: self <= getmtime: cache)
       _ = None
 
