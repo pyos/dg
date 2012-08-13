@@ -133,8 +133,8 @@ def function(args):
 def call_pre(args1):
 
     args2 = ST_ARG_KW(args1[0]) or args1[:1]
-    attr  = ST_ASSIGN_ATTR(args2[0], ())
-    attr and not isinstance(attr[1], tree.Link) and error(const.ERR.NONCONST_ATTR, attr[-1])
+    attr  = ST_ASSIGN_ATTR(args2[0], ()) and args2[0]
+    attr and not isinstance(attr[-1], tree.Link) and error(const.ERR.NONCONST_ATTR, attr[-1])
     return [attr] + args2 + args1[1:]
 
 

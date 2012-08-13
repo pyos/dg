@@ -203,9 +203,9 @@ class Compiler:
 
             return self.builtins[f](self, *args)
 
-        if attr and attr[1] in self.fake_methods:
+        if attr and attr[-1] in self.fake_methods:
 
-            return self.fake_methods[attr[1]](self, attr[0], *args)
+            return self.fake_methods[attr[-1]](self, tree.Expression(attr[:-1]), *args)
 
         posargs, kwargs, vararg, varkwarg = syntax.call_args(args)
         preloaded is None and self.load(f)
