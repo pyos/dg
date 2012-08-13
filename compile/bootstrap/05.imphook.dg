@@ -37,20 +37,12 @@ sys.meta_path.insert: 0 $ inherit: str $
         cls: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
       e :: StopIteration = None
 
-  load_module = importlib.util.module_for_loader $ (self, module) ->
+  is_package = (self, name) ->
+    name.rsplit: '.' 1 !! -1 != (os.path.splitext $ os.path.basename: self) !! 0
 
-    init, _, last = module.__name__.rpartition: '.'
-    is_file = last == (os.path.splitext $ os.path.basename: self) !! 0
-
-    module.__file__    = self
-    module.__path__    = [os.path.dirname: self] if not: is_file
-    module.__loader__  = self
-    module.__package__ = (init or None if is_file else module.__name__)
-
-    code  = None
+  get_code = (self, name) ->
     cache = imp.cache_from_source: self
-
-    code = unsafe $
+    code  = unsafe $
       _ = (marshal.load $ open: cache 'rb' if getmtime: self <= getmtime: cache)
       _ = None
 
@@ -66,5 +58,16 @@ sys.meta_path.insert: 0 $ inherit: str $
     # Not having a code completely is not an error;
     # that means a package did not have the __init__ submodule.
     # (If there was no module at all, finder would not create this loader.)
+    code
+
+  load_module = importlib.util.module_for_loader $ (self, module) ->
+    init = (module.__name__.rpartition: '.' !! 0) or None
+    code = self.get_code: module.__name__
+
+    module.__file__    = self
+    module.__path__    = [os.path.dirname: self] if self.is_package: module.__name__
+    module.__loader__  = self
+    module.__package__ = (module.__name__ if self.is_package: module.__name__ else init)
+
     eval: code module.__dict__ if code
     module
