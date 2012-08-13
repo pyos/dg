@@ -15,9 +15,6 @@ class Compiler:
         # A mutable code object currently in use.
         self.code = None
 
-        # An expression currently being processed by innermost `load`.
-        self._loading = None
-
     def opcode(self, opcode, *args, delta, **kwargs):
 
         self.load(*args)
@@ -55,7 +52,7 @@ class Compiler:
 
         elif type == const.AT.ATTR:
 
-            var[1] in self.fake_methods and const.ERR.FAKE_METHOD_ASSIGNMENT
+            var[1] in self.fake_methods and syntax.error(const.ERR.FAKE_METHOD_ASSIGNMENT, var[1])
             self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
 
         elif type == const.AT.ITEM:
@@ -64,9 +61,9 @@ class Compiler:
 
         else:
 
-            var in self.builtins       and const.ERR.BUILTIN_ASSIGNMENT
-            var in self.fake_methods   and const.ERR.BUILTIN_ASSIGNMENT
-            var in self.code.cellnames and const.ERR.FREEVAR_ASSIGNMENT
+            var in self.builtins       and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
+            var in self.fake_methods   and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
+            var in self.code.cellnames and syntax.error(const.ERR.FREEVAR_ASSIGNMENT, var)
 
             self.opcode(
                 'STORE_DEREF' if var in self.code.cellvars else
@@ -77,7 +74,7 @@ class Compiler:
 
     def function(self, args, code):
 
-        args, kwargs, defs, kwdefs, varargs, varkwargs, code = syntax.function(args, code)
+        args, kwargs, defs, kwdefs, varargs, varkwargs = syntax.function(args)
         self.load(**kwdefs)
         self.load(*defs)
 
@@ -91,7 +88,6 @@ class Compiler:
             arg=len(defs) + 256 * len(kwdefs),
             delta=-len(kwdefs) * 2 - len(defs) - bool(code.co_freevars) + 1
         )
-
 
     def preload_free(self, code):
 
@@ -148,12 +144,7 @@ class Compiler:
         for e in es:
 
             depth = self.code.depth
-            _backup = self._loading
-
-            if hasattr(e, 'reparse_location'):
-
-                self.code.mark(e)
-                self._loading = e
+            hasattr(e, 'reparse_location') and self.code.mark(e)
 
             if isinstance(e, tree.Expression):
 
@@ -178,8 +169,6 @@ class Compiler:
 
                 self.opcode('LOAD_CONST', arg=e, delta=1)
 
-            # NOTE `self._loading` may become garbage because of exceptions.
-            self._loading = _backup
             # XXX this line is for compiler debugging purposes.
             #     If it triggers an exception, the required stack size
             #     might have been calculated improperly.
@@ -193,32 +182,13 @@ class Compiler:
 
         backup = self.code
         self.code = codegen.MutableCode() if into is None else into
-
-        if hasattr(expr, 'reparse_location'):
-
-            self.code.filename = expr.reparse_location.filename
-            self.code.lineno   = expr.reparse_location.start[1]
-
-        elif backup:
-
-            self.code.filename = backup.filename
-            self.code.lineno   = backup.lnotab[max(backup.lnotab)]
+        self.code.filename = expr.reparse_location.filename
+        self.code.lineno   = expr.reparse_location.start[1]
 
         try:
 
             self.opcode('RETURN_VALUE', expr, delta=0)
             return self.code.compile(name)
-
-        except Exception as err:
-
-            if __debug__ or isinstance(err, (SyntaxError, AssertionError)):
-
-                raise
-
-            fn = self._loading.reparse_location.filename
-            ln = self._loading.reparse_location.start[1]
-            tx = str(self._loading)
-            raise SyntaxError(str(err), (fn, ln, 1, tx))
 
         finally:
 
@@ -230,7 +200,7 @@ class Compiler:
 
         for b in bs:
 
-            isinstance(b, tree.Link) or const.ERR.NONCONST_ATTR
+            isinstance(b, tree.Link) or syntax.error(const.ERR.NONCONST_ATTR, b)
             self.opcode('LOAD_ATTR', arg=b, delta=0)
 
     builtins = {

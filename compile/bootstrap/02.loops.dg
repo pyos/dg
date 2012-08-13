@@ -1,10 +1,11 @@
+..const        = import
 ..compile      = import
 ..parse.syntax = import
 
 
 callable = f -> (self, *args) ->
   posargs, kwargs, vararg, varkwarg = parse.syntax.call_args: args
-  const.ERR.VARARG_WITH_BUILTIN if vararg or varkwarg
+  parse.syntax.error: const.ERR.VARARG_WITH_BUILTIN ((vararg or varkwarg) !! 0) if vararg or varkwarg
   f: self (*): posargs (**): kwargs
 
 

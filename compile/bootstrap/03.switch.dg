@@ -6,14 +6,15 @@
 else_s = cond ->
   args1 = parse.syntax.ST_EXPR_IF:     cond
   args2 = parse.syntax.ST_EXPR_UNLESS: cond
-  const.ERR.NOT_AFTER_IF unless args1 or args2
+  parse.syntax.error: const.ERR.NOT_AFTER_IF cond unless args1 or args2
   args1, args1 or args2
 
 
 switch_s = cases ->
-  cases = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
-  const.ERR.INVALID_STMT_IN_SWITCH unless all: cases
-  cases
+  parsed = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
+  not_eq = map: x -> (x !! 1) $ filter: x -> (not $ x !! 0) $ zip: parsed $ parse.syntax.ST_BREAK: cases
+  parse.syntax.error: const.ERR.INVALID_STMT_IN_SWITCH (next: not_eq) unless all: parsed
+  parsed
 
 
 compile.r.builtins !! 'else' = (self, cond, otherwise) ->

@@ -5,17 +5,18 @@
 
 callable = f -> (self, *args) ->
   posargs, kwargs, vararg, varkwarg = parse.syntax.call_args: args
-  const.ERR.VARARG_WITH_BUILTIN if vararg or varkwarg
+  parse.syntax.error: const.ERR.VARARG_WITH_BUILTIN ((vararg or varkwarg) !! 0) if vararg or varkwarg
   f: self (*): posargs (**): kwargs
 
 
 unsafe = cases ->
-  cases = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
-  const.ERR.INVALID_STMT_IN_SWITCH unless all: cases
-  const.ERR.DEFAULT                unless      cases
+  parsed = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
+  not_eq = map: x -> (x !! 1) $ filter: x -> (x !! 0) $ zip: parsed $ parse.syntax.ST_BREAK: cases
+  parse.syntax.error: const.ERR.INVALID_STMT_IN_SWITCH $ next: not_eq unless all: parsed
+  parse.syntax.error: const.ERR.DEFAULT cases unless parsed
 
-  cases.append: (None, None) if len: cases < 2 or not: (parse.syntax.ST_EXC_FINALLY $ cases !! -1 !! 0)
-  cases
+  parsed.append: (None, None) if len: parsed < 2 or not: (parse.syntax.ST_EXC_FINALLY $ parsed !! -1 !! 0)
+  parsed
 
 
 compile.r.builtins !! 'raise' = callable $ (self, exception, caused_by: (...)) ->

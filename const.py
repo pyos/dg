@@ -1,13 +1,4 @@
-class ERRMeta (type):
-
-    def __getattribute__(self, name):
-
-        if name.isupper():
-
-            raise Exception(super().__getattribute__(name))
-
-
-class ERR (metaclass=ERRMeta):
+class ERR:
 
     DEFAULT = 'invalid syntax'
 
@@ -40,7 +31,7 @@ class ERR (metaclass=ERRMeta):
     VARARG_WITH_BUILTIN = 'can\'t call compile-time functions with *varargs'
 
     # `else` did not follow an `if` directly.
-    NOT_AFTER_IF = 'that should be used only after `if` or `unless`'
+    NOT_AFTER_IF = 'if/unless was expected here'
 
     # `switch` contains something other than assignments
     INVALID_STMT_IN_SWITCH = 'switch must only contain `if = then` pairs'

@@ -23,16 +23,22 @@ ST_ASSIGN_ATTR  = MATCH_A(tree.Expression((tree.Link('.'),  tree.Link('_'), tree
 ST_ASSIGN_ITEM  = MATCH_A(tree.Expression((tree.Link('!!'), tree.Link('_'), tree.Link('_'))))
 
 
+def error(description, at):
+
+    (_, ln, ch), __, fn, tx = at.reparse_location
+    raise SyntaxError(description, (fn, ln, ch, tx))
+
+
 def assignment(var, expr):
 
     if ST_IMPORT(expr):
 
         var = ST_IMPORT_REL(var) or [tree.Link(), var]
-        isinstance(var[0], tree.Link) or const.ERR.NONCONST_IMPORT
+        isinstance(var[0], tree.Link) or error(const.ERR.NONCONST_IMPORT, expr)
         parent = var[0].count('.')
-        parent == len(var[0]) or const.ERR.NONCONST_IMPORT
+        parent == len(var[0]) or error(const.ERR.NONCONST_IMPORT, expr)
         args = ST_IMPORT_SEP(var[-1])
-        all(isinstance(a, tree.Link) for a in args) or const.ERR.NONCONST_IMPORT
+        all(isinstance(a, tree.Link) for a in args) or error(const.ERR.NONCONST_IMPORT, expr)
         return '.'.join(args), const.AT.IMPORT, args[0], parent
 
     # Other assignment types do not depend on right-hand statement value.
@@ -48,8 +54,8 @@ def assignment_target(var):
 
         # Allow one starred argument that is similar to `varargs`.
         star = [i for i, q in enumerate(pack) if ST_ARG_VAR(q)] or [-1]
-        len(star) > 1 and const.ERR.MULTIPLE_VARARGS
-        star[0] > 255 and const.ERR.TOO_MANY_ITEMS_BEFORE_STAR
+        len(star) > 1 and error(const.ERR.MULTIPLE_VARARGS, pack[star[1]])
+        star[0] > 255 and error(const.ERR.TOO_MANY_ITEMS_BEFORE_STAR, pack[star[0]])
 
         if star[0] >= 0:
 
@@ -63,18 +69,18 @@ def assignment_target(var):
 
     if attr:
 
-        isinstance(attr[1], tree.Link) or const.ERR.NONCONST_ATTR
+        isinstance(attr[1], tree.Link) or error(const.ERR.NONCONST_ATTR, attr[1])
         return const.AT.ATTR, tuple(attr)
 
     if item:
 
         return const.AT.ITEM, tuple(item)
 
-    isinstance(var, tree.Link) or const.ERR.NONCONST_VARNAME
+    isinstance(var, tree.Link) or error(const.ERR.NONCONST_VARNAME, var)
     return const.AT.NAME, var
 
 
-def function(args, code):
+def function(args):
 
     arguments   = []  # `c.co_varnames[:c.co_argc]`
     kwarguments = []  # `c.co_varnames[c.co_argc:c.co_argc + c.co_kwonlyargc]`
@@ -98,17 +104,17 @@ def function(args, code):
 
             # Syntax checks.
             # 0. varkwargs should be the last argument
-            varkwargs and const.ERR.ARG_AFTER_VARKWARGS
+            varkwargs and error(const.ERR.ARG_AFTER_VARKWARGS, arg)
             # 1. varargs and varkwargs can't have default values.
-            default and (vararg or varkw) and const.ERR.VARARG_DEFAULT
+            default and (vararg or varkw) and error(const.ERR.VARARG_DEFAULT, arg)
             # 2. all arguments between the first one with the default value
             #    and the varargs must have default values
-            not varargs and defaults and not default and const.ERR.NO_DEFAULT
+            not varargs and defaults and not default and error(const.ERR.NO_DEFAULT, arg)
             # 3. only one vararg and one varkwarg is allowed
-            varargs   and vararg and const.ERR.MULTIPLE_VARARGS
-            varkwargs and varkw  and const.ERR.MULTIPLE_VARKWARGS
+            varargs   and vararg and error(const.ERR.MULTIPLE_VARARGS, arg)
+            varkwargs and varkw  and error(const.ERR.MULTIPLE_VARKWARGS, arg)
             # 4. guess what
-            isinstance(arg, tree.Link) or const.ERR.NONCONST_ARGUMENT
+            isinstance(arg, tree.Link) or error(const.ERR.NONCONST_ARGUMENT, arg)
 
             # Put the argument into the appropriate list.
             default and not varargs and defaults.extend(default)
@@ -120,15 +126,15 @@ def function(args, code):
                 arguments
             ).append(arg)
 
-    len(arguments) > 255 and const.ERR.TOO_MANY_ARGS
-    return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs, code
+    len(arguments) > 255 and error(const.ERR.TOO_MANY_ARGS, args)
+    return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs
 
 
 def call_pre(args1):
 
     args2 = ST_ARG_KW(args1[0]) or args1[:1]
     attr  = ST_ASSIGN_ATTR(args2[0])
-    attr and not isinstance(attr[1], tree.Link) and const.ERR.NONCONST_ATTR
+    attr and not isinstance(attr[1], tree.Link) and error(const.ERR.NONCONST_ATTR, attr[1])
     return [attr] + args2 + args1[1:]
 
 
@@ -153,17 +159,17 @@ def call_args(args):
 
         elif ST_ARG_VAR_C(kw[0]):
 
-            vararg and const.ERR.MULTIPLE_VARARGS
+            vararg and error(const.ERR.MULTIPLE_VARARGS, kw[0])
             vararg.append(kw[1])
 
         elif ST_ARG_VAR_KW_C(kw[0]):
 
-            varkwarg and const.ERR.MULTIPLE_VARKWARGS
+            varkwarg and error(const.ERR.MULTIPLE_VARKWARGS, kw[0])
             varkwarg.append(kw[1])
 
         else:
 
-            isinstance(kw[0], tree.Link) or const.ERR.NONCONST_KEYWORD
+            isinstance(kw[0], tree.Link) or error(const.ERR.NONCONST_KEYWORD, kw[0])
             kwargs.__setitem__(*kw)
 
     return posargs, kwargs, vararg, varkwarg

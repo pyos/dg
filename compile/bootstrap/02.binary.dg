@@ -98,13 +98,13 @@ compile.r.builtins !! '>>=' = varary ~: 'INPLACE_RSHIFT'       ~: inplace: True
 
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a      b delta: 1
 compile.r.builtins !! '.~'  = (self, a, b) ->
-  const.ERR.NONCONST_ATTR unless b :: parse.tree.Link
+  parse.syntax.error: const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
   self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
 
 compile.r.builtins !! ':.'  = (self, a, *bs) ->
   self.load: a
   list $ map: b -> (
-    const.ERR.NONCONST_ATTR unless b :: parse.tree.Link
+    parse.syntax.error: const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
     self.call: None preloaded: 0
     self.opcode: 'LOAD_ATTR' arg: b delta: 0
   ) bs
