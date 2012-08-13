@@ -85,7 +85,7 @@ def function(args, code):
     varargs     = []  # [] or [name of a varargs container]
     varkwargs   = []  # [] or [name of a varkwargs container]
 
-    if args is not None:
+    if not isinstance(args, tree.Constant) or args.value is not None:
 
         # Either a single argument, or multiple arguments separated by commas.
         for arg in ST_TUPLE(args):
