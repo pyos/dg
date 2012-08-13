@@ -1,3 +1,5 @@
+import sys
+
 from . import codegen
 from .. import const
 from ..parse import tree
@@ -106,6 +108,12 @@ class Compiler:
                 self.opcode('LOAD_CLOSURE', arg=freevar, delta=1)
 
             self.opcode('BUILD_TUPLE', arg=len(code.co_freevars), delta=-len(code.co_freevars) + 1)
+
+        if sys.hexversion >= 0x03030000:
+
+            # Python <  3.3: MAKE_FUNCTION(code)
+            # Python >= 3.3: MAKE_FUNCTION(code, qualname)
+            return ('MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION'), code, code.co_name
 
         return ('MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION'), code
 
