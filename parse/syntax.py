@@ -19,8 +19,8 @@ ST_ARG_VAR_KW_C = MATCH_Q(tree.Link('**'))
 ST_IMPORT       = MATCH_Q(tree.Link('import'))
 ST_IMPORT_SEP   = UNCURRY(tree.Link('.'))
 ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''),   tree.Link('_'), tree.Link('_'))))
-ST_ASSIGN_ATTR  = MATCH_A(tree.Expression((tree.Link('.'),  tree.Link('_'), tree.Link('_'))))
-ST_ASSIGN_ITEM  = MATCH_A(tree.Expression((tree.Link('!!'), tree.Link('_'), tree.Link('_'))))
+ST_ASSIGN_ATTR  = UNCURRY(tree.Link('.'))
+ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'))
 
 
 def error(description, at):
@@ -64,17 +64,17 @@ def assignment_target(var):
 
         return const.AT.UNPACK, map(assignment_target, pack), len(pack), star[0]
 
-    attr = ST_ASSIGN_ATTR(var)
-    item = ST_ASSIGN_ITEM(var)
+    attr = ST_ASSIGN_ATTR(var, ())
+    item = ST_ASSIGN_ITEM(var, ())
 
     if attr:
 
-        isinstance(attr[1], tree.Link) or error(const.ERR.NONCONST_ATTR, attr[1])
-        return const.AT.ATTR, tuple(attr)
+        isinstance(attr[-1], tree.Link) or error(const.ERR.NONCONST_ATTR, attr[1])
+        return const.AT.ATTR, attr
 
     if item:
 
-        return const.AT.ITEM, tuple(item)
+        return const.AT.ITEM, item
 
     isinstance(var, tree.Link) or error(const.ERR.NONCONST_VARNAME, var)
     return const.AT.NAME, var
@@ -133,8 +133,8 @@ def function(args):
 def call_pre(args1):
 
     args2 = ST_ARG_KW(args1[0]) or args1[:1]
-    attr  = ST_ASSIGN_ATTR(args2[0])
-    attr and not isinstance(attr[1], tree.Link) and error(const.ERR.NONCONST_ATTR, attr[1])
+    attr  = ST_ASSIGN_ATTR(args2[0], ())
+    attr and not isinstance(attr[1], tree.Link) and error(const.ERR.NONCONST_ATTR, attr[-1])
     return [attr] + args2 + args1[1:]
 
 

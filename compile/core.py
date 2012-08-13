@@ -52,12 +52,14 @@ class Compiler:
 
         elif type == const.AT.ATTR:
 
-            var[1] in self.fake_methods and syntax.error(const.ERR.FAKE_METHOD_ASSIGNMENT, var[1])
-            self.opcode('STORE_ATTR', var[0], arg=var[1], delta=-1)
+            self.getattr(*var[:-1])
+            self.opcode('STORE_ATTR', arg=var[-1], delta=-2)
 
         elif type == const.AT.ITEM:
 
-            self.opcode('STORE_SUBSCR', *var, delta=-1)
+            # `!!` is not defined, yet required by bootstrapped code.
+            self.builtins['!!'](self, *var[:-1]) if len(var) > 2 else self.load(var[0])
+            self.opcode('STORE_SUBSCR', var[-1], delta=-2)
 
         else:
 
