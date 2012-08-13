@@ -8,7 +8,7 @@ STATE_AT_FILE_START = 2  # `^`
 STATE_AT_FILE_END   = 4  # `$`
 STATE_CUSTOM        = 8  # lowest unused state bit
 
-Location = collections.namedtuple('Location', 'start, end, filename')
+Location = collections.namedtuple('Location', 'start, end, filename, first_line')
 
 
 class Parser (collections.Iterator):
@@ -169,19 +169,15 @@ class Parser (collections.Iterator):
     def error(self, description, after=False):
 
         offset, lineno, charno = self.next_token_at if after else self.last_token_at
-        line = self.buffer[self.buffer.rfind('\n', 0, offset) + 1:self.buffer.find('\n', offset) + 1 or None]
-        raise SyntaxError(description, (self.filename, lineno, charno, line))
+        raise SyntaxError(description, (self.filename, lineno, charno, self.line(offset)))
 
     def located(self, q):
 
-        if hasattr(q, '__dict__'):
-
-            q.reparse_location = Location(
-                self.last_token_at,
-                self.next_token_at,
-                self.filename
-            )
-
+        q.reparse_location = Location(
+            self.last_token_at,
+            self.next_token_at,
+            self.filename, self.line(self.pstack[-1])
+        )
         return q
 
     def __next__(self):
@@ -206,5 +202,6 @@ class Parser (collections.Iterator):
 
         return self.repeat.popleft()
 
+    line = lambda self, offset: self.buffer[self.buffer.rfind('\n', 0, offset) + 1:self.buffer.find('\n', offset) + 1 or None]
     next_token_at = property(lambda self: self.position(self.offset))
     last_token_at = property(lambda self: self.position(self.pstack[-1]))
