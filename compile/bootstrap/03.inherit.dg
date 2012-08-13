@@ -10,31 +10,29 @@ compile.r.builtins !! 'inherit' = (self, *stuff) ->
     function.
   '''
 
-  *args, block = stuff
+  *args, body = stuff
 
   # __build_class__ will also need a `dict -> cell` function.
-  mcode = compile.codegen.MutableCode: True args: ('__locals__',) cell: self.code
-  mcode.cellnames.add: '__class__'
+  code = compile.codegen.MutableCode: True args: ('__locals__',) cell: self.code
+  code.cellnames.add: '__class__'
+  code.cellvars !! '__class__'
   # The argument, __locals__, is what we need to write attributes to.
-  mcode.append: 'LOAD_FAST'  '__locals__' delta:  1
-  mcode.append: 'STORE_LOCALS'            delta: -1
-  mcode.append: 'LOAD_NAME'  '__name__'   delta:  1
-  mcode.append: 'STORE_NAME' '__module__' delta: -1
-  mcode.f_hook = code ->
-    code.cellnames.add: '__class__'
-    code.freevars !! '__class__'
-  
-  self.compile: block into: mcode name: '<lambda>'
-  
+  code.append: 'LOAD_FAST'  '__locals__' delta:  1
+  code.append: 'STORE_LOCALS'            delta: -1
+  code.append: 'LOAD_NAME'  '__name__'   delta:  1
+  code.append: 'STORE_NAME' '__module__' delta: -1
+  code.cellhook = code -> code.freevars !! '__class__'
+
+  self.compile: body into: code name: '<class>'
   # The return value is a __class__ cell, if any.
   # Python compiler returns None instead if there are no instance methods.
   # That's not really necessary, though.
-  mcode.bytecode.pop:
-  mcode.append: 'POP_TOP'  # Replacing RETURN_VALUE with POP_TOP yields delta 0
-  mcode.append: 'LOAD_CLOSURE' '__class__' delta:  1
-  mcode.append: 'RETURN_VALUE'             delta: -1
-  code = mcode.compile:
+  code.bytecode.pop:
+  code.append: 'POP_TOP'  # Replacing RETURN_VALUE with POP_TOP yields delta 0
+  code.append: 'LOAD_CLOSURE' '__class__' delta:  1
+  code.append: 'RETURN_VALUE'             delta: -1
+  code = code.compile:
 
   self.opcode: 'LOAD_BUILD_CLASS' delta: 1
-  self.opcode: (*): (self.preload_free: code) arg: 0 delta: (1 - bool: code.co_freevars)
+  self.make_function: code (tuple:) (dict:)
   self.call: None '<class>' (*): args preloaded: 1

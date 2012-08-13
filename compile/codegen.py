@@ -64,6 +64,8 @@ class MutableCode:
         # Enabled for global NS and functions that do STORE_LOCALS.
         self.slowlocals = not isfunc
 
+        hasattr(cell, 'cellhook') and cell.cellhook(self)
+
     def mark(self, e):
 
         self.lnotab[len(self.bytecode)] = e.reparse_location.start[1]

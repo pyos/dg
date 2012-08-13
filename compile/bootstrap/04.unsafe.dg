@@ -4,8 +4,8 @@
 
 
 callable = f -> (self, *args) ->
-  posargs, kwargs, vararg, varkwarg = parse.syntax.call_args: args
-  parse.syntax.error: const.ERR.VARARG_WITH_BUILTIN ((vararg or varkwarg) !! 0) if vararg or varkwarg
+  posargs, kwargs, vararg, varkw = parse.syntax.call_args: args
+  parse.syntax.error: const.ERR.VARARG_WITH_BUILTIN (*): (vararg or varkw) if vararg or varkw
   f: self (*): posargs (**): kwargs
 
 

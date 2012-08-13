@@ -6,35 +6,104 @@ from ..parse import tree
 from ..parse import syntax
 
 
+#
+# NOTE this class depends heavily on side effects.
+#   As such, none of the methods are thread-safe.
+#
 class Compiler:
 
     def __init__(self):
 
         super().__init__()
 
-        # A mutable code object currently in use.
         self.code = None
 
+    # Create an immutable code object that evaluates a given expression.
+    #
+    # :param into: either None or a preconstructed mutable code object.
+    #
+    # :param name: name of the namespace (e.g. '<module>' for the top-level code).
+    #
+    def compile(self, expr, into=None, name='<module>'):
+
+        backup = self.code
+        self.code = codegen.MutableCode(cell=self.code) if into is None else into
+        self.code.filename = expr.reparse_location.filename
+        self.code.lineno   = expr.reparse_location.start[1]
+
+        try:
+
+            self.opcode('RETURN_VALUE', expr, delta=0)
+            return self.code.compile(name)
+
+        finally:
+
+            self.code = backup
+
+    # Push the results of some expressions onto the stack.
+    #
+    # NOTE `load(a=b)` loads string `'a'`, then the result of `b`.
+    # NOTE `load`ing an expression multiple times evaluates it multiple times.
+    #   Use `DUP_TOP` opcode when necessary.
+    #
+    def load(self, *es, **kws):
+
+        for e in es:
+
+            hasattr(e, 'reparse_location') and self.code.mark(e)
+
+            if isinstance(e, tree.Expression):
+
+                self.call(*e)
+
+            elif isinstance(e, tree.Link):
+
+                self.opcode(
+                    'LOAD_DEREF' if e in self.code.cellvars  else
+                    'LOAD_FAST'  if e in self.code.varnames  else
+                    'LOAD_DEREF' if e in self.code.cellnames else
+                    'LOAD_NAME'  if self.code.slowlocals     else
+                    'LOAD_GLOBAL', arg=e, delta=1
+                )
+
+            elif isinstance(e, tree.Constant):
+
+                self.opcode('LOAD_CONST', arg=e.value, delta=1)
+
+            else:
+
+                self.opcode('LOAD_CONST', arg=e, delta=1)
+
+        for k, v in kws.items():
+
+            self.load(str(k), v)
+
+    # Append a single opcode with some non-integer arguments.
+    #
+    # :param args: objects to pass to :meth:`load`.
+    #
+    # :param delta: how much items the opcode will pop **excluding :obj:`args`**
+    #
+    # :param arg: the argument to that opcode, defaults to `len(args)`.
+    #
     def opcode(self, opcode, *args, delta, **kwargs):
 
         self.load(*args)
-        arg = kwargs.get('arg', len(args))
-        return self.code.append(opcode, arg, -len(args) + delta)
+        return self.code.append(opcode, kwargs.get('arg', len(args)), -len(args) + delta)
 
-    def store(self, var, expr):
-
-        expr, type, var, *args = syntax.assignment(var, expr)
-
-        if type == const.AT.IMPORT:
-
-            self.opcode('IMPORT_NAME', args[0], None, arg=expr, delta=1)
-
-        else:
-
-            self.load(expr)
-
-        self.store_top(type, var, *args)
-
+    # Store whatever is on top of the stack in a variable.
+    #
+    # NOTE pass the variable name to `assignment_target` to get the arguments.
+    #
+    # :param dup: whether to leave the stored object on the stack afterwards.
+    #
+    # Supported name schemes::
+    #
+    #   name = ...              | variable assignment
+    #   object.name = ...       | object.__setattr__('name', ...)
+    #   object !! object = ...  | object.__setitem__(object, ...)
+    #   scheme, ... = ...       | recursive iterable unpacking
+    #
     def store_top(self, type, var, *args, dup=True):
 
         dup and self.opcode('DUP_TOP', delta=1)
@@ -42,8 +111,8 @@ class Compiler:
         if type == const.AT.UNPACK:
 
             ln, star = args
-            op  = 'UNPACK_SEQUENCE'            if star <  0 else 'UNPACK_EX'
-            arg = star + 256 * (ln - star - 1) if star >= 0 else ln
+            op  = 'UNPACK_SEQUENCE' if star < 0 else 'UNPACK_EX'
+            arg = ln                if star < 0 else star + 256 * (ln - star - 1)
             self.opcode(op, arg=arg, delta=ln - 1)
 
             for item in var:
@@ -52,12 +121,13 @@ class Compiler:
 
         elif type == const.AT.ATTR:
 
-            self.getattr(*var[:-1])
+            self.builtins['.'](self, *var[:-1])
             self.opcode('STORE_ATTR', arg=var[-1], delta=-2)
 
         elif type == const.AT.ITEM:
 
             # `!!` is not defined, yet required by bootstrapped code.
+            var[-1] in self.fake_methods and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var[-1])
             self.builtins['!!'](self, *var[:-1]) if len(var) > 2 else self.load(var[0])
             self.opcode('STORE_SUBSCR', var[-1], delta=-2)
 
@@ -70,28 +140,18 @@ class Compiler:
             self.opcode(
                 'STORE_DEREF' if var in self.code.cellvars else
                 'STORE_NAME'  if self.code.slowlocals else
-                'STORE_FAST',
-                arg=var, delta=-1
+                'STORE_FAST', arg=var, delta=-1
             )
 
-    def function(self, args, code):
+    # Create a function from a given immutable code object and default arguments.
+    #
+    # In Python 3.3, the qualified name of the function is assumed to be
+    # the same as the unqualified one. FIXME.
+    #
+    def make_function(self, code, defaults, kwdefaults):
 
-        args, kwargs, defs, kwdefs, varargs, varkwargs = syntax.function(args)
-        self.load(**kwdefs)
-        self.load(*defs)
-
-        mcode = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
-
-        hasattr(self.code, 'f_hook') and self.code.f_hook(mcode)
-        code = self.compile(code, mcode, name='<lambda>')
-
-        self.opcode(
-            *self.preload_free(code),
-            arg=len(defs) + 256 * len(kwdefs),
-            delta=-len(kwdefs) * 2 - len(defs) - bool(code.co_freevars) + 1
-        )
-
-    def preload_free(self, code):
+        self.load(**kwdefaults)
+        self.load(*defaults)
 
         if code.co_freevars:
 
@@ -107,14 +167,34 @@ class Compiler:
 
             self.opcode('BUILD_TUPLE', arg=len(code.co_freevars), delta=-len(code.co_freevars) + 1)
 
-        if sys.hexversion >= 0x03030000:
-
+        self.opcode(
+            'MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION', code,
             # Python <  3.3: MAKE_FUNCTION(code)
             # Python >= 3.3: MAKE_FUNCTION(code, qualname)
-            return ('MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION'), code, code.co_name
+            *[code.co_name] if sys.hexversion >= 0x03030000 else [],
+            arg  =    len(defaults) + 256 * len(kwdefaults),
+            delta=1 - len(defaults) -   2 * len(kwdefaults) - bool(code.co_freevars)
+        )
 
-        return ('MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION'), code
+  ### ESSENTIAL BUILT-INS
 
+    #
+    # function argument ...
+    # function: argument ... keyword: value (*): varargs (**): varkwargs
+    #
+    # Call a (possibly built-in) function.
+    #
+    # :param preloaded: how many arguments are already on the stack:
+    #   if None, then nothing is taken from the stack;
+    #   if 0, the function object is taken from the stack and
+    #     the first argument is discarded;
+    #   if n, do the same thing as for 0, but also increase the argument by n.
+    #
+    # Note that this method borrows from Smalltalk in that it can also
+    # call fake (i.e. not existing at runtime) methods to fake some behavior
+    # Python developers decided to implement as syntactic constructs.
+    # These methods, however, are not first-class.
+    #
     def call(self, *argv, preloaded=None):
 
         attr, f, *args = syntax.call_pre(list(argv))
@@ -132,70 +212,53 @@ class Compiler:
         self.load(*posargs, **kwargs)
 
         self.opcode(
-            'CALL_FUNCTION_VAR_KW' if vararg and varkwarg else
-            'CALL_FUNCTION_VAR'    if vararg else
-            'CALL_FUNCTION_KW'     if varkwarg else
-            'CALL_FUNCTION',
+            'CALL_FUNCTION' + '_VAR' * len(vararg) + '_KW' * len(varkwarg),
             *vararg + varkwarg,
-            arg=len(posargs) + 256 * len(kwargs) + (preloaded or 0),
-            delta=-len(posargs) - 2 * len(kwargs) - (preloaded or 0)
+            arg  = len(posargs) + 256 * len(kwargs) + (preloaded or 0),
+            delta=-len(posargs) -   2 * len(kwargs) - (preloaded or 0)
         )
 
-    def load(self, *es, **kws):
+    #
+    # name = expression
+    #
+    # Store the result of `expression` in `name`.
+    # If `expression` is `import`, attempt to derive the module name
+    # from `name`.
+    #
+    def store(self, var, expr):
 
-        for e in es:
+        expr, type, var, *args = syntax.assignment(var, expr)
 
-            depth = self.code.depth
-            hasattr(e, 'reparse_location') and self.code.mark(e)
+        if type == const.AT.IMPORT:
 
-            if isinstance(e, tree.Expression):
+            self.opcode('IMPORT_NAME', args[0], None, arg=expr, delta=1)
 
-                self.call(*e)
+        else:
 
-            elif isinstance(e, tree.Link):
+            self.load(expr)
 
-                self.opcode(
-                    'LOAD_DEREF' if e in self.code.cellvars  else
-                    'LOAD_FAST'  if e in self.code.varnames  else
-                    'LOAD_DEREF' if e in self.code.cellnames else
-                    'LOAD_NAME'  if self.code.slowlocals     else
-                    'LOAD_GLOBAL',
-                    arg=e, delta=1
-                )
+        self.store_top(type, var, *args)
 
-            elif isinstance(e, tree.Constant):
+    #
+    # argspec -> body
+    #
+    # Create a function with a given argument specification
+    # that evaluates its body on call.
+    #
+    # `argspec` may be empty (i.e. `Constant(None)`.)
+    #
+    def function(self, args, body):
 
-                self.opcode('LOAD_CONST', arg=e.value, delta=1)
+        args, kwargs, defs, kwdefs, varargs, varkwargs = syntax.function(args)
+        code = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
+        code = self.compile(body, into=code, name='<lambda>')
+        self.make_function(code, defs, kwdefs)
 
-            else:
-
-                self.opcode('LOAD_CONST', arg=e, delta=1)
-
-            # XXX this line is for compiler debugging purposes.
-            #     If it triggers an exception, the required stack size
-            #     might have been calculated improperly.
-            assert self.code.depth == depth + 1, 'stack leaked at ' + str(getattr(e, 'reparse_location', '?'))
-
-        for k, v in kws.items():
-
-            self.load(str(k), v)
-
-    def compile(self, expr, into=None, name='<module>'):
-
-        backup = self.code
-        self.code = codegen.MutableCode() if into is None else into
-        self.code.filename = expr.reparse_location.filename
-        self.code.lineno   = expr.reparse_location.start[1]
-
-        try:
-
-            self.opcode('RETURN_VALUE', expr, delta=0)
-            return self.code.compile(name)
-
-        finally:
-
-            self.code = backup
-
+    #
+    # object.attribute
+    #
+    # Retrieve an attribute of some object.
+    #
     def getattr(self, a, *bs):
 
         self.load(a)
@@ -205,13 +268,27 @@ class Compiler:
             isinstance(b, tree.Link) or syntax.error(const.ERR.NONCONST_ATTR, b)
             self.opcode('LOAD_ATTR', arg=b, delta=0)
 
+    #
+    # expression_1 (insert line break here) expression_2
+    #
+    # Evaluate some expressions in a strict order, return the value of the last one.
+    #
+    def chain(self, a, *bs):
+
+        self.load(a)
+
+        for b in bs:
+
+            self.opcode('POP_TOP', delta=-1)
+            self.load(b)
+
     builtins = {
         '':   call
       , ':':  call
       , '=':  store
-      , '->': function
       , '.':  getattr
-      , '\n': lambda self, *xs: [self.opcode('POP_TOP', x, delta=0) for x in xs[:-1]] + [self.load(xs[-1])]
+      , '\n': chain
+      , '->': function
     }
 
     fake_methods = {}
