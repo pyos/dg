@@ -13,7 +13,7 @@ getmtime = fn ->
   (os.stat: fn).st_mtime if os.path.exists: fn else float: '-inf'
 
 
-sys.meta_path.append $ inherit: str $
+sys.meta_path.insert: 0 $ inherit: str $
 
   find_module = classmethod $ (cls, mod, path: None) ->
     # Empty path in `sys.path` is the current directory.
