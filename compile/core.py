@@ -202,7 +202,7 @@ class Compiler:
 
             return self.builtins[f](self, *args)
 
-        if attr and attr[-1] in self.fake_methods:
+        if attr and isinstance(attr[-1], tree.Link) and attr[-1] in self.fake_methods:
 
             return self.fake_methods[attr[-1]](self, tree.Expression(attr[:-1]), *args)
 

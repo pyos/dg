@@ -3,48 +3,65 @@ from .. import const
 
 MATCH_A = lambda p: lambda f: tree.matchA(f, p)
 MATCH_Q = lambda p: lambda f: tree.matchQ(f, p)
-UNCURRY = lambda p: lambda f, n=None: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f] if n is None else n
+UNCURRY = lambda p, n=...: lambda f, n=n: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f] if n is ... else n
 
 ST_BREAK        = UNCURRY(tree.Link('\n'))
 ST_EXC_FINALLY  = MATCH_Q(tree.Link('True'))
 ST_TUPLE        = UNCURRY(tree.Link(','))
-ST_ASSIGN       = MATCH_A(tree.Expression((tree.Link('='),      tree.Link('_'),  tree.Link('_'))))
-ST_EXPR_IF      = MATCH_A(tree.Expression((tree.Link('if'),     tree.Link('_'),  tree.Link('_'))))
-ST_EXPR_UNLESS  = MATCH_A(tree.Expression((tree.Link('unless'), tree.Link('_'),  tree.Link('_'))))
-ST_ARG_KW       = MATCH_A(tree.Expression((tree.Link(':'),      tree.Link('_'),  tree.Link('_'))))
-ST_ARG_VAR      = MATCH_A(tree.Expression((tree.Link(''),       tree.Link('*'),  tree.Link('_'))))
-ST_ARG_VAR_KW   = MATCH_A(tree.Expression((tree.Link(''),       tree.Link('**'), tree.Link('_'))))
+ST_EXPR_IF      = UNCURRY(tree.Link('if'), ())
+ST_EXPR_UNLESS  = UNCURRY(tree.Link('unless'), ())
+ST_ARG_KW       = UNCURRY(tree.Link(':'))
+ST_ARG_VAR      = MATCH_A(tree.Expression((tree.Link(''), tree.Link('*'),  tree.Link('_'))))
+ST_ARG_VAR_KW   = MATCH_A(tree.Expression((tree.Link(''), tree.Link('**'), tree.Link('_'))))
 ST_ARG_VAR_C    = MATCH_Q(tree.Link('*'))
 ST_ARG_VAR_KW_C = MATCH_Q(tree.Link('**'))
 ST_IMPORT       = MATCH_Q(tree.Link('import'))
 ST_IMPORT_SEP   = UNCURRY(tree.Link('.'))
-ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''),   tree.Link('_'), tree.Link('_'))))
-ST_ASSIGN_ATTR  = UNCURRY(tree.Link('.'))
-ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'))
+ST_IMPORT_REL   = UNCURRY(tree.Link(''))
+ST_ASSIGN       = UNCURRY(tree.Link('='),  ())
+ST_ASSIGN_ATTR  = UNCURRY(tree.Link('.'),  ())
+ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'), ())
 
 
 def error(description, at):
 
-    (_, ln, ch), __, fn, tx = at.reparse_location
-    raise SyntaxError(description, (fn, ln, ch, tx))
+    (_, line, char), _, filename, text = at.reparse_location
+    raise SyntaxError(description, (filename, line, char, text))
 
 
+# assignment::
+#
+#   assignment_target = expression
+#   dotname = link('import')
+#
+# where::
+#
+#   dotname = link(.*) | link('.' *) link(.*)
+#
 def assignment(var, expr):
 
     if ST_IMPORT(expr):
 
-        var = ST_IMPORT_REL(var) or [tree.Link(), var]
-        isinstance(var[0], tree.Link) or error(const.ERR.NONCONST_IMPORT, expr)
-        parent = var[0].count('.')
-        parent == len(var[0]) or error(const.ERR.NONCONST_IMPORT, expr)
-        args = ST_IMPORT_SEP(var[-1])
+        *parent, var = ST_IMPORT_REL(var, [tree.Link(''), var])
+        args = ST_IMPORT_SEP(var)
+
+        len(parent) == 1       or  error(const.ERR.NONCONST_IMPORT, expr)
+        set(parent[0]) - {'.'} and error(const.ERR.NONCONST_IMPORT, parent[0])
         all(isinstance(a, tree.Link) for a in args) or error(const.ERR.NONCONST_IMPORT, expr)
-        return '.'.join(args), const.AT.IMPORT, args[0], parent
+
+        return '.'.join(args), const.AT.IMPORT, args[0], len(parent[0])
 
     # Other assignment types do not depend on right-hand statement value.
     return (expr,) + assignment_target(var)
 
 
+# assignment_target::
+#
+#   link(.*)
+#   expression.link(.*)
+#   expression !! expression
+#   expression(',', assignment_target *)
+#
 def assignment_target(var):
 
     # Attempt to do iterable unpacking first.
@@ -64,8 +81,8 @@ def assignment_target(var):
 
         return const.AT.UNPACK, map(assignment_target, pack), len(pack), star[0]
 
-    attr = ST_ASSIGN_ATTR(var, ())
-    item = ST_ASSIGN_ITEM(var, ())
+    attr = ST_ASSIGN_ATTR(var)
+    item = ST_ASSIGN_ITEM(var)
 
     if attr:
 
@@ -80,6 +97,17 @@ def assignment_target(var):
     return const.AT.NAME, var
 
 
+# function::
+#
+#   positional *, default *, ( varargs, ( positional | default ) * ) ?, varkwargs ?
+#
+# where::
+#
+#   positional = link(.*)
+#   default    = positional: expression
+#   varargs    = *positional
+#   varkwargs  = **positional
+#
 def function(args):
 
     arguments   = []  # `c.co_varnames[:c.co_argc]`
@@ -88,15 +116,15 @@ def function(args):
     defaults    = []  # `f.__defaults__`
     kwdefaults  = {}  # `f.__kwdefaults__`
 
-    varargs     = []  # [] or [name of a varargs container]
-    varkwargs   = []  # [] or [name of a varkwargs container]
+    varargs     = []  # `[]` or `[c.co_varnames[c.co_argc + c.co_kwonlyargc]]`
+    varkwargs   = []  # `[]` or `[c.co_varnames[c.co_argc + c.co_kwonlyargc + 1]]`
 
     if not isinstance(args, tree.Constant) or args.value is not None:
 
         # Either a single argument, or multiple arguments separated by commas.
         for arg in ST_TUPLE(args):
 
-            arg, *default = ST_ARG_KW(arg) or [arg]
+            arg, *default = ST_ARG_KW(arg)
             vararg = ST_ARG_VAR(arg)
             varkw  = ST_ARG_VAR_KW(arg)
             # Extract argument name from `vararg` or `varkw`.
@@ -130,14 +158,34 @@ def function(args):
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs
 
 
-def call_pre(args1):
+# call_pre::
+#
+#   expression: expression
+#   expression('', expression, expression *)
+#   expression('', expression: expression, expression *)
+#
+def call_pre(argv):
 
-    args2 = ST_ARG_KW(args1[0]) or args1[:1]
-    attr  = ST_ASSIGN_ATTR(args2[0], ()) and args2[0]
-    attr and not isinstance(attr[-1], tree.Link) and error(const.ERR.NONCONST_ATTR, attr[-1])
-    return [attr] + args2 + args1[1:]
+    # `a: b c`:: one function call
+    # `(a: b) c`:: two function calls
+    f, *args = argv
+    f, *argx = [f] if getattr(f, 'closed', True) else ST_ARG_KW(f)
+    attr = ST_ASSIGN_ATTR(f) and f
+    return [attr, f] + argx + args
 
 
+# call_args::
+#
+#   any *
+#   any *, varargs, any *
+#   any *, varkwargs, any *
+#   any *, varargs, any *, varkwargs, any *
+#   any *, varkwargs, any *, varargs, any *
+#
+# where::
+#
+#   any = link(.*): expression | expression
+#
 def call_args(args):
 
     posargs  = []
@@ -147,18 +195,17 @@ def call_args(args):
 
     for arg in args:
 
-        kw = ST_ARG_KW(arg)
+        kw = ST_ARG_KW(arg, ())
 
         if not kw or arg.closed:
 
-            # The only place where `(a: b)` != `a: b`.
-            # `a: b` is a keyword argument while `(a: b)` is a function call.
-            # Note that `kw` *implies* `hasattr(arg, 'closed')`, since
-            # `ST_ARG_KW` can only match an expression.
+            # `a: b`:: keyword argument
+            # `(a: b)`:: function call
             posargs.append(arg)
 
         elif ST_ARG_VAR_C(kw[0]):
 
+            # Shouldn't `a: (*): b (*): c` become `a: (*): (itertools.chain: b c)`?
             vararg and error(const.ERR.MULTIPLE_VARARGS, kw[0])
             vararg.append(kw[1])
 
