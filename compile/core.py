@@ -26,7 +26,6 @@ class Compiler:
     #
     def compile(self, expr, into=None, name='<module>'):
 
-        backup = self.code
         self.code = codegen.MutableCode(cell=self.code) if into is None else into
         self.code.filename = expr.reparse_location.filename
         self.code.lineno   = expr.reparse_location.start[1]
@@ -38,7 +37,7 @@ class Compiler:
 
         finally:
 
-            self.code = backup
+            self.code = self.code.cell
 
     # Push the results of some expressions onto the stack.
     #
@@ -197,7 +196,7 @@ class Compiler:
     #
     def call(self, *argv, preloaded=None):
 
-        attr, f, *args = syntax.call_pre(list(argv))
+        attr, f, *args = syntax.call_pre(argv)
 
         if isinstance(f, tree.Link) and f in self.builtins:
 

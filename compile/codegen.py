@@ -59,6 +59,7 @@ class MutableCode:
 
         # Names of variables that could be added to `freevars`.
         self.cellnames = cell.varnames.keys() | cell.cellnames if cell else set()
+        self.cell = cell
 
         # Whether to use the `f_locals` hashmap instead of fast locals.
         # Enabled for global NS and functions that do STORE_LOCALS.
