@@ -133,7 +133,7 @@ class MutableCode:
     #
     def append(self, name, value=0, delta=0):
 
-        self.flags      |= name == 'YIELD_VALUE' and CO_GENERATOR
+        self.flags      |= name in ('YIELD_VALUE', 'YIELD_FROM') and CO_GENERATOR
         self.slowlocals |= name == 'STORE_LOCALS'
 
         code = dis.opmap[name]
