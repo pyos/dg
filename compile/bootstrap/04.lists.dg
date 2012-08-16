@@ -1,11 +1,12 @@
 ..compile      = import
+..parse.tree   = import
 ..parse.syntax = import
 
 
 list_s  = x ->
   q = parse.syntax.ST_TUPLE: x None unless getattr: x 'closed' True else q = None
   q = parse.syntax.ST_BREAK: x if q `is` None
-  list: if x `is` None else q
+  list: if x :: parse.tree.Constant and x.value `is` None else q
 
 
 compile.r.builtins !! '[]' = (self, x) ->
