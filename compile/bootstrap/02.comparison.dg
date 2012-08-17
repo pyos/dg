@@ -2,37 +2,34 @@
 ..parse.tree = import
 
 
+# Translate `a R b Q c` into `(a R b) and (b Q c)`
+# iff both `R` and `Q` are comparison operators, but without
+# evaluating `b` twice.
+#
+# Examples::
+#
+#   >>> varary_cmp: '<' compiler a b
+#     1 LOAD       a
+#     2 LOAD       b
+#     3 COMPARE_OP <
+#
+#   >>> varary_cmp: '<' compiler a b c
+#     1 LOAD                      a
+#     2 LOAD                      b
+#     3 DUP_TOP
+#     4 ROT_THREE
+#     5 COMPARE_OP                <
+#     6 JUMP_IF_FALSE_ELSE_POP   10
+#     7 LOAD                      c
+#     8 COMPARE_OP                <
+#     9 JUMP_FORWARD              2 (to 12)
+#  > 10 ROT_TWO
+#    11 POP_TOP
+#  > 12 <out of scope of this function>
+#
+# (Yes, Python compiler generates the same bytecode.)
+#
 varary_cmp = (operator, self, a, *bs, chained: False) ->
-  '''
-    Translate `a R b Q c` into `(a R b) and (b Q c)`
-    iff both `R` and `Q` are comparison operators, but without
-    evaluating `b` twice.
-
-    Examples::
-
-      >>> varary_cmp: '<' compiler a b
-        1 LOAD       a
-        2 LOAD       b
-        3 COMPARE_OP <
-
-      >>> varary_cmp: '<' compiler a b c
-        1 LOAD                      a
-        2 LOAD                      b
-        3 DUP_TOP
-        4 ROT_THREE
-        5 COMPARE_OP                <
-        6 JUMP_IF_FALSE_ELSE_POP   10
-        7 LOAD                      c
-        8 COMPARE_OP                <
-        9 JUMP_FORWARD              2 (to 12)
-     > 10 ROT_TWO
-       11 POP_TOP
-     > 12 <out of scope of this function>
-
-    (Yes, Python compiler generates the same bytecode.)
-
-  '''
-
   # The last argument is a special case unless we want
   # to insert a jump opcode afterwards.
   *bs, c = bs unless chained

@@ -6,7 +6,7 @@
 ST_EXC_FINALLY = parse.syntax.MATCH_Q $ parse.tree.Link: 'True'
 
 
-unsafe = cases ->
+unsafe_s = cases ->
   parsed = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
   not_eq = map: x -> (x !! 1) $ filter: x -> (x !! 0) $ zip: parsed $ parse.syntax.ST_BREAK: cases
   parse.syntax.error: const.ERR.INVALID_STMT_IN_SWITCH $ next: not_eq unless all: parsed
@@ -16,49 +16,45 @@ unsafe = cases ->
   parsed
 
 
+#
+# raise: ExceptionType
+# raise: exception_instance
+# raise: ... caused_by: another_exception_or_Ellipsis_or_None
+#
+# Raise an exception. If the exception is a subclass of BaseException,
+# instantiate it beforehand. If the `caused_by` argument is not an
+# `Ellipsis`, make it the __cause__ of that exception.
+#
+# In CPython 3.3, `raise: exception caused_by: None` silences the context.
+#
 compile.r.builtins !! 'raise' = compile._callable $ (self, exception, caused_by: (...)) ->
-  '''
-    raise: ExceptionType
-    raise: exception_instance
-    raise: ... caused_by: another_exception_or_Ellipsis_or_None
-
-    Raise an exception. If the exception is a subclass of BaseException,
-    instantiate it beforehand. If the `caused_by` argument is not an
-    `Ellipsis`, make it the __cause__ of that exception.
-
-    In CPython 3.3, `raise: exception caused_by: None` silences the context.
-
-  '''
-
   args = (tuple: if caused_by `is` (...) else (caused_by,))
   self.opcode: 'RAISE_VARARGS' exception (*): args delta: 0
   self.load: None  # We've got to return something.
 
 
+#
+# unsafe $
+#   error = unsafe_code
+#   condition1 = when_condition1_is_True
+#   ...
+#   conditionN = when_conditionN_is_True
+#   True = finally_clause
+#
+# Evaluate `unsafe_code`, storing the whatever exception is raised as
+# `error`, then evaluating the first action to be assigned
+# to a true condition. If no condition is true, the exception is re-raised.
+# If there was no exception, `error` is set to `None`. If the last
+# action is assigned to `True`, it is evaluated regardless of whether
+# any other condition was True, but it can't silence the exception.
+#
+# Returns the value of `unsafe_code` if there was no exception,
+# `None` otherwise.
+#
 compile.r.builtins !! 'unsafe' = (self, cases) ->
-  '''
-    unsafe $
-      error = unsafe_code
-      condition1 = when_condition1_is_True
-      ...
-      conditionN = when_conditionN_is_True
-      True = finally_clause
-
-    Evaluate `unsafe_code`, storing the whatever exception is raised as
-    `error`, then evaluating the first action to be assigned
-    to a true condition. If no condition is true, the exception is re-raised.
-    If there was no exception, `error` is set to `None`. If the last
-    action is assigned to `True`, it is evaluated regardless of whether
-    any other condition was True, but it can't silence the exception.
-
-    Returns the value of `unsafe_code` if there was no exception,
-    `None` otherwise.
-
-  '''
-
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
-  (name, try), *cases, (has_finally, finally) = unsafe: cases
+  (name, try), *cases, (has_finally, finally) = unsafe_s: cases
 
   # This will be our return value.
   self.load: None

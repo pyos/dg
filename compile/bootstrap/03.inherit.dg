@@ -1,19 +1,19 @@
+.codegen  = import
 ..compile = import
 
 
+#
+# inherit: ... block
+#
+# Create a class with `block` as its body.
+# All arguments but the last one are passed straight to the `__build_class__`
+# function.
+#
 compile.r.builtins !! 'inherit' = (self, *stuff) ->
-  '''
-    inherit: ... block
-
-    Create a class with `block` as its body.
-    All arguments but the last one are passed straight to the `__build_class__`
-    function.
-  '''
-
   *args, body = stuff
 
   # __build_class__ will also need a `dict -> cell` function.
-  code = compile.codegen.MutableCode: True args: ('__locals__',) cell: self.code
+  code = codegen.MutableCode: True args: ('__locals__',) cell: self.code
   code.cellnames.add: '__class__'
   code.cellvars !! '__class__'
   # The argument, __locals__, is what we need to write attributes to.

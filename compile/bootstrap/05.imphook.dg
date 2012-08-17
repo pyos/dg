@@ -5,8 +5,9 @@ os.path        = import
 itertools      = import
 importlib.util = import
 
-dg.compile = import
-dg.parse   = import
+
+..parse   = import
+..compile = import
 
 
 getmtime = fn ->
@@ -49,8 +50,8 @@ sys.meta_path.insert: 0 $ inherit: str $
     not: code and os.path.exists: self and
       # Attempt to recompile the source code.
       # FIXME should do that when dg or Python version changes.
-      code = dg.compile.r:.compile $
-        dg.parse.r:.parse: filename: (str: self) $ (open: self).read:
+      code = compile.r:.compile $
+        parse.r:.parse: filename: (str: self) $ (open: self).read:
 
       os.makedirs: exist_ok: True $ os.path.dirname: cache
       marshal.dump: code $ open: cache 'wb'

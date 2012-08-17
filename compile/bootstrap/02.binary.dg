@@ -3,52 +3,41 @@
 ..parse.tree   = import
 ..parse.syntax = import
 
-
-varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: False) ->
-  '''
-    If there is one argument, feed to it an opcode; otherwise,
-    do the same thing as `foldl`, but with an opcode instead of a function.
-
-    Examples::
-
-      >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a
-        1 LOAD   a
-        2 UNARY_STUFF
-
-      >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a b c
-        1 LOAD   a
-        2 LOAD   b
-        3 BINARY_STUFF
-        4 LOAD   c
-        5 BINARY_STUFF
-
-     >>> varary: 'BINARY_STUFF' inplace: True compiler a b
-        1 LOAD   a
-        2 LOAD   b
-        3 BINARY_STUFF
-        4 STORE  a
-
-    :param multiple: the opcode to use as a folding function.
-
-    :param arg: the argument to pass to all opcodes (a constant!)
-
-    :param inplace: whether to assign the result of that expression
-      to the first argument.
-
-    :param single: the opcode to insert if there is only one argument.
-      The default value, None, will raise an exception.
-
-  '''
-
+# If there is one argument, feed to it an opcode; otherwise,
+# do the same thing as `foldl`, but with an opcode instead of a function.
+#
+# Examples::
+#
+#   >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a
+#     1 LOAD   a
+#     2 UNARY_STUFF
+#
+#   >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a b c
+#     1 LOAD   a
+#     2 LOAD   b
+#     3 BINARY_STUFF
+#     4 LOAD   c
+#     5 BINARY_STUFF
+#
+#  >>> varary: 'BINARY_STUFF' inplace: True compiler a b
+#    1 LOAD   a
+#    2 LOAD   b
+#    3 BINARY_STUFF
+#    4 STORE  a
+#
+varary = (multiple, self, a, *bs, inplace: False, single: None) ->
   self.load: a
-  self.load: (*): bs if rightf
-  list: (map: b -> (self.opcode: multiple b arg: arg delta:  0) bs) unless rightf
-  list: (map: b -> (self.opcode: multiple   arg: arg delta: -1) bs) if     rightf
-  self.opcode: single arg: arg delta: 0 unless bs or single `is` None
+  list: (map: b -> (self.opcode: multiple b delta: 0) bs)
+  self.opcode: single a delta: 0 unless bs or not: single
   self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
 
 
-# `.`, ``, `:`, `->`, and `=` are already defined.
+varary_r = (multiple, self, a, *bs, inplace: False) ->
+  self.load: a (*): bs
+  list: (map: _ -> (self.opcode: multiple delta: -1) bs)
+  self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
+
+
 compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs delta: 1
 compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant: None)) ->
   # Close `b` and delegate to `call`.
@@ -64,7 +53,7 @@ compile.r.builtins !! '!!'  = varary ~: 'BINARY_SUBSCR'
 compile.r.builtins !! '+'   = varary ~: 'BINARY_ADD'      ~: single: 'UNARY_POSITIVE'
 compile.r.builtins !! '-'   = varary ~: 'BINARY_SUBTRACT' ~: single: 'UNARY_NEGATIVE'
 compile.r.builtins !! '*'   = varary ~: 'BINARY_MULTIPLY'
-compile.r.builtins !! '**'  = varary ~: 'BINARY_POWER'    ~: rightf: True
+compile.r.builtins !! '**'  = varary_r ~: 'BINARY_POWER'
 compile.r.builtins !! '/'   = varary ~: 'BINARY_TRUE_DIVIDE'
 compile.r.builtins !! '//'  = varary ~: 'BINARY_FLOOR_DIVIDE'
 compile.r.builtins !! '%'   = varary ~: 'BINARY_MODULO'
@@ -78,7 +67,7 @@ compile.r.builtins !! '!!=' = varary ~: 'BINARY_SUBSCR'        ~: inplace: True
 compile.r.builtins !! '+='  = varary ~: 'INPLACE_ADD'          ~: inplace: True
 compile.r.builtins !! '-='  = varary ~: 'INPLACE_SUBTRACT'     ~: inplace: True
 compile.r.builtins !! '*='  = varary ~: 'INPLACE_MULTIPLY'     ~: inplace: True
-compile.r.builtins !! '**=' = varary ~: 'INPLACE_POWER'        ~: inplace: True
+compile.r.builtins !! '**=' = varary_r ~: 'INPLACE_POWER'        ~: inplace: True
 compile.r.builtins !! '/='  = varary ~: 'INPLACE_TRUE_DIVIDE'  ~: inplace: True
 compile.r.builtins !! '//=' = varary ~: 'INPLACE_FLOOR_DIVIDE' ~: inplace: True
 compile.r.builtins !! '%='  = varary ~: 'INPLACE_MODULO'       ~: inplace: True
@@ -88,10 +77,10 @@ compile.r.builtins !! '|='  = varary ~: 'INPLACE_OR'           ~: inplace: True
 compile.r.builtins !! '<<=' = varary ~: 'INPLACE_LSHIFT'       ~: inplace: True
 compile.r.builtins !! '>>=' = varary ~: 'INPLACE_RSHIFT'       ~: inplace: True
 
-compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a      b delta: 1
+compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a b delta: 1
 compile.r.builtins !! '.~'  = (self, a, b) ->
   parse.syntax.error: const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
-  self.opcode: 'DELETE_ATTR'   None a arg: b delta: 1
+  self.opcode: 'DELETE_ATTR' None a arg: b delta: 1
 
 compile.r.builtins !! ':.'  = (self, a, *bs) ->
   self.load: a

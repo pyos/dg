@@ -21,15 +21,13 @@ switch_s = cases ->
   parsed
 
 
+#
+# a if b else c
+# a unless b else c
+#
+# Obvious ternary conditional.
+#
 compile.r.builtins !! 'else' = (self, cond, otherwise) ->
-  '''
-    a if b else c
-    a unless b else c
-
-    Ternary conditional.
-
-  '''
-
   is_if, (then, cond) = else_s: cond
   ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0 if     is_if
   ptr = self.opcode: 'POP_JUMP_IF_TRUE'  cond delta: 0 unless is_if
@@ -40,18 +38,16 @@ compile.r.builtins !! 'else' = (self, cond, otherwise) ->
   jmp:
 
 
+#
+# switch $
+#   condition1 = when_condition1_is_true
+#   ...
+#   conditionN = when_conditionN_is_true
+#
+# Evaluate the first action assigned to a true condition.
+# `if-elif` is probably a better equivalent than `switch-case`.
+#
 compile.r.builtins !! 'switch' = (self, cases) ->
-  '''
-    switch $
-      condition1 = when_condition1_is_true
-      ...
-      conditionN = when_conditionN_is_true
-
-    Evaluate the first action assigned to a true condition.
-    `if-elif` is probably a better equivalent than `switch-case`.
-
-  '''
-
   jumps = list $ map: c -> (
     cond, action = c
     next = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
