@@ -11,18 +11,18 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: 
 
     Examples::
 
-      >>> (varary: 'BINARY_STUFF' single: 'UNARY_STUFF'): compiler a
+      >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a
         1 LOAD   a
         2 UNARY_STUFF
 
-      >>> (varary: 'BINARY_STUFF' single: 'UNARY_STUFF'): compiler a b c
+      >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a b c
         1 LOAD   a
         2 LOAD   b
         3 BINARY_STUFF
         4 LOAD   c
         5 BINARY_STUFF
 
-     >>> (varary: 'BINARY_STUFF' inplace: True): compiler a b
+     >>> varary: 'BINARY_STUFF' inplace: True compiler a b
         1 LOAD   a
         2 LOAD   b
         3 BINARY_STUFF
@@ -47,6 +47,7 @@ varary = (multiple, self, a, *bs, arg: 0, inplace: False, single: None, rightf: 
   self.opcode: single arg: arg delta: 0 unless bs or single `is` None
   self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
 
+
 # `.`, ``, `:`, `->`, and `=` are already defined.
 compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs delta: 1
 compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant: None)) ->
@@ -58,16 +59,6 @@ compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant: None)) ->
   self.call: a b unless is_call
   # ...or join the argument lists.
   self.call: (*): (a + (list: (b,))) if is_call
-
-# FIXME `a < b < c` <=> `a < b and b < c`, not `(a < b) < c`.
-compile.r.builtins !! '<'   = varary ~: 'COMPARE_OP' ~: arg: '<'
-compile.r.builtins !! '<='  = varary ~: 'COMPARE_OP' ~: arg: '<='
-compile.r.builtins !! '=='  = varary ~: 'COMPARE_OP' ~: arg: '=='
-compile.r.builtins !! '!='  = varary ~: 'COMPARE_OP' ~: arg: '!='
-compile.r.builtins !! '>'   = varary ~: 'COMPARE_OP' ~: arg: '>'
-compile.r.builtins !! '>='  = varary ~: 'COMPARE_OP' ~: arg: '>='
-compile.r.builtins !! 'is'  = varary ~: 'COMPARE_OP' ~: arg: 'is'
-compile.r.builtins !! 'in'  = varary ~: 'COMPARE_OP' ~: arg: 'in'
 
 compile.r.builtins !! '!!'  = varary ~: 'BINARY_SUBSCR'
 compile.r.builtins !! '+'   = varary ~: 'BINARY_ADD'      ~: single: 'UNARY_POSITIVE'
