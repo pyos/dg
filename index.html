@@ -457,14 +457,14 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
           <h2>Modules</h2>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
-<span class="com"># Import modules with `import` or `__import__`</span>
+<span class="com"># Import modules with `import` function.</span>
 module <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span> <span class="str">'os'</span>
 
 <span class="com"># You can omit the module name if it can be inferred.</span>
-<span class="com"># (Note the absence of a colon at the end: `import` is not a function here!)</span>
-sys <span class="op">=</span> <span class="kwd">import</span>
-os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">import</span>
-<span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span>
+<span class="com"># (If it can't, TypeError will be raised at runtime.)</span>
+sys <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span>
+os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span>
+<span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span>
 
 <span class="com"># Not much else to show here. Star-imports will never be supported.</span>
 </pre>
