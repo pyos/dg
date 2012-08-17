@@ -1,11 +1,15 @@
 ..const        = import
 ..compile      = import
+..parse.tree   = import
 ..parse.syntax = import
+
+ST_EXPR_IF      = parse.syntax.MATCH_A $ parse.tree.Expression: (parse.tree.Link: 'if',     parse.syntax.ANY, parse.syntax.ANY)
+ST_EXPR_UNLESS  = parse.syntax.MATCH_A $ parse.tree.Expression: (parse.tree.Link: 'unless', parse.syntax.ANY, parse.syntax.ANY)
 
 
 else_s = cond ->
-  args1 = parse.syntax.ST_EXPR_IF:     cond
-  args2 = parse.syntax.ST_EXPR_UNLESS: cond
+  args1 = ST_EXPR_IF:     cond
+  args2 = ST_EXPR_UNLESS: cond
   parse.syntax.error: const.ERR.NOT_AFTER_IF cond unless args1 or args2
   args1, args1 or args2
 

@@ -1,6 +1,9 @@
 ..const        = import
 ..compile      = import
+..parse.tree   = import
 ..parse.syntax = import
+
+ST_EXC_FINALLY = parse.syntax.MATCH_Q $ parse.tree.Link: 'True'
 
 
 unsafe = cases ->
@@ -9,7 +12,7 @@ unsafe = cases ->
   parse.syntax.error: const.ERR.INVALID_STMT_IN_SWITCH $ next: not_eq unless all: parsed
   parse.syntax.error: const.ERR.DEFAULT cases unless parsed
 
-  parsed.append: (None, None) if len: parsed < 2 or not: (parse.syntax.ST_EXC_FINALLY $ parsed !! -1 !! 0)
+  parsed.append: (None, None) if len: parsed < 2 or not: (ST_EXC_FINALLY $ parsed !! -1 !! 0)
   parsed
 
 
