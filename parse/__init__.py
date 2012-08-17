@@ -20,8 +20,8 @@ def indent(stream, token):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-      # yield from do(stream, token, indented=True, closed=bool(indent))
-        for _ in do(stream, token, indented=True, closed=bool(indent)): yield _
+      # yield from do(stream, token, indented=True)
+        for _ in do(stream, token, indented=True): yield _
         return
 
     while indent != stream.indent.pop():
@@ -68,7 +68,7 @@ def infixl(stream, op):
         stream.repeat.appendleft(rhs)
         rhsless = True
 
-    elif br and op != '\n' and not getattr(rhs, 'indented', False):
+    elif br and op != '\n' and not rhs.indented:
 
         # `a R \n b` <=> `a R (\n b)` <=> `a R b` if `b` is indented,
         #                `(a R) \n b`             otherwise.
@@ -76,7 +76,7 @@ def infixl(stream, op):
         rhsless = rhsbound = True
         rhs = tree.Link('\n')
 
-    elif isinstance(rhs, tree.Link) and not hasattr(rhs, 'closed') and rhs.infix:
+    elif isinstance(rhs, tree.Link) and not rhs.closed and rhs.infix:
 
         # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
         # `a R (Q b)` otherwise.
@@ -85,13 +85,13 @@ def infixl(stream, op):
     # Chaining a single expression doesn't make sense.
     if not rhsless or op not in ('\n', ''):
 
-        while not getattr(lhs[-1], 'closed', True) and stream.has_priority(op, lhs[-1][0]):
+        while isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and stream.has_priority(op, lhs[-1][0]):
 
             # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R,
             # `(a R b) Q c` otherwise.
             lhs = lhs[-1]
 
-        if not getattr(lhs[-1], 'closed', True) and lhs[-1][0] == op and not rhsless:
+        if isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and lhs[-1][0] == op and not rhsless:
 
             # `a R b R c` <=> `Op R (Link a) (Link b) (Link c)`
             # unless R is right-fixed.
@@ -126,7 +126,7 @@ def infixl(stream, op):
 #
 # do = '(' | '[' | '{'
 #
-def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '[': ']'}):
+def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
     par = token.group() if token else ''
     state_backup = stream.state & STATE_AFTER_OBJECT
@@ -170,7 +170,7 @@ def do(stream, token, indented=False, closed=True, pars={'(': ')', '{': '}', '['
         stream.stuff = tree.Expression([op, lhs, stream.stuff])
 
     stream.stuff.indented = indented
-    stream.stuff.closed   = closed or isinstance(stream.stuff, tree.Constant)
+    stream.stuff.closed   = True
 
     # Further expressions should not touch this block.
     indented and stream.repeat.appendleft(tree.Link('\n'))

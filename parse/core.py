@@ -122,6 +122,7 @@ class Parser (collections.Iterator):
         try:
 
             res = self.parse(code, '<stdin>')
+            res.closed = False  # Top-level expression is always closed.
 
         except SyntaxError as e:
 
@@ -136,12 +137,12 @@ class Parser (collections.Iterator):
 
         # Search for incomplete infix expressions.
         expr = res
-        while isinstance(expr, tree.Expression) and not getattr(expr, 'closed', True) and len(expr) > 2: expr = expr[-1]
+        while isinstance(expr, tree.Expression) and not expr.closed and len(expr) > 2: expr = expr[-1]
 
         return None if (
             not code.endswith('\n')
             and (
-                (isinstance(expr, tree.Expression) and not getattr(expr, 'closed', True))
+                (isinstance(expr, tree.Expression) and not expr.closed)
                 or code.rsplit('\n', 1)[-1].startswith(' ')
             )
         ) else res

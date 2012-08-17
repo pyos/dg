@@ -1,13 +1,18 @@
 import itertools
 
 
-class Expression (list):
+class StructMixIn:
 
     indented = False
     closed   = False
 
 
-class Link (str):
+class Expression (list, StructMixIn):
+
+    pass
+
+
+class Link (str, StructMixIn):
 
     @property
     def infix(self):
@@ -15,7 +20,7 @@ class Link (str):
         return not self.isidentifier() or self in {'if', 'else', 'unless', 'or', 'and'}
 
 
-class Constant:
+class Constant (StructMixIn):
 
     def __init__(self, value):
 
@@ -23,22 +28,9 @@ class Constant:
         self.value = value
 
 
-class Internal:
+class Internal (StructMixIn):
 
     pass
-
-
-def format(code):
-
-    if isinstance(code, Expression):
-
-        return type(code).__name__ + '\n  ' + '\n'.join(map(format, code)).replace('\n', '\n  ')
-
-    if isinstance(code, Link):
-
-        return 'Link ' + str.__repr__(code)
-
-    return repr(code)
 
 
 def match(code, pattern, into):
@@ -69,14 +61,3 @@ def matchA(code, pattern):
 def matchQ(code, pattern):
 
     return match(code, pattern, [])
-
-
-def matchR(code, pattern, f):
-
-    into = []
-
-    while match(code, pattern, into):
-
-        code = f(code, into)
-
-    return into + [code]

@@ -168,7 +168,7 @@ def call_pre(argv):
     # `a: b c`:: one function call
     # `(a: b) c`:: two function calls
     f, *args = argv
-    f, *argx = [f] if getattr(f, 'closed', True) else ST_ARG_KW(f)
+    f, *argx = [f] if f is None or f.closed else ST_ARG_KW(f)
     attr = ST_ASSIGN_ATTR(f) and f
     return [attr, f] + argx + args
 
