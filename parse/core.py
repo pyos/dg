@@ -1,12 +1,14 @@
 import re
+import itertools
 import collections
 
 from . import tree
 
-STATE_AT_LINE_START = 1  # `(?m)^`
-STATE_AT_FILE_START = 2  # `^`
-STATE_AT_FILE_END   = 4  # `$`
-STATE_CUSTOM        = 8  # lowest unused state bit
+# Call `next(STATEGEN)` to receive an unique state ID.
+STATEGEN = (2 ** q for q in itertools.count())
+STATE_AT_LINE_START = next(STATEGEN)  # `(?m)^`
+STATE_AT_FILE_START = next(STATEGEN)  # `^`
+STATE_AT_FILE_END   = next(STATEGEN)  # `$`
 
 Location = collections.namedtuple('Location', 'start, end, filename, first_line')
 

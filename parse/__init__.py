@@ -6,7 +6,7 @@ from . import tree
 r = core.Parser
 
 SIG_CLOSURE_END    = type('SIG_CLOSURE_END', (tree.Constant, tree.Internal), {})
-STATE_AFTER_OBJECT = core.STATE_CUSTOM << 0
+STATE_AFTER_OBJECT = next(core.STATEGEN)
 
 
 @r.token(r' *', core.STATE_AT_LINE_START)
@@ -32,9 +32,7 @@ def indent(stream, token):
     stream.indent.append(indent)
 
 
-@r.token(r'([!$%&*+\--/:<-@\\^|~]+|,+|if|unless|else|and|or)', STATE_AFTER_OBJECT)
-@r.token(r'`(\w+)`', STATE_AFTER_OBJECT)
-@r.token(r'\s*(\n)', STATE_AFTER_OBJECT)
+@r.token(r'([!$%&*+\--/:<-@\\^|~]+|,+|if|unless|else|and|or)|`(\w+)`|\s*(\n)', STATE_AFTER_OBJECT)
 #
 # infix = < ascii punctuation > + | ',' + | ( '`', word, '`' ) | word_op | '\n'
 #
@@ -43,7 +41,7 @@ def indent(stream, token):
 #
 def infix(stream, token):
 
-    op = token if isinstance(token, str) else token.group(1)
+    op = token if isinstance(token, str) else next(_ for _ in token.groups() if _)
     return infixl(stream, stream.located(tree.Link(op)))
 
 
@@ -194,9 +192,7 @@ def end(stream, token):
     yield SIG_CLOSURE_END(token.group())
 
 
-@r.token(r'0(b)([0-1]+)')
-@r.token(r'0(o)([0-7]+)')
-@r.token(r'0(x)([0-9a-fA-F]+)')
+@r.token(r'0(b)([0-1]+)|0(o)([0-7]+)|0(x)([0-9a-fA-F]+)')
 #
 # intb = int2 | int8 | int16
 # int2 = '0b', ( '0' .. '1' ) +
@@ -205,7 +201,8 @@ def end(stream, token):
 #
 def intb(stream, token, bases={'b': 2, 'o': 8, 'x': 16}):
 
-    yield tree.Constant(int(token.group(2), bases[token.group(1)]))
+    basesign, value = (_ for _ in token.groups() if _)
+    yield tree.Constant(int(value, bases[basesign]))
 
 
 @r.token(r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?')
@@ -226,7 +223,7 @@ def number(stream, token):
 
 @r.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
 #
-# string = 'r' ?, 'b' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
+# string = 'b' ?, 'r' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
 # sq_string = "'", ( '\\' ?, < any character > ) * ?, "'"
 # dq_string = '"', ( '\\' ?,  < any character > ) * ?, '"'
@@ -249,19 +246,16 @@ def string_err(stream, token):
 
 
 # Note that "\w+" implies "if" and other infix links.
-@r.token(r'(\w+|[!$%&*+\--/:<-@\\^|~]+|,+)')
-@r.token(r'`(\w+)`')
-@r.token(r'\s*(\n)')
+@r.token(r'(\w+|[!$%&*+\--/:<-@\\^|~]+|,+)|`(\w+)`|\s*(\n)')
 #
 # link = word | infix
 #
 def link(stream, token):
 
-    yield tree.Link(token.group(1))
+    yield tree.Link(next(_ for _ in token.groups() if _))
 
 
-@r.token(r'\s')
-@r.token(r'\s*#[^\n]*')
+@r.token(r'[^\S\n]+|\s*#[^\n]*')
 #
 # whitespace = < whitespace > | '#', < anything but line feed >
 #
