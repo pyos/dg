@@ -1,7 +1,7 @@
-..const        = import
-..compile      = import
-..parse.tree   = import
-..parse.syntax = import
+..const        = import:
+..compile      = import:
+..parse.tree   = import:
+..parse.syntax = import:
 
 # If there is one argument, feed to it an opcode; otherwise,
 # do the same thing as `foldl`, but with an opcode instead of a function.

@@ -14,9 +14,9 @@ ST_ARG_VAR      = MATCH_A(tree.Expression((tree.Link(''), tree.Link('*'),  ANY))
 ST_ARG_VAR_KW   = MATCH_A(tree.Expression((tree.Link(''), tree.Link('**'), ANY)))
 ST_ARG_VAR_C    = MATCH_Q(tree.Link('*'))
 ST_ARG_VAR_KW_C = MATCH_Q(tree.Link('**'))
-ST_IMPORT       = MATCH_Q(tree.Link('import'))
+ST_IMPORT       = MATCH_Q(tree.Expression((tree.Link(':'), tree.Link('import'))))
 ST_IMPORT_SEP   = UNCURRY(tree.Link('.'))
-ST_IMPORT_REL   = UNCURRY(tree.Link(''))
+ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''), ANY, ANY)))
 ST_ASSIGN       = MATCH_A(tree.Expression((tree.Link('='), ANY, ANY)))
 ST_ASSIGN_ATTR  = UNCURRY(tree.Link('.'),  ())
 ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'), ())
@@ -41,14 +41,12 @@ def assignment(var, expr):
 
     if ST_IMPORT(expr):
 
-        *parent, var = ST_IMPORT_REL(var, [tree.Link(''), var])
-        args = ST_IMPORT_SEP(var)
+        parent, name = ST_IMPORT_REL(var) or [tree.Link(''), var]
+        args = ST_IMPORT_SEP(name)
 
-        len(parent) == 1       or  error(const.ERR.NONCONST_IMPORT, expr)
-        set(parent[0]) - {'.'} and error(const.ERR.NONCONST_IMPORT, parent[0])
-        all(isinstance(a, tree.Link) for a in args) or error(const.ERR.NONCONST_IMPORT, expr)
+        if isinstance(parent, tree.Link) and len(parent) == parent.count('.') and all(isinstance(a, tree.Link) for a in args):
 
-        return '.'.join(args), const.AT.IMPORT, args[0], len(parent[0])
+            return '.'.join(args), const.AT.IMPORT, args[0], len(parent)
 
     # Other assignment types do not depend on right-hand statement value.
     return (expr,) + assignment_target(var)

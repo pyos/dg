@@ -1,4 +1,4 @@
-..compile = import
+..compile = import:
 
 
 varary_cond = (jump, self, *xs, argparse: xs -> xs) ->

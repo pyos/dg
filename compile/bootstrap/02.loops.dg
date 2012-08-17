@@ -1,6 +1,6 @@
-..const        = import
-..compile      = import
-..parse.syntax = import
+..const        = import:
+..compile      = import:
+..parse.syntax = import:
 
 
 compile._callable = f -> (self, *args) ->

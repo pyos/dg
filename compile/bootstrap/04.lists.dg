@@ -1,6 +1,6 @@
-..compile      = import
-..parse.tree   = import
-..parse.syntax = import
+..compile      = import:
+..parse.tree   = import:
+..parse.syntax = import:
 
 
 list_s  = x ->

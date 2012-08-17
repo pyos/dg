@@ -1,10 +1,10 @@
-os       = import
-sys      = import
-runpy    = import
-builtins = import
+os       = import:
+sys      = import:
+runpy    = import:
+builtins = import:
 
-..parse   = import
-..compile = import
+..parse   = import:
+..compile = import:
 
 
 dg = (fd, name: '__main__') ->

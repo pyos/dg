@@ -1,13 +1,13 @@
-imp            = import
-sys            = import
-marshal        = import
-os.path        = import
-itertools      = import
-importlib.util = import
+imp            = import:
+sys            = import:
+marshal        = import:
+os.path        = import:
+itertools      = import:
+importlib.util = import:
 
 
-..parse   = import
-..compile = import
+..parse   = import:
+..compile = import:
 
 
 getmtime = fn ->
