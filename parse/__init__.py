@@ -41,53 +41,6 @@ def whitespace(stream, token):
     return ()
 
 
-@r.token(r'([+-]?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?(j|J)?')
-#
-# number = int10, ( '.', int10 ) ?, ( [eE], [+-] ?, int10 ) ?, [jJ] ?
-#
-# int10  = ( '0' .. '9' ) +
-#
-def number(stream, token):
-
-    sign, integral, fraction, exponent, imag = token.groups()
-    sign     = -1 if sign == '-' else 1
-    imag     = 1j if imag        else 1
-    exponent = int(exponent or 0)
-    fraction = int(fraction) / 10 ** (len(fraction) - exponent) if fraction else 0
-    yield tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
-
-
-@r.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
-#
-# string = 'b' ?, 'r' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
-#
-# sq_string = "'", ( '\\' ?, < any character > ) * ?, "'"
-# dq_string = '"', ( '\\' ?,  < any character > ) * ?, '"'
-# sq_string_m = "'''", ( '\\' ?, < any character > ) * ?, "'''"
-# dq_string_m = '"""', ( '\\' ?,  < any character > ) * ?, '"""'
-#
-def string(stream, token):
-
-    g = token.group(2) * (4 - len(token.group(2)))
-    yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
-
-
-@r.token(r'(\w+|[!$%&*+\--/:<-@\\^|~]+|,+)|`(\w+)`|\s*(\n)')
-#
-# link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
-#
-# word = ( < alphanumeric > | '_' ) +
-#
-def link(stream, token):
-
-    yield tree.Link(next(_ for _ in token.groups() if _))
-
-    if stream.state & STATE_AFTER_OBJECT and (token.group().startswith('`') or stream.repeat[-1].infix):
-
-      # yield from infixl(stream, stream.repeat.pop())
-        for _ in infixl(stream, stream.repeat.pop()): yield _
-
-
 def infixl(stream, op):  # (this isn't a token, this is a helper)
 
     stream.state &= ~STATE_AFTER_OBJECT
@@ -165,7 +118,7 @@ def infixl(stream, op):  # (this isn't a token, this is a helper)
         for _ in infixl(stream, rhs): yield _
 
 
-@r.token('\(|\[|\{')
+@r.token('[\(\[\{]')
 #
 # do = '(' | '[' | '{'
 #
@@ -226,7 +179,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
 
 @r.token(r'', core.STATE_AT_FILE_END)
-@r.token(r'\)|\]|\}')
+@r.token(r'[\)\]\}]')
 #
 # end = ')' | ']' | '}' | $
 #
@@ -235,17 +188,64 @@ def end(stream, token):
     yield SIG_CLOSURE_END(token.group())
 
 
-@r.token(r'0(b)([0-1]+)|0(o)([0-7]+)|0(x)([0-9a-fA-F]+)')
+@r.token(r'(?i)0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
 #
 # intb = int2 | int8 | int16
 # int2 = '0b', ( '0' .. '1' ) +
 # int8 = '0o', ( '0' .. '7' ) +
 # int16 = '0x', ( '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' ) +
 #
-def intb(stream, token, bases={'b': 2, 'o': 8, 'x': 16}):
+def intb(stream, token):
 
-    basesign, value = (_ for _ in token.groups() if _)
-    yield tree.Constant(int(value, bases[basesign]))
+    yield tree.Constant(ast.literal_eval(token.group()))
+
+
+@r.token(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
+#
+# number = int10s, ( '.', int10 ) ?, ( [eE], int10s ) ?, [jJ] ?
+#
+# int10s = ( '+' | '-' ) ?, int10
+# int10  = < any digit > +
+#
+def number(stream, token):
+
+    sign, integral, fraction, exponent, imag = token.groups()
+    sign     = -1 if sign == '-' else 1
+    imag     = 1j if imag        else 1
+    exponent = int(exponent or 0)
+    fraction = int(fraction) / 10 ** (len(fraction) - exponent) if fraction else 0
+    yield tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
+
+
+@r.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
+#
+# string = 'b' ?, 'r' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
+#
+# sq_string = "'", ( '\\' ?, < any character > ) * ?, "'"
+# dq_string = '"', ( '\\' ?,  < any character > ) * ?, '"'
+# sq_string_m = "'''", ( '\\' ?, < any character > ) * ?, "'''"
+# dq_string_m = '"""', ( '\\' ?,  < any character > ) * ?, '"""'
+#
+def string(stream, token):
+
+    g = token.group(2) * (4 - len(token.group(2)))
+    yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
+
+
+@r.token(r'(\w+|[!$%&*+\--/:<-@\\^|~]+|,+)|`(\w+)`|\s*(\n)')
+#
+# link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
+#
+# word = ( < alphanumeric > | '_' ) +
+#
+def link(stream, token):
+
+    yield tree.Link(next(_ for _ in token.groups() if _))
+
+    if stream.state & STATE_AFTER_OBJECT and (token.group().startswith('`') or stream.repeat[-1].infix):
+
+      # yield from infixl(stream, stream.repeat.pop())
+        for _ in infixl(stream, stream.repeat.pop()): yield _
 
 
 @r.token(r'"|\'')
