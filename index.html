@@ -27,7 +27,6 @@
           <li><a href="#operators">Operators</a></li>
           <li><a href="#modules">Modules</a></li>
           <li><a href="#conditions">Conditions</a></li>
-          <li><a href="#loops">Loops</a></li>
           <li><a href="#exceptions">Exceptions</a></li>
           <li><a href="#objects">Objects</a></li>
           <li><a href="#miscellaneous">Miscellaneous</a></li>
@@ -507,38 +506,6 @@ factorial <span class="op">=</span> n <span class="op">-></span>
     <span class="com"># It's not considered an error if nothing matched, but None will be returned.</span>
     <span class="com"># If you need a default action, though, simply assign something to `1` or `True`.</span>
     <span class="spc">True</span> <span class="op">=</span> n <span class="op">*</span> factorial<span class="op">:</span> <span class="par">(</span>n <span class="op">-</span> <span class="typ">1</span><span class="par">)</span>
-</pre>
-          </div>
-        </div>
-
-        <div id="loops" class="section">
-          <h2>Loops</h2>
-          <div class="example-dg">
-            <pre class="prettyprint lang-dg">
-<span class="com"># (Don't expect anything cool here.)</span>
-<span class="com"># Loops are implemented as pseudomethods on objects.</span>
-<span class="com"># (Yes, methods, not attributes. You can call them, but you can't access them.)</span>
-<span class="com"># The simpliest loop, `while`, is pretty obvious:</span>
-<span class="spc">True</span><span class="op">.</span><span class="kwd">while</span> <span class="op">$</span>
-  print<span class="op">:</span> <span class="str">'Help!'</span>
-<span class="com"># Loop conditions don't have to be constant.</span>
-<span class="par">(</span><span class="blt">not</span><span class="op">:</span> resource_is_available<span class="par">)</span><span class="op">.</span><span class="kwd">while</span> <span class="op">$</span>  <span class="com"># Rollin'</span>
-
-<span class="com"># Iterating over a sequence is done</span>
-<span class="com"># using the <s>`map` built-in</s> `for` pseudomethod.</span>
-<span class="com"># `for` accepts 2 named arguments: `each` and `do`.</span>
-<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span><span class="op">:</span> x <span class="op">$</span>
-  print<span class="op">:</span> x
-<span class="com"># You may use them by name if it looks nicer to you.</span>
-<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span> each<span class="op">:</span> x do<span class="op">:</span>
-  print<span class="op">:</span> x
-
-<span class="com"># Both `for` and `while` return the result of the last iteration.</span>
-<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span><span class="op">.</span><span class="kwd">for</span><span class="op">:</span> x <span class="par">(</span>x <span class="op">*</span> <span class="typ">2</span><span class="par">)</span> <span class="op">==</span> <span class="typ">6</span>
-
-<span class="com"># But, seriously, use `map`, `filter`, and other</span>
-<span class="com"># functional stuff whenever possible instead.</span>
-<span class="cls">list</span> <span class="op">$</span> <span class="blt">map</span><span class="op">:</span> print <span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span>
 </pre>
           </div>
         </div>
