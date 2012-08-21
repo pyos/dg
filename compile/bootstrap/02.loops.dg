@@ -10,7 +10,7 @@ collections = import:
 #
 # function.while
 #
-# Alias for `while ~: cond`.
+# Alias for `while ~: function`.
 #
 compile.r.fake_attrs !! 'while' = self ->
   self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ '~:'
