@@ -29,7 +29,29 @@ compile.r.fake_attrs !! 'for' = self ->
   self.opcode: 'CALL_FUNCTION' arg: 2 delta: -2
 
 
-builtins.exhaust = iterable -> (collections.deque: iterable maxlen: 1) !! 0
-builtins.for   = (iterable,  function) -> exhaust $ map: function iterable
+#
+# exhaust: iterable
+#
+# Fetch items from an iterable until it's exhausted; return the last one.
+#
+builtins.exhaust = iterable ->
+  (collections.deque: iterable maxlen: 1) !! 0
+
+#
+# for: iterable function
+#
+# Eagerly call function for each item of an iterable,
+# then return the unmodified iterable.
+#
+builtins.for = (iterable, function) ->
+  exhaust $ map: function iterable
+  iterable
+
+#
+# while: f g
+#
+# While the result of calling f is true, eagerly call g with that result,
+# then return the value of the last iteration.
+#
 builtins.while = (f, g) ->
   exhaust $ map: g $ itertools.takewhile: bool $ map: (:) $ itertools.repeat: f
