@@ -125,9 +125,8 @@
             There is no <code>global</code> or <code>nonlocal</code> keyword —
             and I bet most people (especially those writing in functional style)
             would agree that using those is a bad practice. Note, though, that
-            assigning to a variable that is defined in an outside scope
-            (excluding the global namespace) is a compile-time error.
-            Trust me, that can save you some headache later.
+            if a variable is assigned to in an outside scope, it's assumed
+            to be nonlocal in all inner scopes.
           </p>
         </div>
 
