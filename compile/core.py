@@ -131,11 +131,11 @@ class Compiler:
 
         else:
 
-            var in self.builtins       and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
-            var in self.fake_attrs     and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
-            var in self.code.cellnames and syntax.error(const.ERR.FREEVAR_ASSIGNMENT, var)
+            var in self.builtins   and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
+            var in self.fake_attrs and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
 
             self.opcode(
+                'STORE_DEREF' if var in self.code.cellnames else
                 'STORE_DEREF' if var in self.code.cellvars else
                 'STORE_NAME'  if self.code.slowlocals else
                 'STORE_FAST', arg=var, delta=-1
