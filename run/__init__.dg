@@ -7,15 +7,13 @@ builtins = import:
 ..compile = import:
 
 
+# Start an interactive shell.
+#
+# :param name: name of the module.
+#
+# :return: runs indefinitely.
+#
 dg = (fd, name: '__main__') ->
-  '''
-    Start an interactive shell.
-
-    :param name: name of the module.
-
-    :return: runs indefinitely.
-  '''
-
   parser   = parse.r:
   compiler = compile.r:
   environ  = dict: [('__name__', name), ('__builtins__', __builtins__)]
@@ -38,12 +36,12 @@ dg = (fd, name: '__main__') ->
   sys.ps2 = getattr: sys 'ps2' '... '
   sys.stdin = fd
 
-  True.while $ unsafe $
+  while: True $ unsafe $
     e =
       buf  = ''
       code = None
 
-      (not: code).while $
+      while: (not: code) $
         buf += input: (sys.ps2 if buf else sys.ps1)
         tree = parser.compile_command: buf
         code = compiler.compile: tree unless tree `is` None
