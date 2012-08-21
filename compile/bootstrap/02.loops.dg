@@ -8,14 +8,21 @@ collections = import:
 
 
 #
-# function.while
+# while: condition body
 #
-# Alias for `while ~: function`.
+# Evaluate the body while condition is true.
 #
-compile.r.fake_attrs !! 'while' = self ->
-  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ '~:'
-  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'while'
-  self.opcode: 'CALL_FUNCTION' arg: 2 delta: -2
+compile.r.builtins !! 'while' = (self, cond, block) ->
+  self.load: None
+  exit_ptr = self.opcode: 'SETUP_LOOP'             delta: 0
+  cond_ptr = self.opcode: 'JUMP_ABSOLUTE'  arg: -1 delta: 0
+  else_ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
+  self.opcode: 'ROT_TWO' block delta:  1
+  self.opcode: 'POP_TOP'       delta: -1
+  cond_ptr:
+  else_ptr:
+  self.opcode: 'POP_BLOCK' delta: 0
+  exit_ptr:
 
 
 #
@@ -46,12 +53,3 @@ builtins.exhaust = iterable ->
 builtins.for = (iterable, function) ->
   exhaust $ map: function iterable
   iterable
-
-#
-# while: f g
-#
-# While the result of calling f is true, eagerly call g with that result,
-# then return the value of the last iteration.
-#
-builtins.while = (f, g) ->
-  exhaust $ map: g $ itertools.takewhile: bool $ map: (:) $ itertools.repeat: f
