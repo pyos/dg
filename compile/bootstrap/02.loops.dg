@@ -1,55 +1,35 @@
-..const        = import:
-..compile      = import:
-..parse.syntax = import:
+builtins    = import:
+itertools   = import:
+collections = import:
 
-
-compile._callable = f -> (self, *args) ->
-  posargs, kwargs, vararg, varkw = parse.syntax.call_args: args
-  parse.syntax.error: const.ERR.VARARG_WITH_BUILTIN (*): (vararg or varkw) if vararg or varkw
-  f: self (*): posargs (**): kwargs
-
-
-#
-# cond.while: block
-#
-# Evaluate `block` until `cond` becomes False.
-# `block` is evaluated in the same namespace (it would be useless otherwise.)
-#
-compile.r.fake_methods !! 'while' = (self, cond, block) ->
-  self.load: None
-  exit_ptr = self.opcode: 'SETUP_LOOP'             delta: 0
-  cond_ptr = self.opcode: 'JUMP_ABSOLUTE'  arg: -1 delta: 0
-  else_ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
-  self.opcode: 'ROT_TWO' block delta:  1
-  self.opcode: 'POP_TOP'       delta: -1
-  cond_ptr:
-  else_ptr:
-  self.opcode: 'POP_BLOCK' delta: 0
-  exit_ptr:
+..const      = import:
+..compile    = import:
+..parse.tree = import:
 
 
 #
-# iterable.for: item block
-# iterable.for: item do: block
-# iterable.for: each: item do: block
+# function.while
 #
-# A simple for-each loop.
-# `item` may be anything that can be assigned to with `=`.
-# `block` is evaluated in the same namespace; use `map` if that's not
-# desired behavior.
+# Alias for `while ~: cond`.
 #
-compile.r.fake_methods !! 'for' = compile._callable $ (self, iterable, each, do) ->
-  self.load: None  # This will be replaced with the return value.
-  self.opcode: 'GET_ITER' iterable delta: 1
+compile.r.fake_attrs !! 'while' = self ->
+  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ '~:'
+  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'while'
+  self.opcode: 'CALL_FUNCTION' arg: 2 delta: -2
 
-  loop_ptr = self.opcode: 'JUMP_ABSOLUTE' arg: -1 delta: 0
-  end_ptr  = self.opcode: 'FOR_ITER' delta: 1
 
-  self.store_top: (*): (parse.syntax.assignment_target: each) dup: False
-  self.load: do
-  self.opcode: 'ROT_THREE' delta: 0
-  self.opcode: 'ROT_TWO'   delta: 0
-  self.opcode: 'POP_TOP'   delta: -2  # One for POP_TOP, one for FOR_ITER.
+#
+# object.for
+#
+# Alias for `for ~: object`.
+#
+compile.r.fake_attrs !! 'for' = self ->
+  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ '~:'
+  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'for'
+  self.opcode: 'CALL_FUNCTION' arg: 2 delta: -2
 
-  loop_ptr:
-  end_ptr:
+
+builtins.exhaust = iterable -> (collections.deque: iterable maxlen: 1) !! 0
+builtins.for   = (iterable,  function) -> exhaust $ map: function iterable
+builtins.while = (f, g) ->
+  exhaust $ map: g $ itertools.takewhile: bool $ map: (:) $ itertools.repeat: f

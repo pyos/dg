@@ -6,6 +6,12 @@
 ST_EXC_FINALLY = parse.syntax.MATCH_Q $ parse.tree.Link: 'True'
 
 
+compile._callable = f -> (self, *args) ->
+  posargs, kwargs, vararg, varkw = parse.syntax.call_args: args
+  parse.syntax.error: const.ERR.VARARG_WITH_BUILTIN (*): (vararg or varkw) if vararg or varkw
+  f: self (*): posargs (**): kwargs
+
+
 unsafe_s = cases ->
   parsed = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
   not_eq = map: x -> (x !! 1) $ filter: x -> (x !! 0) $ zip: parsed $ parse.syntax.ST_BREAK: cases

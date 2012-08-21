@@ -126,14 +126,13 @@ class Compiler:
         elif type == const.AT.ITEM:
 
             # `!!` is not defined, yet required by bootstrapped code.
-            var[-1] in self.fake_methods and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var[-1])
             self.builtins['!!'](self, *var[:-1]) if len(var) > 2 else self.load(var[0])
             self.opcode('STORE_SUBSCR', var[-1], delta=-2)
 
         else:
 
             var in self.builtins       and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
-            var in self.fake_methods   and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
+            var in self.fake_attrs     and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
             var in self.code.cellnames and syntax.error(const.ERR.FREEVAR_ASSIGNMENT, var)
 
             self.opcode(
@@ -196,15 +195,11 @@ class Compiler:
     #
     def call(self, *argv, preloaded=None):
 
-        attr, f, *args = syntax.call_pre(argv)
+        f, *args = syntax.call_pre(argv)
 
         if isinstance(f, tree.Link) and f in self.builtins:
 
             return self.builtins[f](self, *args)
-
-        if attr and isinstance(attr[-1], tree.Link) and attr[-1] in self.fake_methods:
-
-            return self.fake_methods[attr[-1]](self, tree.Expression(attr[:-1]), *args)
 
         posargs, kwargs, vararg, varkwarg = syntax.call_args(args)
         preloaded is None and self.load(f)
@@ -265,6 +260,7 @@ class Compiler:
         for b in bs:
 
             isinstance(b, tree.Link) or syntax.error(const.ERR.NONCONST_ATTR, b)
+            self.fake_attrs[b](self) if b in self.fake_attrs else \
             self.opcode('LOAD_ATTR', arg=b, delta=0)
 
     #
@@ -290,4 +286,4 @@ class Compiler:
       , '->': function
     }
 
-    fake_methods = {}
+    fake_attrs = {}
