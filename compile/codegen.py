@@ -113,6 +113,29 @@ class MutableCode:
 
         return delay(to_int, finish)
 
+    # Synchronize fast local variable with its cell container.
+    #
+    # `name` need not be in `varnames` - it will be ignored if it isn't.
+    #
+    def cellify(self, name):
+
+        if name in self.varnames:
+
+            opmap = {
+              # old opcode: new opcode
+                dis.opmap['LOAD_FAST']:  dis.opmap['LOAD_DEREF']
+              , dis.opmap['STORE_FAST']: dis.opmap['STORE_DEREF']
+            }
+
+            for offset, (opcode, argument) in enumerate(self.bytecode):
+
+                if opcode in opmap and argument == self.varnames[name]:
+
+                    del self.bytecode[offset]
+                    self.bytecode.insert(offset, (opmap[opcode], self.cellvars[name]))
+
+        return name
+
     # Append a new opcode to the bytecode sequence.
     #
     # :param name: name of the bytecode (should be in `dis.opmap`.)

@@ -155,13 +155,7 @@ class Compiler:
 
             for freevar in code.co_freevars:
 
-                if freevar in self.code.varnames:
-
-                    # Make fast slot accessible from inner scopes.
-                    self.opcode('LOAD_FAST',   arg=freevar, delta=1)
-                    self.opcode('STORE_DEREF', arg=freevar, delta=-1)
-
-                self.opcode('LOAD_CLOSURE', arg=freevar, delta=1)
+                self.opcode('LOAD_CLOSURE', arg=self.code.cellify(freevar), delta=1)
 
             self.opcode('BUILD_TUPLE', arg=len(code.co_freevars), delta=-len(code.co_freevars) + 1)
 
