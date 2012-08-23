@@ -29,13 +29,13 @@ varary = (multiple, self, a, *bs, inplace: False, single: None) ->
   self.load: a
   list: (map: b -> (self.opcode: multiple b delta: 0) bs)
   self.opcode: single a delta: 0 unless bs or not: single
-  self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
+  self.store_top: a if inplace
 
 
 varary_r = (multiple, self, a, *bs, inplace: False) ->
   self.load: a (*): bs
   list: (map: _ -> (self.opcode: multiple delta: -1) bs)
-  self.store_top: (*): (parse.syntax.assignment_target: a) if inplace
+  self.store_top: a if inplace
 
 
 compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs delta: 1

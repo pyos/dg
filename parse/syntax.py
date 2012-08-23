@@ -18,8 +18,8 @@ ST_IMPORT       = MATCH_Q(tree.Expression((tree.Link(':'), tree.Link('import')))
 ST_IMPORT_SEP   = UNCURRY(tree.Link('.'))
 ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''), ANY, ANY)))
 ST_ASSIGN       = MATCH_A(tree.Expression((tree.Link('='), ANY, ANY)))
-ST_ASSIGN_ATTR  = UNCURRY(tree.Link('.'),  ())
-ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'), ())
+ST_ASSIGN_ATTR  = UNCURRY(tree.Link('.'))
+ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'))
 
 
 def error(description, at):
@@ -46,10 +46,10 @@ def assignment(var, expr):
 
         if isinstance(parent, tree.Link) and len(parent) == parent.count('.') and all(isinstance(a, tree.Link) for a in args):
 
-            return '.'.join(args), const.AT.IMPORT, args[0], len(parent)
+            return args[0], '.'.join(args), len(parent)
 
     # Other assignment types do not depend on right-hand statement value.
-    return (expr,) + assignment_target(var)
+    return var, expr, False
 
 
 # assignment_target::
@@ -76,22 +76,22 @@ def assignment_target(var):
             # Remove the star. We know it's there, that's enough.
             pack[star[0]], = ST_ARG_VAR(pack[star[0]])
 
-        return const.AT.UNPACK, map(assignment_target, pack), len(pack), star[0]
+        return const.AT.UNPACK, pack, [len(pack), star[0]]
 
-    attr = ST_ASSIGN_ATTR(var)
-    item = ST_ASSIGN_ITEM(var)
+    *var_a, attr = ST_ASSIGN_ATTR(var, [var])
+    *var_i, item = ST_ASSIGN_ITEM(var, [var])
 
-    if attr:
+    if var_a:
 
-        isinstance(attr[-1], tree.Link) or error(const.ERR.NONCONST_ATTR, attr[1])
-        return const.AT.ATTR, attr
+        isinstance(attr, tree.Link) or error(const.ERR.NONCONST_ATTR, attr[1])
+        return const.AT.ATTR, attr, var_a
 
-    if item:
+    if var_i:
 
-        return const.AT.ITEM, item
+        return const.AT.ITEM, item, var_i
 
     isinstance(var, tree.Link) or error(const.ERR.NONCONST_VARNAME, var)
-    return const.AT.NAME, var
+    return const.AT.NAME, var, []
 
 
 # function::

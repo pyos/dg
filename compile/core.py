@@ -92,8 +92,6 @@ class Compiler:
 
     # Store whatever is on top of the stack in a variable.
     #
-    # NOTE pass the variable name to `assignment_target` to get the arguments.
-    #
     # :param dup: whether to leave the stored object on the stack afterwards.
     #
     # Supported name schemes::
@@ -103,9 +101,11 @@ class Compiler:
     #   object !! object = ...  | object.__setitem__(object, ...)
     #   scheme, ... = ...       | recursive iterable unpacking
     #
-    def store_top(self, type, var, *args, dup=True):
+    def store_top(self, var, dup=True):
 
         dup and self.opcode('DUP_TOP', delta=1)
+
+        type, var, args = syntax.assignment_target(var)
 
         if type == const.AT.UNPACK:
 
@@ -116,18 +116,18 @@ class Compiler:
 
             for item in var:
 
-                self.store_top(*item, dup=False)
+                self.store_top(item, dup=False)
 
         elif type == const.AT.ATTR:
 
-            self.builtins['.'](self, *var[:-1])
-            self.opcode('STORE_ATTR', arg=var[-1], delta=-2)
+            self.builtins['.'](self, *args)
+            self.opcode('STORE_ATTR', arg=var, delta=-2)
 
         elif type == const.AT.ITEM:
 
             # `!!` is not defined, yet required by bootstrapped code.
-            self.builtins['!!'](self, *var[:-1]) if len(var) > 2 else self.load(var[0])
-            self.opcode('STORE_SUBSCR', var[-1], delta=-2)
+            self.builtins['!!'](self, *args) if len(args) > 1 else self.load(*args)
+            self.opcode('STORE_SUBSCR', var, delta=-2)
 
         else:
 
@@ -221,17 +221,17 @@ class Compiler:
     #
     def store(self, var, expr):
 
-        expr, type, var, *args = syntax.assignment(var, expr)
+        var, expr, isimport = syntax.assignment(var, expr)
 
-        if type == const.AT.IMPORT:
-
-            self.opcode('IMPORT_NAME', args[0], None, arg=expr, delta=1)
-
-        else:
+        if isimport is False:
 
             self.load(expr)
 
-        self.store_top(type, var, *args)
+        else:
+
+            self.opcode('IMPORT_NAME', isimport, None, arg=expr, delta=1)
+
+        self.store_top(var)
 
     #
     # argspec -> body

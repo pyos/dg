@@ -85,7 +85,7 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   to_else = self.opcode: 'JUMP_FORWARD' delta: 2  # one is on the stack already
   to_except:
   self.opcode: 'ROT_TWO' delta: 0
-  self.store_top: (*): (parse.syntax.assignment_target: name)
+  self.store_top: name
   self.opcode: 'ROT_TWO' delta: 0
   to_else:
 
