@@ -3,5 +3,5 @@ sys   = import:
 
 sys.argv.pop: 0
 sys.argv.append: '-' unless sys.argv
-fn = sys.argv.pop: 0
+fn = sys.argv !! 0
 run.dg: (sys.stdin if fn == '-' else open: fn)
