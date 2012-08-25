@@ -13,8 +13,8 @@ CO_NESTED    = 16
 CO_GENERATOR = 32
 CO_NOFREE    = 64
 
-OPCODE   = struct.Struct('=B').pack
-OPCODE_A = struct.Struct('=BH').pack
+OPCODE   = struct.Struct('<B').pack
+OPCODE_A = struct.Struct('<BH').pack
 EXTEND_A = functools.partial(OPCODE_A, dis.opmap['EXTENDED_ARG'])
 
 nsplit  = lambda x, q: nsplit(x // q, q) + [x % q] if x >= q else [x]
