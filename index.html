@@ -301,8 +301,6 @@ print<span class="op">:</span> a b c  <span class="com"># 1 [2, 3] 4</span>
 print<span class="op">:</span> <span class="typ">1</span> <span class="typ">2</span> <span class="typ">3</span>
 <span class="com"># NOT the same thing:</span>
 print<span class="op">:</span> <span class="par">(</span>print<span class="op">:</span> <span class="typ">1</span> <span class="typ">2</span><span class="par">)</span> <span class="typ">3</span>
-<span class="com"># `is` and `in` are names, not operators, so this notation can be useful:</span>
-<span class="spc">False</span> <span class="iop"</span>`is`</span> <span class="spc">True</span>
 
 <span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
 dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
@@ -380,22 +378,22 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
             </tr>
             <tr>
               <td><code>is</code></td>
-              <td>Identifier-based comparison <b>(prefix)</b></td>
+              <td>Identifier-based comparison</td>
               <td class="yes">Yes</td>
             </tr>
             <tr>
               <td><code>in</code></td>
-              <td>Whether an object is in a container <b>(prefix)</b></td>
+              <td>Whether an object is in a container</td>
               <td class="yes">Yes</td>
             </tr>
             <tr>
               <td><code>or and</code></td>
-              <td>Built-in Python logic operators <b>(lazy, infix)</b></td>
+              <td>Built-in Python logic operators <i>(lazy)</i></td>
               <td class="no">No</td>
             </tr>
             <tr>
               <td><code>if unless else</code></td>
-              <td>Inline conditional branching <b>(lazy, infix)</b></td>
+              <td>Inline conditional branching <i>(lazy)</i></td>
               <td class="no">No</td>
             </tr>
             <tr>
@@ -445,7 +443,7 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
             </tr>
             <tr>
               <td><code>...</code></td>
-              <td>Alias for <code>Ellipsis</code>, <b>not callable</b></td>
+              <td>Alias for <code>Ellipsis</code> <i>(not callable)</i></td>
               <td class="yes">Yes</td>
             </tr>
           </table>
@@ -501,7 +499,7 @@ factorial <span class="op">=</span> n <span class="op">-></span>
     <span class="com"># It evaluates the first action to be assigned to a true condition.</span>
     n <span class="op">&lt;</span> <span class="typ">2</span> <span class="op">=</span> <span class="typ">1</span>
     <span class="com"># Conditions may be completely unrelated to each other.</span>
-    <span class="blt">not</span> <span class="op">$</span> factorial <span class="iop">`is`</span> factorial <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">SanityError</span><span class="op">:</span> <span class="str">'wat'</span>
+    <span class="blt">not</span> <span class="op">$</span> factorial <span class="op">is</span> factorial <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">SanityError</span><span class="op">:</span> <span class="str">'wat'</span>
     <span class="com"># It's not considered an error if nothing matched, but None will be returned.</span>
     <span class="com"># If you need a default action, though, simply assign something to `1` or `True`.</span>
     <span class="spc">True</span> <span class="op">=</span> n <span class="op">*</span> factorial<span class="op">:</span> <span class="par">(</span>n <span class="op">-</span> <span class="typ">1</span><span class="par">)</span>
@@ -549,7 +547,7 @@ factorial <span class="op">=</span> n <span class="op">-></span>
     <span class="com"># Don't attract his attention with colorful tracebacks.</span>
     print<span class="op">:</span> <span class="str">'Psst, user!'</span> error
   <span class="com"># If no exception was caught, the provided variable will be set to None.</span>
-  error <span class="iop">`is`</span> <span class="spc">None</span> <span class="op">=</span>
+  error <span class="op">is</span> <span class="spc">None</span> <span class="op">=</span>
     <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">AssertionError</span><span class="op">:</span> <span class="str">'Wait, but that code was obviously incorrect!'</span>
   <span class="com"># If the last action is assigned to True, it has a special meaning.</span>
   <span class="com"># Specifically, it will be called regardless of whether any</span>
