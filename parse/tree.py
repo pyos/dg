@@ -14,10 +14,12 @@ class Expression (list, StructMixIn):
 
 class Link (str, StructMixIn):
 
+    ALWAYS_INFIX = {'if', 'else', 'unless', 'or', 'and', 'in', 'is'}
+
     @property
     def infix(self):
 
-        return not self.isidentifier() or self in {'if', 'else', 'unless', 'or', 'and'}
+        return not self.isidentifier() or self in self.ALWAYS_INFIX
 
 
 class Constant (StructMixIn):

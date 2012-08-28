@@ -21,8 +21,8 @@ builtins.(==) = reduce: operator.eq
 builtins.(!=) = reduce: operator.ne
 builtins.(>)  = reduce: operator.gt
 builtins.(>=) = reduce: operator.ge
-builtins.is   = reduce: operator.is_
-builtins.in   = reduce: (a, b) -> (operator.contains: b a)
+builtins.(is) = reduce: operator.is_
+builtins.(in) = reduce: (a, b) -> (operator.contains: b a)
 
 builtins.not  = reduce: operator.not_
 builtins.(~)  = reduce: operator.invert
