@@ -36,9 +36,9 @@ varary_cmp = (operator, self, a, *bs, chained: False) ->
 
   a_is_cmpop = a :: parse.tree.Expression and not: a.closed and
     e, *ex = a
-    e :: parse.tree.Link and e `in` compile.r.builtins and
+    e :: parse.tree.Link and e in compile.r.builtins and
       f = compile.r.builtins !! e
-      f :: (~:) and f.func `is` varary_cmp
+      f :: (~:) and f.func is varary_cmp
 
   # If `a` is not a comparison (or is closed), simply load it.
   self.load: a unless a_is_cmpop

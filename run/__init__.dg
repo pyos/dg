@@ -27,7 +27,7 @@ dg = (fd, name: '__main__') ->
         sys.excepthook: (type: e) e e.__traceback__.tb_next
         exit: 1
 
-    fd `is` sys.stdin =
+    fd is sys.stdin =
       # Run PYTHONSTARTUP first.
       st = os.environ.get: 'PYTHONSTARTUP' ''
       eval: (builtins.compile: ((open: st).read:) st 'exec') environ if st
@@ -44,7 +44,7 @@ dg = (fd, name: '__main__') ->
       while: (not: code) $
         buf += input: (sys.ps2 if buf else sys.ps1)
         tree = parser.compile_command: buf
-        code = compiler.compile: tree unless tree `is` None
+        code = compiler.compile: tree unless tree is None
         buf += '\n'
 
       sys.displayhook $ eval: code environ

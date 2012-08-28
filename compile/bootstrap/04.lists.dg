@@ -5,8 +5,8 @@
 
 list_s  = x ->
   q = parse.syntax.ST_TUPLE: x None unless x.closed else q = None
-  q = parse.syntax.ST_BREAK: x if q `is` None
-  list: if x :: parse.tree.Constant and x.value `is` None else q
+  q = parse.syntax.ST_BREAK: x if q is None
+  list: if x :: parse.tree.Constant and x.value is None else q
 
 
 compile.r.builtins !! '[]' = (self, x) ->
