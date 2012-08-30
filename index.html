@@ -203,12 +203,6 @@ print<span class="op">:</span>
 <span class="com"># If you do have some arguments to pass, though, there's also a Haskell-ish notation.</span>
 print <span class="str">'Hello, uh...Haskell?'</span> <span class="op">$</span> <span class="str">'No, totally not {}'</span><span class="op">.</span>format <span class="str">'Haskell.'</span>
 
-<span class="com"># Due to the nature of Python, you can't partially apply functions that way.</span>
-<span class="com"># Good thing the ~: operator can help you with that.</span>
-<span class="com"># (`~:` means `functools.partial`, by the way. It's just an alias.)</span>
-greet <span class="op">=</span> print <span class="op">~:</span> <span class="str">'Hello,'</span>
-greet<span class="op">:</span> <span class="str">'World'</span>
-
 <span class="com"># Our good friends *starred **arguments are still with us.</span>
 <span class="com"># As always, * means "the rest of positional arguments" and ** is "the rest of keyword arguments."</span>
 a <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span>
@@ -309,13 +303,6 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
 <span class="com"># Don't consider that a very good practice, though.</span>
 <span class="par">(</span><span class="op">$%^&*/|\@!+-:.?</span><span class="par">)</span> <span class="op">=</span> print
 <span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op"</span>$%^&*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2 3"</span>
-
-<span class="com"># Note that all runtime operators accept keyword arguments.</span>
-<span class="com"># Be careful with the use of colons.</span>
-<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span>  sep<span class="op">:</span> <span class="str">'\n'</span>   <span class="com"># ($%^&*/|\@!+-:.?): 1  sep: '\n'</span>
-<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="par">(</span>sep<span class="op">:</span> <span class="str">'\n'</span><span class="par">)</span>  <span class="com"># ($%^&*/|\@!+-:.?): 1 (sep: '\n')</span>
-<span class="typ">1</span> <span class="op">+</span>  sep<span class="op">:</span> <span class="str">'\n'</span>   <span class="com"># (+): 1 (sep: '\n')</span>
-<span class="typ">1</span> <span class="op">+</span> <span class="par">(</span>sep<span class="op">:</span> <span class="str">'\n'</span><span class="par">)</span>  <span class="com"># (+): 1 (sep: '\n')</span>
 </pre>
           </div>
 
@@ -425,11 +412,6 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
               <td><code>-></code></td>
               <td>Function constructor</td>
               <td class="no">No</td>
-            </tr>
-            <tr>
-              <td><code>~:</code></td>
-              <td>Alias for <code>functools.partial</code></td>
-              <td class="yes">Yes</td>
             </tr>
             <tr>
               <td><code>..</code></td>
@@ -620,9 +602,14 @@ bob<span class="op">.</span>eat<span class="op">:</span>
           <h2>Miscellaneous</h2>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
-<span class="com"># No matter what BDFL says, `reduce` is pretty useful.</span>
-<span class="com"># So it's back as `foldl`:</span>
+<span class="com"># Since dg is clearly more oriented towards functional programming,</span>
+<span class="com"># some of the combinators were moved to the built-in namespace.</span>
+<span class="com"># `foldl` is `functools.reduce`:</span>
 <span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-></span> <span class="blt">foldl</span><span class="op">:</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> xs <span class="typ">0</span>
+
+<span class="com"># And `bind` is `functools.partial`:</span>
+greet <span class="op">=</span> <span class="blt">bind</span><span class="op">:</span> print <span class="str">'Hello'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
+greet<span class="op">:</span> <span class="str">'World'</span>
 </pre>
           </div>
         </div>
