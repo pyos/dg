@@ -31,7 +31,7 @@ compile.r.builtins !! 'while' = (self, cond, block) ->
 # Alias for `bind: for object`.
 #
 compile.r.fake_attrs !! 'for' = self ->
-  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ '~:'
+  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'bind'
   self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'for'
   self.opcode: 'CALL_FUNCTION' arg: 2 delta: -2
 
