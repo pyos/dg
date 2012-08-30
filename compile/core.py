@@ -182,11 +182,6 @@ class Compiler:
     #     the first argument is discarded;
     #   if n, do the same thing as for 0, but also increase the argument by n.
     #
-    # Note that this method borrows from Smalltalk in that it can also
-    # call fake (i.e. not existing at runtime) methods to fake some behavior
-    # Python developers decided to implement as syntactic constructs.
-    # These methods, however, are not first-class.
-    #
     def call(self, *argv, preloaded=None):
 
         f, *args = syntax.call_pre(argv)
