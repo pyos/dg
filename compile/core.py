@@ -190,15 +190,16 @@ class Compiler:
 
             return self.builtins[f](self, *args)
 
-        posargs, kwargs, vararg, varkwarg = syntax.call_args(args)
+        infix = isinstance(f, tree.Link) and f.infix
+        args, kwargs, vararg, varkwarg = (args, {}, (), ()) if infix else syntax.call_args(args)
         preloaded is None and self.load(f)
-        self.load(*posargs, **kwargs)
+        self.load(*args, **kwargs)
 
         self.opcode(
             'CALL_FUNCTION' + '_VAR' * len(vararg) + '_KW' * len(varkwarg),
             *vararg + varkwarg,
-            arg  = len(posargs) + 256 * len(kwargs) + (preloaded or 0),
-            delta=-len(posargs) -   2 * len(kwargs) - (preloaded or 0)
+            arg  = len(args) + 256 * len(kwargs) + (preloaded or 0),
+            delta=-len(args) -   2 * len(kwargs) - (preloaded or 0)
         )
 
     #
