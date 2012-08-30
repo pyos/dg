@@ -49,33 +49,33 @@ compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant: None)) ->
   # ...or join the argument lists.
   self.call: (*): (a + (list: (b,))) if is_call
 
-compile.r.builtins !! '!!'  = varary ~: 'BINARY_SUBSCR'
-compile.r.builtins !! '+'   = varary ~: 'BINARY_ADD'      ~: single: 'UNARY_POSITIVE'
-compile.r.builtins !! '-'   = varary ~: 'BINARY_SUBTRACT' ~: single: 'UNARY_NEGATIVE'
-compile.r.builtins !! '*'   = varary ~: 'BINARY_MULTIPLY'
-compile.r.builtins !! '**'  = varary_r ~: 'BINARY_POWER'
-compile.r.builtins !! '/'   = varary ~: 'BINARY_TRUE_DIVIDE'
-compile.r.builtins !! '//'  = varary ~: 'BINARY_FLOOR_DIVIDE'
-compile.r.builtins !! '%'   = varary ~: 'BINARY_MODULO'
-compile.r.builtins !! '&'   = varary ~: 'BINARY_AND'
-compile.r.builtins !! '^'   = varary ~: 'BINARY_XOR'
-compile.r.builtins !! '|'   = varary ~: 'BINARY_OR'
-compile.r.builtins !! '<<'  = varary ~: 'BINARY_LSHIFT'
-compile.r.builtins !! '>>'  = varary ~: 'BINARY_RSHIFT'
+compile.r.builtins !! '!!'  = bind: varary 'BINARY_SUBSCR'
+compile.r.builtins !! '+'   = bind: varary 'BINARY_ADD'      single: 'UNARY_POSITIVE'
+compile.r.builtins !! '-'   = bind: varary 'BINARY_SUBTRACT' single: 'UNARY_NEGATIVE'
+compile.r.builtins !! '*'   = bind: varary 'BINARY_MULTIPLY'
+compile.r.builtins !! '**'  = bind: varary_r 'BINARY_POWER'
+compile.r.builtins !! '/'   = bind: varary 'BINARY_TRUE_DIVIDE'
+compile.r.builtins !! '//'  = bind: varary 'BINARY_FLOOR_DIVIDE'
+compile.r.builtins !! '%'   = bind: varary 'BINARY_MODULO'
+compile.r.builtins !! '&'   = bind: varary 'BINARY_AND'
+compile.r.builtins !! '^'   = bind: varary 'BINARY_XOR'
+compile.r.builtins !! '|'   = bind: varary 'BINARY_OR'
+compile.r.builtins !! '<<'  = bind: varary 'BINARY_LSHIFT'
+compile.r.builtins !! '>>'  = bind: varary 'BINARY_RSHIFT'
 
-compile.r.builtins !! '!!=' = varary ~: 'BINARY_SUBSCR'        ~: inplace: True
-compile.r.builtins !! '+='  = varary ~: 'INPLACE_ADD'          ~: inplace: True
-compile.r.builtins !! '-='  = varary ~: 'INPLACE_SUBTRACT'     ~: inplace: True
-compile.r.builtins !! '*='  = varary ~: 'INPLACE_MULTIPLY'     ~: inplace: True
-compile.r.builtins !! '**=' = varary_r ~: 'INPLACE_POWER'        ~: inplace: True
-compile.r.builtins !! '/='  = varary ~: 'INPLACE_TRUE_DIVIDE'  ~: inplace: True
-compile.r.builtins !! '//=' = varary ~: 'INPLACE_FLOOR_DIVIDE' ~: inplace: True
-compile.r.builtins !! '%='  = varary ~: 'INPLACE_MODULO'       ~: inplace: True
-compile.r.builtins !! '&='  = varary ~: 'INPLACE_AND'          ~: inplace: True
-compile.r.builtins !! '^='  = varary ~: 'INPLACE_XOR'          ~: inplace: True
-compile.r.builtins !! '|='  = varary ~: 'INPLACE_OR'           ~: inplace: True
-compile.r.builtins !! '<<=' = varary ~: 'INPLACE_LSHIFT'       ~: inplace: True
-compile.r.builtins !! '>>=' = varary ~: 'INPLACE_RSHIFT'       ~: inplace: True
+compile.r.builtins !! '!!=' = bind: varary 'BINARY_SUBSCR'        inplace: True
+compile.r.builtins !! '+='  = bind: varary 'INPLACE_ADD'          inplace: True
+compile.r.builtins !! '-='  = bind: varary 'INPLACE_SUBTRACT'     inplace: True
+compile.r.builtins !! '*='  = bind: varary 'INPLACE_MULTIPLY'     inplace: True
+compile.r.builtins !! '**=' = bind: varary_r 'INPLACE_POWER'      inplace: True
+compile.r.builtins !! '/='  = bind: varary 'INPLACE_TRUE_DIVIDE'  inplace: True
+compile.r.builtins !! '//=' = bind: varary 'INPLACE_FLOOR_DIVIDE' inplace: True
+compile.r.builtins !! '%='  = bind: varary 'INPLACE_MODULO'       inplace: True
+compile.r.builtins !! '&='  = bind: varary 'INPLACE_AND'          inplace: True
+compile.r.builtins !! '^='  = bind: varary 'INPLACE_XOR'          inplace: True
+compile.r.builtins !! '|='  = bind: varary 'INPLACE_OR'           inplace: True
+compile.r.builtins !! '<<=' = bind: varary 'INPLACE_LSHIFT'       inplace: True
+compile.r.builtins !! '>>=' = bind: varary 'INPLACE_RSHIFT'       inplace: True
 
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a b delta: 1
 compile.r.builtins !! '.~'  = (self, a, b) ->

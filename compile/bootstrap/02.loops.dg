@@ -28,7 +28,7 @@ compile.r.builtins !! 'while' = (self, cond, block) ->
 #
 # object.for
 #
-# Alias for `for ~: object`.
+# Alias for `bind: for object`.
 #
 compile.r.fake_attrs !! 'for' = self ->
   self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ '~:'

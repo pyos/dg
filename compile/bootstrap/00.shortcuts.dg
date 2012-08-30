@@ -42,10 +42,10 @@ builtins.(<<) = reduce: operator.lshift
 builtins.(>>) = reduce: operator.rshift
 
 builtins.import = importlib.import_module
+builtins.bind   = functools.partial
 builtins.foldl  = functools.reduce
 # FIXME should also define foldr (and scanl (and scanr, lol.))
 # Not-actually-operators.
-builtins.(~:)   = functools.partial
 builtins.(...)  = Ellipsis
 builtins.(..)   = range
 builtins.(::)   = (a, *xs) -> a `isinstance` xs
