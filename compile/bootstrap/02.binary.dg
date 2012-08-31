@@ -85,7 +85,6 @@ compile.r.builtins !! '.~'  = (self, a, b) ->
 compile.r.builtins !! ':.'  = (self, a, *bs) ->
   self.load: a
   list $ map: b -> (
-    parse.syntax.error: const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
     self.call: None preloaded: 0
-    self.opcode: 'LOAD_ATTR' arg: b delta: 0
+    self.ldattr: b
   ) bs

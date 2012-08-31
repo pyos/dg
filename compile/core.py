@@ -168,6 +168,17 @@ class Compiler:
             delta=1 - len(defaults) -   2 * len(kwdefaults) - bool(code.co_freevars)
         )
 
+    # Load an attribute given its name.
+    #
+    # Default behavior is to use LOAD_ATTR(name).
+    # Built-in functions may override that.
+    #
+    def ldattr(self, name):
+
+        isinstance(name, tree.Link) or syntax.error(const.ERR.NONCONST_ATTR, name)
+        self.fake_attrs[name](self) if name in self.fake_attrs else \
+        self.opcode('LOAD_ATTR', arg=name, delta=0)
+
   ### ESSENTIAL BUILT-INS
 
     #
@@ -246,12 +257,7 @@ class Compiler:
     def getattr(self, a, *bs):
 
         self.load(a)
-
-        for b in bs:
-
-            isinstance(b, tree.Link) or syntax.error(const.ERR.NONCONST_ATTR, b)
-            self.fake_attrs[b](self) if b in self.fake_attrs else \
-            self.opcode('LOAD_ATTR', arg=b, delta=0)
+        list(map(self.ldattr, bs))
 
     #
     # expression_1 (insert line break here) expression_2
