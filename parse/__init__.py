@@ -76,7 +76,7 @@ def infixl(stream, op):  # (this isn't a token, this is a helper)
 
         # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
         # `a R (Q b)` otherwise.
-        rhsless = rhsbound = not stream.has_priority(rhs, op)
+        rhsless = rhsbound = stream.has_priority(op, rhs)
 
     # Chaining a single expression doesn't make sense.
     if not rhsless or op not in ('\n', ''):
