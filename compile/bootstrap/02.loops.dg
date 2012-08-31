@@ -41,7 +41,7 @@ compile.r.fake_attrs !! 'for' = self ->
 #
 # Fetch items from an iterable until it's exhausted.
 #
-builtins.exhaust = iterable -> collections.deque: iterable maxlen: 0
+builtins.exhaust = bind: collections.deque maxlen: 0
 
 #
 # for: iterable function
