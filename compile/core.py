@@ -201,7 +201,7 @@ class Compiler:
 
             return self.builtins[f](self, *args)
 
-        infix = isinstance(f, tree.Link) and f.infix
+        infix = isinstance(f, tree.Link) and f.infix and not f.closed
         args, kwargs, vararg, varkwarg = (args, {}, (), ()) if infix else syntax.call_args(args)
         preloaded is None and self.load(f)
         self.load(*args, **kwargs)
