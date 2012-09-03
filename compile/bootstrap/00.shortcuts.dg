@@ -5,7 +5,7 @@ itertools = import:
 importlib = import:
 
 # Choose a function based on the number of arguments.
-varary = (*fs) -> (*xs) -> (fs !! ((len: xs) > 1)): (*): xs
+varary = (*fs) -> (*xs) -> (fs !! (len: xs > 1)): (*): xs
 
 # Reduce a varary left-fixed operator to a binary one.
 reduce = f -> (a, *xs) -> foldl: f xs a
