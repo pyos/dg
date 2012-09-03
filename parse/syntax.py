@@ -14,7 +14,7 @@ ST_ARG_VAR      = MATCH_A(tree.Expression((tree.Link(''), tree.Link('*'),  ANY))
 ST_ARG_VAR_KW   = MATCH_A(tree.Expression((tree.Link(''), tree.Link('**'), ANY)))
 ST_ARG_VAR_C    = MATCH_Q(tree.Link('*'))
 ST_ARG_VAR_KW_C = MATCH_Q(tree.Link('**'))
-ST_IMPORT       = MATCH_Q(tree.Expression((tree.Link(':'), tree.Link('import'))))
+ST_IMPORT       = MATCH_Q(tree.Expression((tree.Link(''), tree.Link('new'), tree.Link('import'))))
 ST_IMPORT_SEP   = UNCURRY(tree.Link('.'))
 ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''), ANY, ANY)))
 ST_ASSIGN       = MATCH_A(tree.Expression((tree.Link('='), ANY, ANY)))
@@ -155,21 +155,6 @@ def function(args):
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs
 
 
-# call_pre::
-#
-#   expression: expression
-#   expression('', expression, expression *)
-#   expression('', expression: expression, expression *)
-#
-def call_pre(argv):
-
-    # `a: b c`:: one function call
-    # `(a: b) c`:: two function calls
-    f, *args = argv
-    argx = [f] if f is None or f.closed else ST_ARG_KW(f)
-    return argx + args
-
-
 # call_args::
 #
 #   any *
@@ -193,10 +178,8 @@ def call_args(args):
 
         kw = ST_ARG_KW(arg, ())
 
-        if not kw or arg.closed:
+        if not kw:
 
-            # `a: b`:: keyword argument
-            # `(a: b)`:: function call
             posargs.append(arg)
 
         elif ST_ARG_VAR_C(kw[0]):

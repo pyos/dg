@@ -1,24 +1,24 @@
-..const        = import:
-..compile      = import:
-..parse.tree   = import:
-..parse.syntax = import:
+..const        = new import
+..compile      = new import
+..parse.tree   = new import
+..parse.syntax = new import
 
-ST_EXC_FINALLY = parse.syntax.MATCH_Q $ parse.tree.Link: 'True'
+ST_EXC_FINALLY = parse.syntax.MATCH_Q $ parse.tree.Link 'True'
 
 
 compile._callable = f -> (self, *args) ->
-  posargs, kwargs, vararg, varkw = parse.syntax.call_args: args
-  parse.syntax.error: const.ERR.VARARG_WITH_BUILTIN (*): (vararg or varkw) if vararg or varkw
-  f: self (*): posargs (**): kwargs
+  posargs, kwargs, vararg, varkw = parse.syntax.call_args args
+  parse.syntax.error const.ERR.VARARG_WITH_BUILTIN (*): (vararg or varkw) if vararg or varkw
+  f self (*): posargs (**): kwargs
 
 
 unsafe_s = cases ->
-  parsed = list $ map: parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK: cases
-  not_eq = map: x -> (x !! 1) $ filter: x -> (x !! 0) $ zip: parsed $ parse.syntax.ST_BREAK: cases
-  parse.syntax.error: const.ERR.INVALID_STMT_IN_SWITCH $ next: not_eq unless all: parsed
-  parse.syntax.error: const.ERR.DEFAULT cases unless parsed
+  parsed = list $ map parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK cases
+  not_eq = map x -> (x !! 1) $ filter x -> (x !! 0) $ zip parsed $ parse.syntax.ST_BREAK cases
+  parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH $ next not_eq unless all parsed
+  parse.syntax.error const.ERR.DEFAULT cases unless parsed
 
-  parsed.append: (None, None) if len: parsed < 2 or not: (ST_EXC_FINALLY $ parsed !! -1 !! 0)
+  parsed.append (None, None) if len parsed < 2 or not (ST_EXC_FINALLY $ parsed !! -1 !! 0)
   parsed
 
 
@@ -34,9 +34,9 @@ unsafe_s = cases ->
 # In CPython 3.3, `raise: exception caused_by: None` silences the context.
 #
 compile.r.builtins !! 'raise' = compile._callable $ (self, exception, caused_by: (...)) ->
-  args = (tuple: if caused_by is (...) else (caused_by,))
-  self.opcode: 'RAISE_VARARGS' exception (*): args delta: 0
-  self.load: None  # We've got to return something.
+  args = (new tuple if caused_by is (...) else (caused_by,))
+  self.opcode 'RAISE_VARARGS' exception (*): args delta: 0
+  self.load None  # We've got to return something.
 
 
 #
@@ -60,21 +60,21 @@ compile.r.builtins !! 'raise' = compile._callable $ (self, exception, caused_by:
 compile.r.builtins !! 'unsafe' = (self, cases) ->
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
-  (name, try), *cases, (has_finally, finally) = unsafe_s: cases
+  (name, try), *cases, (has_finally, finally) = unsafe_s cases
 
   # This will be our return value.
-  self.load: None
+  self.load None
 
-  to_finally = self.opcode: 'SETUP_FINALLY' delta: 0 if has_finally
-  to_except  = self.opcode: 'SETUP_EXCEPT'  delta: 0
+  to_finally = self.opcode 'SETUP_FINALLY' delta: 0 if has_finally
+  to_except  = self.opcode 'SETUP_EXCEPT'  delta: 0
   # Replace that None with the value returned by `try_`
   # to fool the POP_BLOCK instruction.
-  self.opcode: 'ROT_TWO' try delta:  1
-  self.opcode: 'POP_BLOCK'   delta: -1
+  self.opcode 'ROT_TWO' try delta:  1
+  self.opcode 'POP_BLOCK'   delta: -1
   # Er, so there was no exception, let's store None instead.
   # Since we've already POPped_BLOCK, exceptions occured
   # during this assignment won't be caught.
-  self.store: name None
+  self.store name None
 
   # Jump over that block if there was no exception.
   # Finishing SETUP_EXCEPT with an exception pushes
@@ -82,53 +82,53 @@ compile.r.builtins !! 'unsafe' = (self, cases) ->
   #
   # Stack:: [try, None] or [None, traceback, value, type]
   #
-  to_else = self.opcode: 'JUMP_FORWARD' delta: 2  # one is on the stack already
-  to_except:
-  self.opcode: 'ROT_TWO' delta: 0
-  self.store_top: name
-  self.opcode: 'ROT_TWO' delta: 0
-  to_else:
+  to_else = self.opcode 'JUMP_FORWARD' delta: 2  # one is on the stack already
+  call to_except
+  self.opcode 'ROT_TWO' delta: 0
+  self.store_top name
+  self.opcode 'ROT_TWO' delta: 0
+  call to_else
 
   # The `switch` statement.
   # XXX is that considered "code duplication"?
-  jumps = list $ map: c -> (
+  jumps = list $ map c -> (
     cond, action = c
-    next = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
-    end  = self.opcode: 'JUMP_FORWARD'    action delta: 0
-    next:
+    next = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
+    end  = self.opcode 'JUMP_FORWARD'    action delta: 0
+    call next
     end
   ) cases
 
   # This will re-raise the exception if nothing matched
   # (and there was an exception. And there is no `finally` clause.)
-  self.opcode: 'END_FINALLY' delta: -3
+  self.opcode 'END_FINALLY' delta: -3
 
   # The problem is, now we need to POP_EXCEPT, but only
   # if there was a handled exception.
 
   # First, jump over this whole part if the exception was not handled.
-  unhandled_exception = self.opcode: 'JUMP_FORWARD' delta: 0
+  unhandled_exception = self.opcode 'JUMP_FORWARD' delta: 0
 
   # Second, check if the exception type is None, in which case
   # there was no exception at all.
-  list $ map: (:) jumps
-  self.opcode: 'POP_TOP' delta: 0  # that was pushed by a handler
-  self.opcode: 'DUP_TOP' delta: 1
-  self.opcode: 'COMPARE_OP' None arg: 'is' delta: 0
+  list $ map call jumps
+  self.opcode 'POP_TOP' delta: 0  # that was pushed by a handler
+  self.opcode 'DUP_TOP' delta: 1
+  self.opcode 'COMPARE_OP' None arg: 'is' delta: 0
   # Then skip POP_EXCEPT if that is the case.
-  no_exception = self.opcode: 'POP_JUMP_IF_TRUE' delta: -1
+  no_exception = self.opcode 'POP_JUMP_IF_TRUE' delta: -1
 
-  self.opcode: 'POP_EXCEPT' delta: 0
-  unhandled_exception:
-  no_exception:
+  self.opcode 'POP_EXCEPT' delta: 0
+  call unhandled_exception
+  call no_exception
 
   has_finally and
     # If the interpreter made it here, one of the `except` clauses matched.
-    self.opcode: 'POP_BLOCK' delta: -1
-    self.load: None
+    self.opcode 'POP_BLOCK' delta: -1
+    self.load None
 
-    to_finally:
-    self.opcode: 'POP_TOP' finally delta: 0
-    self.opcode: 'END_FINALLY'     delta: 0
+    call to_finally
+    self.opcode 'POP_TOP' finally delta: 0
+    self.opcode 'END_FINALLY'     delta: 0
 
   # We should be left with a return value by now.

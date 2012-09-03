@@ -1,16 +1,16 @@
-..compile      = import:
-..parse.tree   = import:
-..parse.syntax = import:
+..compile      = new import
+..parse.tree   = new import
+..parse.syntax = new import
 
 
 list_s  = x ->
-  q = parse.syntax.ST_TUPLE: x None unless x.closed else q = None
-  q = parse.syntax.ST_BREAK: x if q is None
+  q = parse.syntax.ST_TUPLE x None unless x.closed else q = None
+  q = parse.syntax.ST_BREAK x if q is None
   list: if x :: parse.tree.Constant and x.value is None else q
 
 
 compile.r.builtins !! '[]' = (self, x) ->
-  self.opcode: 'BUILD_LIST' (*): (list_s: x) delta: 1
+  self.opcode 'BUILD_LIST' (*): (list_s x) delta: 1
 
 
 compile.r.builtins !! '{}' = (self, x) ->
@@ -20,4 +20,4 @@ compile.r.builtins !! '{}' = (self, x) ->
   # as expected.
   # (Another option is to use a different kind of parentheses.)
   # (Or some kind of flags.)
-  self.opcode: 'BUILD_SET' (*): (list_s: x) delta: 1
+  self.opcode 'BUILD_SET' (*): (list_s x) delta: 1

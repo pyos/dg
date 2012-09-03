@@ -1,60 +1,60 @@
-imp            = import:
-sys            = import:
-marshal        = import:
-os.path        = import:
-itertools      = import:
-importlib.util = import:
+imp            = new import
+sys            = new import
+marshal        = new import
+os.path        = new import
+itertools      = new import
+importlib.util = new import
 
 
-..parse   = import:
-..compile = import:
+..parse   = new import
+..compile = new import
 
 
 getmtime = fn ->
-  (os.stat: fn).st_mtime if os.path.exists: fn else float: '-inf'
+  (os.stat fn).st_mtime if os.path.exists fn else float '-inf'
 
 
-sys.meta_path.insert: 0 $ inherit: str $
+sys.meta_path.insert 0 $ inherit str $
 
   find_module = classmethod $ (cls, mod, path: None) ->
     # Empty path in `sys.path` is the current directory.
-    path = map: p -> (p or os.curdir) sys.path if path `is` None
+    path = map p -> (p or os.curdir) sys.path if path `is` None
 
     # Search for
-    mods = itertools.chain.from_iterable $ map: p -> (
+    mods = itertools.chain.from_iterable $ map p -> (
       # directory `module`
-      a = os.path.join: p $ mod.rsplit: '.' 1 !! -1
-      yield: a if os.path.isdir: a
+      a = os.path.join p $ mod.rsplit '.' 1 !! -1
+      yield a if os.path.isdir a
       # or file `module.dg`
       b = a + os.extsep + 'dg'
-      yield: b if os.path.isfile: b
+      yield b if os.path.isfile b
       None
     # in any of the available paths.
-    ) $ filter: os.path.isdir path
+    ) $ filter os.path.isdir path
 
     unsafe $
       e =
-        p = os.path.abspath $ next: mods
-        cls: (os.path.join: p '__init__.dg' if os.path.isdir: p else p)
+        p = os.path.abspath $ next mods
+        cls (os.path.join p '__init__.dg' if os.path.isdir p else p)
       e :: StopIteration = None
 
   is_package = (self, name) ->
-    name.rsplit: '.' 1 !! -1 != (os.path.splitext $ os.path.basename: self) !! 0
+    name.rsplit '.' 1 !! -1 != (os.path.splitext $ os.path.basename self) !! 0
 
   get_code = (self, name) ->
-    cache = imp.cache_from_source: self
+    cache = imp.cache_from_source self
     code  = unsafe $
-      _ = (marshal.load $ open: cache 'rb' if getmtime: self <= getmtime: cache)
+      _ = (marshal.load $ open cache 'rb' if getmtime self <= getmtime cache)
       _ = None
 
-    not: code and os.path.exists: self and
+    not code and os.path.exists self and
       # Attempt to recompile the source code.
       # FIXME should do that when dg or Python version changes.
       code = compile.r:.compile $
-        parse.r:.parse: filename: (str: self) $ (open: self).read:
+        parse.r:.parse filename: (str self) $ (open self).read -1
 
-      os.makedirs: exist_ok: True $ os.path.dirname: cache
-      marshal.dump: code $ open: cache 'wb'
+      os.makedirs exist_ok: True $ os.path.dirname cache
+      marshal.dump code $ open cache 'wb'
 
     # Not having a code completely is not an error;
     # that means a package did not have the __init__ submodule.
@@ -62,13 +62,13 @@ sys.meta_path.insert: 0 $ inherit: str $
     code
 
   load_module = importlib.util.module_for_loader $ (self, module) ->
-    init = (module.__name__.rpartition: '.' !! 0) or None
-    code = self.get_code: module.__name__
+    init = (module.__name__.rpartition '.' !! 0) or None
+    code = self.get_code module.__name__
 
     module.__file__    = self
-    module.__path__    = [os.path.dirname: self] if self.is_package: module.__name__
+    module.__path__    = [os.path.dirname self] if self.is_package module.__name__
     module.__loader__  = self
-    module.__package__ = (module.__name__ if self.is_package: module.__name__ else init)
+    module.__package__ = (module.__name__ if self.is_package module.__name__ else init)
 
-    eval: code module.__dict__ if code
+    eval code module.__dict__ if code
     module

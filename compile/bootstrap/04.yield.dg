@@ -1,10 +1,10 @@
-..compile = import:
+..compile = new import
 
 
 compile.r.builtins !! 'yield'  = compile._callable $ (self, item: None, from: None) ->
   switch $
     from is None =
-      self.opcode: 'YIELD_VALUE' item delta: 1
+      self.opcode 'YIELD_VALUE' item delta: 1
     True =
-      self.opcode: 'GET_ITER'    from delta: 1
-      self.opcode: 'YIELD_FROM'  item delta: 0
+      self.opcode 'GET_ITER'    from delta: 1
+      self.opcode 'YIELD_FROM'  item delta: 0
