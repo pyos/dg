@@ -16,15 +16,15 @@ compile.r.builtins !! 'with' = (self, code) ->
 
   '''
 
-  context, *stuff = parse.syntax.ST_BREAK: code
-  self.load: None
-  end_ptr = self.opcode: 'SETUP_WITH' context delta: 2
-  self.opcode: 'POP_TOP'   delta: -1  # FIXME should store that somewhere.
-  self.call: (parse.tree.Link: '\n') (*): stuff
-  self.opcode: 'ROT_THREE' delta:  0
-  self.opcode: 'ROT_TWO'   delta:  0
-  self.opcode: 'POP_BLOCK' delta: -1
-  self.load: None
-  end_ptr:
-  self.opcode: 'WITH_CLEANUP' delta: 1
-  self.opcode: 'END_FINALLY' delta: -3
+  context, *stuff = parse.syntax.ST_BREAK code
+  self.load None
+  end_ptr = self.opcode 'SETUP_WITH' context delta: 2
+  self.opcode 'POP_TOP'   delta: -1  # FIXME should store that somewhere.
+  self.call (parse.tree.Link '\n') (*): stuff
+  self.opcode 'ROT_THREE' delta:  0
+  self.opcode 'ROT_TWO'   delta:  0
+  self.opcode 'POP_BLOCK' delta: -1
+  self.load None
+  call end_ptr
+  self.opcode 'WITH_CLEANUP' delta: 1
+  self.opcode 'END_FINALLY' delta: -3

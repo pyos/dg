@@ -13,26 +13,26 @@ compile.r.builtins !! 'inherit' = (self, *stuff) ->
   *args, body = stuff
 
   # __build_class__ will also need a `dict -> cell` function.
-  code = codegen.MutableCode: True args: ('__locals__',) cell: self.code
+  code = codegen.MutableCode True args: ('__locals__',) cell: self.code
   code.cellvars !! '__class__'
   code.varnames !! '__class__'
   # The argument, __locals__, is what we need to write attributes to.
-  code.append: 'LOAD_FAST'  '__locals__' delta:  1
-  code.append: 'STORE_LOCALS'            delta: -1
-  code.append: 'LOAD_NAME'  '__name__'   delta:  1
-  code.append: 'STORE_NAME' '__module__' delta: -1
+  code.append 'LOAD_FAST'  '__locals__' delta:  1
+  code.append 'STORE_LOCALS'            delta: -1
+  code.append 'LOAD_NAME'  '__name__'   delta:  1
+  code.append 'STORE_NAME' '__module__' delta: -1
   code.cellhook = code -> code.freevars !! '__class__'
 
-  self.compile: body into: code name: '<class>'
+  self.compile body into: code name: '<class>'
   # The return value is a __class__ cell, if any.
   # Python compiler returns None instead if there are no instance methods.
   # That's not really necessary, though.
-  code.bytecode.pop:
-  code.append: 'POP_TOP'  # Replacing RETURN_VALUE with POP_TOP yields delta 0
-  code.append: 'LOAD_CLOSURE' '__class__' delta:  1
-  code.append: 'RETURN_VALUE'             delta: -1
-  code = code.compile:
+  call code.bytecode.pop
+  code.append 'POP_TOP'  # Replacing RETURN_VALUE with POP_TOP yields delta 0
+  code.append 'LOAD_CLOSURE' '__class__' delta:  1
+  code.append 'RETURN_VALUE'             delta: -1
+  code = call code.compile
 
-  self.opcode: 'LOAD_BUILD_CLASS' delta: 1
-  self.make_function: code (tuple:) (dict:)
-  self.call: None '<class>' (*): args preloaded: 1
+  self.opcode 'LOAD_BUILD_CLASS' delta: 1
+  self.make_function code (new tuple) (new dict)
+  self.call None '<class>' (*): args preloaded: 1

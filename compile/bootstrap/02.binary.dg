@@ -26,67 +26,67 @@
 #    4 STORE  a
 #
 varary = (multiple, self, a, *bs, inplace: False, single: None) ->
-  self.load: a
-  list: (map: b -> (self.opcode: multiple b delta: 0) bs)
-  self.opcode: single delta: 0 unless bs or not: single
-  self.store_top: a if inplace
+  self.load a
+  list (map b -> (self.opcode multiple b delta: 0) bs)
+  self.opcode single delta: 0 unless bs or not: single
+  self.store_top a if inplace
 
 
 varary_r = (multiple, self, a, *bs, inplace: False) ->
-  self.load: a (*): bs
-  list: (map: _ -> (self.opcode: multiple delta: -1) bs)
-  self.store_top: a if inplace
+  self.load a (*): bs
+  list (map _ -> (self.opcode multiple delta: -1) bs)
+  self.store_top a if inplace
 
 
-compile.r.builtins !! ',' = (self, *xs) -> self.opcode: 'BUILD_TUPLE' (*): xs delta: 1
-compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant: None)) ->
+compile.r.builtins !! ',' = (self, *xs) -> self.opcode 'BUILD_TUPLE' (*): xs delta: 1
+compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant None)) ->
   # Close `b` and delegate to `call`.
   b.closed = True
-  b.reparse_location = a.reparse_location unless hasattr: b 'reparse_location'
-  is_call  = a :: parse.tree.Expression and not: a.closed and self.builtins.get (a !! 0) is compile.r.call
+  b.reparse_location = a.reparse_location unless hasattr b 'reparse_location'
+  is_call  = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
   # Now we can either call the result of `a` with `b`...
-  self.call: a b unless is_call
+  self.call a b unless is_call
   # ...or join the argument lists.
-  self.call: (*): (a + (list: (b,))) if is_call
+  self.call (*): (a + list (b,)) if is_call
 
-compile.r.builtins !! '!!'  = bind: varary 'BINARY_SUBSCR'
-compile.r.builtins !! '+'   = bind: varary 'BINARY_ADD'      single: 'UNARY_POSITIVE'
-compile.r.builtins !! '-'   = bind: varary 'BINARY_SUBTRACT' single: 'UNARY_NEGATIVE'
-compile.r.builtins !! '*'   = bind: varary 'BINARY_MULTIPLY'
-compile.r.builtins !! '**'  = bind: varary_r 'BINARY_POWER'
-compile.r.builtins !! '/'   = bind: varary 'BINARY_TRUE_DIVIDE'
-compile.r.builtins !! '//'  = bind: varary 'BINARY_FLOOR_DIVIDE'
-compile.r.builtins !! '%'   = bind: varary 'BINARY_MODULO'
-compile.r.builtins !! '&'   = bind: varary 'BINARY_AND'
-compile.r.builtins !! '^'   = bind: varary 'BINARY_XOR'
-compile.r.builtins !! '|'   = bind: varary 'BINARY_OR'
-compile.r.builtins !! '<<'  = bind: varary 'BINARY_LSHIFT'
-compile.r.builtins !! '>>'  = bind: varary 'BINARY_RSHIFT'
+compile.r.builtins !! '!!'  = bind varary 'BINARY_SUBSCR'
+compile.r.builtins !! '+'   = bind varary 'BINARY_ADD'      single: 'UNARY_POSITIVE'
+compile.r.builtins !! '-'   = bind varary 'BINARY_SUBTRACT' single: 'UNARY_NEGATIVE'
+compile.r.builtins !! '*'   = bind varary 'BINARY_MULTIPLY'
+compile.r.builtins !! '**'  = bind varary_r 'BINARY_POWER'
+compile.r.builtins !! '/'   = bind varary 'BINARY_TRUE_DIVIDE'
+compile.r.builtins !! '//'  = bind varary 'BINARY_FLOOR_DIVIDE'
+compile.r.builtins !! '%'   = bind varary 'BINARY_MODULO'
+compile.r.builtins !! '&'   = bind varary 'BINARY_AND'
+compile.r.builtins !! '^'   = bind varary 'BINARY_XOR'
+compile.r.builtins !! '|'   = bind varary 'BINARY_OR'
+compile.r.builtins !! '<<'  = bind varary 'BINARY_LSHIFT'
+compile.r.builtins !! '>>'  = bind varary 'BINARY_RSHIFT'
 
-compile.r.builtins !! '!!=' = bind: varary 'BINARY_SUBSCR'        inplace: True
-compile.r.builtins !! '+='  = bind: varary 'INPLACE_ADD'          inplace: True
-compile.r.builtins !! '-='  = bind: varary 'INPLACE_SUBTRACT'     inplace: True
-compile.r.builtins !! '*='  = bind: varary 'INPLACE_MULTIPLY'     inplace: True
-compile.r.builtins !! '**=' = bind: varary_r 'INPLACE_POWER'      inplace: True
-compile.r.builtins !! '/='  = bind: varary 'INPLACE_TRUE_DIVIDE'  inplace: True
-compile.r.builtins !! '//=' = bind: varary 'INPLACE_FLOOR_DIVIDE' inplace: True
-compile.r.builtins !! '%='  = bind: varary 'INPLACE_MODULO'       inplace: True
-compile.r.builtins !! '&='  = bind: varary 'INPLACE_AND'          inplace: True
-compile.r.builtins !! '^='  = bind: varary 'INPLACE_XOR'          inplace: True
-compile.r.builtins !! '|='  = bind: varary 'INPLACE_OR'           inplace: True
-compile.r.builtins !! '<<=' = bind: varary 'INPLACE_LSHIFT'       inplace: True
-compile.r.builtins !! '>>=' = bind: varary 'INPLACE_RSHIFT'       inplace: True
+compile.r.builtins !! '!!=' = bind varary 'BINARY_SUBSCR'        inplace: True
+compile.r.builtins !! '+='  = bind varary 'INPLACE_ADD'          inplace: True
+compile.r.builtins !! '-='  = bind varary 'INPLACE_SUBTRACT'     inplace: True
+compile.r.builtins !! '*='  = bind varary 'INPLACE_MULTIPLY'     inplace: True
+compile.r.builtins !! '**=' = bind varary_r 'INPLACE_POWER'      inplace: True
+compile.r.builtins !! '/='  = bind varary 'INPLACE_TRUE_DIVIDE'  inplace: True
+compile.r.builtins !! '//=' = bind varary 'INPLACE_FLOOR_DIVIDE' inplace: True
+compile.r.builtins !! '%='  = bind varary 'INPLACE_MODULO'       inplace: True
+compile.r.builtins !! '&='  = bind varary 'INPLACE_AND'          inplace: True
+compile.r.builtins !! '^='  = bind varary 'INPLACE_XOR'          inplace: True
+compile.r.builtins !! '|='  = bind varary 'INPLACE_OR'           inplace: True
+compile.r.builtins !! '<<=' = bind varary 'INPLACE_LSHIFT'       inplace: True
+compile.r.builtins !! '>>=' = bind varary 'INPLACE_RSHIFT'       inplace: True
 
-compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode: 'DELETE_SUBSCR' None a b delta: 1
+compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode 'DELETE_SUBSCR' None a b delta: 1
 compile.r.builtins !! '.~'  = (self, a, b) ->
-  parse.syntax.error: const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
-  self.opcode: 'DELETE_ATTR' None a arg: b delta: 1
+  parse.syntax.error const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
+  self.opcode 'DELETE_ATTR' None a arg: b delta: 1
 
 compile.r.builtins !! ':.'  = (self, a, *bs) ->
-  self.load: a
+  self.load a
   list (
-    map: b -> (
-      self.call: None preloaded: 0
-      self.ldattr: b
+    map b -> (
+      self.call None preloaded: 0
+      self.ldattr b
     ) bs
   )

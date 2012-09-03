@@ -14,41 +14,41 @@ builtins = import:
 # :return: runs indefinitely.
 #
 dg = (fd, name: '__main__') ->
-  parser   = parse.r:
-  compiler = compile.r:
-  environ  = dict: [('__name__', name), ('__builtins__', __builtins__)]
+  parser   = new parse.r
+  compiler = new compile.r
+  environ  = dict [('__name__', name), ('__builtins__', __builtins__)]
 
   switch $
-    not $ fd.isatty: = unsafe $
+    not $ call fd.isatty = unsafe $
       e =
-        eval: (compiler.compile $ parser.parse: filename: fd.name $ fd.read:) environ
-        exit: 0
-      e and not: (e :: SystemExit) =
-        sys.excepthook: (type: e) e e.__traceback__.tb_next
-        exit: 1
+        eval (compiler.compile $ parser.parse filename: fd.name $ fd.read -1) environ
+        exit 0
+      e and not (e :: SystemExit) =
+        sys.excepthook (type e) e e.__traceback__.tb_next
+        exit 1
 
     fd is sys.stdin =
       # Run PYTHONSTARTUP first.
-      st = os.environ.get: 'PYTHONSTARTUP' ''
-      eval: (builtins.compile: ((open: st).read:) st 'exec') environ if st
+      st = os.environ.get 'PYTHONSTARTUP' ''
+      eval (builtins.compile ((open st).read -1) st 'exec') environ if st
 
-  sys.ps1 = getattr: sys 'ps1' '>>> '
-  sys.ps2 = getattr: sys 'ps2' '... '
+  sys.ps1 = getattr sys 'ps1' '>>> '
+  sys.ps2 = getattr sys 'ps2' '... '
   sys.stdin = fd
 
-  while: True $ unsafe $
+  while True $ unsafe $
     e =
       buf  = ''
       code = None
 
-      while: (not: code) $
-        buf += input: (sys.ps2 if buf else sys.ps1)
-        tree = parser.compile_command: buf
-        code = compiler.compile: tree unless tree is None
+      while (not code) $
+        buf += input (sys.ps2 if buf else sys.ps1)
+        tree = parser.compile_command buf
+        code = compiler.compile tree unless tree is None
         buf += '\n'
 
-      sys.displayhook $ eval: code environ
-    e :: EOFError = exit:
-    e and not: (e :: SystemExit) =
+      sys.displayhook $ eval code environ
+    e :: EOFError = call exit
+    e and not (e :: SystemExit) =
       # The first line of the traceback is in this function.
-      sys.excepthook: (type: e) e e.__traceback__.tb_next
+      sys.excepthook (type e) e e.__traceback__.tb_next

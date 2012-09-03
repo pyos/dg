@@ -13,16 +13,16 @@ collections = import:
 # Evaluate the body while condition is true.
 #
 compile.r.builtins !! 'while' = (self, cond, block) ->
-  self.load: None
-  exit_ptr = self.opcode: 'SETUP_LOOP'             delta: 0
-  cond_ptr = self.opcode: 'JUMP_ABSOLUTE'  arg: -1 delta: 0
-  else_ptr = self.opcode: 'POP_JUMP_IF_FALSE' cond delta: 0
-  self.opcode: 'ROT_TWO' block delta:  1
-  self.opcode: 'POP_TOP'       delta: -1
-  cond_ptr:
-  else_ptr:
-  self.opcode: 'POP_BLOCK' delta: 0
-  exit_ptr:
+  self.load None
+  exit_ptr = self.opcode 'SETUP_LOOP'             delta: 0
+  cond_ptr = self.opcode 'JUMP_ABSOLUTE'  arg: -1 delta: 0
+  else_ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
+  self.opcode 'ROT_TWO' block delta:  1
+  self.opcode 'POP_TOP'       delta: -1
+  call cond_ptr
+  call else_ptr
+  self.opcode 'POP_BLOCK' delta: 0
+  call exit_ptr
 
 
 #
@@ -31,9 +31,9 @@ compile.r.builtins !! 'while' = (self, cond, block) ->
 # Alias for `bind: for object`.
 #
 compile.r.fake_attrs !! 'for' = self ->
-  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'bind'
-  self.opcode: 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'for'
-  self.opcode: 'CALL_FUNCTION' arg: 2 delta: -2
+  self.opcode 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'bind'
+  self.opcode 'ROT_TWO' delta: 1 $ parse.tree.Link $ 'for'
+  self.opcode 'CALL_FUNCTION' arg: 2 delta: -2
 
 
 #
@@ -41,7 +41,7 @@ compile.r.fake_attrs !! 'for' = self ->
 #
 # Fetch items from an iterable until it's exhausted.
 #
-builtins.exhaust = bind: collections.deque maxlen: 0
+builtins.exhaust = bind collections.deque maxlen: 0
 
 #
 # for: iterable function
@@ -50,5 +50,5 @@ builtins.exhaust = bind: collections.deque maxlen: 0
 # then return the unmodified iterable.
 #
 builtins.for = (iterable, function) ->
-  exhaust $ map: function iterable
+  exhaust $ map function iterable
   iterable
