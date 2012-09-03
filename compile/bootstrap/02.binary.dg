@@ -43,7 +43,7 @@ compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant None)) ->
   # Close `b` and delegate to `call`.
   b.closed = True
   b.reparse_location = a.reparse_location unless hasattr b 'reparse_location'
-  is_call  = a :: parse.tree.Expression and not a.closed and self.builtins !! (a !! 0) is compile.r.call
+  is_call  = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
   # Now we can either call the result of `a` with `b`...
   self.call a b unless is_call
   # ...or join the argument lists.
