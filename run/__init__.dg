@@ -23,7 +23,7 @@ dg = (fd, name: '__main__') ->
       e =
         eval (compiler.compile $ parser.parse filename: fd.name $ fd.read -1) environ
         exit 0
-      e and not: (e :: SystemExit) =
+      e and not (e :: SystemExit) =
         sys.excepthook (type e) e e.__traceback__.tb_next
         exit 1
 
