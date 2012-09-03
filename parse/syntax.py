@@ -83,7 +83,7 @@ def assignment_target(var):
 
     if var_a:
 
-        isinstance(attr, tree.Link) or error(const.ERR.NONCONST_ATTR, attr[1])
+        isinstance(attr, tree.Link) or error(const.ERR.NONCONST_ATTR, attr)
         return const.AT.ATTR, attr, var_a
 
     if var_i:
