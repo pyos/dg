@@ -84,7 +84,9 @@ compile.r.builtins !! '.~'  = (self, a, b) ->
 
 compile.r.builtins !! ':.'  = (self, a, *bs) ->
   self.load: a
-  list $ map: b -> (
-    self.call: None preloaded: 0
-    self.ldattr: b
-  ) bs
+  list (
+    map: b -> (
+      self.call: None preloaded: 0
+      self.ldattr: b
+    ) bs
+  )
