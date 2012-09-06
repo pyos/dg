@@ -189,7 +189,7 @@ class Parser (collections.Iterator):
 
     def located(self, q):
 
-        q.reparse_location = Location(
+        q.location = Location(
             self.last_token_at,
             self.next_token_at,
             self.filename, self.line(self.pstack[-1])

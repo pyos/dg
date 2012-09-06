@@ -69,7 +69,7 @@ class MutableCode:
 
     def mark(self, e):
 
-        self.lnotab[len(self.bytecode)] = e.reparse_location.start[1]
+        self.lnotab[len(self.bytecode)] = e.location.start[1]
 
     def make_lnotab(self):
 

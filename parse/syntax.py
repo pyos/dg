@@ -24,7 +24,7 @@ ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'))
 
 def error(description, at):
 
-    (_, line, char), _, filename, text = at.reparse_location
+    (_, line, char), _, filename, text = at.location
     raise SyntaxError(description, (filename, line, char, text))
 
 

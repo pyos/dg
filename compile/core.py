@@ -27,8 +27,8 @@ class Compiler:
     def compile(self, expr, into=None, name='<module>'):
 
         self.code = codegen.MutableCode(cell=self.code) if into is None else into
-        self.code.filename = expr.reparse_location.filename
-        self.code.lineno   = expr.reparse_location.start[1]
+        self.code.filename = expr.location.filename
+        self.code.lineno   = expr.location.start[1]
 
         try:
 
@@ -49,7 +49,7 @@ class Compiler:
 
         for e in es:
 
-            hasattr(e, 'reparse_location') and self.code.mark(e)
+            hasattr(e, 'location') and self.code.mark(e)
 
             if isinstance(e, tree.Expression):
 
