@@ -122,42 +122,6 @@ class Parser (collections.Iterator):
         p2 = self.INFIX_PRECEDENCE(in_relation_to)
         return p1 + (link in self.INFIX_RIGHT_FIXITY) > p2
 
-    # A compiler function for `interactive`, similar to `code.compile_command`.
-    #
-    # :param code: what to compile.
-    #
-    # :return: None if `code` is incomplete, `parse(code)` otherwise.
-    #
-    def compile_command(self, code):
-
-        try:
-
-            res = self.parse(code, '<stdin>')
-            res.closed = False  # Top-level expression is always closed.
-
-        except SyntaxError as e:
-
-            if e.args[0] in {'mismatched parentheses', 'mismatched quote'}:
-
-                # The code is incomplete by definition if there are
-                # unmatched parentheses or quotes in it.
-                return None
-
-            # Other errors are irrepairable.
-            raise
-
-        # Search for incomplete infix expressions.
-        expr = res
-        while isinstance(expr, tree.Expression) and not expr.closed and len(expr) > 2: expr = expr[-1]
-
-        return None if (
-            not code.endswith('\n')
-            and (
-                (isinstance(expr, tree.Expression) and not expr.closed)
-                or code.rsplit('\n', 1)[-1].startswith(' ')
-            )
-        ) else res
-
     def parse(self, input, filename='<string>'):
 
         self.state  = STATE_AT_FILE_START | STATE_AT_LINE_START

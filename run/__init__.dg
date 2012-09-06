@@ -7,6 +7,24 @@ builtins = import:
 ..compile = import:
 
 
+# A function similar to `code.compile_command`, but for dg.
+compile_command = (parser, compiler, code) -> unsafe $
+  e =
+    expr = res = parser.parse code '<stdin>'
+    res.closed = False  # Top-level expression is always closed.
+
+    # Search for incomplete infix expressions.
+    while (expr :: parse.tree.Expression and not expr.closed and len expr > 2) (expr !!= -1)
+
+    compiler.compile res if code.endswith '\n' or not (
+      (code.rsplit '\n' 1 !! -1).startswith ' ' or
+        expr :: parse.tree.Expression and not expr.closed
+    ) else None
+  # The code is incomplete by definition if there are
+  # unmatched parentheses or quotes in it.
+  e :: SyntaxError and e.args !! 0 in ('mismatched parentheses', 'mismatched quote') = ()
+
+
 # Start an interactive shell.
 #
 # :param name: name of the module.
@@ -43,8 +61,7 @@ dg = (fd, name: '__main__') ->
 
       while (not code) $
         buf += input (sys.ps2 if buf else sys.ps1)
-        tree = parser.compile_command buf
-        code = compiler.compile tree unless tree is None
+        code = compile_command parser compiler buf
         buf += '\n'
 
       sys.displayhook $ eval code environ
