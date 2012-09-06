@@ -9,6 +9,81 @@ SIG_CLOSURE_END    = type('SIG_CLOSURE_END', (tree.Constant, tree.Internal), {})
 STATE_AFTER_OBJECT = next(core.STATEGEN)
 
 
+# Handle an infix link.
+#
+# The right-hand statement is assumed to be unparsed yet.
+#
+def infixl(stream, op):
+
+    stream.state &= ~STATE_AFTER_OBJECT
+
+    br  = False
+    lhs = [stream.stuff]
+    rhs = next(stream)
+    rhsless = False
+    rhsbound = False
+
+    # Note that constant strings aren't equal to anything but themselves.
+    # This will only return True for a link.
+    while rhs == '\n':
+
+        br  = br or rhs
+        rhs = next(stream)
+
+    if isinstance(rhs, tree.Internal):
+
+        # `(a R)`
+        stream.repeat.appendleft(rhs)
+        rhsless = True
+
+    elif br and op != '\n' and not rhs.indented:
+
+        # `a R \n b` <=> `a R b` iff `b` is indented.
+        stream.repeat.appendleft(rhs)
+        rhs = br
+
+    if isinstance(rhs, tree.Link) and not rhs.closed and rhs.infix:
+
+        # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
+        #               `a R (Q b)` otherwise.
+        rhsless = rhsbound = stream.has_priority(op, rhs)
+
+    # Chaining a single expression doesn't make sense.
+    if not rhsless or op not in ('\n', ''):
+
+        while isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and stream.has_priority(op, lhs[-1][0]):
+
+            # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R,
+            #                 `(a R b) Q c` otherwise.
+            lhs = lhs[-1]
+
+        if isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and lhs[-1][0] == op and not rhsless:
+
+            # `a R b R c` <=> `R a b c` iff R is left-fixed.
+            lhs[-1].append(rhs)
+
+        else:
+
+            # `R`         <=> `Link R`
+            # `R rhs`     <=> `Expression [ Link '', Link R, Link rhs ]`
+            # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
+            # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
+            e = tree.Expression([op, lhs.pop()] + [rhs] * (not rhsless))
+            e.in_between(e[1], e[rhsless - 1])
+
+            if lhs:
+
+                lhs.append(e)
+
+            else:
+
+                # That was a fake expression, appending to it is futile.
+                stream.stuff = e
+
+    stream.state |= STATE_AFTER_OBJECT
+    rhsbound and infixl(stream, rhs)
+
+
 @r.token(r' *', core.STATE_AT_LINE_START)
 #
 # indent = ^ ' ' *
@@ -39,83 +114,6 @@ def indent(stream, token):
 def whitespace(stream, token):
 
     return ()
-
-
-def infixl(stream, op):  # (this isn't a token, this is a helper)
-
-    stream.state &= ~STATE_AFTER_OBJECT
-
-    br  = False
-    lhs = [stream.stuff]
-    rhs = next(stream)
-    rhsless = False
-    rhsbound = False
-
-    # Note that constant strings aren't equal to anything but themselves.
-    # This will only return True for a link.
-    while rhs == '\n':
-
-        br  = True
-        rhs = next(stream)
-
-    if isinstance(rhs, tree.Internal):
-
-        # `(a R)`
-        stream.repeat.appendleft(rhs)
-        rhsless = True
-
-    elif br and op != '\n' and not rhs.indented:
-
-        # `a R \n b` <=> `a R (\n b)` <=> `a R b` if `b` is indented,
-        #                `(a R) \n b`             otherwise.
-        stream.repeat.appendleft(rhs)
-        rhsless = rhsbound = True
-        rhs = tree.Link('\n')
-
-    elif isinstance(rhs, tree.Link) and not rhs.closed and rhs.infix:
-
-        # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
-        # `a R (Q b)` otherwise.
-        rhsless = rhsbound = stream.has_priority(op, rhs)
-
-    # Chaining a single expression doesn't make sense.
-    if not rhsless or op not in ('\n', ''):
-
-        while isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and stream.has_priority(op, lhs[-1][0]):
-
-            # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R,
-            # `(a R b) Q c` otherwise.
-            lhs = lhs[-1]
-
-        if isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and lhs[-1][0] == op and not rhsless:
-
-            # `a R b R c` <=> `Op R (Link a) (Link b) (Link c)`
-            # unless R is right-fixed.
-            lhs[-1].append(rhs)
-
-        else:
-
-            # `R`         <=> `Op R`
-            # `R rhs`     <=> `Call (Link R) (Link rhs)`
-            # `lhs R`     <=> `Op R (Link lhs)`
-            # `lhs R rhs` <=> `Op R (Link lhs) (Link rhs)`
-            e = tree.Expression([op, lhs.pop()] + [rhs] * (not rhsless))
-
-            if lhs:
-
-                lhs.append(stream.located(e))
-
-            else:
-
-                # That was a fake expression, appending to it is futile.
-                stream.stuff = stream.located(e)
-
-    stream.state |= STATE_AFTER_OBJECT
-
-    if rhsbound:
-
-      # yield from infixl(stream, rhs)
-        for _ in infixl(stream, rhs): yield _
 
 
 @r.token(r'(?i)0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
@@ -174,8 +172,7 @@ def link(stream, token):
 
     if stream.state & STATE_AFTER_OBJECT and (token.group().startswith('`') or stream.repeat[-1].infix):
 
-      # yield from infixl(stream, stream.repeat.pop())
-        for _ in infixl(stream, stream.repeat.pop()): yield _
+        infixl(stream, stream.repeat.pop())
 
 
 @r.token('[\(\[\{]')
@@ -189,7 +186,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
     stuff_backup = stream.stuff
 
     stream.state &= ~STATE_AFTER_OBJECT
-    stream.stuff = tree.Constant(None)
+    stream.stuff = tree.Constant(None).at(stream)
 
     for item in stream:
 
@@ -209,8 +206,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
             # Two objects in a row should be joined with an empty infix link.
             stream.repeat.appendleft(item)
-          # yield from infixl(stream, stream.located(tree.Link('')))
-            for _ in infixl(stream, stream.located(tree.Link(''))): yield _
+            infixl(stream, tree.Link('').before(item))
 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
@@ -221,21 +217,22 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
     # When handling literals, wrap the block into a prefix function call.
     if par in ('{', '['):
 
-        op  = stream.located(tree.Link(''))
-        lhs = stream.located(tree.Link(par + pars[par]))
-        stream.stuff = tree.Expression([op, lhs, stream.stuff])
+        stream.repeat.appendleft(stream.stuff)
+        stream.stuff = tree.Link(par + pars[par]).before(stream.stuff)
+        infixl(stream, tree.Link('').before(stream.stuff))
 
     stream.stuff.indented = indented
     stream.stuff.closed   = True
 
     # Further expressions should not touch this block.
-    indented and stream.repeat.appendleft(tree.Link('\n'))
+    indented and stream.repeat.appendleft(tree.Link('\n').at(stream))
 
-    stream.repeat.appendleft(stream.located(stream.stuff))
+    stream.repeat.appendleft(stream.stuff)
 
     stream.state &= ~STATE_AFTER_OBJECT
     stream.state |= state_backup
     stream.stuff = stuff_backup
+    return ()
 
 
 @r.token(r'', core.STATE_AT_FILE_END)

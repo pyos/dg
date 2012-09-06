@@ -10,8 +10,6 @@ STATE_AT_LINE_START = next(STATEGEN)  # `(?m)^`
 STATE_AT_FILE_START = next(STATEGEN)  # `^`
 STATE_AT_FILE_END   = next(STATEGEN)  # `$`
 
-Location = collections.namedtuple('Location', 'start, end, filename, first_line')
-
 
 class Parser (collections.Iterator):
 
@@ -187,15 +185,6 @@ class Parser (collections.Iterator):
         offset, lineno, charno = self.next_token_at if after else self.last_token_at
         raise SyntaxError(description, (self.filename, lineno, charno, self.line(offset)))
 
-    def located(self, q):
-
-        q.location = Location(
-            self.last_token_at,
-            self.next_token_at,
-            self.filename, self.line(self.pstack[-1])
-        )
-        return q
-
     def __next__(self):
 
         while not self.repeat:
@@ -213,7 +202,7 @@ class Parser (collections.Iterator):
             self.state &= ~STATE_AT_LINE_START
             self.state |= match.group().endswith('\n') and STATE_AT_LINE_START
             self.offset = match.end()
-            self.repeat.extend(map(self.located, f(self, match)))
+            self.repeat.extend(q.at(self) for q in f(self, match))
             self.pstack.pop()
 
         return self.repeat.popleft()
