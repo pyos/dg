@@ -113,7 +113,7 @@ class Parser (collections.Iterator):
             # -----------------------------------------------------------
             # a b -> c d         a (b -> c) d        (, ) is False
             # a = b -> c = d     a = (b -> c) = d    (=, ->) is False
-            # a $ b -> c $ d     a $ (b $ (c $ d))   everything's True
+            # a $ b -> c $ d     a $ (b -> (c $ d))  everything's True
             # a b -> c.d         a (b -> (c.d))      also True
             #
             return True
