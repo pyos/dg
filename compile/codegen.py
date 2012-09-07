@@ -45,7 +45,7 @@ class MutableCode:
             self.varnames[name]
 
         self.flags = (
-            CO_OPTIMIZED | CO_NEWLOCALS * bool(isfunc)
+           (CO_OPTIMIZED | CO_NEWLOCALS) * bool(isfunc)
           | CO_VARARGS   * bool(varargs)
           | CO_VARKWARGS * bool(varkwargs)
         )
