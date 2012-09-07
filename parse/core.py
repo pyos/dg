@@ -13,7 +13,7 @@ STATE_AT_FILE_END   = next(STATEGEN)  # `$`
 
 class Parser (collections.Iterator):
 
-    INFIX_RIGHT_FIXITY = {'**', ':', '$', '->', '=', 'if', 'unless', 'else'}
+    INFIX_RIGHT_FIXITY = {'**', ':', '$', '->', '=', 'if', 'unless', 'else', 'where'}
     INFIX_PRECEDENCE = lambda self, i, q={
       # Scope resolution
         '.':   0,
@@ -58,6 +58,8 @@ class Parser (collections.Iterator):
        '->': -17,
       # Sequential evaluation
         ',': -18,
+      # Local binding
+    'where': -19,
       # Assignment
         '=': -19,
       '!!=': -19,

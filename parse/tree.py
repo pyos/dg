@@ -59,7 +59,7 @@ class Expression (list, StructMixIn):
 
 class Link (str, StructMixIn):
 
-    ALWAYS_INFIX = {'if', 'else', 'unless', 'or', 'and', 'in', 'is'}
+    ALWAYS_INFIX = {'if', 'else', 'unless', 'or', 'and', 'in', 'is', 'where'}
 
     @property
     def infix(self):
