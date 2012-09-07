@@ -6,8 +6,9 @@ Location = collections.namedtuple('Location', 'start, end, filename, first_line'
 
 class StructMixIn:
 
-    indented = False
-    closed   = False
+    closed      = False
+    indented    = False
+    traversable = False
 
   ### TOKEN AUTOLOCATION
 
@@ -54,7 +55,7 @@ class StructMixIn:
 
 class Expression (list, StructMixIn):
 
-    pass
+    traversable = property(lambda self: not self.closed)
 
 
 class Link (str, StructMixIn):

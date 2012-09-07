@@ -18,9 +18,7 @@ def infixl(stream, op):
     stream.state &= ~STATE_AFTER_OBJECT
 
     br  = False
-    lhs = [stream.stuff]
     rhs = next(stream)
-    rhsless = False
     rhsbound = False
 
     # Note that constant strings aren't equal to anything but themselves.
@@ -34,9 +32,9 @@ def infixl(stream, op):
 
         # `(a R)`
         stream.repeat.appendleft(rhs)
-        rhsless = True
+        rhs = None
 
-    elif br and op != '\n' and not rhs.indented:
+    elif br == '\n' != op and not rhs.indented:
 
         # `a R \n b` <=> `a R b` iff `b` is indented.
         stream.repeat.appendleft(rhs)
@@ -46,42 +44,44 @@ def infixl(stream, op):
 
         # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
         #               `a R (Q b)` otherwise.
-        rhsless = rhsbound = stream.has_priority(op, rhs)
+        rhsbound = stream.has_priority(op, rhs)
+        rhs      = None if rhsbound else rhs
 
     # Chaining a single expression doesn't make sense.
-    if not rhsless or op not in ('\n', ''):
+    if rhs is not None or op not in ('\n', ''):
 
-        while isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and stream.has_priority(op, lhs[-1][0]):
-
-            # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R,
-            #                 `(a R b) Q c` otherwise.
-            lhs = lhs[-1]
-
-        if isinstance(lhs[-1], tree.Expression) and not lhs[-1].closed and lhs[-1][0] == op and not rhsless:
-
-            # `a R b R c` <=> `R a b c` iff R is left-fixed.
-            lhs[-1].append(rhs)
-
-        else:
-
-            # `R`         <=> `Link R`
-            # `R rhs`     <=> `Expression [ Link '', Link R, Link rhs ]`
-            # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
-            # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
-            e = tree.Expression([op, lhs.pop()] + [rhs] * (not rhsless))
-            e.in_between(e[1], e[rhsless - 1])
-
-            if lhs:
-
-                lhs.append(e)
-
-            else:
-
-                # That was a fake expression, appending to it is futile.
-                stream.stuff = e
+        stream.stuff = infixl_insert_rhs(stream, stream.stuff, op, rhs)
 
     stream.state |= STATE_AFTER_OBJECT
     rhsbound and infixl(stream, rhs)
+
+
+# Recursive implementation of bracketless shunting-yard algorithm.
+#
+# Tests show that it's NOT much slower than iterative version, but this one looks
+# neater. Note that if this hits the stack limit, the compiler would do that, too.
+#
+def infixl_insert_rhs(stream, root, op, *rhs):
+
+    if root.traversable:
+
+        if stream.has_priority(op, root[0]):
+
+            # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R
+            root.append(infixl_insert_rhs(stream, root.pop(), op, *rhs))
+            return root
+
+        elif op == root[0] and rhs is not None:
+
+            root.extend(rhs)  # A small extension to the shunting-yard.
+            return root       # `a R b R c` <=> `R a b c` if R is left-fixed.
+
+    # `R`         <=> `Link R`
+    # `R rhs`     <=> `Expression [ Link '', Link R, Link rhs ]`
+    # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
+    # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
+    e = tree.Expression([op, root] if rhs is None else [op, root, rhs])
+    return e.in_between(root, op if rhs is None else rhs)
 
 
 @r.token(r' *', core.STATE_AT_LINE_START)
@@ -170,8 +170,8 @@ def link(stream, token):
 
     yield tree.Link(next(_ for _ in token.groups() if _))
 
-    if stream.state & STATE_AFTER_OBJECT and (token.group().startswith('`') or stream.repeat[-1].infix):
-
+    stream.state & STATE_AFTER_OBJECT and \
+      (token.group().startswith('`') or stream.repeat[-1].infix) and \
         infixl(stream, stream.repeat.pop())
 
 
