@@ -1,34 +1,18 @@
-.codegen  = import:
 ..parse   = import:
 ..compile = import:
 
 
+#
+# expr where clause
+#
+# Syntactic sugar for
+#
+#    call () ->
+#      clause
+#      expr
+#
 compile.r.builtins !! 'where' = (self, expr, clause) ->
-  # 1. Create a function that evaluates `expr` given a namespace
-  exprf = self.compile expr name: '<closed expression>' into:
-    code = codegen.MutableCode True args: ['locals'] cell: self.code
-    code.append 'LOAD_FAST'  'locals' delta:  1
-    code.append 'STORE_LOCALS'        delta: -1
-    code
-
-  # 2. Create a function that evaluates `clause` and returns the local namespace
-  self.compile clause name: '<closed variables>' into:
-    # We don't want free variables to get into the return value of `locals`.
-    code = codegen.MutableCode True cell: self.code
-    code.flags &= ~codegen.CO_OPTIMIZED
-    code
-
-  # We need the locals, not the value of `clause`.
-  call code.bytecode.pop
-  code.append 'POP_TOP'
-  code.append 'LOAD_GLOBAL'   'locals' delta:  1
-  code.append 'CALL_FUNCTION' 0        delta:  0
-  code.append 'RETURN_VALUE'           delta: -1
-  clausef = code.compile '<closed variables>'
-
-  # 3. ???????
-  self.make_function exprf   (new tuple) (new dict)
-  self.make_function clausef (new tuple) (new dict)
-  # 4. PROFIT
-  self.opcode 'CALL_FUNCTION' arg: 0 delta:  0
-  self.opcode 'CALL_FUNCTION' arg: 1 delta: -1
+  self.function (parse.tree.Constant None) $
+    e = parse.tree.Expression [parse.tree.Link '\n', clause, expr]
+    e.in_between expr clause
+  self.call None preloaded: 0
