@@ -44,7 +44,7 @@ def infixl(stream, op):
 
         # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
         #               `a R (Q b)` otherwise.
-        rhsbound = stream.has_priority(op, rhs)
+        rhsbound = rhs if stream.has_priority(op, rhs) else None
         rhs      = None if rhsbound else rhs
 
     # Chaining a single expression doesn't make sense.
@@ -53,7 +53,7 @@ def infixl(stream, op):
         stream.stuff = infixl_insert_rhs(stream, stream.stuff, op, rhs)
 
     stream.state |= STATE_AFTER_OBJECT
-    rhsbound and infixl(stream, rhs)
+    rhsbound and infixl(stream, rhsbound)
 
 
 # Recursive implementation of bracketless shunting-yard algorithm.
@@ -61,19 +61,19 @@ def infixl(stream, op):
 # Tests show that it's NOT much slower than iterative version, but this one looks
 # neater. Note that if this hits the stack limit, the compiler would do that, too.
 #
-def infixl_insert_rhs(stream, root, op, *rhs):
+def infixl_insert_rhs(stream, root, op, rhs):
 
     if root.traversable:
 
         if stream.has_priority(op, root[0]):
 
             # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R
-            root.append(infixl_insert_rhs(stream, root.pop(), op, *rhs))
+            root.append(infixl_insert_rhs(stream, root.pop(), op, rhs))
             return root
 
         elif op == root[0] and rhs is not None:
 
-            root.extend(rhs)  # A small extension to the shunting-yard.
+            root.append(rhs)  # A small extension to the shunting-yard.
             return root       # `a R b R c` <=> `R a b c` if R is left-fixed.
 
     # `R`         <=> `Link R`
