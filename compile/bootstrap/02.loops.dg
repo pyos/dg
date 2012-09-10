@@ -1,10 +1,10 @@
-builtins    = import:
-itertools   = import:
-collections = import:
+builtins    = new import
+itertools   = new import
+collections = new import
 
-..const      = import:
-..compile    = import:
-..parse.tree = import:
+..const      = new import
+..compile    = new import
+..parse.tree = new import
 
 
 #

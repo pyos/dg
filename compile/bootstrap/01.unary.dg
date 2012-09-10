@@ -1,4 +1,4 @@
-..compile = import:
+..compile = new import
 
 
 compile.r.builtins !! 'return' = (self, a) -> self.opcode 'RETURN_VALUE' None a delta: 1

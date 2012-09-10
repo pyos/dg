@@ -182,8 +182,7 @@ class Compiler:
   ### ESSENTIAL BUILT-INS
 
     #
-    # function argument ...
-    # function: argument ... keyword: value (*): varargs (**): varkwargs
+    # function argument ... keyword: value (*): varargs (**): varkwargs
     #
     # Call a (possibly built-in) function.
     #
@@ -193,9 +192,7 @@ class Compiler:
     #     the first argument is discarded;
     #   if n, do the same thing as for 0, but also increase the argument by n.
     #
-    def call(self, *argv, preloaded=None):
-
-        f, *args = syntax.call_pre(argv)
+    def call(self, f, *args, preloaded=None):
 
         if isinstance(f, tree.Link) and f in self.builtins:
 
@@ -275,7 +272,6 @@ class Compiler:
 
     builtins = {
         '':   call
-      , ':':  call
       , '=':  store
       , '.':  getattr
       , '\n': chain

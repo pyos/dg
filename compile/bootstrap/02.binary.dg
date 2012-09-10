@@ -1,7 +1,7 @@
-..const        = import:
-..compile      = import:
-..parse.tree   = import:
-..parse.syntax = import:
+..const        = new import
+..compile      = new import
+..parse.tree   = new import
+..parse.syntax = new import
 
 
 # If there is one argument, feed to it an opcode; otherwise,
