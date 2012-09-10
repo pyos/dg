@@ -62,10 +62,11 @@ class Link (str, StructMixIn):
 
     ALWAYS_INFIX = {'if', 'else', 'unless', 'or', 'and', 'in', 'is', 'where'}
 
-    @property
-    def infix(self):
+    def __new__(cls, data, infix=False):
 
-        return not self.isidentifier() or self in self.ALWAYS_INFIX
+        obj = str.__new__(cls, data)
+        obj.infix = bool(infix) or not obj.isidentifier() or obj in cls.ALWAYS_INFIX
+        return obj
 
 
 class Constant (StructMixIn):
@@ -76,7 +77,7 @@ class Constant (StructMixIn):
         self.value = value
 
 
-class Internal (StructMixIn):
+class Internal (Constant):
 
     pass
 

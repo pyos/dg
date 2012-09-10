@@ -5,9 +5,6 @@ from . import tree
 
 r = core.Parser
 
-SIG_CLOSURE_END    = type('SIG_CLOSURE_END', (tree.Constant, tree.Internal), {})
-STATE_AFTER_OBJECT = next(core.STATEGEN)
-
 
 # Handle an infix link.
 #
@@ -15,11 +12,9 @@ STATE_AFTER_OBJECT = next(core.STATEGEN)
 #
 def infixl(stream, op):
 
-    stream.state &= ~STATE_AFTER_OBJECT
-
     br  = False
     rhs = next(stream)
-    rhsbound = False
+    rhsbound = None
 
     # Note that constant strings aren't equal to anything but themselves.
     # This will only return True for a link.
@@ -42,9 +37,8 @@ def infixl(stream, op):
 
     if isinstance(rhs, tree.Link) and not rhs.closed and rhs.infix:
 
-        # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q,
-        #               `a R (Q b)` otherwise.
-        rhsbound = rhs if stream.has_priority(op, rhs) else None
+        # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q or R is empty.
+        rhsbound = rhs if op == '' or stream.has_priority(op, rhs) else None
         rhs      = None if rhsbound else rhs
 
     # Chaining a single expression doesn't make sense.
@@ -52,7 +46,6 @@ def infixl(stream, op):
 
         stream.stuff = infixl_insert_rhs(stream, stream.stuff, op, rhs)
 
-    stream.state |= STATE_AFTER_OBJECT
     rhsbound and infixl(stream, rhsbound)
 
 
@@ -101,7 +94,7 @@ def indent(stream, token):
 
     while indent != stream.indent.pop():
 
-        yield SIG_CLOSURE_END('')
+        yield tree.Internal('')
         stream.indent or stream.error('no matching indentation level', after=True)
 
     stream.indent.append(indent)
@@ -160,7 +153,7 @@ def string(stream, token):
     yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
 
 
-@r.token(r'(\w+|[!$%&*+\--/:<-@\\^|~]+|,+)|`(\w+)`|\s*(\n)')
+@r.token(r'(\w+()|([!$%&*+\--/:<-@\\^|~]+|,+))|`((\w+))`|\s*((\n))')
 #
 # link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
 #
@@ -168,11 +161,7 @@ def string(stream, token):
 #
 def link(stream, token):
 
-    yield tree.Link(next(_ for _ in token.groups() if _))
-
-    stream.state & STATE_AFTER_OBJECT and \
-      (token.group().startswith('`') or stream.repeat[-1].infix) and \
-        infixl(stream, stream.repeat.pop())
+    yield tree.Link(*(q for q in token.groups() if q is not None))
 
 
 @r.token('[\(\[\{]')
@@ -182,11 +171,10 @@ def link(stream, token):
 def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
     par = token.group() if token else ''
-    state_backup = stream.state & STATE_AFTER_OBJECT
     stuff_backup = stream.stuff
 
-    stream.state &= ~STATE_AFTER_OBJECT
     stream.stuff = tree.Constant(None).at(stream)
+    after_object = False
 
     for item in stream:
 
@@ -194,15 +182,15 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
             stream.error('mismatched parentheses')
 
-        elif isinstance(item, SIG_CLOSURE_END) and item.value == pars.get(par, ''):
+        elif isinstance(item, tree.Internal):
+
+            if item.value != pars.get(par, ''):
+
+                stream.error('invalid indentation or mismatched parentheses', after=True)
 
             break
 
-        elif isinstance(item, tree.Internal):
-
-            stream.error('invalid indentation or mismatched parentheses', after=True)
-
-        elif stream.state & STATE_AFTER_OBJECT:
+        elif after_object:
 
             # Two objects in a row should be joined with an empty infix link.
             stream.repeat.appendleft(item)
@@ -212,7 +200,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
         elif item != '\n':
 
             stream.stuff = item
-            stream.state |= STATE_AFTER_OBJECT
+            after_object = True
 
     # When handling literals, wrap the block into a prefix function call.
     if par in ('{', '['):
@@ -229,8 +217,6 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
     stream.repeat.appendleft(stream.stuff)
 
-    stream.state &= ~STATE_AFTER_OBJECT
-    stream.state |= state_backup
     stream.stuff = stuff_backup
     return ()
 
@@ -242,7 +228,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 #
 def end(stream, token):
 
-    yield SIG_CLOSURE_END(token.group())
+    yield tree.Internal(token.group())
 
 
 @r.token(r'"|\'')
