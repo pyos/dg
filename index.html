@@ -72,21 +72,46 @@
           <p>mean the same thing: they explicitly define the precedence of operators.</p>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
-<span class="par">(</span><span class="par">)</span> <span class="op">-></span>
-  <span class="str">'A function!'</span>
-<span class="par">(</span><span class="par">)</span> <span class="op">-></span> <span class="par">(</span><span class="str">'Still a function!'</span><span class="par">)</span>
+a <span class="op">*</span> <span class="par">(</span>b <span class="op">+</span> c<span class="par">)</span>
+<span class="com"># is the same as</span>
+a <span class="op">*</span>
+  b <span class="op">+</span> c
 </pre>
           </div>
           <p>
-            Parentheses are not required in most cases, though.
-            Note that in contrast to Python, parentheses <i>do not imply
-            line continuation</i> — each line in parentheses is a complete
-            statement, and the indentation still affects how the code is parsed.
-            The first line (i.e. everything after an opening parenthesis,
-            but before a line break) is assumed to have the same indentation
-            level as the line it appears in, so be careful not to dedent
-            some code.
+            To find out whether you need to use parentheses,
+            see the operator precedence table below.
           </p>
+          <p>
+            The indentation, however, has a few more effects.
+            Generally, there are three cases in which you might want to use it:
+          </p>
+          <ul>
+            <li><p>immediately after an infix operator, as shown above;</p>
+              <div class="example-dg">
+                <pre class="prettyprint lang-dg">
+something <span class="op">+</span>
+  do_something_else  <span class="com"># the indented block is evaluated</span>
+  what_to_add        <span class="com"># and the result is added to `something`</span>
+</pre>
+              </div>
+            </li>
+            <li><p><a href="#literals">in a list or a set</a> to separate long items with line breaks;</li>
+            <li>
+              <p>
+                when you want to call a function with some lo-o-ong arguments,
+                in which case each expression in the indented block is treated
+                as a separate argument.
+              </p>
+              <div class="example-dg">
+                <pre class="prettyprint lang-dg">
+do_something_with
+  something_very_very_long_and_verbose
+  and_a_keyword_argument<span class="op">:</span> <span class="typ">1</span>
+</pre>
+              </div>
+            </li>
+          </ul>
           <p>
             Also, dg doesn't require you to use parentheses when <i>calling</i>
             functions. In fact, it doesn't support that at all.
@@ -99,8 +124,10 @@
 <span class="com"># are sh-style up to the end of the line</span>
 <span class="str">"Strings that aren't passed anywhere can be treated as comments, too."</span>
 <span class="par">(</span><span class="par">)</span> <span class="op">-&gt;</span>
-  <span class="str">"The first constant used in a function is considered to be a <a href="http://www.python.org/dev/peps/pep-0257/#what-is-a-docstring">docstring</a>."</span>
-  <span class="str">"If it's not a string, None is used instead."</span>
+  <span class="str">"
+    The first constant used in a function is considered to be a <a href="http://www.python.org/dev/peps/pep-0257/#what-is-a-docstring">docstring</a>.
+    If it's not a string, None is used instead.
+  "</span>
 </pre>
           </div>
           <h3>Assignment</h3>
@@ -278,8 +305,8 @@ print<span class="op">:</span> <span class="par">(</span>object<span class="op">
 
 <span class="com"># Unsurprisingly, subitem access is just like in Haskell.</span>
 <span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="str">'b'</span><span class="par">)</span> <span class="op">!!</span> <span class="typ">1</span>
-<span class="com"># `a !@ b` is like `a !! slice: (*): b` (i.e. `a[slice(*b)]` in Python).</span>
-<span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!@</span> <span class="par">(</span><span class="spc">None</span><span class="op">,</span> <span class="typ">5</span><span class="par">)</span>
+<span class="com"># Slicing can be achieved by using `slice` built-in.</span>
+<span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!!</span> <span class="blt">slice</span> <span class="spc">None</span> <span class="typ">5</span>
 
 <span class="com"># Assignment can work with names, attributes, subitems, and tuples:</span>
 a <span class="op">=</span> <span class="str">'Hello'</span>
@@ -307,125 +334,254 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
           </div>
 
           <h3>The Complete Table of Operators</h3>
+          <p>
+            <a href="http://en.wikipedia.org/wiki/Order_of_operations">Priority</a>
+            defines which operator takes precedence in the absence of parentheses.
+            <a href="http://en.wikipedia.org/wiki/Operator_associativity">Fixity</a>
+            determines how operator expressions with equal priority are parsed.
+          </p>
+
+          <table class="table table-bordered table-striped">
+            <thead>
+              <th>Priority</th>
+              <th>Fixity</th>
+              <th>?</th>
+              <th>What</th>
+              <th>Available in runtime</th>
+            </thead>
+
+            <tr>
+              <td>0</td>
+              <td>left</td>
+              <td><code>.</code></td>
+              <td>Attribute lookup</td>
+              <td class="maybe"><code>getattr</code></td>
+            </tr>
+
+            <tr>
+              <td>0</td>
+              <td>left</td>
+              <td><code>:.</code></td>
+              <td>Call a function with no arguments, then fetch an attribute.</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-1</td>
+              <td>right</td>
+              <td><code>:</code></td>
+              <td>Function call, the right-hand statement is parsed as an argument. Calls a function with no arguments when only one argument is supplied.</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-2</td>
+              <td>left</td>
+              <td><code></code></td>
+              <td>(Empty operator.) Function call</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-3</td>
+              <td>left</td>
+              <td><code>!!</code></td>
+              <td>Array subscription (i.e. like <code>a[b]</code> in Python)</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-4</td>
+              <td>right</td>
+              <td><code>**</code></td>
+              <td>Exponentiation</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-5</td>
+              <td>left</td>
+              <td><code>* / // %</code></td>
+              <td>Multiplication, division, floor division, and modulus</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-6</td>
+              <td>left</td>
+              <td><code>+ -</code></td>
+              <td>Addition and subtraction</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-8</td>
+              <td>left</td>
+              <td><code>&lt; &lt;= == != &gt;= &gt;</code></td>
+              <td>Standard comparison operators</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-8</td>
+              <td>left</td>
+              <td><code>is</code></td>
+              <td>Identifier-based comparison</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-8</td>
+              <td>left</td>
+              <td><code>in</code></td>
+              <td>Containment check</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-10</td>
+              <td>left</td>
+              <td><code>&lt;&lt; &gt;&gt;</code></td>
+              <td>Bitwise shift to the left and to the right</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-11</td>
+              <td>left</td>
+              <td><code>&amp;</code></td>
+              <td>Bitwise AND</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-12</td>
+              <td>left</td>
+              <td><code>^</code></td>
+              <td>Bitwise XOR</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-13</td>
+              <td>left</td>
+              <td><code>|</code></td>
+              <td>Bitwise OR</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-14</td>
+              <td>left</td>
+              <td><code>and</code></td>
+              <td>Lazy logical conjunction (<code>A and B</code> evaluates B iff A is true)</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-15</td>
+              <td>left</td>
+              <td><code>or</code></td>
+              <td>Lazy logical disjunction (<code>A or B</code> evaluates B iff A is false)</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-17</td>
+              <td>right</td>
+              <td><code>-&gt;</code></td>
+              <td>Function constructor</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-18</td>
+              <td>left</td>
+              <td><code>,</code></td>
+              <td>Tuple constructor</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr>
+              <td>-19</td>
+              <td>right</td>
+              <td><code>=</code></td>
+              <td>Assignment</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-19</td>
+              <td>right</td>
+              <td><code>!!= += -= *= **= /= //= %= &= ^= |= <<= >>=</code></td>
+              <td><a href="http://docs.python.org/dev/reference/simple_stmts.html#augmented-assignment-statements">Augmented assignment</a></td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-20</td>
+              <td>right</td>
+              <td><code>if unless</code></td>
+              <td>Inline conditional branching (or/and with reversed order of operands)</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-21</td>
+              <td>right</td>
+              <td><code>else</code></td>
+              <td>Extension clause to the inline conditional branching</td>
+              <td class="no">No</td>
+            </tr>
+
+            <tr>
+              <td>-100500</td>
+              <td>left</td>
+              <td><code><br /></code></td>
+              <td>Sequential evaluation</td>
+              <td class="no">No</td>
+            </tr>
+          </table>
+
+          <p>
+            All other operators (including those defined at runtime)
+            have priority -7 and left fixity. Some of these are:
+          </p>
+
           <table class="table table-bordered table-striped">
             <thead>
               <th>?</th>
               <th>What</th>
               <th>Available in runtime</th>
             </thead>
-            <tr>
-              <td><code></code></td>
-              <td>(Empty operator.) Function call</td>
-              <td class="no">No</td>
-            </tr>
-            <tr>
-              <td><code>:</code></td>
-              <td>Function call, the right-hand statement is parsed as an argument. Calls a function with no arguments when only one argument is supplied.</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>$</code></td>
-              <td>Function call, the right-hand statement is parsed as an expression. Calls a function with <code>()</code> (an empty block) when only one argument is supplied.</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>=</code></td>
-              <td>Generic assignment</td>
-              <td class="no">No</td>
-            </tr>
-            <tr>
-              <td><code>+ - * ** / // %</code></td>
-              <td>Built-in Python numeric operators</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>& ^ | << >> ~</code></td>
-              <td>Built-in Python binary operators</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>!!</code></td>
-              <td>Subitem lookup</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>!!= += -= *= **= /= //= %= &= ^= |= <<= >>=</code></td>
-              <td>Destructive in-place equivalents of the above operators</td>
-              <td class="no">No</td>
-            </tr>
-            <tr>
-              <td><code>!@</code></td>
-              <td>Slice notation</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>&lt; &lt;= == != > >=</code></td>
-              <td>Built-in comparison operators</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>is</code></td>
-              <td>Identifier-based comparison</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>in</code></td>
-              <td>Whether an object is in a container</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>or and</code></td>
-              <td>Built-in Python logic operators <i>(lazy)</i></td>
-              <td class="no">No</td>
-            </tr>
-            <tr>
-              <td><code>if unless else</code></td>
-              <td>Inline conditional branching <i>(lazy)</i></td>
-              <td class="no">No</td>
-            </tr>
-            <tr>
-              <td><code>.</code></td>
-              <td>Attribute lookup</td>
-              <td class="maybe"><code>getattr</code></td>
-            </tr>
-            <tr>
-              <td><code>:.</code></td>
-              <td>Call a function with no arguments, then fetch an attribute.</td>
-              <td class="no">No</td>
-            </tr>
+
             <tr>
               <td><code>.~</code></td>
               <td>Attribute removal. Returns None, can't be chained.</td>
               <td class="no">No</td>
             </tr>
+
             <tr>
               <td><code>!!~</code></td>
               <td>Subitem removal. Returns None, can't be chained.</td>
               <td class="no">No</td>
             </tr>
-            <tr>
-              <td><code>,</code></td>
-              <td>Tuple constructor</td>
-              <td class="yes">Yes</td>
-            </tr>
-            <tr>
-              <td><code>-></code></td>
-              <td>Function constructor</td>
-              <td class="no">No</td>
-            </tr>
+
             <tr>
               <td><code>..</code></td>
               <td>Alias for <code>range</code></td>
               <td class="yes">Yes</td>
             </tr>
+
             <tr>
               <td><code>::</code></td>
               <td>Alias for <code>isinstance</code></td>
               <td class="yes">Yes</td>
             </tr>
+
             <tr>
               <td><code>...</code></td>
-              <td>Alias for <code>Ellipsis</code> <i>(not callable)</i></td>
+              <td>Alias for <code>Ellipsis</code>, <i>not callable</i></td>
               <td class="yes">Yes</td>
             </tr>
           </table>
