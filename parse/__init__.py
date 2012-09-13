@@ -29,6 +29,19 @@ def infixl(stream, op):
         stream.repeat.appendleft(rhs)
         rhs = None
 
+    elif br == '\n' and op == '' and rhs.indented:
+
+        # `a \n b ...` <=> `a b ...` iff `b ...` is indented.
+        # i.e. an indented block with no infix link before it means
+        # line continuation.
+        qs = rhs[1:] if isinstance(rhs, tree.Expression) and rhs[0] == '\n' else [rhs]
+
+        for q in qs:
+
+            stream.stuff = infixl_insert_rhs(stream, stream.stuff, op, q)
+
+        return None # Nothing to do here.
+
     elif br == '\n' != op and not rhs.indented:
 
         # `a R \n b` <=> `a R b` iff `b` is indented.
@@ -194,7 +207,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
             # Two objects in a row should be joined with an empty infix link.
             stream.repeat.appendleft(item)
-            infixl(stream, tree.Link('').before(item))
+            infixl(stream, tree.Link('', True).before(item))
 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
@@ -207,13 +220,13 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
         stream.repeat.appendleft(stream.stuff)
         stream.stuff = tree.Link(par + pars[par]).before(stream.stuff)
-        infixl(stream, tree.Link('').before(stream.stuff))
+        infixl(stream, tree.Link('', True).before(stream.stuff))
 
     stream.stuff.indented = indented
     stream.stuff.closed   = True
 
     # Further expressions should not touch this block.
-    indented and stream.repeat.appendleft(tree.Link('\n').at(stream))
+    indented and stream.repeat.appendleft(tree.Link('\n', True).at(stream))
 
     stream.repeat.appendleft(stream.stuff)
 
