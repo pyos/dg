@@ -1,24 +1,23 @@
 builtins    = new import
-itertools   = new import
 collections = new import
 
-..const      = new import
 ..compile    = new import
 ..parse.tree = new import
 
 
 #
-# while: condition body
+# while condition body...
 #
 # Evaluate the body while condition is true.
 #
-compile.r.builtins !! 'while' = (self, cond, block) ->
+compile.r.builtins !! 'while' = (self, cond, *block) ->
   self.load None
   exit_ptr = self.opcode 'SETUP_LOOP'             delta: 0
   cond_ptr = self.opcode 'JUMP_ABSOLUTE'  arg: -1 delta: 0
   else_ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
-  self.opcode 'ROT_TWO' block delta:  1
-  self.opcode 'POP_TOP'       delta: -1
+  self.chain (*): block if block
+  self.opcode 'ROT_TWO' delta:  0
+  self.opcode 'POP_TOP' delta: -1
   call cond_ptr
   call else_ptr
   self.opcode 'POP_BLOCK' delta: 0
