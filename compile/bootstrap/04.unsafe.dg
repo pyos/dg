@@ -13,8 +13,8 @@ compile._callable = f -> (self, *args) ->
 
 
 unsafe_s = cases ->
-  parsed = list $ map parse.syntax.ST_ASSIGN $ parse.syntax.ST_BREAK cases
-  not_eq = map x -> (x !! 1) $ filter x -> (x !! 0) $ zip parsed $ parse.syntax.ST_BREAK cases
+  parsed = list $ map parse.syntax.ST_ASSIGN cases
+  not_eq = map x -> (x !! 1) $ filter x -> (x !! 0) $ zip parsed cases
   parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH $ next not_eq unless all parsed
   parse.syntax.error const.ERR.DEFAULT cases unless parsed
 
@@ -57,7 +57,7 @@ compile.r.builtins !! 'raise' = compile._callable $ (self, exception, caused_by:
 # Returns the value of `unsafe_code` if there was no exception,
 # `None` otherwise.
 #
-compile.r.builtins !! 'unsafe' = (self, cases) ->
+compile.r.builtins !! 'unsafe' = (self, *cases) ->
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
   (name, try), *cases, (has_finally, finally) = unsafe_s cases
