@@ -32,7 +32,7 @@ sys.meta_path.insert 0 $ inherit str $
     # in any of the available paths.
     ) $ filter os.path.isdir path
 
-    unsafe $
+    unsafe
       e =
         p = os.path.abspath $ next mods
         cls (os.path.join p '__init__.dg' if os.path.isdir p else p)
@@ -43,7 +43,7 @@ sys.meta_path.insert 0 $ inherit str $
 
   get_code = (self, name) ->
     cache = imp.cache_from_source self
-    code  = unsafe $
+    code  = unsafe
       _ = (marshal.load $ open cache 'rb' if getmtime self <= getmtime cache)
       _ = None
 
