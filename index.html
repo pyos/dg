@@ -192,28 +192,28 @@ do_something_with
 <span class="com"># Tuples</span>
 <span class="typ">1</span><span class="op">,</span> <span class="com"># with a single item</span>
 <span class="typ">2</span><span class="op">,</span> <span class="spc">True</span><span class="op">,</span> <span class="str">'hi'</span> <span class="com"># with multiple items</span>
-<span class="cls">tuple</span><span class="op">:</span> <span class="com"># empty</span>
+<span class="kwd">new</span> <span class="cls">tuple</span> <span class="com"># empty</span>
 
-<span class="com"># Since the comma operator has very low priority, you</span>
-<span class="com"># will probably need to wrap it in parentheses.</span>
-print<span class="op">:</span>  <span class="spc">True</span><span class="op">,</span> <span class="typ">1</span>  <span class="com"># Prints True, returns (None, 1)</span>
-print<span class="op">:</span> <span class="par">(</span><span class="spc">True</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span> <span class="com"># Prints (True, 1), returns None</span>
+<span class="com"># There is no special syntax for lists. Call either `list`</span>
+<span class="com"># to transform another iterable into a list, or `list'`</span>
+<span class="com"># (yes, there's an apostrophe at the end) to create a fixed-size one.</span>
+<span class="cls">list</span>  <span class="par">(</span><span class="typ">0</span><span class="op">..</span><span class="typ">5</span><span class="par">)</span>
+<span class="cls">list'</span>  <span class="typ">0</span> <span class="typ">1</span> <span class="typ">2</span> <span class="typ">3</span> <span class="typ">4</span>
 
-<span class="com"># Lists are essentially tuples in square brackets.</span>
-<span class="par">[</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">]</span>
-<span class="com"># To create a list containing a single tuple, use parentheses.</span>
-<span class="par">[</span><span class="par">(</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">)</span><span class="par">]</span>
-<span class="com"># If items are too long, put each one on a separate line</span>
-<span class="com"># of an indented block, but do not use commas.</span>
-<span class="par">[</span>
-  <span class="str">'I prithee, take thy fingers from my throat;'</span>
-  <span class="str">'For, though I am not splenitive and rash,'</span>
-  <span class="str">'Yet have I in me something dangerous,'</span>
-  <span class="str">'Which let thy wisdom fear. Hold off thy hand!'</span>
-<span class="par">]</span>
+<span class="com"># Same thing applies to sets (unordered collections of unique items)...</span>
+<span class="cls">set</span>  <span class="str">'abcdabc'</span>
+<span class="cls">set'</span> <span class="str">'a'</span> <span class="str">'d'</span> <span class="str">'c'</span> <span class="str">'b'</span>
 
-<span class="com"># Unordered sets are just like lists, but with curly brackets.</span>
-<span class="par">{</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">2</span><span class="par">}</span>  <span class="com"># same as {1, 2, 3}</span>
+<span class="com"># ...and dicts aka maps aka mappings.</span>
+<span class="com"># Mappings require an iterable of *pairs*, though.</span>
+<span class="cls">dict</span>  <span class="par">(</span><span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span><span class="op">,</span> <span class="par">(</span><span class="str">'b'</span><span class="op">,</span> <span class="typ">2</span><span class="par">)</span><span class="par">)</span>
+<span class="cls">dict'</span>  <span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span>  <span class="par">(</span><span class="str">'b'</span><span class="op">,</span> <span class="typ">2</span><span class="par">)</span>
+<span class="com"># There's also a shorthand for identifier->object mappings. Hi, Ruby!</span>
+<span class="cls">dict'</span> a<span class="op">:</span> <span class="typ">1</span> b<span class="op">:</span> <span class="typ">2</span>
+<span class="com"># Use line continuation if you want to.</span>
+<span class="cls">dict'</span>
+  <span class="str">'a'</span><span class="op">,</span> <span class="typ">1</span>
+  <span class="str">'b'</span><span class="op">,</span> <span class="typ">2</span>
 </pre>
           </div>
         </div>
@@ -222,56 +222,55 @@ print<span class="op">:</span> <span class="par">(</span><span class="spc">True<
           <h2>Functions</h2>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
-<span class="com"># Calling functions is almost like sending messages in Smalltalk.</span>
-print<span class="op">:</span> <span class="str">'Hello'</span> <span class="str">'print'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
-<span class="com"># And calling them without arguments is no different.</span>
-print<span class="op">:</span>
-
-<span class="com"># If you do have some arguments to pass, though, there's also a Haskell-ish notation.</span>
-print <span class="str">'Hello, uh...Haskell?'</span> <span class="op">$</span> <span class="str">'No, totally not {}'</span><span class="op">.</span>format <span class="str">'Haskell.'</span>
+<span class="com"># The syntax for calling functions is something in between</span>
+<span class="com"># Haskell and Smalltalk.</span>
+print <span class="str">'Hello'</span> <span class="str">'print'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
+<span class="com"># Obviously, simply typing `print` isn't gonna call anything.</span>
+<span class="com"># Either use `call`...</span>
+<span class="kwd">call</span> print
+<span class="com"># ...or `new`, whichever looks best to you.</span>
+<span class="kwd">new</span> <span class="cls">int</span>
+<span class="com"># It's better to not make functions that don't require any arguments</span>
+<span class="com"># in the first place. Avoid magic/side effects and use `property`.</span>
 
 <span class="com"># Our good friends *starred **arguments are still with us.</span>
 <span class="com"># As always, * means "the rest of positional arguments" and ** is "the rest of keyword arguments."</span>
 a <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span>
-print<span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> a
+print <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> a
 
 <span class="com"># Define functions with -> operator</span>
-function <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> print<span class="op">:</span> <span class="str">'Yay,'</span> x
+function <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> print <span class="str">'Yay,'</span> x
 
-<span class="com"># Functions return the last value they evaluate, unless explicitly told to do otherwise.</span>
-<span class="com"># You may omit parentheses if there's only one (unambiguous) argument:</span>
+<span class="com"># Functions return the last value they evaluate unless explicitly told to do otherwise.</span>
+<span class="com"># You may omit parentheses if there's only one argument with no default value:</span>
 double <span class="op">=</span> x <span class="op">-></span> x <span class="op">*</span> 2
-<span class="com"># This is invalid because `whom: 'world' -> ...` is parsed as `whom: ('world' -> ...)`.</span>
-<span class="com">#greet = whom: 'world' -> (print: 'Hello,' whom end: '!\n')</span>
-<span class="com"># This is also invalid, you can't do `* function`</span>
-<span class="com">#f = *xs -> xs</span>
 
 <span class="com"># Arguments can have default values.</span>
-function2 <span class="op">=</span> <span class="par">(</span>x<span class="op">:</span> <span class="spc">None</span><span class="par">)</span> <span class="op">-></span> function<span class="op">:</span> x
+function2 <span class="op">=</span> <span class="par">(</span>x<span class="op">:</span> <span class="spc">None</span><span class="par">)</span> <span class="op">-></span> function x
 <span class="com"># Starred arguments have a different syntax in function definitions.</span>
-double_all <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">map</span><span class="op">:</span> double xs
+double_all <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">map</span> double xs
 
 <span class="com"># The -> operator always consumes exactly one token to the left,</span>
 <span class="com"># so you can wrap function body in parentheses instead of doing the same</span>
 <span class="com"># for the whole function definition.</span>
-double_all <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">map</span><span class="op">:</span> x <span class="op">-></span> <span class="par">(</span>x <span class="op">*</span> <span class="typ">2</span><span class="par">)</span> xs
+drop_even_numbers <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">filter</span> x <span class="op">-></span> <span class="par">(</span>x <span class="op">%</span> <span class="typ">2</span><span class="par">)</span> xs
 
 <span class="com"># There is no special syntax for decorators.</span>
 <span class="com"># Just call them with the function as an argument.</span>
-wtf <span class="op">=</span> <span class="cls">staticmethod</span> <span class="op">$</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
-  print<span class="op">:</span> <span class="str">'A static method outside of a class?!'</span>
+wtf <span class="op">=</span> <span class="cls">staticmethod</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+  print <span class="str">'A static method outside of a class?!'</span>
 
 <span class="com"># `return` takes one argument (the value to return)</span>
-<span class="com"># and aborts the evaluation immediately.</span>
+<span class="com"># and aborts the evaluation immediately as if there was nothing after it.</span>
 hello <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
-  <span class="kwd">return</span> <span class="op">$</span> print<span class="op">:</span> <span class="str">'Hi!'</span>
-  print<span class="op">:</span> <span class="str">'F**k you.'</span>
+  <span class="kwd">return</span> <span class="op">$</span> print <span class="str">'Hi!'</span>
+  print <span class="str">'F**k you.'</span>
 
 <span class="com"># <a href="http://docs.python.org/py3k/reference/simple_stmts.html#the-yield-statement">`yield`</a> turns a function into a <a href="http://docs.python.org/dev/glossary.html#term-generator">generator</a>.</span>
 count <span class="op">=</span> start <span class="op">-></span>
   <span class="com"># `yield` is a function of two arguments, `item` and `from`.</span>
   <span class="com"># Only one of them can be specified at a time.</span>
-  <span class="kwd">yield</span><span class="op">:</span> start
+  <span class="kwd">yield</span> start
   <span class="com"># Note that `from` requires Python >= 3.3.</span>
   <span class="com"># Older versions will crash!</span>
   <span class="kwd">yield</span> from<span class="op">:</span> <span class="par">(</span>count <span class="op">$</span> start <span class="op">+</span> <span class="typ">1</span><span class="par">)</span>
@@ -290,23 +289,23 @@ count <span class="op">=</span> start <span class="op">-></span>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
 <span class="com"># Function calls are preferred over other operators</span>
-double<span class="op">:</span> <span class="typ">2</span> <span class="op">*</span> <span class="typ">3</span>
+double <span class="typ">2</span> <span class="op">**</span> <span class="typ">3</span>
 <span class="com"># i.e. that line is the same as</span>
-<span class="par">(</span>double<span class="op">:</span> <span class="typ">2</span><span class="par">)</span> <span class="op">*</span> <span class="typ">3</span>
+<span class="par">(</span>double <span class="typ">2</span><span class="par">)</span> <span class="op">**</span> <span class="typ">3</span>
 
 <span class="com"># Attribute access is the only exception to that rule.</span>
-print<span class="op">:</span> object<span class="op">.</span>__class__
-print<span class="op">:</span> <span class="par">(</span>object<span class="op">.</span>__class__<span class="par">)</span>  <span class="com"># Same thing</span>
+print object<span class="op">.</span>__class__
+print <span class="par">(</span>object<span class="op">.</span>__class__<span class="par">)</span>  <span class="com"># Same thing</span>
 
 <span class="com"># Most of the operators deal with numbers.</span>
 <span class="typ">1</span> <span class="op">+</span> <span class="typ">2</span> <span class="op">**</span> <span class="typ">3</span>
-<span class="com"># Binary stuff:</span>
+<span class="com"># Bitewise stuff:</span>
 <span class="typ">4</span> <span class="op">|</span> <span class="par">(</span><span class="typ">5</span> <span class="op">&lt;&lt;</span> <span class="typ">6</span><span class="par">)</span>
 
 <span class="com"># Unsurprisingly, subitem access is just like in Haskell.</span>
 <span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="str">'b'</span><span class="par">)</span> <span class="op">!!</span> <span class="typ">1</span>
 <span class="com"># Slicing can be achieved by using `slice` built-in.</span>
-<span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!!</span> <span class="blt">slice</span> <span class="spc">None</span> <span class="typ">5</span>
+<span class="str">'abcdefghijklmnopqrstuvwxyz'</span> <span class="op">!!</span> <span class="cls">slice</span> <span class="spc">None</span> <span class="typ">5</span>
 
 <span class="com"># Assignment can work with names, attributes, subitems, and tuples:</span>
 a <span class="op">=</span> <span class="str">'Hello'</span>
@@ -314,17 +313,17 @@ a<span class="op">.</span>b <span class="op">=</span> <span class="str">'yes'</s
 a <span class="op">!!</span> b <span class="op">=</span> <span class="str">'this is ='</span>
 <span class="com"># Tuples may also contain names, attributes, subitems and tuples, as well as starred arguments:</span>
 a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> c <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">4</span>
-print<span class="op">:</span> a b c  <span class="com"># 1 [2, 3] 4</span>
+print a b c  <span class="com"># 1 [2, 3] 4</span>
 
 <span class="com"># Any function can be transformed into an operator by wrapping its name in backticks.</span>
 <span class="typ">1</span> <span class="iop"</span>`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2 3"</span>
 <span class="com"># The same thing:</span>
-print<span class="op">:</span> <span class="typ">1</span> <span class="typ">2</span> <span class="typ">3</span>
+print <span class="typ">1</span> <span class="typ">2</span> <span class="typ">3</span>
 <span class="com"># NOT the same thing:</span>
-print<span class="op">:</span> <span class="par">(</span>print<span class="op">:</span> <span class="typ">1</span> <span class="typ">2</span><span class="par">)</span> <span class="typ">3</span>
+print <span class="par">(</span>print <span class="typ">1</span> <span class="typ">2</span><span class="par">)</span> <span class="typ">3</span>
 
 <span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
-dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
+dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
 
 <span class="com"># And you can define your own if you think these are not enough.</span>
 <span class="com"># Don't consider that a very good practice, though.</span>
@@ -351,43 +350,30 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
             </thead>
 
             <tr>
-              <td>0</td>
-              <td>left</td>
+              <td rowspan="2">0</td>
+              <td rowspan="4">left</td>
               <td><code>.</code></td>
               <td>Attribute lookup</td>
               <td class="maybe"><code>getattr</code></td>
             </tr>
 
             <tr>
-              <td>0</td>
-              <td>left</td>
               <td><code>:.</code></td>
               <td>Call a function with no arguments, then fetch an attribute.</td>
-              <td class="no">No</td>
-            </tr>
-
-            <tr>
-              <td>-1</td>
-              <td>right</td>
-              <td><code>:</code></td>
-              <td>Function call, the right-hand statement is parsed as an argument. Calls a function with no arguments when only one argument is supplied.</td>
-              <td class="yes">Yes</td>
+              <td class="no" rowspan="2">No</td>
             </tr>
 
             <tr>
               <td>-2</td>
-              <td>left</td>
               <td><code></code></td>
               <td>(Empty operator.) Function call</td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
               <td>-3</td>
-              <td>left</td>
               <td><code>!!</code></td>
               <td>Array subscription (i.e. like <code>a[b]</code> in Python)</td>
-              <td class="yes">Yes</td>
+              <td class="yes" rowspan="11">Yes</td>
             </tr>
 
             <tr>
@@ -395,95 +381,90 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
               <td>right</td>
               <td><code>**</code></td>
               <td>Exponentiation</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td>-5</td>
-              <td>left</td>
-              <td><code>* / // %</code></td>
+              <td rowspan="11">left</td>
+              <td>
+              <code>*</code>
+                <code>/</code>
+                <code>//</code>
+                <code>%</code>
+              </td>
               <td>Multiplication, division, floor division, and modulus</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td>-6</td>
-              <td>left</td>
-              <td><code>+ -</code></td>
+              <td>
+                <code>+</code>
+                <code>-</code>
+              </td>
               <td>Addition and subtraction</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
-              <td>-8</td>
-              <td>left</td>
-              <td><code>&lt; &lt;= == != &gt;= &gt;</code></td>
+              <td rowspan="3">-8</td>
+              <td>
+                <code>&lt;</code>
+                <code>&lt;=</code>
+                <code>==</code>
+                <code>!=</code>
+                <code>&gt;=</code>
+                <code>&gt;</code>
+              </td>
               <td>Standard comparison operators</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
-              <td>-8</td>
-              <td>left</td>
               <td><code>is</code></td>
               <td>Identifier-based comparison</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
-              <td>-8</td>
-              <td>left</td>
               <td><code>in</code></td>
               <td>Containment check</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td>-10</td>
-              <td>left</td>
-              <td><code>&lt;&lt; &gt;&gt;</code></td>
+              <td>
+                <code>&lt;&lt;</code>
+                <code>&gt;&gt;</code>
+              </td>
               <td>Bitwise shift to the left and to the right</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td>-11</td>
-              <td>left</td>
               <td><code>&amp;</code></td>
               <td>Bitwise AND</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td>-12</td>
-              <td>left</td>
               <td><code>^</code></td>
               <td>Bitwise XOR</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td>-13</td>
-              <td>left</td>
               <td><code>|</code></td>
               <td>Bitwise OR</td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td>-14</td>
-              <td>left</td>
               <td><code>and</code></td>
               <td>Lazy logical conjunction (<code>A and B</code> evaluates B iff A is true)</td>
-              <td class="no">No</td>
+              <td class="no" rowspan="3">No</td>
             </tr>
 
             <tr>
               <td>-15</td>
-              <td>left</td>
               <td><code>or</code></td>
               <td>Lazy logical disjunction (<code>A or B</code> evaluates B iff A is false)</td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
@@ -491,7 +472,6 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
               <td>right</td>
               <td><code>-&gt;</code></td>
               <td>Function constructor</td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
@@ -503,43 +483,52 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
             </tr>
 
             <tr>
-              <td>-19</td>
-              <td>right</td>
+              <td rowspan="2">-19</td>
+              <td rowspan="4">right</td>
               <td><code>=</code></td>
               <td>Assignment</td>
-              <td class="no">No</td>
+              <td class="no" rowspan="5">No</td>
             </tr>
 
             <tr>
-              <td>-19</td>
-              <td>right</td>
-              <td><code>!!= += -= *= **= /= //= %= &= ^= |= <<= >>=</code></td>
+              <td>
+                <code>!!=</code>
+                <code>+=</code>
+                <code>-=</code>
+                <code>*=</code>
+                <code>**=</code>
+                <code>/=</code>
+                <code>//=</code>
+                <code>%=</code>
+                <code>&=</code>
+                <code>^=</code>
+                <code>|=</code>
+                <code><<=</code>
+                <code>>>=</code>
+              </td>
               <td><a href="http://docs.python.org/dev/reference/simple_stmts.html#augmented-assignment-statements">Augmented assignment</a></td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
               <td>-20</td>
-              <td>right</td>
-              <td><code>if unless</code></td>
+              <td>
+                <code>if</code>
+                <code>unless</code>
+              </td>
               <td>Inline conditional branching (or/and with reversed order of operands)</td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
               <td>-21</td>
-              <td>right</td>
               <td><code>else</code></td>
               <td>Extension clause to the inline conditional branching</td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
               <td>-100500</td>
               <td>left</td>
-              <td><code><br /></code></td>
-              <td>Sequential evaluation</td>
-              <td class="no">No</td>
+              <td><code></code></td>
+              <td>(Line break.) Sequential evaluation</td>
             </tr>
           </table>
 
@@ -552,37 +541,31 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
             <thead>
               <th>?</th>
               <th>What</th>
-              <th>Available in runtime</th>
             </thead>
 
             <tr>
               <td><code>.~</code></td>
               <td>Attribute removal. Returns None, can't be chained.</td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
               <td><code>!!~</code></td>
               <td>Subitem removal. Returns None, can't be chained.</td>
-              <td class="no">No</td>
             </tr>
 
             <tr>
               <td><code>..</code></td>
               <td>Alias for <code>range</code></td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td><code>::</code></td>
               <td>Alias for <code>isinstance</code></td>
-              <td class="yes">Yes</td>
             </tr>
 
             <tr>
               <td><code>...</code></td>
               <td>Alias for <code>Ellipsis</code>, <i>not callable</i></td>
-              <td class="yes">Yes</td>
             </tr>
           </table>
         </div>
@@ -592,13 +575,13 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
 <span class="com"># Import modules with `import` function.</span>
-module <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span> <span class="str">'os'</span>
+module <span class="op">=</span> <span class="kwd">import</span> <span class="str">'os'</span>
 
 <span class="com"># You can omit the module name if it can be inferred.</span>
 <span class="com"># (If it can't, TypeError will be raised at runtime.)</span>
-sys <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span>
-os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span>
-<span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span><span class="op">:</span>
+sys <span class="op">=</span> <span class="kwd">new</span> <span class="kwd">import</span>
+os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">new</span> <span class="kwd">import</span>
+<span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">new</span> <span class="kwd">import</span>
 
 <span class="com"># Not much else to show here. Star-imports will never be supported.</span>
 </pre>
@@ -614,10 +597,10 @@ os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">impo
 <span class="typ">2</span> <span class="op">and</span> <span class="str">'HA'</span>  <span class="com"># `a and b` is the same as `b if a else a`</span>
 
 <span class="com"># `not` is a function,</span>
-<span class="blt">not</span><span class="op">:</span> <span class="str">'an operator'</span>
+<span class="blt">not</span> <span class="str">'an operator'</span>
 
 <span class="com"># if/else can only be used in its infix form</span>
-print<span class="op">:</span> <span class="par">(</span><span class="str">'expected'</span> <span class="op">if</span> <span class="spc">True</span> <span class="op">else</span> <span class="str">'wtf'</span><span class="par">)</span>
+print <span class="par">(</span><span class="str">'expected'</span> <span class="op">if</span> <span class="spc">True</span> <span class="op">else</span> <span class="str">'wtf'</span><span class="par">)</span>
 
 <span class="com"># `unless` means `if not`.</span>
 <span class="com"># Both `if` and `unless` have lower priority than assignment,</span>
@@ -633,14 +616,14 @@ factorial <span class="op">=</span> n <span class="op">-></span>
   <span class="com"># conditional is `switch`.</span>
   <span class="kwd">switch</span> <span class="op">$</span>
     <span class="com"># Switch only accepts expressions in form `condition = action`.</span>
-    n <span class="op">&lt;</span> <span class="typ">0</span> <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">ValueError</span></span class="op">:</span> <span class="str">'n >= 0'</span>
+    n <span class="op">&lt;</span> <span class="typ">0</span> <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">ValueError</span> <span class="str">'n >= 0'</span>
     <span class="com"># It evaluates the first action to be assigned to a true condition.</span>
     n <span class="op">&lt;</span> <span class="typ">2</span> <span class="op">=</span> <span class="typ">1</span>
     <span class="com"># Conditions may be completely unrelated to each other.</span>
-    <span class="blt">not</span> <span class="op">$</span> factorial <span class="op">is</span> factorial <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">SanityError</span><span class="op">:</span> <span class="str">'wat'</span>
+    <span class="blt">not</span> <span class="op">$</span> factorial <span class="op">is</span> factorial <span class="op">=</span> <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">SanityError</span> <span class="str">'wat'</span>
     <span class="com"># It's not considered an error if nothing matched, but None will be returned.</span>
     <span class="com"># If you need a default action, though, simply assign something to `1` or `True`.</span>
-    <span class="spc">True</span> <span class="op">=</span> n <span class="op">*</span> factorial<span class="op">:</span> <span class="par">(</span>n <span class="op">-</span> <span class="typ">1</span><span class="par">)</span>
+    <span class="spc">True</span> <span class="op">=</span> n <span class="op">*</span> factorial <span class="par">(</span>n <span class="op">-</span> <span class="typ">1</span><span class="par">)</span>
 </pre>
           </div>
         </div>
@@ -650,17 +633,17 @@ factorial <span class="op">=</span> n <span class="op">-></span>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
 <span class="com"># Raise exceptions with the `raise` built-in.</span>
-<span class="kwd">raise</span><span class="op">:</span> <span class="exc">Exception</span>
+<span class="kwd">raise</span> <span class="exc">Exception</span>
 
 <span class="com"># It accepts classes that derive from BaseException</span>
 <span class="com"># as well as their instances.</span>
-<span class="kwd">raise</span> <span class="op">$</span> <span class="exc">Exception</span><span class="op">:</span> <span class="str">'Ow!'</span>
-<span class="kwd">raise</span><span class="op">:</span> <span class="par">(</span><span class="exc">OblivionError</span><span class="op">:</span> <span class="str">'Stop right there, criminal scum'</span><span class="par">)</span>
+<span class="kwd">raise</span> <span class="op">$</span> <span class="exc">Exception</span> <span class="str">'Ow!'</span>
+<span class="kwd">raise</span> <span class="par">(</span><span class="exc">OblivionError</span> <span class="str">'Stop right there, criminal scum'</span><span class="par">)</span>
 
 <span class="com"># `raise` takes 2 arguments: `exception` and `caused_by`.</span>
 <span class="com"># The former is what to raise, and the latter is <a href="http://www.python.org/dev/peps/pep-3134/">its cause</a>.</span>
 <span class="com"># Setting the cause to `None` in Python >= 3.3 silences the context.</span>
-<span class="kwd">raise</span><span class="op">:</span> <span class="exc">ValueError</span> caused_by<span class="op">:</span> <span class="exc">KeyError</span>
+<span class="kwd">raise</span> <span class="exc">ValueError</span> caused_by<span class="op">:</span> <span class="exc">KeyError</span>
 
 <span class="com"># Catch thrown exceptions with the `unsafe` conditional.</span>
 <span class="com"># Its syntax is similar to `switch`.</span>
@@ -669,37 +652,37 @@ factorial <span class="op">=</span> n <span class="op">-></span>
   <span class="com"># where `expression` is what you want to do</span>
   <span class="com"># and `name` is where to store the raised exception, if any.</span>
   error <span class="op">=</span>
-    i <span class="op">=</span> <span class="cls">int</span><span class="op">:</span> <span class="str">'1234567890a'</span>
-    f <span class="op">=</span> <span class="blt">open</span><span class="op">:</span> <span class="str">'/etc/hostname'</span> <span class="str">'wb'</span>
-    f<span class="op">.</span>write<span class="op">:</span> i
+    i <span class="op">=</span> <span class="cls">int</span> <span class="str">'1234567890a'</span>
+    f <span class="op">=</span> <span class="blt">open</span> <span class="str">'/etc/hostname'</span> <span class="str">'wb'</span>
+    f<span class="op">.</span>write i
   <span class="com"># All other lines are conditional expressions.</span>
   <span class="com"># Use `isinstance` to match exception types:</span>
   error <span class="op">::</span> <span class="exc">ValueError</span> <span class="op">=</span>
-    print<span class="op">:</span> <span class="str">'Hey, that wasn\'t a decimal number!'</span>
+    print <span class="str">'Hey, that wasn\'t a decimal number!'</span>
   <span class="com"># You may also check the exception's attributes if you want:</span>
   error <span class="op">::</span> <span class="exc">OSError</span> <span class="op">::</span> <span class="exc">IOError</span> <span class="op">and</span> error<span class="op">.</span>errno <span class="op">==</span> <span class="typ">13</span> <span class="op">=</span>
-    print<span class="op">:</span> <span class="str">'Permission denied'</span>
+    print <span class="str">'Permission denied'</span>
   <span class="com"># As in `switch`, conditions may be completely unrelated.</span>
   <span class="com"># Any matching condition will silence the exception.</span>
   admin_is_watching <span class="op">=</span>
     <span class="com"># Don't attract his attention with colorful tracebacks.</span>
-    print<span class="op">:</span> <span class="str">'Psst, user!'</span> error
+    print <span class="str">'Psst, user!'</span> error
   <span class="com"># If no exception was caught, the provided variable will be set to None.</span>
   error <span class="op">is</span> <span class="spc">None</span> <span class="op">=</span>
-    <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">AssertionError</span><span class="op">:</span> <span class="str">'Wait, but that code was obviously incorrect!'</span>
+    <span class="kwd">raise</span> <span class="op">$</span> <span class="exc">AssertionError</span> <span class="str">'Wait, but that code was obviously incorrect!'</span>
   <span class="com"># If the last action is assigned to True, it has a special meaning.</span>
   <span class="com"># Specifically, it will be called regardless of whether any</span>
   <span class="com"># any other condition matched (and whether there was any</span>
   <span class="com"># exception at all.) It won't silence the exception, though.</span>
   <span class="spc">True</span> <span class="op">=</span>
-    print<span class="op">:</span> <span class="str">'That is, it is the same as `finally` in Python.'</span>
+    print <span class="str">'That is, it is the same as `finally` in Python.'</span>
 
 <span class="com"># One more thing to note. `unsafe` returns:</span>
 <span class="com">#   * the value of the unsafe expression if no exception was raised;</span>
 <span class="com">#   * None if an exception was raised, but handled;</span>
 <span class="com">#   * nothing if there was an unhandled exception.</span>
 file <span class="op">=</span> <span class="kwd">unsafe</span> <span class="op">$</span>
-  e <span class="op">=</span> <span class="blt">open</span><span class="op">:</span> <span class="str">'README.md'</span>
+  e <span class="op">=</span> <span class="blt">open</span> <span class="str">'README.md'</span>
   <span class="com"># Not having a README isn't critical, but `file` will be `None`.</span>
   e <span class="op">::</span> <span class="exc">IOError</span> <span class="op">=</span> <span class="par">(</span><span class="par">)</span>
 </pre>
@@ -718,38 +701,38 @@ file <span class="op">=</span> <span class="kwd">unsafe</span> <span class="op">
 
 <span class="com"># If you read a section on <a href="#operators">operators</a> carefully,</span>
 <span class="com"># you probably already noticed that you don't have to use `$`.</span>
-<span class="cls">MyType2</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span>a <span class="op">=</span> <span class="typ">1</span><span class="par">)</span>
+<span class="cls">MyType2</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="par">(</span>a <span class="op">=</span> <span class="typ">1</span><span class="par">)</span>
 <span class="com"># But if you do use it, then the class body can be omitted.</span>
 <span class="cls">Object</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
 
 <span class="com"># `inherit` also accepts any amount of base classes.</span>
-<span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="cls">MyType</span> <span class="cls">list</span> <span class="op">$</span>
+<span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="cls">MyType</span> <span class="cls">list</span> <span class="op">$</span>
   b <span class="op">=</span> <span class="typ">2</span>
 
 <span class="cls">MyList</span><span class="op">.</span>a <span class="op">==</span> <span class="typ">1</span>
 <span class="cls">MyList</span><span class="op">.</span>b <span class="op">==</span> <span class="typ">2</span>
 
 <span class="com"># The syntax for calling functions applies to `inherit`, too.</span>
-<span class="cls">MyTypeWithMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span><span class="op">:</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> <span class="cls">MyMetaclass</span> <span class="par">(</span><span class="par">)</span>
+<span class="cls">MyTypeWithMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> <span class="cls">MyMetaclass</span> <span class="par">(</span><span class="par">)</span>
 
 <span class="cls">Animal</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
   <span class="com"># Classes can have methods, which are actually functions.</span>
   __init__ <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="op">,</span> name<span class="par">)</span> <span class="op">-></span>
     <span class="com"># Retrieving an attribute of a value returned by a function</span>
     <span class="com"># is pretty common, so there is a special operator for that.</span>
-    <span class="cls">super</span><span class="op">:.</span>__init__<span class="op">:</span>  <span class="com"># See <a href="http://docs.python.org/dev/library/functions.html#super">Python docs</a> for details</span>
+    <span class="kwd">call</span> <span class="cls">super</span><span class="op">:.</span>__init__  <span class="com"># See <a href="http://docs.python.org/dev/library/functions.html#super">Python docs</a> for details</span>
 
     <span class="spc">self</span><span class="op">.</span>name <span class="op">=</span> name
     <span class="com"># __init__ must always return None.</span>
     <span class="com"># This is one of the pointless limitations of CPython.</span>
     <span class="spc">None</span>
 
-  eat <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="par">)</span> <span class="op">-></span>
-    print<span class="op">:</span> <span class="str">'OM NOM NOM'</span>
+  eat <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="op">,</span> what<span class="par">)</span> <span class="op">-></span>
+    print <span class="str">'OM NOM NOM, what a tasty' what</span>
 
 <span class="com"># Instantiating a class is done by calling it, as always.</span>
-bob <span class="op">=</span> <span class="cls">Animal</span><span class="op">:</span> <span class="str">'Bob'</span>
-bob<span class="op">.</span>eat<span class="op">:</span>
+bob <span class="op">=</span> <span class="cls">Animal</span> <span class="str">'Bob'</span>
+bob<span class="op">.</span>eat <span class="str">'carpet'</span>
 </pre>
           </div>
         </div>
@@ -761,11 +744,11 @@ bob<span class="op">.</span>eat<span class="op">:</span>
 <span class="com"># Since dg is clearly more oriented towards functional programming,</span>
 <span class="com"># some of the combinators were moved to the built-in namespace.</span>
 <span class="com"># `foldl` is `functools.reduce`:</span>
-<span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-></span> <span class="blt">foldl</span><span class="op">:</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> xs <span class="typ">0</span>
+<span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-></span> <span class="blt">foldl</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> xs <span class="typ">0</span>
 
 <span class="com"># And `bind` is `functools.partial`:</span>
-greet <span class="op">=</span> <span class="blt">bind</span><span class="op">:</span> print <span class="str">'Hello'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
-greet<span class="op">:</span> <span class="str">'World'</span>
+greet <span class="op">=</span> <span class="blt">bind</span> print <span class="str">'Hello'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
+greet <span class="str">'World'</span>
 </pre>
           </div>
         </div>
