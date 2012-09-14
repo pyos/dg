@@ -1,9 +1,9 @@
-os       = import:
-sys      = import:
-builtins = import:
+os       = new import
+sys      = new import
+builtins = new import
 
-..parse   = import:
-..compile = import:
+..parse   = new import
+..compile = new import
 
 
 # A function similar to `code.compile_command`, but for dg.

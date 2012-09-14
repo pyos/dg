@@ -1,8 +1,8 @@
-builtins  = import:
-operator  = import:
-functools = import:
-itertools = import:
-importlib = import:
+builtins  = new import
+operator  = new import
+functools = new import
+itertools = new import
+importlib = new import
 
 # Choose a function based on the number of arguments.
 varary = (*fs) -> (*xs) -> (fs !! (len xs > 1)) (*): xs
@@ -11,7 +11,7 @@ varary = (*fs) -> (*xs) -> (fs !! (len xs > 1)) (*): xs
 reduce = f -> (a, *xs) -> foldl f xs a
 
 
-builtins.new  = builtins.call = builtins.($) = builtins.(:) = (f, *xs) -> f (*): xs
+builtins.new  = builtins.call = builtins.($) = (f, *xs) -> f (*): xs
 builtins.(,)  = builtins.tuple' = (*xs) -> xs
 
 builtins.(<)  = reduce operator.lt
