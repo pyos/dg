@@ -17,11 +17,10 @@ All Python 2 implementations are unable to run the compiler at all.
 ## TODO
 
  * full context manager support (i.e. `with ... as ...`)
- * function annotations (they are quite simple, but the syntax is a problem)
- * a neater syntax for loops (both `for` and `while`)
- * a syntax for list/dict/set literals
- * special syntax for slices (they are currently available as the `slice` built-in, though)
- * command-line interface to `parse` and `compile`
- * minor syntax enhancements such as regex literals and dedented multi-line strings
+ * a neater syntax for loops and list/dict/set literals
+ * ^ + minor syntax enhancements such as regex literals and dedented multi-line strings
+ * ^ + function annotations (they are quite simple, but the syntax is a problem)
  * parser and compiler performance improvements
- * bytecode optimizer (or an interface to `PyCode_Optimize`)
+ * ^ + bytecode optimizer (or an interface to `PyCode_Optimize`)
+ * name tracking (i.e. a way to determine the value of `__name__` and `__qualname__`)
+ * ^ + a syntax-unrestricted version of `import` (with optional `from` argument)
