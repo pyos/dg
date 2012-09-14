@@ -12,7 +12,7 @@ reduce = f -> (a, *xs) -> foldl f xs a
 
 
 builtins.new  = builtins.call = builtins.($) = builtins.(:) = (f, *xs) -> f (*): xs
-builtins.(,)  = (*xs) -> xs
+builtins.(,)  = builtins.tuple' = (*xs) -> xs
 
 builtins.(<)  = reduce operator.lt
 builtins.(<=) = reduce operator.le
@@ -39,6 +39,12 @@ builtins.(^)  = reduce operator.xor
 builtins.(|)  = reduce operator.or_
 builtins.(<<) = reduce operator.lshift
 builtins.(>>) = reduce operator.rshift
+
+# Shorthand type constructors (e.g. `new set' a b`  <=> `new set (a, b)`.)
+# These allow to use line continuation neatly.
+builtins.set'   = (*xs) -> set  xs
+builtins.list'  = (*xs) -> list xs
+builtins.dict'  = (*xs, **ys) -> dict xs (**): ys
 
 builtins.import = importlib.import_module
 builtins.bind   = functools.partial

@@ -30,10 +30,12 @@ compile_command = (parser, compiler, code) -> unsafe $
 #
 # :return: runs indefinitely.
 #
-dg = (fd, name: '__main__') ->
+dg = (fd, __name__: '__main__') ->
   parser   = new parse.r
   compiler = new compile.r
-  environ  = dict [('__name__', name), ('__builtins__', __builtins__)]
+  environ  = dict'
+    __name__:     __name__
+    __builtins__: __builtins__
 
   switch $
     not $ call fd.isatty = unsafe $

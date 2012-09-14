@@ -166,24 +166,25 @@ def string(stream, token):
     yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
 
 
-@r.token(r'(\w+()|([!$%&*+\--/:<-@\\^|~]+|,+))|`((\w+))`|\s*((\n))')
+@r.token(r"(\w+'*|([!$%&*+\--/:<-@\\^|~]+|,+))|`(\w+'*)`|\s*(\n)")
 #
 # link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
 #
-# word = ( < alphanumeric > | '_' ) +
+# word = ( < alphanumeric > | '_' ) +, "'" *
 #
-def link(stream, token):
+def link(stream, token, infixn={'if', 'else', 'unless', 'or', 'and', 'in', 'is', 'where'}):
 
-    yield tree.Link(*(q for q in token.groups() if q is not None))
+    infix = token.group(2) or token.group(3) or token.group(4)
+    yield tree.Link(infix or token.group(), infix or (token.group() in infixn))
 
 
-@r.token('[\(\[\{]')
+@r.token('\(')
 #
-# do = '(' | '[' | '{'
+# do = '('
 #
-def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
+def do(stream, token, indented=False):
 
-    par = token.group() if token else ''
+    par = token.group().strip() if token else ''
     stuff_backup = stream.stuff
 
     stream.stuff = tree.Constant(None).at(stream)
@@ -197,7 +198,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
         elif isinstance(item, tree.Internal):
 
-            if item.value != pars.get(par, ''):
+            if (par + item.value) not in ('', '()'):
 
                 stream.error('invalid indentation or mismatched parentheses', after=True)
 
@@ -215,13 +216,6 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
             stream.stuff = item
             after_object = True
 
-    # When handling literals, wrap the block into a prefix function call.
-    if par in ('{', '['):
-
-        stream.repeat.appendleft(stream.stuff)
-        stream.stuff = tree.Link(par + pars[par]).before(stream.stuff)
-        infixl(stream, tree.Link('', True).before(stream.stuff))
-
     stream.stuff.indented = indented
     stream.stuff.closed   = True
 
@@ -235,7 +229,7 @@ def do(stream, token, indented=False, pars={'(': ')', '{': '}', '[': ']'}):
 
 
 @r.token(r'', core.STATE_AT_FILE_END)
-@r.token(r'[\)\]\}]')
+@r.token(r'\)')
 #
 # end = ')' | ']' | '}' | $
 #

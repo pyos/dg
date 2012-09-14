@@ -60,12 +60,10 @@ class Expression (list, StructMixIn):
 
 class Link (str, StructMixIn):
 
-    ALWAYS_INFIX = {'if', 'else', 'unless', 'or', 'and', 'in', 'is', 'where'}
-
     def __new__(cls, data, infix=False):
 
         obj = str.__new__(cls, data)
-        obj.infix = bool(infix) or not obj.isidentifier() or obj in cls.ALWAYS_INFIX
+        obj.infix = bool(infix)
         return obj
 
 
