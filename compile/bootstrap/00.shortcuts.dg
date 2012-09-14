@@ -32,13 +32,16 @@ builtins.(**) = reduce operator.pow
 builtins.(/)  = reduce operator.truediv
 builtins.(//) = reduce operator.floordiv
 builtins.(%)  = reduce operator.mod
+builtins.(.)  = reduce getattr
 builtins.(!!) = reduce operator.getitem
-builtins.(!@) = (a, *xs) -> (!!) a (*): (itertools.starmap slice xs)
 builtins.(&)  = reduce operator.and_
 builtins.(^)  = reduce operator.xor
 builtins.(|)  = reduce operator.or_
 builtins.(<<) = reduce operator.lshift
 builtins.(>>) = reduce operator.rshift
+
+builtins.(.~)  = delattr
+builtins.(!!~) = operator.delitem
 
 # Shorthand type constructors (e.g. `new set' a b`  <=> `new set (a, b)`.)
 # These allow to use line continuation neatly.
