@@ -3,11 +3,9 @@
 ..parse.syntax = new import
 
 
-compile.r.builtins !! 'with' = (self, code) ->
+compile.r.builtins !! 'with' = (self, context, *stuff) ->
   '''
-    with $
-      context
-      do_something
+    with context do_something...
 
     Evaluate `context`, call its `__enter__` method, then `do_something`.
     `context`'s `__exit__` method is called in the end regardless
@@ -16,11 +14,10 @@ compile.r.builtins !! 'with' = (self, code) ->
 
   '''
 
-  context, *stuff = parse.syntax.ST_BREAK code
   self.load None
   end_ptr = self.opcode 'SETUP_WITH' context delta: 2
   self.opcode 'POP_TOP'   delta: -1  # FIXME should store that somewhere.
-  self.call (parse.tree.Link '\n') (*): stuff
+  self.chain (*): stuff if stuff
   self.opcode 'ROT_THREE' delta:  0
   self.opcode 'ROT_TWO'   delta:  0
   self.opcode 'POP_BLOCK' delta: -1
