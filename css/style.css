@@ -38,6 +38,12 @@ p
     margin: 0.2em 0 0.2em 0;
 }
 
+.content ul p, .content ol p
+{
+    text-indent: 0;
+    padding-left: 0;
+}
+
 .content .section
 {
     margin-bottom: 2em;
