@@ -102,7 +102,7 @@ def indent(stream, token):
 
         stream.indent.append(indent)
       # yield from do(stream, token, indented=True)
-        for _ in do(stream, token, indented=True): yield _
+        for _ in do(stream, token, indented=True, preserve_close_state=True): yield _
         return
 
     while indent != stream.indent.pop():
@@ -182,7 +182,7 @@ def link(stream, token, infixn={'if', 'else', 'unless', 'or', 'and', 'in', 'is',
 #
 # do = '('
 #
-def do(stream, token, indented=False):
+def do(stream, token, indented=False, preserve_close_state=False):
 
     par = token.group().strip() if token else ''
     stuff_backup = stream.stuff
@@ -217,7 +217,7 @@ def do(stream, token, indented=False):
             after_object = True
 
     stream.stuff.indented = indented
-    stream.stuff.closed   = True
+    stream.stuff.closed  |= not preserve_close_state
 
     # Further expressions should not touch this block.
     indented and stream.repeat.appendleft(tree.Link('\n', True).at(stream))
