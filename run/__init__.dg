@@ -10,14 +10,13 @@ builtins = new import
 compile_command = (parser, compiler, code) -> unsafe
   e =
     expr = res = parser.parse code '<stdin>'
-    res.closed = False  # Top-level expression is always closed.
 
     # Search for incomplete infix expressions.
     while (expr :: parse.tree.Expression and not expr.closed and len expr > 2) (expr !!= -1)
 
     compiler.compile res if code.endswith '\n' or not (
       (code.rsplit '\n' 1 !! -1).startswith ' ' or
-        expr :: parse.tree.Link and expr in compiler.builtins or
+        expr :: parse.tree.Link and not expr.closed and expr in compiler.builtins or
           expr :: parse.tree.Expression and not expr.closed
     ) else None
 
