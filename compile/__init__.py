@@ -1,31 +1,40 @@
-import glob
+import imp
 import os.path
 import marshal
 
 from .core import Compiler as r
+
+from . import bootstrap
 from .. import parse
 
 
-parser   = parse.r()
-compiler = r()
+parser    = parse.r()
+compiler  = r()
+container = os.path.dirname(bootstrap.__file__)
 
-container = os.path.join(os.path.dirname(__file__), 'bootstrap')
-compiled  = os.path.join(container, 'bootstrap.pyc')
-all_files = sorted(glob.glob(os.path.join(container, '*.dg')))
+for f in [
+       'shortcuts.dg'
+  , 'conditionals.dg',      'unary.dg'
+  ,       'binary.dg', 'comparison.dg'
+  ,      'inherit.dg',     'switch.dg', 'where.dg'
+  ,        'loops.dg',     'unsafe.dg',  'with.dg', 'yield.dg'
+  ,      'imphook.dg'
+]:
+    f = os.path.join(container, f)
+    q = imp.cache_from_source(f)
 
+    try:
 
-try:
+        c = os.stat(q).st_mtime > os.stat(f).st_mtime and marshal.load(open(q, 'rb'))
 
-    if os.stat(compiled).st_mtime < max(os.stat(p).st_mtime for p in all_files):
+    except Exception:
 
-        raise Exception
+        c = None
 
-    for c in marshal.load(open(compiled, 'rb')):
+    if not c:
 
-        eval(c, {'__package__': __package__})
+        c = compiler.compile(parser.parse(open(f).read(), f))
+        os.makedirs(os.path.dirname(q), exist_ok=True)
+        marshal.dump(c, open(q, 'wb'))
 
-except Exception as e:
-
-    cs = (compiler.compile(parser.parse(open(p).read(), p)) for p in all_files)
-    cs = [_ for _ in cs if eval(_, {'__package__': __package__}) or True]
-    marshal.dump(cs, open(compiled, 'wb'))
+    eval(c, {'__package__': __package__})
