@@ -6,23 +6,19 @@ builtins = new import
 ..compile = new import
 
 
-# A function similar to `code.compile_command`, but for dg.
-compile_command = (parser, compiler, code) -> unsafe
+complete = (parser, compiler, code) -> unsafe
   e =
     expr = res = parser.parse code '<stdin>'
 
     # Search for incomplete infix expressions.
     while (expr :: parse.tree.Expression and not expr.closed and len expr > 2) (expr !!= -1)
 
-    compiler.compile res if code.endswith '\n' or not (
+    res if code.endswith '\n' or not
       (code.rsplit '\n' 1 !! -1).startswith ' ' or
         expr :: parse.tree.Link and not expr.closed and expr in compiler.builtins or
           expr :: parse.tree.Expression and not expr.closed
-    ) else None
 
-  # The code is incomplete by definition if there are
-  # unmatched parentheses or quotes in it.
-  e :: SyntaxError and e.args !! 0 in ('mismatched parentheses', 'mismatched quote') = ()
+  e :: SyntaxError and e.args !! 0 in ('mismatched parentheses', 'mismatched quote') = None
 
 
 # Start an interactive shell.
@@ -34,23 +30,15 @@ compile_command = (parser, compiler, code) -> unsafe
 dg = (fd, __name__: '__main__') ->
   parser   = new parse.r
   compiler = new compile.r
-  environ  = dict'
-    __name__:     __name__
-    __builtins__: __builtins__
+  environ  = dict __name__: __name__ __builtins__: __builtins__
 
-  switch
-    not $ call fd.isatty = unsafe
-      e =
-        eval (compiler.compile $ parser.parse filename: fd.name $ fd.read -1) environ
-        exit 0
-      e and not (e :: SystemExit) =
-        sys.excepthook (type e) e e.__traceback__.tb_next
-        exit 1
+  call fd.isatty or unsafe
+    e = eval (compiler.compile $ parser.parse filename: fd.name $ fd.read -1) environ, exit 0
+    e and not (e :: SystemExit) = sys.excepthook (type e) e e.__traceback__.tb_next, exit 1
 
-    fd is sys.stdin =
-      # Run PYTHONSTARTUP first.
-      st = os.environ.get 'PYTHONSTARTUP' ''
-      eval (builtins.compile ((open st).read -1) st 'exec') environ if st
+  fd is sys.stdin and
+    st = os.environ.get 'PYTHONSTARTUP' ''
+    eval (builtins.compile ((open st).read -1) st 'exec') environ if st
 
   sys.ps1 = getattr sys 'ps1' '>>> '
   sys.ps2 = getattr sys 'ps2' '... '
@@ -58,16 +46,9 @@ dg = (fd, __name__: '__main__') ->
 
   while True $ unsafe
     e =
-      buf  = ''
-      code = None
-
-      while (not code)
-        buf += input (sys.ps2 if buf else sys.ps1)
-        code = compile_command parser compiler buf
-        buf += '\n'
-
-      sys.displayhook $ eval code environ
-    e :: EOFError = call exit
-    e and not (e :: SystemExit) =
-      # The first line of the traceback is in this function.
-      sys.excepthook (type e) e e.__traceback__.tb_next
+      buf = input sys.ps1
+      while (not (y = complete parser compiler buf)) (buf += '\n' + input sys.ps2)
+      sys.displayhook $ eval (compiler.compile y) environ
+    e :: EOFError = call print, exit 0
+    e :: SystemExit = raise e
+    e = sys.excepthook (type e) e e.__traceback__.tb_next
