@@ -35,7 +35,8 @@ sys.meta_path.insert 0 $ inherit str $
     unsafe
       e =
         p = os.path.abspath $ next mods
-        cls (os.path.join p '__init__.dg' if os.path.isdir p else p)
+        p = os.path.join p '__init__.dg' if os.path.isdir p
+        cls p if os.path.exists p else None
       e :: StopIteration = None
 
   is_package = (self, name) ->
