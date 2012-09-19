@@ -6,7 +6,7 @@ from . import tree
 # Public API
 r  = core.Parser
 it = core.Parser.parse
-fd = lambda fd, name='<unknown file-like object': it(fd.read(), getattr(fd, 'name', name))
+fd = lambda fd, name='<stream>': it(fd.read(), getattr(fd, 'name', name))
 # End of public API
 
 
