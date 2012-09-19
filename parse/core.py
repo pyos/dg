@@ -90,16 +90,6 @@ class Parser (collections.Iterator):
 
     tokens = []
 
-    @classmethod
-    def token(cls, regex=r'.', state=0):
-
-        def g(f):
-
-            cls.tokens.append((re.compile(regex, re.DOTALL).match, state, f))
-            return f
-
-        return g
-
     # Whether an infix link's priority is higher than the other one's.
     #
     # :param in_relation_to: link to the left.
@@ -129,8 +119,20 @@ class Parser (collections.Iterator):
         p2 = self.INFIX_PRECEDENCE(in_relation_to)
         return p1 + (link in self.INFIX_RIGHT_FIXITY) > p2
 
-    def parse(self, input, filename='<string>'):
+    @classmethod
+    def token(cls, regex=r'.', state=0):
 
+        def g(f):
+
+            cls.tokens.append((re.compile(regex, re.DOTALL).match, state, f))
+            return f
+
+        return g
+
+    @classmethod
+    def parse(cls, input, filename='<string>'):
+
+        self = cls()
         self.state  = STATE_AT_FILE_START | STATE_AT_LINE_START
         self.buffer = input
         self.stuff  = None

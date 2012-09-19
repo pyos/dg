@@ -6,38 +6,21 @@ from ..parse import tree
 from ..parse import syntax
 
 
-#
-# NOTE this class depends heavily on side effects.
-#   As such, none of the methods are thread-safe.
-#
 class Compiler:
 
-    def __init__(self):
-
-        super().__init__()
-
-        self.code = None
-
-    # Create an immutable code object that evaluates a given expression.
+    @classmethod
+    # Compile a parser output tree into an immutable code object.
     #
-    # :param into: either None or a preconstructed mutable code object.
+    # :param into_codeobj: a temporary mutable code object to use.
     #
-    # :param name: name of the namespace (e.g. '<module>' for the top-level code).
-    #
-    def compile(self, expr, into=None, name='<module>'):
+    def compile(cls, expr, into=None, name='<module>'):
 
-        self.code = codegen.MutableCode(cell=self.code) if into is None else into
+        self = cls()
+        self.code = codegen.MutableCode() if into is None else into
         self.code.filename = expr.location.filename
         self.code.lineno   = expr.location.start[1]
-
-        try:
-
-            self.opcode('RETURN_VALUE', expr, delta=0)
-            return self.code.compile(name)
-
-        finally:
-
-            self.code = self.code.cell
+        self.opcode('RETURN_VALUE', expr, delta=0)
+        return self.code.compile(name)
 
     # Push the results of some expressions onto the stack.
     #

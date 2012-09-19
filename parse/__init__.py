@@ -3,7 +3,11 @@ import ast
 from . import core
 from . import tree
 
-r = core.Parser
+# Public API
+r  = core.Parser
+it = core.Parser.parse
+fd = lambda fd, name='<unknown file-like object': it(fd.read(), getattr(fd, 'name', name))
+# End of public API
 
 
 # Handle an infix link.

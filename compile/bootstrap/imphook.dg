@@ -10,10 +10,6 @@ importlib.util = new import
 ..compile = new import
 
 
-getmtime = fn ->
-  (os.stat fn).st_mtime if os.path.exists fn else float '-inf'
-
-
 sys.meta_path.insert 0 $ inherit str $
 
   find_module = classmethod $ (cls, mod, path: None) ->
@@ -34,11 +30,12 @@ sys.meta_path.insert 0 $ inherit str $
   get_code = (self, name) ->
     cache = imp.cache_from_source self
     code  = unsafe
-      e = (marshal.load $ open cache 'rb' if getmtime self <= getmtime cache)
+      e =
+        marshal.load $ open cache 'rb' if (os.stat self).st_mtime <= (os.stat cache).st_mtime
       e :: Exception = None
 
     code or
-      code = compile.r:.compile $ parse.r:.parse filename: (str self) $ (open self).read -1
+      code = compile.it $ parse.fd $ open $ str self
 
       os.makedirs (os.path.dirname cache) exist_ok: True
       marshal.dump code $ open cache 'wb'
