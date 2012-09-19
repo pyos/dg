@@ -117,7 +117,7 @@ class Parser (collections.Iterator):
         return p1 + (link in self.INFIX_RIGHT_FIXITY) > p2
 
     @classmethod
-    def token(cls, regex=r'.', state=0):
+    def token(cls, regex, state=0):
 
         def g(f):
 
