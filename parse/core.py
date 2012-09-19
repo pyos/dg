@@ -50,9 +50,7 @@ class Parser (collections.Iterator):
         '^': -12,
         '|': -13,
       # Logic
-       '&&': -14,
       'and': -14,
-       '||': -15,
        'or': -15,
       # Low-priority binding
         '$': -16,
