@@ -17,50 +17,32 @@ getmtime = fn ->
 sys.meta_path.insert 0 $ inherit str $
 
   find_module = classmethod $ (cls, mod, path: None) ->
-    # Empty path in `sys.path` is the current directory.
-    path = map p -> (p or os.curdir) sys.path if path `is` None
-
-    # Search for
-    mods = itertools.chain.from_iterable $ map p -> (
-      # directory `module`
-      a = os.path.join p $ mod.rsplit '.' 1 !! -1
-      yield a if os.path.isdir a
-      # or file `module.dg`
-      b = a + os.extsep + 'dg'
-      yield b if os.path.isfile b
-      None
-    # in any of the available paths.
-    ) $ filter os.path.isdir path
+    name = mod.rsplit '.' 1 !! -1
+    mods = itertools.chain.from_iterable $ map
+      dir ->
+        base = os.path.join dir name
+        os.path.join base '__init__.dg',  base + '.dg'
+      filter os.path.isdir $ map os.path.abspath (sys.path if path is None else path)
 
     unsafe
-      e =
-        p = os.path.abspath $ next mods
-        p = os.path.join p '__init__.dg' if os.path.isdir p
-        cls p if os.path.exists p else None
+      e = cls $ next $ filter os.path.isfile mods
       e :: StopIteration = None
 
   is_package = (self, name) ->
-    name.rsplit '.' 1 !! -1 != (os.path.splitext $ os.path.basename self) !! 0
+    name.rsplit '.' 1 !! -1 != (os.path.basename self).rsplit '.' 1 !! 0
 
   get_code = (self, name) ->
     cache = imp.cache_from_source self
     code  = unsafe
-      _ = (marshal.load $ open cache 'rb' if getmtime self <= getmtime cache)
-      _ = None
+      e = (marshal.load $ open cache 'rb' if getmtime self <= getmtime cache)
+      e :: Exception = None
 
-    not code and os.path.exists self and
-      # Attempt to recompile the source code.
-      # FIXME should do that when dg or Python version changes.
-      code = compile.r:.compile $
-        parse.r:.parse filename: (str self) $ (open self).read -1
+    code or
+      code = compile.r:.compile $ parse.r:.parse filename: (str self) $ (open self).read -1
 
-      os.makedirs exist_ok: True $ os.path.dirname cache
+      os.makedirs (os.path.dirname cache) exist_ok: True
       marshal.dump code $ open cache 'wb'
-
-    # Not having a code completely is not an error;
-    # that means a package did not have the __init__ submodule.
-    # (If there was no module at all, finder would not create this loader.)
-    code
+      code
 
   load_module = importlib.util.module_for_loader $ (self, module) ->
     init = (module.__name__.rpartition '.' !! 0) or None
@@ -71,5 +53,5 @@ sys.meta_path.insert 0 $ inherit str $
     module.__loader__  = self
     module.__package__ = (module.__name__ if self.is_package module.__name__ else init)
 
-    eval code module.__dict__ if code
+    eval code module.__dict__
     module
