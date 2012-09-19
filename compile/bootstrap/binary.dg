@@ -40,15 +40,11 @@ varary_r = (multiple, self, a, *bs, inplace: False) ->
 
 
 compile.r.builtins !! ',' = (self, *xs) -> self.opcode 'BUILD_TUPLE' (*): xs delta: 1
-compile.r.builtins !! '$' = (self, a, b: (parse.tree.Constant None)) ->
-  # Close `b` and delegate to `call`.
-  b.closed = True
-  b.location = a.location unless hasattr b 'location'
-  is_call  = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
-  # Now we can either call the result of `a` with `b`...
-  self.call a b unless is_call
-  # ...or join the argument lists.
-  self.call (*): (a + list (b,)) if is_call
+compile.r.builtins !! '$' = (self, a, *b) ->
+  b = ((parse.tree.Constant None).after a,) unless b
+  is_call = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
+  self.call a (b !! 0)    unless is_call
+  self.call (*): (a + list b) if is_call
 
 compile.r.builtins !! '!!'  = bind varary 'BINARY_SUBSCR'
 compile.r.builtins !! '+'   = bind varary 'BINARY_ADD'      single: 'UNARY_POSITIVE'
