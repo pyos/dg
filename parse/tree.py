@@ -45,8 +45,8 @@ class StructMixIn:
     def at(self, stream):
 
         self.location = Location(
-            stream.last_token_at,
-            stream.next_token_at,
+            stream.position(stream.pstack[-1]),
+            stream.position(stream.offset),
             stream.filename,
             stream.line(stream.pstack[-1])
         )

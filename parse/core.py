@@ -140,15 +140,12 @@ class Parser (collections.Iterator):
 
     def position(self, offset):
 
-        return (
-            offset,
-            1 + self.buffer[:offset].count('\n'),  # lineno
-            offset - self.buffer.rfind('\n', 0, offset)  # charno
-        )
+        part = self.buffer[:offset]
+        return (offset, 1 + part.count('\n'), offset - part.rfind('\n'))
 
     def error(self, description, after=False):
 
-        offset, lineno, charno = self.next_token_at if after else self.last_token_at
+        offset, lineno, charno = self.position(self.offset if after else self.pstack[0])
         raise SyntaxError(description, (self.filename, lineno, charno, self.line(offset)))
 
     def __next__(self):
@@ -173,6 +170,7 @@ class Parser (collections.Iterator):
 
         return self.repeat.popleft()
 
-    line = lambda self, offset: self.buffer[self.buffer.rfind('\n', 0, offset) + 1:self.buffer.find('\n', offset) + 1 or None]
-    next_token_at = property(lambda self: self.position(self.offset))
-    last_token_at = property(lambda self: self.position(self.pstack[-1]))
+    line = lambda self, offset: self.buffer[
+        self.buffer.rfind('\n', 0, offset) + 1:
+        self.buffer. find('\n',    offset) + 1 or None  # 0 won't do here
+    ]
