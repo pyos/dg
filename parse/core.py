@@ -138,9 +138,7 @@ class Parser (collections.Iterator):
         self.repeat = collections.deque()
         self.indent = collections.deque([-1])
         self.filename = filename
-        q = next(self)
-        self.state & STATE_AT_FILE_END or self.error('junk after the end of input', after=True)
-        return q
+        return next(self)
 
     def position(self, offset):
 
