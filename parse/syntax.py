@@ -5,21 +5,31 @@ MATCH_A = lambda p: lambda f: tree.matchA(f, p)
 MATCH_Q = lambda p: lambda f: tree.matchQ(f, p)
 UNCURRY = lambda p, n=...: lambda f, n=n: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f] if n is ... else n
 
+def UNASSOC(p):
+
+    def g(f):
+
+        q = tree.matchA(f, p)
+        return g(q.pop(0)) + q if q else [f]
+
+    return g
+
+
 ANY = tree.Link('_')
 
 ST_BREAK        = UNCURRY(tree.Link('\n'))
 ST_TUPLE        = UNCURRY(tree.Link(','))
-ST_ARG_KW       = UNCURRY(tree.Link(':'))
-ST_ARG_VAR      = MATCH_A(tree.Expression((tree.Link(''), tree.Link('*'),  ANY)))
-ST_ARG_VAR_KW   = MATCH_A(tree.Expression((tree.Link(''), tree.Link('**'), ANY)))
+ST_ARG_KW       = MATCH_A(tree.Expression((tree.Link(':'), ANY,             ANY)))
+ST_ARG_VAR      = MATCH_A(tree.Expression((tree.Link(''),  tree.Link('*'),  ANY)))
+ST_ARG_VAR_KW   = MATCH_A(tree.Expression((tree.Link(''),  tree.Link('**'), ANY)))
 ST_ARG_VAR_C    = MATCH_Q(tree.Link('*'))
 ST_ARG_VAR_KW_C = MATCH_Q(tree.Link('**'))
 ST_IMPORT       = MATCH_Q(tree.Expression((tree.Link(''), tree.Link('new'), tree.Link('import'))))
-ST_IMPORT_SEP   = UNCURRY(tree.Link('.'))
-ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''), ANY, ANY)))
-ST_ASSIGN       = MATCH_A(tree.Expression((tree.Link('='), ANY, ANY)))
-ST_ASSIGN_ATTR  = UNCURRY(tree.Link('.'))
-ST_ASSIGN_ITEM  = UNCURRY(tree.Link('!!'))
+ST_IMPORT_SEP   = UNASSOC(tree.Expression((tree.Link('.'),  ANY, ANY)))
+ST_IMPORT_REL   = MATCH_A(tree.Expression((tree.Link(''),   ANY, ANY)))
+ST_ASSIGN       = MATCH_A(tree.Expression((tree.Link('='),  ANY, ANY)))
+ST_ASSIGN_ATTR  = MATCH_A(tree.Expression((tree.Link('.'),  ANY, ANY)))
+ST_ASSIGN_ITEM  = MATCH_A(tree.Expression((tree.Link('!!'), ANY, ANY)))
 
 
 def error(description, at):
@@ -42,7 +52,7 @@ def assignment(var, expr):
     if ST_IMPORT(expr):
 
         parent, name = ST_IMPORT_REL(var) or [tree.Link(''), var]
-        args = ST_IMPORT_SEP(name)
+        args = ST_IMPORT_SEP(name) or [name]
 
         if isinstance(parent, tree.Link) and len(parent) == parent.count('.') and all(isinstance(a, tree.Link) for a in args):
 
@@ -78,17 +88,19 @@ def assignment_target(var):
 
         return const.AT.UNPACK, pack, [len(pack), star[0]]
 
-    *var_a, attr = ST_ASSIGN_ATTR(var, [var])
-    *var_i, item = ST_ASSIGN_ITEM(var, [var])
+    var_a = ST_ASSIGN_ATTR(var)
+    var_i = ST_ASSIGN_ITEM(var)
 
     if var_a:
 
+        rest, attr = var_a
         isinstance(attr, tree.Link) or error(const.ERR.NONCONST_ATTR, attr)
-        return const.AT.ATTR, attr, var_a
+        return const.AT.ATTR, attr, rest
 
     if var_i:
 
-        return const.AT.ITEM, item, var_i
+        rest, item = var_i
+        return const.AT.ITEM, item, rest
 
     isinstance(var, tree.Link) or error(const.ERR.NONCONST_VARNAME, var)
     return const.AT.NAME, var, []
@@ -121,7 +133,7 @@ def function(args):
         # Either a single argument, or multiple arguments separated by commas.
         for arg in ST_TUPLE(args):
 
-            arg, *default = ST_ARG_KW(arg)
+            arg, *default = ST_ARG_KW(arg) or [arg]
             vararg = ST_ARG_VAR(arg)
             varkw  = ST_ARG_VAR_KW(arg)
             # Extract argument name from `vararg` or `varkw`.
@@ -176,7 +188,7 @@ def call_args(args):
 
     for arg in args:
 
-        kw = ST_ARG_KW(arg, ())
+        kw = ST_ARG_KW(arg)
 
         if not kw:
 

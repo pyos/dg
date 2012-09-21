@@ -103,14 +103,11 @@ class Compiler:
 
         elif type == const.AT.ATTR:
 
-            self.builtins['.'](self, *args)
-            self.opcode('STORE_ATTR', arg=var, delta=-2)
+            self.opcode('STORE_ATTR', args, arg=var, delta=-2)
 
         elif type == const.AT.ITEM:
 
-            # `!!` is not defined, yet required by bootstrapped code.
-            self.builtins['!!'](self, *args) if len(args) > 1 else self.load(*args)
-            self.opcode('STORE_SUBSCR', var, delta=-2)
+            self.opcode('STORE_SUBSCR', args, var, delta=-2)
 
         else:
 
@@ -234,10 +231,10 @@ class Compiler:
     #
     # Retrieve an attribute of some object.
     #
-    def getattr(self, a, *bs):
+    def getattr(self, a, b):
 
         self.load(a)
-        list(map(self.ldattr, bs))
+        self.ldattr(b)
 
     #
     # expression_1 (insert line break here) expression_2

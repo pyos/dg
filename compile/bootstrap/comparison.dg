@@ -6,62 +6,37 @@
 # iff both `R` and `Q` are comparison operators, but without
 # evaluating `b` twice.
 #
-# Examples::
-#
-#   >>> varary_cmp: '<' compiler a b
-#     1 LOAD       a
-#     2 LOAD       b
-#     3 COMPARE_OP <
-#
-#   >>> varary_cmp: '<' compiler a b c
-#     1 LOAD                      a
-#     2 LOAD                      b
-#     3 DUP_TOP
-#     4 ROT_THREE
-#     5 COMPARE_OP                <
-#     6 JUMP_IF_FALSE_ELSE_POP   10
-#     7 LOAD                      c
-#     8 COMPARE_OP                <
-#     9 JUMP_FORWARD              2 (to 12)
-#  > 10 ROT_TWO
-#    11 POP_TOP
-#  > 12 <out of scope of this function>
-#
 # (Yes, Python compiler generates the same bytecode.)
 #
-varary_cmp = (operator, self, a, *bs, chained: False) ->
-  # The last argument is a special case unless we want
-  # to insert a jump opcode afterwards.
-  *bs, c = bs unless chained
-
+comparison = (operator, self, a, b, chained: False) ->
   a_is_cmpop = a :: parse.tree.Expression and not a.closed and
     e, *ex = a
     e :: parse.tree.Link and e in compile.r.builtins and
+      p, q = ex
       f = compile.r.builtins !! e
-      f :: bind and f.func is varary_cmp
+      f :: bind and f.func is comparison
 
   # If `a` is not a comparison (or is closed), simply load it.
   self.load a     unless a_is_cmpop
   jmps = new list unless a_is_cmpop
   # Otherwise, call `varary_op` with `chained` set to True.
-  jmps = f self chained: True (*): ex if a_is_cmpop
-  jmps = jmps +
-    list $
-      map b -> (
-        self.opcode 'DUP_TOP' b delta: 2
-        self.opcode 'ROT_THREE' delta: 0
-        self.opcode 'COMPARE_OP' arg: operator delta: -1
-        self.opcode 'JUMP_IF_FALSE_OR_POP' delta: -1
-      ) bs
+  jmps = f self p q chained: True if a_is_cmpop
+
+  chained and
+    jmps.append $
+      self.opcode 'DUP_TOP' b delta: 2
+      self.opcode 'ROT_THREE' delta: 0
+      self.opcode 'COMPARE_OP' arg: operator delta: -1
+      self.opcode 'JUMP_IF_FALSE_OR_POP' delta: -1
 
   chained or
-    self.load c
-    self.opcode 'COMPARE_OP' arg: operator delta: -1
+    self.opcode 'COMPARE_OP' b arg: operator delta: 0
 
     jmps and
       jmp = self.opcode 'JUMP_FORWARD' delta: 0
       list (map call jmps)
       # Exceptional case: one of the comparisons returned False.
+      # We should remove the right-hand statement from the stack, though.
       self.opcode 'ROT_TWO' delta: 0
       self.opcode 'POP_TOP' delta: 0  # that -1 was accounted for by JUMP_IF_FALSE_OR_POP
       call jmp
@@ -69,11 +44,11 @@ varary_cmp = (operator, self, a, *bs, chained: False) ->
   jmps
 
 
-compile.r.builtins !! '<'   = bind varary_cmp '<'
-compile.r.builtins !! '<='  = bind varary_cmp '<='
-compile.r.builtins !! '=='  = bind varary_cmp '=='
-compile.r.builtins !! '!='  = bind varary_cmp '!='
-compile.r.builtins !! '>'   = bind varary_cmp '>'
-compile.r.builtins !! '>='  = bind varary_cmp '>='
-compile.r.builtins !! 'is'  = bind varary_cmp 'is'
-compile.r.builtins !! 'in'  = bind varary_cmp 'in'
+compile.r.builtins !! '<'   = bind comparison '<'
+compile.r.builtins !! '<='  = bind comparison '<='
+compile.r.builtins !! '=='  = bind comparison '=='
+compile.r.builtins !! '!='  = bind comparison '!='
+compile.r.builtins !! '>'   = bind comparison '>'
+compile.r.builtins !! '>='  = bind comparison '>='
+compile.r.builtins !! 'is'  = bind comparison 'is'
+compile.r.builtins !! 'in'  = bind comparison 'in'

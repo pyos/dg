@@ -172,6 +172,12 @@ has_priority = functools.partial(
 )
 
 
+# Whether an operator is non-associative with itself (i.e. should be joined.)
+# Note that this is only necessary if you're not doing some kind of fold.
+# Unless, of course, you don't want the compiler to consume the whole stack.
+unassoc = {',', '..', '::', '', '\n'}.__contains__
+
+
 # Handle an infix link.
 #
 # The right-hand statement is assumed to be unparsed yet.
@@ -243,7 +249,7 @@ def infixl_insert_rhs(stream, root, op, rhs):
             root.append(infixl_insert_rhs(stream, root.pop(), op, rhs))
             return root
 
-        elif op == root[0] and rhs is not None:
+        elif op == root[0] and unassoc(op) and rhs is not None:
 
             root.append(rhs)  # A small extension to the shunting-yard.
             return root       # `a R b R c` <=> `R a b c` if R is left-fixed.

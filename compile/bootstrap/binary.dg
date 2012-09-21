@@ -4,86 +4,55 @@
 ..parse.syntax = new import
 
 
-# If there is one argument, feed to it an opcode; otherwise,
-# do the same thing as `foldl`, but with an opcode instead of a function.
-#
-# Examples::
-#
-#   >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a
-#     1 LOAD   a
-#     2 UNARY_STUFF
-#
-#   >>> varary: 'BINARY_STUFF' single: 'UNARY_STUFF' compiler a b c
-#     1 LOAD   a
-#     2 LOAD   b
-#     3 BINARY_STUFF
-#     4 LOAD   c
-#     5 BINARY_STUFF
-#
-#  >>> varary: 'BINARY_STUFF' inplace: True compiler a b
-#    1 LOAD   a
-#    2 LOAD   b
-#    3 BINARY_STUFF
-#    4 STORE  a
-#
-varary = (multiple, self, a, *bs, inplace: False, single: None) ->
-  self.load a
-  list (map b -> (self.opcode multiple b delta: 0) bs)
-  self.opcode single delta: 0 unless bs or not single
-  self.store_top a if inplace
+biunary = (f, g) -> (self, a, b: None) -> (b is None and f self a or g self a b)
+unaryop = (c, self, a) -> self.opcode c a delta: 1
+stacked = (c, self, a, b) -> self.opcode c a b delta: 1
+inplace = (c, self, a, b) ->
+  self.opcode c a b delta: 1
+  self.store_top a
 
 
-varary_r = (multiple, self, a, *bs, inplace: False) ->
-  self.load a (*): bs
-  list (map _ -> (self.opcode multiple delta: -1) bs)
-  self.store_top a if inplace
-
-
+# NOTE ',' is unfixed
 compile.r.builtins !! ',' = (self, *xs) -> self.opcode 'BUILD_TUPLE' (*): xs delta: 1
-compile.r.builtins !! '$' = (self, a, *b) ->
-  b = ((parse.tree.Constant None).after a,) unless b
+compile.r.builtins !! '$' = (self, a, b: None) ->
+  b = (parse.tree.Constant None).after a if b is None
   is_call = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
-  self.call a (b !! 0)    unless is_call
-  self.call (*): (a + list b) if is_call
+  self.call a b               unless is_call
+  self.call (*): (a + list' b) if is_call
 
-compile.r.builtins !! '!!'  = bind varary 'BINARY_SUBSCR'
-compile.r.builtins !! '+'   = bind varary 'BINARY_ADD'      single: 'UNARY_POSITIVE'
-compile.r.builtins !! '-'   = bind varary 'BINARY_SUBTRACT' single: 'UNARY_NEGATIVE'
-compile.r.builtins !! '*'   = bind varary 'BINARY_MULTIPLY'
-compile.r.builtins !! '**'  = bind varary_r 'BINARY_POWER'
-compile.r.builtins !! '/'   = bind varary 'BINARY_TRUE_DIVIDE'
-compile.r.builtins !! '//'  = bind varary 'BINARY_FLOOR_DIVIDE'
-compile.r.builtins !! '%'   = bind varary 'BINARY_MODULO'
-compile.r.builtins !! '&'   = bind varary 'BINARY_AND'
-compile.r.builtins !! '^'   = bind varary 'BINARY_XOR'
-compile.r.builtins !! '|'   = bind varary 'BINARY_OR'
-compile.r.builtins !! '<<'  = bind varary 'BINARY_LSHIFT'
-compile.r.builtins !! '>>'  = bind varary 'BINARY_RSHIFT'
+compile.r.builtins !! '!!'  = bind stacked 'BINARY_SUBSCR'
+compile.r.builtins !! '+'   = biunary (bind unaryop 'UNARY_POSITIVE') (bind stacked 'BINARY_ADD')
+compile.r.builtins !! '-'   = biunary (bind unaryop 'UNARY_NEGATIVE') (bind stacked 'BINARY_SUBTRACT')
+compile.r.builtins !! '*'   = bind stacked 'BINARY_MULTIPLY'
+compile.r.builtins !! '**'  = bind stacked 'BINARY_POWER'
+compile.r.builtins !! '/'   = bind stacked 'BINARY_TRUE_DIVIDE'
+compile.r.builtins !! '//'  = bind stacked 'BINARY_FLOOR_DIVIDE'
+compile.r.builtins !! '%'   = bind stacked 'BINARY_MODULO'
+compile.r.builtins !! '&'   = bind stacked 'BINARY_AND'
+compile.r.builtins !! '^'   = bind stacked 'BINARY_XOR'
+compile.r.builtins !! '|'   = bind stacked 'BINARY_OR'
+compile.r.builtins !! '<<'  = bind stacked 'BINARY_LSHIFT'
+compile.r.builtins !! '>>'  = bind stacked 'BINARY_RSHIFT'
 
-compile.r.builtins !! '!!=' = bind varary 'BINARY_SUBSCR'        inplace: True
-compile.r.builtins !! '+='  = bind varary 'INPLACE_ADD'          inplace: True
-compile.r.builtins !! '-='  = bind varary 'INPLACE_SUBTRACT'     inplace: True
-compile.r.builtins !! '*='  = bind varary 'INPLACE_MULTIPLY'     inplace: True
-compile.r.builtins !! '**=' = bind varary_r 'INPLACE_POWER'      inplace: True
-compile.r.builtins !! '/='  = bind varary 'INPLACE_TRUE_DIVIDE'  inplace: True
-compile.r.builtins !! '//=' = bind varary 'INPLACE_FLOOR_DIVIDE' inplace: True
-compile.r.builtins !! '%='  = bind varary 'INPLACE_MODULO'       inplace: True
-compile.r.builtins !! '&='  = bind varary 'INPLACE_AND'          inplace: True
-compile.r.builtins !! '^='  = bind varary 'INPLACE_XOR'          inplace: True
-compile.r.builtins !! '|='  = bind varary 'INPLACE_OR'           inplace: True
-compile.r.builtins !! '<<=' = bind varary 'INPLACE_LSHIFT'       inplace: True
-compile.r.builtins !! '>>=' = bind varary 'INPLACE_RSHIFT'       inplace: True
+compile.r.builtins !! '!!=' = bind inplace 'BINARY_SUBSCR'
+compile.r.builtins !! '+='  = bind inplace 'INPLACE_ADD'
+compile.r.builtins !! '-='  = bind inplace 'INPLACE_SUBTRACT'
+compile.r.builtins !! '*='  = bind inplace 'INPLACE_MULTIPLY'
+compile.r.builtins !! '**=' = bind inplace 'INPLACE_POWER'
+compile.r.builtins !! '/='  = bind inplace 'INPLACE_TRUE_DIVIDE'
+compile.r.builtins !! '//=' = bind inplace 'INPLACE_FLOOR_DIVIDE'
+compile.r.builtins !! '%='  = bind inplace 'INPLACE_MODULO'
+compile.r.builtins !! '&='  = bind inplace 'INPLACE_AND'
+compile.r.builtins !! '^='  = bind inplace 'INPLACE_XOR'
+compile.r.builtins !! '|='  = bind inplace 'INPLACE_OR'
+compile.r.builtins !! '<<=' = bind inplace 'INPLACE_LSHIFT'
+compile.r.builtins !! '>>=' = bind inplace 'INPLACE_RSHIFT'
 
 compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode 'DELETE_SUBSCR' None a b delta: 1
 compile.r.builtins !! '.~'  = (self, a, b) ->
   parse.syntax.error const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
   self.opcode 'DELETE_ATTR' None a arg: b delta: 1
 
-compile.r.builtins !! ':.'  = (self, a, *bs) ->
-  self.load a
-  list (
-    map b -> (
-      self.call None preloaded: 0
-      self.ldattr b
-    ) bs
-  )
+compile.r.builtins !! ':.'  = (self, a, b) ->
+  self.call   a
+  self.ldattr b
