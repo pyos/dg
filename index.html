@@ -312,11 +312,11 @@ a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> c
 print a b c  <span class="com"># 1 [2, 3] 4</span>
 
 <span class="com"># Any function can be transformed into an operator by wrapping its name in backticks.</span>
-<span class="typ">1</span> <span class="iop"</span>`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2 3"</span>
+<span class="typ">1</span> <span class="iop"</span>`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2", then "None 3"</span>
 <span class="com"># The same thing:</span>
-print <span class="typ">1</span> <span class="typ">2</span> <span class="typ">3</span>
-<span class="com"># NOT the same thing:</span>
 print <span class="par">(</span>print <span class="typ">1</span> <span class="typ">2</span><span class="par">)</span> <span class="typ">3</span>
+<span class="com"># Or:</span>
+<span class="blt">foldl</span> print <span class="par">(</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">)</span>
 
 <span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
 dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
@@ -324,7 +324,7 @@ dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span clas
 <span class="com"># And you can define your own if you think these are not enough.</span>
 <span class="com"># Don't consider that a very good practice, though.</span>
 <span class="par">(</span><span class="op">$%^&*/|\@!+-:.?</span><span class="par">)</span> <span class="op">=</span> print
-<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op"</span>$%^&*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2 3"</span>
+<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op"</span>$%^&*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2", then "None 3"</span>
 </pre>
           </div>
 
