@@ -1,13 +1,175 @@
+import re
 import ast
+import functools
+import collections
 
-from . import core
 from . import tree
 
-# Public API
-r  = core.Parser
-it = core.Parser.parse
-fd = lambda fd, name='<stream>': it(fd.read(), getattr(fd, 'name', name))
-# End of public API
+STATE_AT_LINE_START = 1  # `(?m)^`
+STATE_AT_FILE_END   = 2  # `$`
+
+
+### Public API
+
+it = lambda data, filename='<string>': next(ParserState(data, filename))
+fd = lambda fd, name='<stream>': next(ParserState(fd.read(), getattr(fd, 'name', name)))
+
+
+### Helpers
+
+class ParserState (collections.Iterator):
+
+    tokens = []
+    state  = STATE_AT_LINE_START
+    stuff  = None
+    offset = 0
+
+    @classmethod
+    def token(cls, regex, state=0):
+
+        return lambda f: cls.tokens.append((re.compile(regex, re.DOTALL).match, state, f)) or f
+
+    def __init__(self, data, filename):
+
+        super().__init__()
+        self.buffer = data
+        self.pstack = collections.deque()
+        self.repeat = collections.deque()
+        self.indent = collections.deque([-1])
+        self.filename = filename
+
+    def position(self, offset):
+
+        part = self.buffer[:offset]
+        return (offset, 1 + part.count('\n'), offset - part.rfind('\n'))
+
+    def error(self, description, after=False):
+
+        offset, lineno, charno = self.position(self.offset if after else self.pstack[0])
+        raise SyntaxError(description, (self.filename, lineno, charno, self.line(offset)))
+
+    def __next__(self):
+
+        while not self.repeat:
+
+            self.state |= self.offset >= len(self.buffer) and STATE_AT_FILE_END
+
+            matches = (
+                (func, self.state & state == state and regex(self.buffer, self.offset))
+                for regex, state, func in self.tokens
+            )
+
+            f, match = next(m for m in matches if m[1])
+            self.pstack.append(self.offset)
+            self.state &= ~STATE_AT_LINE_START
+            self.state |= match.group().endswith('\n') and STATE_AT_LINE_START
+            self.offset = match.end()
+            self.repeat.extend(q.at(self) for q in f(self, match))
+            self.pstack.pop()
+
+        return self.repeat.popleft()
+
+    line = lambda self, offset: self.buffer[
+        self.buffer.rfind('\n', 0, offset) + 1:
+        self.buffer. find('\n',    offset) + 1 or None  # 0 won't do here
+    ]
+
+
+# Whether an infix link's priority is higher than the other one's.
+#
+# :param link: link to the right.
+#
+# :param in_relation_to: link to the left.
+#
+has_priority = functools.partial(
+    lambda infixr, precedence, link, in_relation_to: (
+        # `a R b -> c` should always parse as `a R (b -> c)`.
+        #
+        # Note that this means that for `a R b -> c Q d` to parse
+        # as `a R (b -> (c Q d))` this method should return True for both
+        # (Q, R) and (Q, ->). Otherwise, the output is `a R (b -> c) Q d`.
+        # That's not of concern when doing stuff like `f = x -> print 1`
+        # 'cause `=` has the lowest possible priority.
+        #
+        # What               How                 Why
+        # -----------------------------------------------------------
+        # a b -> c d         a (b -> c) d        (, ) is False
+        # a = b -> c = d     a = (b -> c) = d    (=, ->) is False
+        # a $ b -> c $ d     a $ (b -> (c $ d))  everything's True
+        # a b -> c.d         a (b -> (c.d))      also True
+        #
+        link == '->' or
+          infixr(precedence(link)) < abs(precedence(in_relation_to))
+    )
+    # Right-fixed links have positive precedence, left-fixed ones have negative.
+  , lambda x: abs(x) - (x > 0)
+  , lambda i, q={
+      # Scope resolution
+        '.':   0,
+       ':.':   0,
+      # Keyword arguments
+        ':':   1,
+      # Function application
+         '':  -2,
+      # Container subscription
+       '!!':  -3,
+      # Math
+       '**':   4,
+        '*':  -5,
+        '/':  -5,
+       '//':  -5,
+        '%':  -5,
+        '+':  -6,
+        '-':  -6,
+      # Comparison
+        '<':  -8,
+       '<=':  -8,
+       '>=':  -8,
+        '>':  -8,
+       '==':  -8,
+       '!=':  -8,
+       'is':  -8,
+       'in':  -8,
+      # Binary operations
+       '<<': -10,
+       '>>': -10,
+        '&': -11,
+        '^': -12,
+        '|': -13,
+      # Logic
+      'and': -14,
+       'or': -15,
+      # Low-priority binding
+        '$':  16,
+      # Function definition
+       '->':  17,
+      # Sequential evaluation
+        ',': -18,
+      # Local binding
+    'where':  19,
+      # Assignment
+        '=':  19,
+      '!!=':  19,
+       '+=':  19,
+       '-=':  19,
+       '*=':  19,
+      '**=':  19,
+       '/=':  19,
+      '//=':  19,
+       '%=':  19,
+       '&=':  19,
+       '^=':  19,
+       '|=':  19,
+      '<<=':  19,
+      '>>=':  19,
+      # Conditionals
+       'if':  20,
+   'unless':  20,
+     'else':  21,
+      # Chaining
+       '\n': -100500,
+    }.get: q(i, -7)  # Default
+)
 
 
 # Handle an infix link.
@@ -55,7 +217,7 @@ def infixl(stream, op):
     if isinstance(rhs, tree.Link) and not rhs.closed and rhs.infix:
 
         # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q or R is empty.
-        rhsbound = rhs if op == '' or stream.has_priority(op, rhs) else None
+        rhsbound = rhs if op == '' or has_priority(op, rhs) else None
         rhs      = None if rhsbound else rhs
 
     # Chaining a single expression doesn't make sense.
@@ -75,7 +237,7 @@ def infixl_insert_rhs(stream, root, op, rhs):
 
     if root.traversable:
 
-        if stream.has_priority(op, root[0]):
+        if has_priority(op, root[0]):
 
             # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R
             root.append(infixl_insert_rhs(stream, root.pop(), op, rhs))
@@ -94,7 +256,9 @@ def infixl_insert_rhs(stream, root, op, rhs):
     return e.in_between(root, op if rhs is None else rhs)
 
 
-@r.token(r' *', core.STATE_AT_LINE_START)
+### Tokens
+
+@ParserState.token(r' *', STATE_AT_LINE_START)
 #
 # indent = ^ ' ' *
 #
@@ -105,7 +269,7 @@ def indent(stream, token):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-      # yield from do(stream, token, indented=True)
+      # yield from do(stream, token, indented=True, preserve_close_state=True)
         for _ in do(stream, token, indented=True, preserve_close_state=True): yield _
         return
 
@@ -117,7 +281,7 @@ def indent(stream, token):
     stream.indent.append(indent)
 
 
-@r.token(r'[^\S\n]+|\s*#[^\n]*')
+@ParserState.token(r'[^\S\n]+|\s*#[^\n]*')
 #
 # whitespace = < whitespace > | '#', < anything but line feed >
 #
@@ -126,7 +290,7 @@ def whitespace(stream, token):
     return ()
 
 
-@r.token(r'(?i)0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
+@ParserState.token(r'(?i)0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
 #
 # intb = int2 | int8 | int16
 # int2 = '0b', ( '0' .. '1' ) +
@@ -138,7 +302,7 @@ def intb(stream, token):
     yield tree.Constant(ast.literal_eval(token.group()))
 
 
-@r.token(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
+@ParserState.token(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
 #
 # number = int10s, ( '.', int10 ) ?, ( [eE], int10s ) ?, [jJ] ?
 #
@@ -155,7 +319,7 @@ def number(stream, token):
     yield tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
 
 
-@r.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
+@ParserState.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
 #
 # string = 'b' ?, 'r' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
@@ -170,7 +334,7 @@ def string(stream, token):
     yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
 
 
-@r.token(r"(\w+'*|([!$%&*+\--/:<-@\\^|~]+|,+))|`(\w+'*)`|\s*(\n)")
+@ParserState.token(r"(\w+'*|([!$%&*+\--/:<-@\\^|~]+|,+))|`(\w+'*)`|\s*(\n)")
 #
 # link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
 #
@@ -182,7 +346,7 @@ def link(stream, token, infixn={'if', 'else', 'unless', 'or', 'and', 'in', 'is',
     yield tree.Link(infix or token.group(), infix or (token.group() in infixn))
 
 
-@r.token('\(')
+@ParserState.token('\(')
 #
 # do = '('
 #
@@ -196,7 +360,7 @@ def do(stream, token, indented=False, preserve_close_state=False):
 
     for item in stream:
 
-        if not indented and stream.state & core.STATE_AT_FILE_END:
+        if not indented and stream.state & STATE_AT_FILE_END:
 
             stream.error('mismatched parentheses')
 
@@ -232,8 +396,8 @@ def do(stream, token, indented=False, preserve_close_state=False):
     return ()
 
 
-@r.token(r'', core.STATE_AT_FILE_END)
-@r.token(r'\)')
+@ParserState.token(r'', STATE_AT_FILE_END)
+@ParserState.token(r'\)')
 #
 # end = ')' | ']' | '}' | $
 #
@@ -242,7 +406,7 @@ def end(stream, token):
     yield tree.Internal(token.group())
 
 
-@r.token(r'"|\'')
+@ParserState.token(r'"|\'')
 #
 # string_err = "'" | '"'
 #
@@ -251,7 +415,7 @@ def string_err(stream, token):
     stream.error('mismatched quote')
 
 
-@r.token(r'.')
+@ParserState.token(r'.')
 #
 # error = < unmatched symbol >
 #
