@@ -18,7 +18,7 @@ complete = code -> unsafe
         expr :: parse.tree.Link and not expr.closed and expr in compile.r.builtins or
           expr :: parse.tree.Expression and not expr.closed
 
-  e :: SyntaxError and e.args !! 0 in ('mismatched parentheses', 'mismatched quote') = None
+  e :: SyntaxError and (e.args !! 0).startswith 'unexpected EOF' = None
 
 
 # Start an interactive shell.

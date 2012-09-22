@@ -5,9 +5,6 @@ import collections
 
 from . import tree
 
-STATE_AT_LINE_START = 1  # `(?m)^`
-STATE_AT_FILE_END   = 2  # `$`
-
 
 ### Public API
 
@@ -19,15 +16,15 @@ fd = lambda fd, name='<stream>': next(ParserState(fd.read(), getattr(fd, 'name',
 
 class ParserState (collections.Iterator):
 
-    tokens = []
-    state  = STATE_AT_LINE_START
-    stuff  = None
-    offset = 0
+    tokens  = []
+    stuff   = None
+    atstart = True
+    offset  = 0
 
     @classmethod
-    def token(cls, regex, state=0):
+    def token(cls, regex, atstart=False):
 
-        return lambda f: cls.tokens.append((re.compile(regex, re.DOTALL).match, state, f)) or f
+        return lambda f: cls.tokens.append((re.compile(regex, re.DOTALL).match, f, atstart)) or f
 
     def __init__(self, data, filename):
 
@@ -43,27 +40,24 @@ class ParserState (collections.Iterator):
         part = self.buffer[:offset]
         return (offset, 1 + part.count('\n'), offset - part.rfind('\n'))
 
-    def error(self, description, after=False):
+    def error(self, description, at):
 
-        offset, lineno, charno = self.position(self.offset if after else self.pstack[0])
+        offset, lineno, charno = self.position(at)
         raise SyntaxError(description, (self.filename, lineno, charno, self.line(offset)))
 
     def __next__(self):
 
         while not self.repeat:
 
-            self.state |= self.offset >= len(self.buffer) and STATE_AT_FILE_END
-
             matches = (
-                (func, self.state & state == state and regex(self.buffer, self.offset))
-                for regex, state, func in self.tokens
+                (func, atstart is self.atstart and regex(self.buffer, self.offset))
+                for regex, func, atstart in self.tokens
             )
 
             f, match = next(m for m in matches if m[1])
             self.pstack.append(self.offset)
-            self.state &= ~STATE_AT_LINE_START
-            self.state |= match.group().endswith('\n') and STATE_AT_LINE_START
-            self.offset = match.end()
+            self.offset  = match.end()
+            self.atstart = match.group().endswith('\n')
             self.repeat.extend(q.at(self) for q in f(self, match))
             self.pstack.pop()
 
@@ -264,7 +258,7 @@ def infixl_insert_rhs(stream, root, op, rhs):
 
 ### Tokens
 
-@ParserState.token(r' *', STATE_AT_LINE_START)
+@ParserState.token(r' *', atstart=True)
 #
 # indent = ^ ' ' *
 #
@@ -275,14 +269,14 @@ def indent(stream, token):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-      # yield from do(stream, token, indented=True, preserve_close_state=True)
-        for _ in do(stream, token, indented=True, preserve_close_state=True): yield _
+      # yield from do(stream, token, preserve_close_state=True)
+        for _ in do(stream, token, preserve_close_state=True): yield _
         return
 
     while indent != stream.indent.pop():
 
         yield tree.Internal('')
-        stream.indent or stream.error('no matching indentation level', after=True)
+        stream.indent or stream.error('no matching indentation level', stream.pstack[-1])
 
     stream.indent.append(indent)
 
@@ -356,7 +350,7 @@ def link(stream, token, infixn={'if', 'else', 'unless', 'or', 'and', 'in', 'is',
 #
 # do = '('
 #
-def do(stream, token, indented=False, preserve_close_state=False):
+def do(stream, token, preserve_close_state=False):
 
     par = token.group().strip() if token else ''
     stuff_backup = stream.stuff
@@ -366,15 +360,14 @@ def do(stream, token, indented=False, preserve_close_state=False):
 
     for item in stream:
 
-        if not indented and stream.state & STATE_AT_FILE_END:
+        if isinstance(item, tree.Internal):
 
-            stream.error('mismatched parentheses')
-
-        elif isinstance(item, tree.Internal):
-
-            if (par + item.value) not in ('', '()'):
-
-                stream.error('invalid indentation or mismatched parentheses', after=True)
+            (par + item.value) in ('', '()') or stream.error(
+              'unexpected EOF'         if par and stream.offset >= len(stream.buffer) else
+              'unexpected dedent'      if par and not item.value else
+              'unexpected close-paren' if not par and item.value else
+              'invalid close-paren', at=item.location.start[0]
+            )
 
             break
 
@@ -390,11 +383,11 @@ def do(stream, token, indented=False, preserve_close_state=False):
             stream.stuff = item
             after_object = True
 
-    stream.stuff.indented = indented
+    stream.stuff.indented = not par
     stream.stuff.closed  |= not preserve_close_state
 
     # Further expressions should not touch this block.
-    indented and stream.repeat.appendleft(tree.Link('\n', True).at(stream))
+    par or stream.repeat.appendleft(tree.Link('\n', True).at(stream))
 
     stream.repeat.appendleft(stream.stuff)
 
@@ -402,8 +395,7 @@ def do(stream, token, indented=False, preserve_close_state=False):
     return ()
 
 
-@ParserState.token(r'', STATE_AT_FILE_END)
-@ParserState.token(r'\)')
+@ParserState.token(r'\)|$')
 #
 # end = ')' | ']' | '}' | $
 #
@@ -418,7 +410,7 @@ def end(stream, token):
 #
 def string_err(stream, token):
 
-    stream.error('mismatched quote')
+    stream.error('unexpected EOF while reading a string literal', stream.pstack[-1])
 
 
 @ParserState.token(r'.')
@@ -427,4 +419,4 @@ def string_err(stream, token):
 #
 def error(stream, token):
 
-    stream.error('invalid input')
+    stream.error('invalid input', stream.pstack[-1])
