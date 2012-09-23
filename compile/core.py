@@ -162,7 +162,7 @@ class Compiler:
   ### ESSENTIAL BUILT-INS
 
     #
-    # function argument ... keyword: value (*): varargs (**): varkwargs
+    # function argument ... keyword: value *: varargs **: varkwargs
     #
     # Call a (possibly built-in) function.
     #
@@ -178,13 +178,14 @@ class Compiler:
 
             return self.builtins[f](self, *args)
 
+        defs  = args, None, None, {}, (), ()
         infix = isinstance(f, tree.Link) and f.infix and not f.closed
-        args, kwargs, vararg, varkwarg = (args, {}, (), ()) if infix else syntax.call_args(args)
+        args, _, _, kwargs, vararg, varkwarg = defs if infix else syntax.argspec(args, definition=False)
+
         preloaded is None and self.load(f)
         self.load(*args, **kwargs)
-
         self.opcode(
-            'CALL_FUNCTION' + '_VAR' * len(vararg) + '_KW' * len(varkwarg),
+            'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
             *vararg + varkwarg,
             arg  = len(args) + 256 * len(kwargs) + (preloaded or 0),
             delta=-len(args) -   2 * len(kwargs) - (preloaded or 0)
@@ -221,7 +222,7 @@ class Compiler:
     #
     def function(self, args, body):
 
-        args, kwargs, defs, kwdefs, varargs, varkwargs = syntax.function(args)
+        args, kwargs, defs, kwdefs, varargs, varkwargs = syntax.argspec(args, definition=True)
         code = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
         code = self.compile(body, into=code, name='<lambda>')
         self.make_function(code, defs, kwdefs)
