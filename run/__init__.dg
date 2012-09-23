@@ -27,7 +27,7 @@ complete = code -> unsafe
 #
 # :return: runs indefinitely.
 #
-it = (fd, __name__: '__main__') ->
+it = (fd __name__: '__main__') ->
   environ  = dict __name__: __name__ __builtins__: __builtins__
 
   call fd.isatty or unsafe

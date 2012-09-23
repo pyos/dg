@@ -9,7 +9,7 @@
 # All arguments but the last one are passed straight to the `__build_class__`
 # function.
 #
-compile.r.builtins !! 'inherit' = (self, *stuff) ->
+compile.r.builtins !! 'inherit' = (self *: stuff) ->
   *args, body = stuff
 
   # __build_class__ will also need a `dict -> cell` function.
@@ -35,4 +35,4 @@ compile.r.builtins !! 'inherit' = (self, *stuff) ->
 
   self.opcode 'LOAD_BUILD_CLASS' delta: 1
   self.make_function code (new tuple) (new dict)
-  self.call None '<class>' (*): args preloaded: 1
+  self.call None '<class>' *: args preloaded: 1

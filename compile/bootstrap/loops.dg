@@ -10,12 +10,12 @@ collections = new import
 #
 # Evaluate the body while condition is true.
 #
-compile.r.builtins !! 'while' = (self, cond, *block) ->
+compile.r.builtins !! 'while' = (self cond *: block) ->
   self.load None
   exit_ptr = self.opcode 'SETUP_LOOP'             delta: 0
   cond_ptr = self.opcode 'JUMP_ABSOLUTE'  arg: -1 delta: 0
   else_ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
-  self.chain (*): block if block
+  self.chain *: block if block
   self.opcode 'ROT_TWO' delta:  0
   self.opcode 'POP_TOP' delta: -1
   call cond_ptr
@@ -48,6 +48,6 @@ builtins.exhaust = bind collections.deque maxlen: 0
 # Eagerly call function for each item of an iterable,
 # then return the unmodified iterable.
 #
-builtins.for = (iterable, function) ->
+builtins.for = (iterable function) ->
   exhaust $ map function iterable
   iterable

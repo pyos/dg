@@ -11,7 +11,7 @@
 #      clause
 #      expr
 #
-compile.r.builtins !! 'where' = (self, expr, clause) ->
+compile.r.builtins !! 'where' = (self expr clause) ->
   self.function (parse.tree.Constant None) $
     e = parse.tree.Expression $ list' (parse.tree.Link '\n') clause expr
     e.in_between expr clause

@@ -5,14 +5,14 @@ itertools = new import
 importlib = new import
 
 # Choose a function based on the number of arguments.
-varary = (*fs) -> (*xs) -> (fs !! (len xs > 1)) (*): xs
+varary = (*: fs) -> (*: xs) -> (fs !! (len xs > 1)) *: xs
 
 # Reduce a varary left-fixed operator to a binary one.
-reduce = f -> (a, *xs) -> foldl f xs a
+reduce = f -> (a *: xs) -> foldl f xs a
 
 
-builtins.new  = builtins.call = builtins.($) = (f, *xs) -> f (*): xs
-builtins.(,)  = builtins.tuple' = (*xs) -> xs
+builtins.new  = builtins.call = builtins.($) = (f *: xs) -> f *: xs
+builtins.(,)  = builtins.tuple' = (*: xs) -> xs
 
 builtins.(<)  = reduce operator.lt
 builtins.(<=) = reduce operator.le
@@ -21,7 +21,7 @@ builtins.(!=) = reduce operator.ne
 builtins.(>)  = reduce operator.gt
 builtins.(>=) = reduce operator.ge
 builtins.(is) = reduce operator.is_
-builtins.(in) = reduce (a, b) -> (operator.contains b a)
+builtins.(in) = reduce (a b) -> (operator.contains b a)
 
 builtins.not  = reduce operator.not_
 builtins.(~)  = reduce operator.invert
@@ -45,9 +45,9 @@ builtins.(!!~) = operator.delitem
 
 # Shorthand type constructors (e.g. `new set' a b`  <=> `new set (a, b)`.)
 # These allow to use line continuation neatly.
-builtins.set'   = (*xs) -> set  xs
-builtins.list'  = (*xs) -> list xs
-builtins.dict'  = (*xs, **ys) -> dict xs (**): ys
+builtins.set'   = (*: xs) -> set  xs
+builtins.list'  = (*: xs) -> list xs
+builtins.dict'  = (*: xs **: ys) -> dict xs **: ys
 
 builtins.import = importlib.import_module
 builtins.bind   = functools.partial
@@ -56,4 +56,4 @@ builtins.foldl  = functools.reduce
 # Not-actually-operators.
 builtins.(...)  = Ellipsis
 builtins.(..)   = range
-builtins.(::)   = (a, *xs) -> a `isinstance` xs
+builtins.(::)   = (a *: xs) -> a `isinstance` xs

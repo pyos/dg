@@ -8,7 +8,7 @@
 #
 # (Yes, Python compiler generates the same bytecode.)
 #
-comparison = (operator, self, a, b, chained: False) ->
+comparison = (operator self a b chained: False) ->
   a_is_cmpop = a :: parse.tree.Expression and not a.closed and
     e, *ex = a
     e :: parse.tree.Link and e in compile.r.builtins and

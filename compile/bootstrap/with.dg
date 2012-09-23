@@ -3,7 +3,7 @@
 ..parse.syntax = new import
 
 
-compile.r.builtins !! 'with' = (self, context, *stuff) ->
+compile.r.builtins !! 'with' = (self context *: stuff) ->
   '''
     with context do_something...
 
@@ -17,7 +17,7 @@ compile.r.builtins !! 'with' = (self, context, *stuff) ->
   self.load None
   end_ptr = self.opcode 'SETUP_WITH' context delta: 2
   self.opcode 'POP_TOP'   delta: -1  # FIXME should store that somewhere.
-  self.chain (*): stuff if stuff
+  self.chain *: stuff if stuff
   self.opcode 'ROT_THREE' delta:  0
   self.opcode 'ROT_TWO'   delta:  0
   self.opcode 'POP_BLOCK' delta: -1

@@ -12,7 +12,7 @@ importlib.util = new import
 
 sys.meta_path.insert 0 $ inherit str $
 
-  find_module = classmethod $ (cls, mod, path: None) ->
+  find_module = classmethod $ (cls mod path: None) ->
     name = mod.rsplit '.' 1 !! -1
     mods = itertools.chain.from_iterable $ map
       dir ->
@@ -24,10 +24,10 @@ sys.meta_path.insert 0 $ inherit str $
       e = cls $ next $ filter os.path.isfile mods
       e :: StopIteration = None
 
-  is_package = (self, name) ->
+  is_package = (self name) ->
     name.rsplit '.' 1 !! -1 != (os.path.basename self).rsplit '.' 1 !! 0
 
-  get_code = (self, name) ->
+  get_code = (self name) ->
     cache = imp.cache_from_source self
     code  = unsafe
       e =
@@ -41,7 +41,7 @@ sys.meta_path.insert 0 $ inherit str $
       marshal.dump code $ open cache 'wb'
       code
 
-  load_module = importlib.util.module_for_loader $ (self, module) ->
+  load_module = importlib.util.module_for_loader $ (self module) ->
     init = (module.__name__.rpartition '.' !! 0) or None
     code = self.get_code module.__name__
 

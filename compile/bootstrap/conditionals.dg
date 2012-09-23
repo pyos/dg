@@ -1,8 +1,8 @@
 ..compile = new import
 
 
-rjump = (jump, self, b, a) -> fjump jump self a b
-fjump = (jump, self, a, b) ->
+rjump = (jump self b a) -> fjump jump self a b
+fjump = (jump self a b) ->
   jmp = self.opcode jump a delta: 0
   self.load b
   call jmp

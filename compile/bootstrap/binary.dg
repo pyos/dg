@@ -4,21 +4,21 @@
 ..parse.syntax = new import
 
 
-biunary = (f, g) -> (self, a, b: None) -> (b is None and f self a or g self a b)
-unaryop = (c, self, a) -> self.opcode c a delta: 1
-stacked = (c, self, a, b) -> self.opcode c a b delta: 1
-inplace = (c, self, a, b) ->
+biunary = (f g) -> (self a b: None) -> (b is None and f self a or g self a b)
+unaryop = (c self a) -> self.opcode c a delta: 1
+stacked = (c self a b) -> self.opcode c a b delta: 1
+inplace = (c self a b) ->
   self.opcode c a b delta: 1
   self.store_top a
 
 
 # NOTE ',' is unfixed
-compile.r.builtins !! ',' = (self, *xs) -> self.opcode 'BUILD_TUPLE' (*): xs delta: 1
-compile.r.builtins !! '$' = (self, a, b: None) ->
+compile.r.builtins !! ',' = (self *: xs) -> self.opcode 'BUILD_TUPLE' *: xs delta: 1
+compile.r.builtins !! '$' = (self a b: None) ->
   b = (parse.tree.Constant None).after a if b is None
   is_call = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
   self.call a b               unless is_call
-  self.call (*): (a + list' b) if is_call
+  self.call *: (a + list' b) if is_call
 
 compile.r.builtins !! '!!'  = bind stacked 'BINARY_SUBSCR'
 compile.r.builtins !! '+'   = biunary (bind unaryop 'UNARY_POSITIVE') (bind stacked 'BINARY_ADD')
@@ -48,11 +48,11 @@ compile.r.builtins !! '|='  = bind inplace 'INPLACE_OR'
 compile.r.builtins !! '<<=' = bind inplace 'INPLACE_LSHIFT'
 compile.r.builtins !! '>>=' = bind inplace 'INPLACE_RSHIFT'
 
-compile.r.builtins !! '!!~' = (self, a, b) -> self.opcode 'DELETE_SUBSCR' None a b delta: 1
-compile.r.builtins !! '.~'  = (self, a, b) ->
+compile.r.builtins !! '!!~' = (self a b) -> self.opcode 'DELETE_SUBSCR' None a b delta: 1
+compile.r.builtins !! '.~'  = (self a b) ->
   parse.syntax.error const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
   self.opcode 'DELETE_ATTR' None a arg: b delta: 1
 
-compile.r.builtins !! ':.'  = (self, a, b) ->
+compile.r.builtins !! ':.'  = (self a b) ->
   self.call   a
   self.ldattr b
