@@ -334,7 +334,7 @@ def string(stream, token):
     yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
 
 
-@ParserState.token(r"(\w+'*|([!$%&*+\--/:<-@\\^|~]+|,+))|`(\w+'*)`|\s*(\n)")
+@ParserState.token(r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~]+|,+))|\s*(\n)|`(\w+'*)`")
 #
 # link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
 #
