@@ -204,7 +204,8 @@ do_something_with
 <span class="com"># Mappings require an iterable of *pairs*, though.</span>
 <span class="cls">dict</span>  <span class="par">(</span><span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span><span class="op">,</span> <span class="par">(</span><span class="str">'b'</span><span class="op">,</span> <span class="typ">2</span><span class="par">)</span><span class="par">)</span>
 <span class="cls">dict'</span>  <span class="par">(</span><span class="str">'a'</span><span class="op">,</span> <span class="typ">1</span><span class="par">)</span>  <span class="par">(</span><span class="str">'b'</span><span class="op">,</span> <span class="typ">2</span><span class="par">)</span>
-<span class="com"># There's also a shorthand for identifier->object mappings. Hi, Ruby!</span>
+<span class="com"># There's also a shorthand for identifier-&gt;object mappings. Hi, Ruby!</span>
+<span class="cls">dict</span>  a<span class="op">:</span> <span class="typ">1</span> b<span class="op">:</span> <span class="typ">2</span>
 <span class="cls">dict'</span> a<span class="op">:</span> <span class="typ">1</span> b<span class="op">:</span> <span class="typ">2</span>
 <span class="com"># Use line continuation if you want to.</span>
 <span class="cls">dict'</span>
@@ -229,41 +230,49 @@ print <span class="str">'Hello'</span> <span class="str">'print'</span> sep<span
 <span class="com"># It's better to not make functions that don't require any arguments</span>
 <span class="com"># in the first place. Avoid magic/side effects and use `property`.</span>
 
-<span class="com"># Our good friends *starred **arguments are still with us.</span>
-<span class="com"># As always, * means "the rest of positional arguments" and ** is "the rest of keyword arguments."</span>
-a <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span>
-print <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> a
+<span class="com"># Two keyword argument names, `*` and `**`, are special.</span>
+<span class="com"># Whatever is passed as `*` is unpacked as the rest of the arguments.</span>
+<span class="com"># `**` is the same, but it takes a dictionary of keyword arguments.</span>
+stuff   <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span>
+options <span class="op">=</span> <span class="cls">dict</span> sep<span class="op">:</span> <span class="str">'; '</span> end<span class="op">:</span> <span class="str">'.\n'</span>
+print <span class="op">*</span><span class="op">:</span> stuff <span class="op">**</span><span class="op">:</span> options  <span class="com"># 1; 2; 3.</span>
 
-<span class="com"># Define functions with -> operator</span>
-function <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-></span> print <span class="str">'Yay,'</span> x
+<span class="com"># Define functions with -&gt; operator</span>
+function <span class="op">=</span> <span class="par">(</span>x<span class="par">)</span> <span class="op">-&gt;</span> print <span class="str">'Yay,'</span> x
 
 <span class="com"># Functions return the last value they evaluate unless explicitly told to do otherwise.</span>
 <span class="com"># You may omit parentheses if there's only one argument with no default value:</span>
-double <span class="op">=</span> x <span class="op">-></span> x <span class="op">*</span> 2
+double <span class="op">=</span> x <span class="op">-&gt;</span> x <span class="op">*</span> 2
 
 <span class="com"># Arguments can have default values.</span>
-function2 <span class="op">=</span> <span class="par">(</span>x<span class="op">:</span> <span class="spc">None</span><span class="par">)</span> <span class="op">-></span> function x
-<span class="com"># Starred arguments have a different syntax in function definitions.</span>
-double_all <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">map</span> double xs
+function2 <span class="op">=</span> <span class="par">(</span>x<span class="op">:</span> <span class="spc">None</span><span class="par">)</span> <span class="op">-&gt;</span> function x
+<span class="com"># The syntax for argument specifications is similar to calls,</span>
+<span class="com"># but not quite the same. You can't put arguments in arbitrary</span>
+<span class="com"># order here.</span>
+<span class="com">#   1. If an argument has a default value, all other arguments</span>
+<span class="com">#      up to a star (`*: something`, that is) should have one, too.</span>
+<span class="com">#   2. Any argument after a star is considered to be <a href="http://www.python.org/dev/peps/pep-3102/">"keyword-only."</a></span>
+<span class="com">#   3. Double star (`**: something`) should be the last argument.</span>
+map_over_arguments <span class="op">=</span> <span class="par">(</span>function <span class="op">*</span><span class="op">:</span> xs<span class="par">)</span> <span class="op">-&gt;</span> <span class="blt">map</span> function xs
 
-<span class="com"># The -> operator always consumes exactly one token to the left,</span>
+<span class="com"># The -&gt; operator always consumes exactly one token to the left,</span>
 <span class="com"># so you can wrap function body in parentheses instead of doing the same</span>
 <span class="com"># for the whole function definition.</span>
-drop_even_numbers <span class="op">=</span> <span class="par">(</span><span class="op">*</span>xs<span class="par">)</span> <span class="op">-></span> <span class="blt">filter</span> x <span class="op">-></span> <span class="par">(</span>x <span class="op">%</span> <span class="typ">2</span><span class="par">)</span> xs
+drop_even_numbers <span class="op">=</span> <span class="par">(</span><span class="op">*</span><span class="op">:</span> xs<span class="par">)</span> <span class="op">-&gt;</span> <span class="blt">filter</span> x <span class="op">-&gt;</span> <span class="par">(</span>x <span class="op">%</span> <span class="typ">2</span><span class="par">)</span> xs
 
 <span class="com"># There is no special syntax for decorators.</span>
 <span class="com"># Just call them with the function as an argument.</span>
-wtf <span class="op">=</span> <span class="cls">staticmethod</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+wtf <span class="op">=</span> <span class="cls">staticmethod</span> <span class="par">(</span><span class="par">)</span> <span class="op">-&gt;</span>
   print <span class="str">'A static method outside of a class?!'</span>
 
 <span class="com"># `return` takes one argument (the value to return)</span>
 <span class="com"># and aborts the evaluation immediately as if there was nothing after it.</span>
-hello <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-></span>
+hello <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-&gt;</span>
   <span class="kwd">return</span> <span class="op">$</span> print <span class="str">'Hi!'</span>
   print <span class="str">'F**k you.'</span>
 
 <span class="com"># <a href="http://docs.python.org/py3k/reference/simple_stmts.html#the-yield-statement">`yield`</a> turns a function into a <a href="http://docs.python.org/dev/glossary.html#term-generator">generator</a>.</span>
-count <span class="op">=</span> start <span class="op">-></span>
+count <span class="op">=</span> start <span class="op">-&gt;</span>
   <span class="com"># `yield` is a function of two arguments, `item` and `from`.</span>
   <span class="com"># Only one of them can be specified at a time.</span>
   <span class="kwd">yield</span> start
@@ -307,9 +316,10 @@ print <span class="par">(</span>object<span class="op">.</span>__class__<span cl
 a <span class="op">=</span> <span class="str">'Hello'</span>
 a<span class="op">.</span>b <span class="op">=</span> <span class="str">'yes'</span>
 a <span class="op">!!</span> b <span class="op">=</span> <span class="str">'this is ='</span>
-<span class="com"># Tuples may also contain names, attributes, subitems and tuples, as well as starred arguments:</span>
-a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> c <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="typ">4</span>
-print a b c  <span class="com"># 1 [2, 3] 4</span>
+<span class="com"># Tuples may also contain names, attributes, subitems and other tuples.</span>
+<span class="com"># If an item is prefixed by a star, it consumes the rest of the objects.</span>
+a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> <span class="par">(</span>c<span class="op">,</span> d<span class="par">)</span> <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="par">(</span><span class="typ">4</span><span class="op">,</span> <span class="typ">5</span><span class="par">)</span>
+print a b c d  <span class="com"># 1 [2, 3] 4 5</span>
 
 <span class="com"># Any function can be transformed into an operator by wrapping its name in backticks.</span>
 <span class="typ">1</span> <span class="iop"</span>`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2", then "None 3"</span>
@@ -319,12 +329,17 @@ print <span class="par">(</span>print <span class="typ">1</span> <span class="ty
 <span class="blt">foldl</span> print <span class="par">(</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">)</span>
 
 <span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
-dot_product = <span class="par">(</span>xs<span class="op">,</span> ys<span class="par">)</span> <span class="op">-></span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
+dot_product = <span class="par">(</span>xs ys<span class="par">)</span> <span class="op">-&gt;</span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
 
 <span class="com"># And you can define your own if you think these are not enough.</span>
 <span class="com"># Don't consider that a very good practice, though.</span>
 <span class="par">(</span><span class="op">$%^&*/|\@!+-:.?</span><span class="par">)</span> <span class="op">=</span> print
 <span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op"</span>$%^&*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2", then "None 3"</span>
+<span class="com"># Note, however, that names of operators you create should satisfy two rules:</span>
+<span class="com">#   1. it must either consist of characters in !$%&amp;*+-./:&lt;=&gt;?@\^|~ set, or commas</span>
+<span class="com">#      (NOT both at the same time -- `$,` is invalid;) and</span>
+<span class="com">#   2. it must not start with one or more asterisks followed by a colon</span>
+<span class="com">#      (`***:!` is not valid, but `:***:!` is.)</span>
 </pre>
           </div>
 
@@ -607,7 +622,7 @@ always_assigned_to <span class="op">=</span> <span class="par">(</span><span cla
 <span class="com"># This can be useful to evaluate single statements conditionally.</span>
 never_assigned_to <span class="op">=</span> <span class="typ">2</span> <span class="op">unless</span> <span class="spc">True</span>
 
-factorial <span class="op">=</span> n <span class="op">-></span>
+factorial <span class="op">=</span> n <span class="op">-&gt;</span>
   <span class="com"># The most powerful (and the simpliest, actually)</span>
   <span class="com"># conditional is `switch`.</span>
   <span class="kwd">switch</span>
@@ -709,11 +724,11 @@ file <span class="op">=</span> <span class="kwd">unsafe</span>
 <span class="cls">MyList</span><span class="op">.</span>b <span class="op">==</span> <span class="typ">2</span>
 
 <span class="com"># The syntax for calling functions applies to `inherit`, too.</span>
-<span class="cls">MyTypeWithMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> <span class="cls">MyMetaclass</span> <span class="par">(</span><span class="par">)</span>
+<span class="cls">MyTypeWithMetaclass</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">*</span><span class="op">:</span> bases_list metaclass<span class="op">:</span> <span class="cls">MyMetaclass</span> <span class="par">(</span><span class="par">)</span>
 
 <span class="cls">Animal</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
   <span class="com"># Classes can have methods, which are actually functions.</span>
-  __init__ <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="op">,</span> name<span class="par">)</span> <span class="op">-></span>
+  __init__ <span class="op">=</span> <span class="par">(</span><span class="spc">self</span> name<span class="par">)</span> <span class="op">-&gt;</span>
     <span class="com"># Retrieving an attribute of a value returned by a function</span>
     <span class="com"># is pretty common, so there is a special operator for that.</span>
     <span class="kwd">call</span> <span class="cls">super</span><span class="op">:.</span>__init__  <span class="com"># See <a href="http://docs.python.org/dev/library/functions.html#super">Python docs</a> for details</span>
@@ -723,7 +738,7 @@ file <span class="op">=</span> <span class="kwd">unsafe</span>
     <span class="com"># This is one of the pointless limitations of CPython.</span>
     <span class="spc">None</span>
 
-  eat <span class="op">=</span> <span class="par">(</span><span class="spc">self</span><span class="op">,</span> what<span class="par">)</span> <span class="op">-></span>
+  eat <span class="op">=</span> <span class="par">(</span><span class="spc">self</span> what<span class="par">)</span> <span class="op">-&gt;</span>
     print <span class="str">'OM NOM NOM, what a tasty'</span> what
 
 <span class="com"># Instantiating a class is done by calling it, as always.</span>
@@ -740,7 +755,7 @@ bob<span class="op">.</span>eat <span class="str">'carpet'</span>
 <span class="com"># Since dg is clearly more oriented towards functional programming,</span>
 <span class="com"># some of the combinators were moved to the built-in namespace.</span>
 <span class="com"># `foldl` is `functools.reduce`:</span>
-<span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-></span> <span class="blt">foldl</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> xs <span class="typ">0</span>
+<span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-&gt;</span> <span class="blt">foldl</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> xs <span class="typ">0</span>
 
 <span class="com"># And `bind` is `functools.partial`:</span>
 greet <span class="op">=</span> <span class="blt">bind</span> print <span class="str">'Hello'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
