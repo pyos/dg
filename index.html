@@ -281,8 +281,8 @@ count <span class="op">=</span> start <span class="op">-&gt;</span>
   <span class="kwd">yield</span> from<span class="op">:</span> <span class="par">(</span>count <span class="op">$</span> start <span class="op">+</span> <span class="typ">1</span><span class="par">)</span>
   <span class="com"># Returning a value from a generator is allowed,</span>
   <span class="com"># but the effect will differ depending on the VM version.</span>
-  <span class="com">#   <= 3.2: if that value is not None, it will be yielded.</span>
-  <span class="com">#   >= 3.3: that value is passed as the first argument to StopIteration.</span>
+  <span class="com">#   &lt;= 3.2: if that value is not None, it will be yielded.</span>
+  <span class="com">#   &gt;= 3.3: that value is passed as the first argument to StopIteration.</span>
   <span class="com"># You may want to return None for compatibility.</span>
   <span class="spc">None</span>
 </pre>
@@ -322,7 +322,7 @@ a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> <
 print a b c d  <span class="com"># 1 [2, 3] 4 5</span>
 
 <span class="com"># Any function can be transformed into an operator by wrapping its name in backticks.</span>
-<span class="typ">1</span> <span class="iop"</span>`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2", then "None 3"</span>
+<span class="typ">1</span> <span class="iop">`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2", then "None 3"</span>
 <span class="com"># The same thing:</span>
 print <span class="par">(</span>print <span class="typ">1</span> <span class="typ">2</span><span class="par">)</span> <span class="typ">3</span>
 <span class="com"># Or:</span>
@@ -333,8 +333,8 @@ dot_product = <span class="par">(</span>xs ys<span class="par">)</span> <span cl
 
 <span class="com"># And you can define your own if you think these are not enough.</span>
 <span class="com"># Don't consider that a very good practice, though.</span>
-<span class="par">(</span><span class="op">$%^&*/|\@!+-:.?</span><span class="par">)</span> <span class="op">=</span> print
-<span class="typ">1</span> <span class="op">$%^&*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op"</span>$%^&*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2", then "None 3"</span>
+<span class="par">(</span><span class="op">$%^&amp;*/|\@!+-:.?</span><span class="par">)</span> <span class="op">=</span> print
+<span class="typ">1</span> <span class="op">$%^&amp;*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op">$%^&amp;*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2", then "None 3"</span>
 <span class="com"># Note, however, that names of operators you create should satisfy two rules:</span>
 <span class="com">#   1. it must either consist of characters in !$%&amp;*+-./:&lt;=&gt;?@\^|~ set, or commas</span>
 <span class="com">#      (NOT both at the same time -- `$,` is invalid;) and</span>
@@ -353,194 +353,198 @@ dot_product = <span class="par">(</span>xs ys<span class="par">)</span> <span cl
 
           <table class="table table-bordered table-striped">
             <thead>
-              <th>Priority</th>
-              <th>Fixity</th>
-              <th>?</th>
-              <th>What</th>
-              <th>Available in runtime</th>
+              <tr>
+                <th>Priority</th>
+                <th>Fixity</th>
+                <th>?</th>
+                <th>What</th>
+                <th>Available in runtime</th>
+              </tr>
             </thead>
 
-            <tr>
-              <td rowspan="2">0</td>
-              <td rowspan="4">left</td>
-              <td><code>.</code></td>
-              <td>Attribute lookup</td>
-              <td class="maybe"><code>getattr</code></td>
-            </tr>
+            <tbody>
+              <tr>
+                <td rowspan="2">0</td>
+                <td rowspan="4">left</td>
+                <td><code>.</code></td>
+                <td>Attribute lookup</td>
+                <td class="maybe"><code>getattr</code></td>
+              </tr>
 
-            <tr>
-              <td><code>:.</code></td>
-              <td>Call a function with no arguments, then fetch an attribute.</td>
-              <td class="no" rowspan="2">No</td>
-            </tr>
+              <tr>
+                <td><code>:.</code></td>
+                <td>Call a function with no arguments, then fetch an attribute.</td>
+                <td class="no" rowspan="2">No</td>
+              </tr>
 
-            <tr>
-              <td>-2</td>
-              <td><code></code></td>
-              <td>(Empty operator.) Function call</td>
-            </tr>
+              <tr>
+                <td>-2</td>
+                <td><code></code></td>
+                <td>(Empty operator.) Function call</td>
+              </tr>
 
-            <tr>
-              <td>-3</td>
-              <td><code>!!</code></td>
-              <td>Array subscription (i.e. like <code>a[b]</code> in Python)</td>
-              <td class="yes" rowspan="11">Yes</td>
-            </tr>
+              <tr>
+                <td>-3</td>
+                <td><code>!!</code></td>
+                <td>Array subscription (i.e. like <code>a[b]</code> in Python)</td>
+                <td class="yes" rowspan="11">Yes</td>
+              </tr>
 
-            <tr>
-              <td>-4</td>
-              <td>right</td>
-              <td><code>**</code></td>
-              <td>Exponentiation</td>
-            </tr>
+              <tr>
+                <td>-4</td>
+                <td>right</td>
+                <td><code>**</code></td>
+                <td>Exponentiation</td>
+              </tr>
 
-            <tr>
-              <td>-5</td>
-              <td rowspan="11">left</td>
-              <td>
-              <code>*</code>
-                <code>/</code>
-                <code>//</code>
-                <code>%</code>
-              </td>
-              <td>Multiplication, division, floor division, and modulus</td>
-            </tr>
+              <tr>
+                <td>-5</td>
+                <td rowspan="11">left</td>
+                <td>
+                <code>*</code>
+                  <code>/</code>
+                  <code>//</code>
+                  <code>%</code>
+                </td>
+                <td>Multiplication, division, floor division, and modulus</td>
+              </tr>
 
-            <tr>
-              <td>-6</td>
-              <td>
-                <code>+</code>
-                <code>-</code>
-              </td>
-              <td>Addition and subtraction</td>
-            </tr>
+              <tr>
+                <td>-6</td>
+                <td>
+                  <code>+</code>
+                  <code>-</code>
+                </td>
+                <td>Addition and subtraction</td>
+              </tr>
 
-            <tr>
-              <td rowspan="3">-8</td>
-              <td>
-                <code>&lt;</code>
-                <code>&lt;=</code>
-                <code>==</code>
-                <code>!=</code>
-                <code>&gt;=</code>
-                <code>&gt;</code>
-              </td>
-              <td>Standard comparison operators</td>
-            </tr>
+              <tr>
+                <td rowspan="3">-8</td>
+                <td>
+                  <code>&lt;</code>
+                  <code>&lt;=</code>
+                  <code>==</code>
+                  <code>!=</code>
+                  <code>&gt;=</code>
+                  <code>&gt;</code>
+                </td>
+                <td>Standard comparison operators</td>
+              </tr>
 
-            <tr>
-              <td><code>is</code></td>
-              <td>Identifier-based comparison</td>
-            </tr>
+              <tr>
+                <td><code>is</code></td>
+                <td>Identifier-based comparison</td>
+              </tr>
 
-            <tr>
-              <td><code>in</code></td>
-              <td>Containment check</td>
-            </tr>
+              <tr>
+                <td><code>in</code></td>
+                <td>Containment check</td>
+              </tr>
 
-            <tr>
-              <td>-10</td>
-              <td>
-                <code>&lt;&lt;</code>
-                <code>&gt;&gt;</code>
-              </td>
-              <td>Bitwise shift to the left and to the right</td>
-            </tr>
+              <tr>
+                <td>-10</td>
+                <td>
+                  <code>&lt;&lt;</code>
+                  <code>&gt;&gt;</code>
+                </td>
+                <td>Bitwise shift to the left and to the right</td>
+              </tr>
 
-            <tr>
-              <td>-11</td>
-              <td><code>&amp;</code></td>
-              <td>Bitwise AND</td>
-            </tr>
+              <tr>
+                <td>-11</td>
+                <td><code>&amp;</code></td>
+                <td>Bitwise AND</td>
+              </tr>
 
-            <tr>
-              <td>-12</td>
-              <td><code>^</code></td>
-              <td>Bitwise XOR</td>
-            </tr>
+              <tr>
+                <td>-12</td>
+                <td><code>^</code></td>
+                <td>Bitwise XOR</td>
+              </tr>
 
-            <tr>
-              <td>-13</td>
-              <td><code>|</code></td>
-              <td>Bitwise OR</td>
-            </tr>
+              <tr>
+                <td>-13</td>
+                <td><code>|</code></td>
+                <td>Bitwise OR</td>
+              </tr>
 
-            <tr>
-              <td>-14</td>
-              <td><code>and</code></td>
-              <td>Lazy logical conjunction (<code>A and B</code> evaluates B iff A is true)</td>
-              <td class="no" rowspan="3">No</td>
-            </tr>
+              <tr>
+                <td>-14</td>
+                <td><code>and</code></td>
+                <td>Lazy logical conjunction (<code>A and B</code> evaluates B iff A is true)</td>
+                <td class="no" rowspan="3">No</td>
+              </tr>
 
-            <tr>
-              <td>-15</td>
-              <td><code>or</code></td>
-              <td>Lazy logical disjunction (<code>A or B</code> evaluates B iff A is false)</td>
-            </tr>
+              <tr>
+                <td>-15</td>
+                <td><code>or</code></td>
+                <td>Lazy logical disjunction (<code>A or B</code> evaluates B iff A is false)</td>
+              </tr>
 
-            <tr>
-              <td>-17</td>
-              <td>right</td>
-              <td><code>-&gt;</code></td>
-              <td>Function constructor</td>
-            </tr>
+              <tr>
+                <td>-17</td>
+                <td>right</td>
+                <td><code>-&gt;</code></td>
+                <td>Function constructor</td>
+              </tr>
 
-            <tr>
-              <td>-18</td>
-              <td>left</td>
-              <td><code>,</code></td>
-              <td>Tuple constructor</td>
-              <td class="yes">Yes</td>
-            </tr>
+              <tr>
+                <td>-18</td>
+                <td>left</td>
+                <td><code>,</code></td>
+                <td>Tuple constructor</td>
+                <td class="yes">Yes</td>
+              </tr>
 
-            <tr>
-              <td rowspan="2">-19</td>
-              <td rowspan="4">right</td>
-              <td><code>=</code></td>
-              <td>Assignment</td>
-              <td class="no" rowspan="5">No</td>
-            </tr>
+              <tr>
+                <td rowspan="2">-19</td>
+                <td rowspan="4">right</td>
+                <td><code>=</code></td>
+                <td>Assignment</td>
+                <td class="no" rowspan="5">No</td>
+              </tr>
 
-            <tr>
-              <td>
-                <code>!!=</code>
-                <code>+=</code>
-                <code>-=</code>
-                <code>*=</code>
-                <code>**=</code>
-                <code>/=</code>
-                <code>//=</code>
-                <code>%=</code>
-                <code>&=</code>
-                <code>^=</code>
-                <code>|=</code>
-                <code><<=</code>
-                <code>>>=</code>
-              </td>
-              <td><a href="http://docs.python.org/dev/reference/simple_stmts.html#augmented-assignment-statements">Augmented assignment</a></td>
-            </tr>
+              <tr>
+                <td>
+                  <code>!!=</code>
+                  <code>+=</code>
+                  <code>-=</code>
+                  <code>*=</code>
+                  <code>**=</code>
+                  <code>/=</code>
+                  <code>//=</code>
+                  <code>%=</code>
+                  <code>&amp;=</code>
+                  <code>^=</code>
+                  <code>|=</code>
+                  <code>&lt;&lt;=</code>
+                  <code>&gt;&gt;=</code>
+                </td>
+                <td><a href="http://docs.python.org/dev/reference/simple_stmts.html#augmented-assignment-statements">Augmented assignment</a></td>
+              </tr>
 
-            <tr>
-              <td>-20</td>
-              <td>
-                <code>if</code>
-                <code>unless</code>
-              </td>
-              <td>Inline conditional branching (or/and with reversed order of operands)</td>
-            </tr>
+              <tr>
+                <td>-20</td>
+                <td>
+                  <code>if</code>
+                  <code>unless</code>
+                </td>
+                <td>Inline conditional branching (or/and with reversed order of operands)</td>
+              </tr>
 
-            <tr>
-              <td>-21</td>
-              <td><code>else</code></td>
-              <td>Extension clause to the inline conditional branching</td>
-            </tr>
+              <tr>
+                <td>-21</td>
+                <td><code>else</code></td>
+                <td>Extension clause to the inline conditional branching</td>
+              </tr>
 
-            <tr>
-              <td>-100500</td>
-              <td>left</td>
-              <td><code></code></td>
-              <td>(Line break.) Sequential evaluation</td>
-            </tr>
+              <tr>
+                <td>-100500</td>
+                <td>left</td>
+                <td><code></code></td>
+                <td>(Line break.) Sequential evaluation</td>
+              </tr>
+            </tbody>
           </table>
 
           <p>
@@ -550,34 +554,38 @@ dot_product = <span class="par">(</span>xs ys<span class="par">)</span> <span cl
 
           <table class="table table-bordered table-striped">
             <thead>
-              <th>?</th>
-              <th>What</th>
+              <tr>
+                <th>?</th>
+                <th>What</th>
+              </tr>
             </thead>
 
-            <tr>
-              <td><code>.~</code></td>
-              <td>Attribute removal. Returns None, can't be chained.</td>
-            </tr>
+            <tbody>
+              <tr>
+                <td><code>.~</code></td>
+                <td>Attribute removal. Returns None, can't be chained.</td>
+              </tr>
 
-            <tr>
-              <td><code>!!~</code></td>
-              <td>Subitem removal. Returns None, can't be chained.</td>
-            </tr>
+              <tr>
+                <td><code>!!~</code></td>
+                <td>Subitem removal. Returns None, can't be chained.</td>
+              </tr>
 
-            <tr>
-              <td><code>..</code></td>
-              <td>Alias for <code>range</code></td>
-            </tr>
+              <tr>
+                <td><code>..</code></td>
+                <td>Alias for <code>range</code></td>
+              </tr>
 
-            <tr>
-              <td><code>::</code></td>
-              <td>Alias for <code>isinstance</code></td>
-            </tr>
+              <tr>
+                <td><code>::</code></td>
+                <td>Alias for <code>isinstance</code></td>
+              </tr>
 
-            <tr>
-              <td><code>...</code></td>
-              <td>Alias for <code>Ellipsis</code>, <i>not callable</i></td>
-            </tr>
+              <tr>
+                <td><code>...</code></td>
+                <td>Alias for <code>Ellipsis</code>, <i>not callable</i></td>
+              </tr>
+            </tbody>
           </table>
         </div>
 
@@ -789,6 +797,7 @@ greet <span class="str">'World'</span>
             <li>CoffeeScript and LiveScript</li>
             <li>Smalltalk</li>
             <li>Lisp</li>
+          </ul>
         </div>
 
         <div id="thanks" class="section">
@@ -799,8 +808,8 @@ greet <span class="str">'World'</span>
             <a href="http://docs.python.org/dev/whatsnew/3.3.html">do implement cool features</a>,
             but release them 2 or 3 months after I want to try them out. :-)
           </p>
+        </div>
       </div>
     </div>
   </body>
 </html>
-
