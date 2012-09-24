@@ -112,7 +112,7 @@ class Compiler:
         else:
 
             var in self.builtins   and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
-            var in self.fake_attrs and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
+          # var in self.fake_attrs and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
 
             self.opcode(
                 'STORE_DEREF' if var in self.code.cellnames else
