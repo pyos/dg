@@ -13,7 +13,7 @@ compile.r.builtins !! 'inherit' = (self *: stuff) ->
   *args, body = stuff
 
   # __build_class__ will also need a `dict -> cell` function.
-  code = codegen.MutableCode True args: ('__locals__',) cell: self.code
+  code = codegen.MutableCode True args: (list' '__locals__') cell: self.code
   code.cellvars !! '__class__'
   code.varnames !! '__class__'
   # The argument, __locals__, is what we need to write attributes to.

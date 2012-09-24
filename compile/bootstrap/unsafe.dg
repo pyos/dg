@@ -34,7 +34,7 @@ unsafe_s = cases ->
 # In CPython 3.3, `raise: exception caused_by: None` silences the context.
 #
 compile.r.builtins !! 'raise' = compile._callable $ (self exception caused_by: (...)) ->
-  args = (new tuple if caused_by is (...) else (caused_by,))
+  args = (new list if caused_by is (...) else list' caused_by)
   self.opcode 'RAISE_VARARGS' exception *: args delta: 0
   self.load None  # We've got to return something.
 
