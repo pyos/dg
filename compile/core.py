@@ -174,22 +174,48 @@ class Compiler:
     #
     def call(self, f, *args, preloaded=None):
 
-        if isinstance(f, tree.Link) and f in self.builtins:
+        infix = isinstance(f, tree.Link) and f.infix and not f.closed
+        leftbind  = False
+        rightbind = False
+
+        if infix and f == '' and len(args) == 2 and isinstance(args[0], tree.Link) and args[0].infix and not args[0].closed:
+
+            f, *args = args
+            leftbind = True
+
+        elif infix and len(args) == 1:
+
+            rightbind = True
+
+        if isinstance(f, tree.Link) and f in self.builtins and not leftbind and not rightbind:
 
             return self.builtins[f](self, *args)
 
         defs  = args, None, None, {}, (), ()
-        infix = isinstance(f, tree.Link) and f.infix and not f.closed
         args, _, _, kwargs, vararg, varkwarg = defs if infix else syntax.argspec(args, definition=False)
 
-        preloaded is None and self.load(f)
-        self.load(*args, **kwargs)
-        self.opcode(
-            'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
-            *vararg + varkwarg,
-            arg  = len(args) + 256 * len(kwargs) + (preloaded or 0),
-            delta=-len(args) -   2 * len(kwargs) - (preloaded or 0)
-        )
+        if leftbind:
+
+            # bind (flip f) (args !! 0)
+            self.load(tree.Link('bind'))
+            self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=-1)
+            self.opcode('CALL_FUNCTION', *args, arg=2, delta=-2)
+
+        elif rightbind:
+
+            # bind f (args !! 0)
+            self.opcode('CALL_FUNCTION', tree.Link('bind'), f, *args, arg=2, delta=-2)
+
+        else:
+
+            preloaded is None and self.load(f)
+            self.load(*args, **kwargs)
+            self.opcode(
+                'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
+                *vararg + varkwarg,
+                arg  = len(args) + 256 * len(kwargs) + (preloaded or 0),
+                delta=-len(args) -   2 * len(kwargs) - (preloaded or 0)
+            )
 
     #
     # name = expression
