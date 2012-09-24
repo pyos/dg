@@ -186,15 +186,18 @@ do_something_with
 <span class="str">'''you may use triple-quoted strings.'''</span>
 
 <span class="com"># Tuples</span>
-<span class="typ">1</span><span class="op">,</span> <span class="com"># with a single item</span>
 <span class="typ">2</span><span class="op">,</span> <span class="spc">True</span><span class="op">,</span> <span class="str">'hi'</span> <span class="com"># with multiple items</span>
-<span class="kwd">new</span> <span class="cls">tuple</span> <span class="com"># empty</span>
+<span class="kwd">new</span> <span class="cls">tuple</span>     <span class="com"># empty</span>
 
 <span class="com"># There is no special syntax for lists. Call either `list`</span>
 <span class="com"># to transform another iterable into a list, or `list'`</span>
 <span class="com"># (yes, there's an apostrophe at the end) to create a fixed-size one.</span>
 <span class="cls">list</span>  <span class="par">(</span><span class="typ">0</span><span class="op">..</span><span class="typ">5</span><span class="par">)</span>
 <span class="cls">list'</span>  <span class="typ">0</span> <span class="typ">1</span> <span class="typ">2</span> <span class="typ">3</span> <span class="typ">4</span>
+
+<span class="com"># Note that using "tuple-apostrophe" is the only way to create</span>
+<span class="com"># a singleton tuple. Why would you want to do that?</span>
+<span class="cls">tuple'</span> <span class="str">"The only item"</span>
 
 <span class="com"># Same thing applies to sets (unordered collections of unique items)...</span>
 <span class="cls">set</span>  <span class="str">'abcdabc'</span>
@@ -320,22 +323,37 @@ a <span class="op">!!</span> b <span class="op">=</span> <span class="str">'this
 <span class="com"># If an item is prefixed by a star, it consumes the rest of the objects.</span>
 a<span class="op">,</span> <span class="op">*</span>b<span class="op">,</span> <span class="par">(</span>c<span class="op">,</span> d<span class="par">)</span> <span class="op">=</span> <span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="op">,</span> <span class="par">(</span><span class="typ">4</span><span class="op">,</span> <span class="typ">5</span><span class="par">)</span>
 print a b c d  <span class="com"># 1 [2, 3] 4 5</span>
+<span class="com"># Even though you can't create a tuple that way,</span>
+<span class="com"># a single item with a trailing comma to the left of the `=`</span>
+<span class="com"># will unpack a singleton iterable.</span>
+item<span class="op">,</span> <span class="op">=</span> <span class="cls">tuple'</span> <span class="typ">1</span>
+item <span class="op">==</span> <span class="typ">1</span>
 
 <span class="com"># Any function can be transformed into an operator by wrapping its name in backticks.</span>
 <span class="typ">1</span> <span class="iop">`print`</span> <span class="typ">2</span> <span class="iop">`print`</span> <span class="typ">3</span>  <span class="com"># Prints "1 2", then "None 3"</span>
 <span class="com"># The same thing:</span>
 print <span class="par">(</span>print <span class="typ">1</span> <span class="typ">2</span><span class="par">)</span> <span class="typ">3</span>
 <span class="com"># Or:</span>
-<span class="blt">foldl</span> print <span class="par">(</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">)</span>
+<span class="blt">foldl1</span> print <span class="par">(</span><span class="typ">1</span><span class="op">,</span> <span class="typ">2</span><span class="op">,</span> <span class="typ">3</span><span class="par">)</span>
 
 <span class="com"># Some operators have runtime versions, kindly provided by the `operator` module.</span>
-dot_product = <span class="par">(</span>xs ys<span class="par">)</span> <span class="op">-&gt;</span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
+dot_product <span class="op">=</span> <span class="par">(</span>xs ys<span class="par">)</span> <span class="op">-&gt;</span> <span class="blt">sum</span> <span class="op">$</span> <span class="blt">map</span> <span class="par">(</span><span class="op">*</span><span class="par">)</span> xs ys
 
-<span class="com"># And you can define your own if you think these are not enough.</span>
+<span class="com"># By omitting one of the operands, the operator becomes partially</span>
+<span class="com"># applied. This only works on operators available at runtime.</span>
+f <span class="op">=</span> <span class="par">(</span><span class="typ">2</span> <span class="op">*</span><span class="par">)</span>  <span class="com"># x -> 2 * x</span>
+f <span class="typ">10</span>  <span class="com">#=> 20</span>
+g <span class="op">=</span> <span class="op">in</span> <span class="par">(</span><span class="typ">1</span><span class="op">..</span><span class="typ">5</span><span class="par">)</span>  <span class="com"># x -&gt; x in range 1 5</span>
+g  <span class="typ">4</span>  <span class="com">#=> True</span>
+g <span class="typ">-2</span>  <span class="com">#=> False</span>
+h <span class="op">=</span> <span class="par">(</span><span class="typ">1</span><span class="op">,</span><span class="par">)</span>
+h <span class="str">'h is not a singleton tuple!'</span>  <span class="com">#=> (1, 'h is not a singleton tuple!')</span>
+
+<span class="com"># You can define your own operators if you think these are not enough.</span>
 <span class="com"># Don't consider that a very good practice, though.</span>
 <span class="par">(</span><span class="op">$%^&amp;*/|\@!+-:.?</span><span class="par">)</span> <span class="op">=</span> print
 <span class="typ">1</span> <span class="op">$%^&amp;*/|\@!+-:.?</span> <span class="typ">2</span> <span class="op">$%^&amp;*/|\@!+-:.?</span> <span class="typ">3</span>  <span class="com"># Also prints "1 2", then "None 3"</span>
-<span class="com"># Note, however, that names of operators you create should satisfy two rules:</span>
+<span class="com"># Note, however, that name of operator you create should satisfy two rules:</span>
 <span class="com">#   1. it must either consist of characters in !$%&amp;*+-./:&lt;=&gt;?@\^|~ set, or commas</span>
 <span class="com">#      (NOT both at the same time -- `$,` is invalid;) and</span>
 <span class="com">#   2. it must not start with one or more asterisks followed by a colon</span>
@@ -761,13 +779,26 @@ bob<span class="op">.</span>eat <span class="str">'carpet'</span>
           <div class="example-dg">
             <pre class="prettyprint lang-dg">
 <span class="com"># Since dg is clearly more oriented towards functional programming,</span>
-<span class="com"># some of the combinators were moved to the built-in namespace.</span>
-<span class="com"># `foldl` is `functools.reduce`:</span>
-<span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-&gt;</span> <span class="blt">foldl</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> xs <span class="typ">0</span>
+<span class="com"># some of the combinators were moved to the built-in namespace</span>
+<span class="com"># and modified to look more haskellish.</span>
+<span class="com"># `foldl` is almost like `functools.reduce`:</span>
+<span class="blt">sum</span> <span class="op">=</span> xs <span class="op">-&gt;</span> <span class="blt">foldl</span> <span class="par">(</span><span class="op">+</span><span class="op">)</span> <span class="typ">0</span> xs
 
-<span class="com"># And `bind` is `functools.partial`:</span>
+<span class="com"># `foldl1` is the same thing, but without a starting value:</span>
+lconstruct <span class="op">=</span> xs <span class="op">-&gt;</span> <span class="blt">foldl1</span> <span class="par">(</span><span class="op">,</span><span class="par">)</span> xs
+
+<span class="com"># `scanl` and `scanl1` are similar, but also yield intermediate values</span>
+accumulate <span class="op">=</span> xs <span class="op">-&gt;</span> <span class="blt">scanl1</span> <span class="par">(</span><span class="op">+</span><span class="par">)</span> xs
+<span class="com"># In fact, `scanl` and `scanl1` use `itertools.accumulate`;</span>
+<span class="com"># because of that, they won't work on Python &lt; 3.3.</span>
+
+<span class="com"># `bind` is `functools.partial`:</span>
 greet <span class="op">=</span> <span class="blt">bind</span> print <span class="str">'Hello'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
 greet <span class="str">'World'</span>
+
+<span class="com"># And `flip` swaps the order of arguments of a binary function:</span>
+contains <span class="op">=</span> <span class="blt">flip</span> <span class="par">(</span><span class="op">in</span><span class="par">)</span>
+<span class="par">(</span><span class="typ">0</span><span class="op">..</span><span class="typ">10</span><span class="par">)</span> <span class="iop">`contains`</span> <span class="typ">3</span>
 </pre>
           </div>
         </div>
