@@ -4,44 +4,6 @@ functools = new import
 itertools = new import
 importlib = new import
 
-# Choose a function based on the number of arguments.
-varary = (*: fs) -> (*: xs) -> (fs !! (len xs > 1)) *: xs
-
-# Reduce a varary left-fixed operator to a binary one.
-reduce = f -> (a *: xs) -> foldl f xs a
-
-
-builtins.new  = builtins.call = builtins.($) = (f *: xs) -> f *: xs
-builtins.(,)  = builtins.tuple' = (*: xs) -> xs
-
-builtins.(<)  = reduce operator.lt
-builtins.(<=) = reduce operator.le
-builtins.(==) = reduce operator.eq
-builtins.(!=) = reduce operator.ne
-builtins.(>)  = reduce operator.gt
-builtins.(>=) = reduce operator.ge
-builtins.(is) = reduce operator.is_
-builtins.(in) = reduce (a b) -> (operator.contains b a)
-
-builtins.not  = reduce operator.not_
-builtins.(~)  = reduce operator.invert
-builtins.(+)  = varary operator.pos (reduce operator.add)
-builtins.(-)  = varary operator.neg (reduce operator.sub)
-builtins.(*)  = reduce operator.mul
-builtins.(**) = reduce operator.pow
-builtins.(/)  = reduce operator.truediv
-builtins.(//) = reduce operator.floordiv
-builtins.(%)  = reduce operator.mod
-builtins.(.)  = reduce getattr
-builtins.(!!) = reduce operator.getitem
-builtins.(&)  = reduce operator.and_
-builtins.(^)  = reduce operator.xor
-builtins.(|)  = reduce operator.or_
-builtins.(<<) = reduce operator.lshift
-builtins.(>>) = reduce operator.rshift
-
-builtins.(.~)  = delattr
-builtins.(!!~) = operator.delitem
 
 # Shorthand type constructors (e.g. `new set' a b`  <=> `new set (a, b)`.)
 # These allow to use line continuation neatly.
@@ -51,8 +13,45 @@ builtins.dict'  = (*: xs **: ys) -> dict xs **: ys
 
 builtins.import = importlib.import_module
 builtins.bind   = functools.partial
-builtins.foldl  = functools.reduce
-# FIXME should also define foldr (and scanl (and scanr, lol.))
+builtins.foldl  = (f st xs) -> functools.reduce f xs st
+builtins.foldl1 = (f xs)    -> functools.reduce f xs
+builtins.scanl  = (f st xs) -> itertools.accumulate (itertools.chain (list' st) xs) f
+builtins.scanl1 = (f xs)    -> itertools.accumulate xs f
+# FIXME should also define foldr and scanr.
+builtins.flip   = f -> (x y) -> f y x
+
+builtins.new  = builtins.call = builtins.($) = (f *: xs) -> f *: xs
+builtins.(,)  = builtins.tuple' = (*: xs) -> xs
+
+builtins.(<)  = operator.lt
+builtins.(<=) = operator.le
+builtins.(==) = operator.eq
+builtins.(!=) = operator.ne
+builtins.(>)  = operator.gt
+builtins.(>=) = operator.ge
+builtins.(is) = operator.is_
+builtins.(in) = flip operator.contains
+
+builtins.not  = operator.not_
+builtins.(~)  = operator.invert
+builtins.(+)  = operator.add
+builtins.(-)  = operator.sub
+builtins.(*)  = operator.mul
+builtins.(**) = operator.pow
+builtins.(/)  = operator.truediv
+builtins.(//) = operator.floordiv
+builtins.(%)  = operator.mod
+builtins.(.)  = getattr
+builtins.(!!) = operator.getitem
+builtins.(&)  = operator.and_
+builtins.(^)  = operator.xor
+builtins.(|)  = operator.or_
+builtins.(<<) = operator.lshift
+builtins.(>>) = operator.rshift
+
+builtins.(.~)  = delattr
+builtins.(!!~) = operator.delitem
+
 # Not-actually-operators.
 builtins.(...)  = Ellipsis
 builtins.(..)   = range
