@@ -15,4 +15,4 @@ compile.r.builtins !! 'where' = (self expr clause) ->
   self.function (parse.tree.Constant None) $
     e = parse.tree.Expression $ list' (parse.tree.Link '\n') clause expr
     e.in_between expr clause
-  self.nativecall (new list) 0
+  self.opcode 'CALL_FUNCTION' arg: 0 delta: 0
