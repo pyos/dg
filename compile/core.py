@@ -168,15 +168,16 @@ class Compiler:
     #
     def call(self, f, *args):
 
-        infix = f.infix and not f.closed
+        lfe = False
 
-        if infix and f == '' and len(args) == 2 and args[0].infix and not args[0].closed:
+        if f.infix and f == '':  # empty link can't be closed
 
-            self.leftbind(*args)
+            f, *args = args
+            lfe = True
 
-        elif infix and len(args) == 1:
+        if f.infix and not f.closed and len(args) == 1:
 
-            self.rightbind(f, *args)
+            self.infixbind(f, *args, left=lfe)
 
         elif isinstance(f, tree.Link) and f in self.builtins:
 
@@ -185,7 +186,7 @@ class Compiler:
         else:
 
             self.load(f)
-            self.nativecall(args, 0, infix)
+            self.nativecall(args, 0, f.infix and not f.closed)
 
     def nativecall(self, args, preloaded, infix=False):
 
@@ -200,17 +201,11 @@ class Compiler:
             delta=-len(args) -   2 * len(kwargs) - preloaded
         )
 
-    def leftbind(self, f, arg):
+    def infixbind(self, f, arg, left):
 
-        # bind (flip f) (args !! 0)
         self.load(tree.Link('bind'))
-        self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1)
+        self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1) if left else self.load(f)
         self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
-
-    def rightbind(self, f, arg):
-
-        # bind f (args !! 0)
-        self.opcode('CALL_FUNCTION', tree.Link('bind'), f, arg, arg=2, delta=1)
 
     #
     # name = expression
