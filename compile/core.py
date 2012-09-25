@@ -166,40 +166,38 @@ class Compiler:
     #
     # Call a (possibly built-in) function.
     #
-    # :param preloaded: how many arguments are already on the stack:
-    #   if None, then nothing is taken from the stack;
-    #   if 0, the function object is taken from the stack and
-    #     the first argument is discarded;
-    #   if n, do the same thing as for 0, but also increase the argument by n.
-    #
-    def call(self, f, *args, preloaded=None):
+    def call(self, f, *args):
 
-        infix = f and f.infix and not f.closed
-        leftbind  = False
-        rightbind = False
+        infix = f.infix and not f.closed
 
         if infix and f == '' and len(args) == 2 and args[0].infix and not args[0].closed:
 
-            return self.leftbind(*args)
+            self.leftbind(*args)
 
         elif infix and len(args) == 1:
 
-            return self.rightbind(f, *args)
+            self.rightbind(f, *args)
 
         elif isinstance(f, tree.Link) and f in self.builtins:
 
-            return self.builtins[f](self, *args)
+            self.builtins[f](self, *args)
+
+        else:
+
+            self.load(f)
+            self.nativecall(args, 0, infix)
+
+    def nativecall(self, args, preloaded, infix=False):
 
         defs  = args, None, None, {}, (), ()
         args, _, _, kwargs, vararg, varkwarg = defs if infix else syntax.argspec(args, definition=False)
 
-        preloaded is None and self.load(f)
         self.load(*args, **kwargs)
         self.opcode(
             'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
             *vararg + varkwarg,
-            arg  = len(args) + 256 * len(kwargs) + (preloaded or 0),
-            delta=-len(args) -   2 * len(kwargs) - (preloaded or 0)
+            arg  = len(args) + 256 * len(kwargs) + preloaded,
+            delta=-len(args) -   2 * len(kwargs) - preloaded
         )
 
     def leftbind(self, f, arg):

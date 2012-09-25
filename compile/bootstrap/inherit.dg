@@ -35,4 +35,4 @@ compile.r.builtins !! 'inherit' = (self *: stuff) ->
 
   self.opcode 'LOAD_BUILD_CLASS' delta: 1
   self.make_function code (new tuple) (new dict)
-  self.call None '<class>' *: args preloaded: 1
+  self.nativecall (list' '<class>' + args) 1
