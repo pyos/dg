@@ -174,48 +174,45 @@ class Compiler:
     #
     def call(self, f, *args, preloaded=None):
 
-        infix = isinstance(f, tree.Link) and f.infix and not f.closed
+        infix = f and f.infix and not f.closed
         leftbind  = False
         rightbind = False
 
-        if infix and f == '' and len(args) == 2 and isinstance(args[0], tree.Link) and args[0].infix and not args[0].closed:
+        if infix and f == '' and len(args) == 2 and args[0].infix and not args[0].closed:
 
-            f, *args = args
-            leftbind = True
+            return self.leftbind(*args)
 
         elif infix and len(args) == 1:
 
-            rightbind = True
+            return self.rightbind(f, *args)
 
-        if isinstance(f, tree.Link) and f in self.builtins and not leftbind and not rightbind:
+        elif isinstance(f, tree.Link) and f in self.builtins:
 
             return self.builtins[f](self, *args)
 
         defs  = args, None, None, {}, (), ()
         args, _, _, kwargs, vararg, varkwarg = defs if infix else syntax.argspec(args, definition=False)
 
-        if leftbind:
+        preloaded is None and self.load(f)
+        self.load(*args, **kwargs)
+        self.opcode(
+            'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
+            *vararg + varkwarg,
+            arg  = len(args) + 256 * len(kwargs) + (preloaded or 0),
+            delta=-len(args) -   2 * len(kwargs) - (preloaded or 0)
+        )
 
-            # bind (flip f) (args !! 0)
-            self.load(tree.Link('bind'))
-            self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=-1)
-            self.opcode('CALL_FUNCTION', *args, arg=2, delta=-2)
+    def leftbind(self, f, arg):
 
-        elif rightbind:
+        # bind (flip f) (args !! 0)
+        self.load(tree.Link('bind'))
+        self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1)
+        self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
 
-            # bind f (args !! 0)
-            self.opcode('CALL_FUNCTION', tree.Link('bind'), f, *args, arg=2, delta=-2)
+    def rightbind(self, f, arg):
 
-        else:
-
-            preloaded is None and self.load(f)
-            self.load(*args, **kwargs)
-            self.opcode(
-                'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
-                *vararg + varkwarg,
-                arg  = len(args) + 256 * len(kwargs) + (preloaded or 0),
-                delta=-len(args) -   2 * len(kwargs) - (preloaded or 0)
-            )
+        # bind f (args !! 0)
+        self.opcode('CALL_FUNCTION', tree.Link('bind'), f, arg, arg=2, delta=1)
 
     #
     # name = expression
