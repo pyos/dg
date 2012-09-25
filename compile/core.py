@@ -159,6 +159,25 @@ class Compiler:
         self.fake_attrs[name](self) if name in self.fake_attrs else \
         self.opcode('LOAD_ATTR', arg=name, delta=0)
 
+    def nativecall(self, args, preloaded, infix=False):
+
+        defs  = args, None, None, {}, (), ()
+        args, _, _, kwargs, vararg, varkwarg = defs if infix else syntax.argspec(args, definition=False)
+
+        self.load(*args, **kwargs)
+        self.opcode(
+            'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
+            *vararg + varkwarg,
+            arg  = len(args) + 256 * len(kwargs) + preloaded,
+            delta=-len(args) -   2 * len(kwargs) - preloaded
+        )
+
+    def infixbind(self, f, arg, left):
+
+        self.load(tree.Link('bind'))
+        self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1) if left else self.load(f)
+        self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
+
   ### ESSENTIAL BUILT-INS
 
     #
@@ -187,25 +206,6 @@ class Compiler:
 
             self.load(f)
             self.nativecall(args, 0, f.infix and not f.closed)
-
-    def nativecall(self, args, preloaded, infix=False):
-
-        defs  = args, None, None, {}, (), ()
-        args, _, _, kwargs, vararg, varkwarg = defs if infix else syntax.argspec(args, definition=False)
-
-        self.load(*args, **kwargs)
-        self.opcode(
-            'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
-            *vararg + varkwarg,
-            arg  = len(args) + 256 * len(kwargs) + preloaded,
-            delta=-len(args) -   2 * len(kwargs) - preloaded
-        )
-
-    def infixbind(self, f, arg, left):
-
-        self.load(tree.Link('bind'))
-        self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1) if left else self.load(f)
-        self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
 
     #
     # name = expression
