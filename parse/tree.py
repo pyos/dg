@@ -6,6 +6,7 @@ Location = collections.namedtuple('Location', 'start, end, filename, first_line'
 
 class StructMixIn:
 
+    infix       = False
     closed      = False
     indented    = False
     traversable = False
