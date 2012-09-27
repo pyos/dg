@@ -4,8 +4,6 @@
 ..parse.syntax = new import
 
 
-biunary = (f g) -> (self a b: None) -> (b is None and f self a or g self a b)
-unaryop = (c self a) -> self.opcode c a delta: 1
 stacked = (c self a b) -> self.opcode c a b delta: 1
 inplace = (c self a b) ->
   self.opcode c a b delta: 1
@@ -21,8 +19,8 @@ compile.r.builtins !! '$' = (self a b: None) ->
   self.call *: (a + list' b) if is_call
 
 compile.r.builtins !! '!!'  = bind stacked 'BINARY_SUBSCR'
-compile.r.builtins !! '+'   = biunary (bind unaryop 'UNARY_POSITIVE') (bind stacked 'BINARY_ADD')
-compile.r.builtins !! '-'   = biunary (bind unaryop 'UNARY_NEGATIVE') (bind stacked 'BINARY_SUBTRACT')
+compile.r.builtins !! '+'   = bind stacked 'BINARY_ADD'
+compile.r.builtins !! '-'   = bind stacked 'BINARY_SUBTRACT'
 compile.r.builtins !! '*'   = bind stacked 'BINARY_MULTIPLY'
 compile.r.builtins !! '**'  = bind stacked 'BINARY_POWER'
 compile.r.builtins !! '/'   = bind stacked 'BINARY_TRUE_DIVIDE'
