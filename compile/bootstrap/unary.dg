@@ -1,9 +1,16 @@
 ..compile = new import
+..parse   = new import
 
 
 compile.r.builtins !! 'return' = (self a) -> self.opcode 'RETURN_VALUE' None a delta: 1
 compile.r.builtins !! 'not'    = (self a) -> self.opcode 'UNARY_NOT'         a delta: 1
 compile.r.builtins !! '~'      = (self a) -> self.opcode 'UNARY_INVERT'      a delta: 1
 compile.r.fake_attrs !! '_' = self -> self.opcode 'CALL_FUNCTION' arg: 0 delta: 0
+
 compile.r.bind_hooks !! '-' = (self arg right) ->
   self.opcode 'UNARY_NEGATIVE' arg delta: 1 or True if right
+
+compile.r.bind_hooks !! '!' = (self arg right) ->
+  self.opcode 'UNARY_NOT'     arg        delta: 1     if right
+  self.opcode 'CALL_FUNCTION' arg arg: 0 delta: 1 unless right
+  True
