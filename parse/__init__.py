@@ -188,7 +188,7 @@ def infixl(stream, op):
 
     # Note that constant strings aren't equal to anything but themselves.
     # This will only return True for a link.
-    while rhs == '\n':
+    while rhs == '\n' and not unary(op):
 
         br  = br or rhs
         rhs = next(stream)
@@ -257,7 +257,7 @@ def infixl_insert_rhs(stream, root, op, rhs):
     # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
     # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
     e = tree.Expression([op, root] if rhs is None else [op, root, rhs])
-    e.closed = rhs is None
+    e.closed = unary(op)
     return e.in_between(root, op if rhs is None else rhs)
 
 
