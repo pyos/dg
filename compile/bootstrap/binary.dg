@@ -51,6 +51,6 @@ compile.r.builtins !! '.~'  = (self a b) ->
   parse.syntax.error const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
   self.opcode 'DELETE_ATTR' None a arg: b delta: 1
 
-compile.r.builtins !! ':.'  = (self a b) ->
+compile.r.builtins !! '!.'  = (self a b) ->
   self.call   a
   self.ldattr b
