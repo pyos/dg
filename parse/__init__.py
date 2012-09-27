@@ -161,6 +161,8 @@ has_priority = functools.partial(
        'if':  20,
    'unless':  20,
      'else':  21,
+      # Immediate return
+        ';': -100499,
       # Chaining
        '\n': -100500,
     }.get: q(i, -7)  # Default
@@ -171,7 +173,7 @@ has_priority = functools.partial(
 # Note that this is only necessary if you're not doing some kind of fold.
 # Unless, of course, you don't want the compiler to consume the whole stack.
 unassoc = {',', '..', '::', '', '\n'}.__contains__
-unary   = {'!'}.__contains__
+unary   = {'!', ';'}.__contains__
 
 
 # Handle an infix link.
