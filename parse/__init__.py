@@ -100,7 +100,8 @@ has_priority = functools.partial(
   , lambda i, q={
       # Scope resolution
         '.':   0,
-       ':.':   0,
+       '!.':   0,
+        '!':   1,
       # Keyword arguments
         ':':   1,
       # Function application
@@ -170,6 +171,7 @@ has_priority = functools.partial(
 # Note that this is only necessary if you're not doing some kind of fold.
 # Unless, of course, you don't want the compiler to consume the whole stack.
 unassoc = {',', '..', '::', '', '\n'}.__contains__
+unary   = {'!'}.__contains__
 
 
 # Handle an infix link.
@@ -189,7 +191,7 @@ def infixl(stream, op):
         br  = br or rhs
         rhs = next(stream)
 
-    if isinstance(rhs, tree.Internal):
+    if isinstance(rhs, tree.Internal) or unary(op):
 
         # `(a R)`
         stream.repeat.appendleft(rhs)
