@@ -490,7 +490,7 @@ h <span class="str">'h is not a singleton tuple!'</span>  <span class="com">#=> 
                 <td>-14</td>
                 <td><code>and</code></td>
                 <td>Lazy logical conjunction (<code>A and B</code> evaluates B iff A is true)</td>
-                <td class="no" rowspan="3">No</td>
+                <td class="no" rowspan="2">No</td>
               </tr>
 
               <tr>
@@ -500,10 +500,19 @@ h <span class="str">'h is not a singleton tuple!'</span>  <span class="com">#=> 
               </tr>
 
               <tr>
+                <td>-16</td>
+                <td>right</td>
+                <td><code>$</code></td>
+                <td>Function call with exactly one argument</td>
+                <td class="yes">Yes</td>
+              </tr>
+
+              <tr>
                 <td>-17</td>
                 <td>right</td>
                 <td><code>-&gt;</code></td>
                 <td>Function constructor</td>
+                <td class="no">No</td>
               </tr>
 
               <tr>
@@ -739,8 +748,6 @@ file <span class="op">=</span> <span class="kwd">unsafe</span>
 <span class="com"># If you read a section on <a href="#operators">operators</a> carefully,</span>
 <span class="com"># you probably already noticed that you don't have to use `$`.</span>
 <span class="cls">MyType2</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="par">(</span>a <span class="op">=</span> <span class="typ">1</span><span class="par">)</span>
-<span class="com"># But if you do use it, then the class body can be omitted.</span>
-<span class="cls">Object</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
 
 <span class="com"># `inherit` also accepts any amount of base classes.</span>
 <span class="cls">MyList</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="cls">MyType</span> <span class="cls">list</span> <span class="op">$</span>
