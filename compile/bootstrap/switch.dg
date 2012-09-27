@@ -33,9 +33,9 @@ compile.r.builtins !! 'else' = (self cond otherwise) ->
   ptr = self.opcode 'POP_JUMP_IF_TRUE'  cond delta: 0 unless is_if
   jmp = self.opcode 'JUMP_FORWARD'      then delta: 0
 
-  call ptr
+  ptr!
   self.load otherwise
-  call jmp
+  jmp!
 
 
 #
@@ -52,7 +52,7 @@ compile.r.builtins !! 'switch' = (self *: cases) ->
     cond, action = c
     next = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
     end  = self.opcode 'JUMP_FORWARD'    action delta: 0
-    call next
+    next!
     end
   ) $ switch_s cases
 

@@ -22,6 +22,6 @@ compile.r.builtins !! 'with' = (self context *: stuff) ->
   self.opcode 'ROT_TWO'   delta:  0
   self.opcode 'POP_BLOCK' delta: -1
   self.load None
-  call end_ptr
+  end_ptr!
   self.opcode 'WITH_CLEANUP' delta: 1
   self.opcode 'END_FINALLY' delta: -3

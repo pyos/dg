@@ -33,8 +33,8 @@ unsafe_s = cases ->
 #
 # In CPython 3.3, `raise: exception caused_by: None` silences the context.
 #
-compile.r.builtins !! 'raise' = compile._callable $ (self exception caused_by: (...)) ->
-  args = (new list if caused_by is (...) else list' caused_by)
+compile.r.builtins !! 'raise' = compile._callable $ (self exception caused_by: None) ->
+  args = (list! if caused_by is None else list' caused_by)
   self.opcode 'RAISE_VARARGS' exception *: args delta: 0
   self.load None  # We've got to return something.
 
@@ -83,11 +83,11 @@ compile.r.builtins !! 'unsafe' = (self *: cases) ->
   # Stack:: [try, None] or [None, traceback, value, type]
   #
   to_else = self.opcode 'JUMP_FORWARD' delta: 2  # one is on the stack already
-  call to_except
+  to_except!
   self.opcode 'ROT_TWO' delta: 0
   self.store_top name
   self.opcode 'ROT_TWO' delta: 0
-  call to_else
+  to_else!
 
   # The `switch` statement.
   # XXX is that considered "code duplication"?
@@ -95,7 +95,7 @@ compile.r.builtins !! 'unsafe' = (self *: cases) ->
     cond, action = c
     next = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
     end  = self.opcode 'JUMP_FORWARD'    action delta: 0
-    call next
+    next!
     end
   ) cases
 
@@ -119,15 +119,15 @@ compile.r.builtins !! 'unsafe' = (self *: cases) ->
   no_exception = self.opcode 'POP_JUMP_IF_TRUE' delta: -1
 
   self.opcode 'POP_EXCEPT' delta: 0
-  call unhandled_exception
-  call no_exception
+  unhandled_exception!
+  no_exception!
 
   has_finally and
     # If the interpreter made it here, one of the `except` clauses matched.
     self.opcode 'POP_BLOCK' delta: -1
     self.load None
 
-    call to_finally
+    to_finally!
     self.opcode 'POP_TOP' finally delta: 0
     self.opcode 'END_FINALLY'     delta: 0
 

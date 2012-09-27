@@ -27,12 +27,12 @@ compile.r.builtins !! 'inherit' = (self *: stuff) ->
   # The return value is a __class__ cell, if any.
   # Python compiler returns None instead if there are no instance methods.
   # That's not really necessary, though.
-  call code.bytecode.pop
+  code.bytecode.pop!
   code.append 'POP_TOP'  # Replacing RETURN_VALUE with POP_TOP yields delta 0
   code.append 'LOAD_CLOSURE' '__class__' delta:  1
   code.append 'RETURN_VALUE'             delta: -1
-  code = call code.compile
+  code = code.compile '<class>'
 
   self.opcode 'LOAD_BUILD_CLASS' delta: 1
-  self.make_function code (new tuple) (new dict)
+  self.make_function code tuple! dict!
   self.nativecall (list' '<class>' + args) 1

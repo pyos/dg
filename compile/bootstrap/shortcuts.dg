@@ -5,7 +5,7 @@ itertools = import!
 importlib = import!
 
 
-# Shorthand type constructors (e.g. `new set' a b`  <=> `new set (a, b)`.)
+# Shorthand type constructors (e.g. `set' a b`  <=> `set (a, b)`.)
 # These allow to use line continuation neatly.
 builtins.set'   = (*: xs) -> set  xs
 builtins.list'  = (*: xs) -> list xs
@@ -20,7 +20,7 @@ builtins.scanl1 = (f xs)    -> itertools.accumulate xs f
 # FIXME should also define foldr and scanr.
 builtins.flip   = f -> (x y) -> f y x
 
-builtins.new  = builtins.call = builtins.(!) = builtins.($) = (f *: xs) -> f *: xs
+builtins.call = builtins.(!) = builtins.($) = (f *: xs) -> f *: xs
 builtins.(,)  = builtins.tuple' = (*: xs) -> xs
 
 builtins.(<)  = operator.lt

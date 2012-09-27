@@ -275,9 +275,6 @@ class Compiler:
       , '.':  getattr
       , '\n': chain
       , '->': function
-      # ...
-      , 'new':  call  # yes, this IS the same in Python
-      , 'call': call
     }
 
     fake_attrs = {}

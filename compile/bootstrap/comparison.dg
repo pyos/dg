@@ -17,8 +17,9 @@ comparison = (operator self a b chained: False) ->
       f :: bind and f.func is comparison
 
   # If `a` is not a comparison (or is closed), simply load it.
-  self.load a     unless a_is_cmpop
-  jmps = new list unless a_is_cmpop
+  a_is_cmpop or
+    self.load a
+    jmps = list!
   # Otherwise, call `varary_op` with `chained` set to True.
   jmps = f self p q chained: True if a_is_cmpop
 
@@ -39,7 +40,7 @@ comparison = (operator self a b chained: False) ->
       # We should remove the right-hand statement from the stack, though.
       self.opcode 'ROT_TWO' delta: 0
       self.opcode 'POP_TOP' delta: 0  # that -1 was accounted for by JUMP_IF_FALSE_OR_POP
-      call jmp
+      jmp!
 
   jmps
 

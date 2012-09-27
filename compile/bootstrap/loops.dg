@@ -18,10 +18,10 @@ compile.r.builtins !! 'while' = (self cond *: block) ->
   self.chain *: block if block
   self.opcode 'ROT_TWO' delta:  0
   self.opcode 'POP_TOP' delta: -1
-  call cond_ptr
-  call else_ptr
+  cond_ptr!
+  else_ptr!
   self.opcode 'POP_BLOCK' delta: 0
-  call exit_ptr
+  exit_ptr!
 
 
 #

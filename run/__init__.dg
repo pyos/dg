@@ -30,7 +30,7 @@ complete = code -> unsafe
 it = (fd __name__: '__main__') ->
   environ  = dict __name__: __name__ __builtins__: __builtins__
 
-  call fd.isatty or unsafe
+  fd.isatty! or unsafe
     e = eval (compile.it $ parse.it filename: fd.name $ fd.read -1) environ, exit 0
     e and not (e :: SystemExit) = sys.excepthook (type e) e e.__traceback__.tb_next, exit 1
 
@@ -47,6 +47,6 @@ it = (fd __name__: '__main__') ->
       buf = input sys.ps1
       while (not (y = complete buf)) (buf += '\n' + input sys.ps2)
       sys.displayhook $ eval (compile.it y) environ
-    e :: EOFError = call print, exit 0
+    e :: EOFError = print!, exit 0
     e :: SystemExit = raise e
     e = sys.excepthook (type e) e e.__traceback__.tb_next
