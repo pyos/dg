@@ -174,9 +174,11 @@ class Compiler:
 
     def infixbind(self, f, arg, right):
 
-        self.load(tree.Link('bind'))
-        self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1) if right else self.load(f)
-        self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
+        if f not in self.bind_hooks or not self.bind_hooks[f](self, arg, right):
+
+            self.load(tree.Link('bind'))
+            self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1) if right else self.load(f)
+            self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
 
   ### ESSENTIAL BUILT-INS
 
@@ -279,3 +281,4 @@ class Compiler:
     }
 
     fake_attrs = {}
+    bind_hooks = {}
