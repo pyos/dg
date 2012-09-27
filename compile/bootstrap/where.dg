@@ -1,5 +1,5 @@
-..parse   = new import
-..compile = new import
+..parse   = import!
+..compile = import!
 
 
 #

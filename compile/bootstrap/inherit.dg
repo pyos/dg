@@ -1,5 +1,5 @@
-.codegen  = new import
-..compile = new import
+.codegen  = import!
+..compile = import!
 
 
 #

@@ -1,8 +1,8 @@
-builtins  = new import
-operator  = new import
-functools = new import
-itertools = new import
-importlib = new import
+builtins  = import!
+operator  = import!
+functools = import!
+itertools = import!
+importlib = import!
 
 
 # Shorthand type constructors (e.g. `new set' a b`  <=> `new set (a, b)`.)

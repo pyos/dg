@@ -1,5 +1,5 @@
-..compile = new import
-..parse   = new import
+..compile = import!
+..parse   = import!
 
 
 compile.r.builtins !! 'not' = (self a) -> self.opcode 'UNARY_NOT'         a delta: 1

@@ -1,5 +1,5 @@
-..compile    = new import
-..parse.tree = new import
+..compile    = import!
+..parse.tree = import!
 
 
 # Translate `a R b Q c` into `(a R b) and (b Q c)`

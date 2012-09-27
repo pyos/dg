@@ -1,8 +1,8 @@
-builtins    = new import
-collections = new import
+builtins    = import!
+collections = import!
 
-..compile    = new import
-..parse.tree = new import
+..compile    = import!
+..parse.tree = import!
 
 
 #

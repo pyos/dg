@@ -1,7 +1,7 @@
-..const        = new import
-..compile      = new import
-..parse.tree   = new import
-..parse.syntax = new import
+..const        = import!
+..compile      = import!
+..parse.tree   = import!
+..parse.syntax = import!
 
 ST_EXC_FINALLY = parse.syntax.MATCH_Q $ parse.tree.Link 'True'
 

@@ -1,9 +1,9 @@
-os       = new import
-sys      = new import
-builtins = new import
+os       = import!
+sys      = import!
+builtins = import!
 
-..parse   = new import
-..compile = new import
+..parse   = import!
+..compile = import!
 
 
 complete = code -> unsafe
