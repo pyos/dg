@@ -17,7 +17,7 @@ for f in [
   ,       'binary.dg', 'comparison.dg'
   ,      'inherit.dg',     'switch.dg', 'where.dg'
   ,        'loops.dg',     'unsafe.dg',  'with.dg', 'yield.dg'
-  ,      'imphook.dg'
+  ,      'imphook.dg', 'functional.dg'
 ]:
     f = os.path.join(bootstrap.__path__[0], f)
     q = imp.cache_from_source(f)
