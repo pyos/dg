@@ -15,6 +15,6 @@ compile.r.bind_hooks !! ';' = (self arg right) ->
   True
 
 compile.r.bind_hooks !! '!' = (self arg right) ->
-  self.opcode 'UNARY_NOT'     arg        delta: 1     if right
-  self.opcode 'CALL_FUNCTION' arg arg: 0 delta: 1 unless right
+  self.opcode 'UNARY_NOT' arg delta: 1     if right
+  self.call arg                        unless right
   True
