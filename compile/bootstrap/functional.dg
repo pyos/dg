@@ -1,0 +1,17 @@
+builtins  = import!
+functools = import!
+itertools = import!
+
+
+builtins.foldl  = (f st xs) -> functools.reduce f xs st
+builtins.foldl1 = (f xs)    -> functools.reduce f xs
+builtins.scanl  = (f st xs) -> itertools.accumulate (itertools.chain (list' st) xs) f
+builtins.scanl1 = (f xs)    -> itertools.accumulate xs f
+# FIXME should also define foldr and scanr.
+builtins.(<-)   = (f g) -> (*: a **: k) -> f $ g *: a **: k
+
+builtins.iterate   = (f x) -> while True (yield x) (x = f x)
+builtins.takewhile = itertools.takewhile
+builtins.dropwhile = itertools.dropwhile
+builtins.take      = (n xs) -> itertools.islice xs None n
+builtins.drop      = (n xs) -> itertools.islice xs n None

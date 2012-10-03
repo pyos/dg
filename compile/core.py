@@ -193,12 +193,12 @@ class Compiler:
 
         if f.infix and f == '':  # empty link can't be closed
 
-            f, *args = args
+            *op, (f, *args) = f, args
             lfe = True
 
-        if f.infix and not f.closed and len(args) == 1:
+        if f.infix and not f.closed and (lfe or len(args) == 1):
 
-            self.infixbind(f, *args, right=lfe)
+            self.infixbind(f, args[0] if len(args) == 1 else tree.Expression(op + args), right=lfe)
 
         elif isinstance(f, tree.Link) and f in self.builtins:
 

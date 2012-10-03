@@ -1,7 +1,6 @@
 builtins  = import!
 operator  = import!
 functools = import!
-itertools = import!
 importlib = import!
 
 
@@ -11,14 +10,9 @@ builtins.set'   = (*: xs) -> set  xs
 builtins.list'  = (*: xs) -> list xs
 builtins.dict'  = (*: xs **: ys) -> dict xs **: ys
 
-builtins.import = importlib.import_module
 builtins.bind   = functools.partial
-builtins.foldl  = (f st xs) -> functools.reduce f xs st
-builtins.foldl1 = (f xs)    -> functools.reduce f xs
-builtins.scanl  = (f st xs) -> itertools.accumulate (itertools.chain (list' st) xs) f
-builtins.scanl1 = (f xs)    -> itertools.accumulate xs f
-# FIXME should also define foldr and scanr.
 builtins.flip   = f -> (x y) -> f y x
+builtins.import = importlib.import_module
 
 builtins.call = builtins.(!) = builtins.($) = (f *: xs) -> f *: xs
 builtins.(,)  = builtins.tuple' = (*: xs) -> xs
