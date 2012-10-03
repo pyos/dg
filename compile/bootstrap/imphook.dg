@@ -1,7 +1,7 @@
+os             = import!
 imp            = import!
 sys            = import!
 marshal        = import!
-os.path        = import!
 itertools      = import!
 importlib.util = import!
 

@@ -1,7 +1,6 @@
-..const        = import!
-..compile      = import!
-..parse.tree   = import!
-..parse.syntax = import!
+..compile = import!
+..parse   = import!
+..const   = import!
 
 ST_EXPR_IF      = parse.syntax.MATCH_A $ parse.tree.Expression (parse.tree.Link 'if',     parse.syntax.ANY, parse.syntax.ANY)
 ST_EXPR_UNLESS  = parse.syntax.MATCH_A $ parse.tree.Expression (parse.tree.Link 'unless', parse.syntax.ANY, parse.syntax.ANY)

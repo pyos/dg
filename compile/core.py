@@ -1,9 +1,7 @@
 import sys
 
 from . import codegen
-from .. import const
-from ..parse import tree
-from ..parse import syntax
+from .. import const, parse
 
 
 class Compiler:
@@ -30,7 +28,7 @@ class Compiler:
 
             return default
 
-        type, var, args = syntax.assignment_target(self.assigned_to)
+        type, var, args = parse.syntax.assignment_target(self.assigned_to)
 
         return (
             '{}{}.{}'      if type == const.AT.ATTR else
@@ -50,11 +48,11 @@ class Compiler:
 
             hasattr(e, 'location') and self.code.mark(e)
 
-            if isinstance(e, tree.Expression):
+            if isinstance(e, parse.tree.Expression):
 
                 self.call(*e)
 
-            elif isinstance(e, tree.Link):
+            elif isinstance(e, parse.tree.Link):
 
                 self.opcode(
                     'LOAD_DEREF' if e in self.code.cellvars  else
@@ -64,7 +62,7 @@ class Compiler:
                     'LOAD_GLOBAL', arg=e, delta=1
                 )
 
-            elif isinstance(e, tree.Constant):
+            elif isinstance(e, parse.tree.Constant):
 
                 self.opcode('LOAD_CONST', arg=e.value, delta=1)
 
@@ -104,7 +102,7 @@ class Compiler:
 
         dup and self.opcode('DUP_TOP', delta=1)
 
-        type, var, args = syntax.assignment_target(var)
+        type, var, args = parse.syntax.assignment_target(var)
 
         if type == const.AT.UNPACK:
 
@@ -127,8 +125,8 @@ class Compiler:
 
         else:
 
-            var in self.builtins   and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
-          # var in self.fake_attrs and syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
+            var in self.builtins   and parse.syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
+          # var in self.fake_attrs and parse.syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
 
             self.opcode(
                 'STORE_DEREF' if var in self.code.cellnames else
@@ -171,14 +169,14 @@ class Compiler:
     #
     def ldattr(self, name):
 
-        isinstance(name, tree.Link) or syntax.error(const.ERR.NONCONST_ATTR, name)
+        isinstance(name, parse.tree.Link) or parse.syntax.error(const.ERR.NONCONST_ATTR, name)
         self.fake_attrs[name](self) if name in self.fake_attrs else \
         self.opcode('LOAD_ATTR', arg=name, delta=0)
 
     def nativecall(self, args, preloaded, infix=False):
 
         defs  = args, None, None, {}, (), ()
-        args, _, _, kwargs, vararg, varkwarg = defs if infix else syntax.argspec(args, definition=False)
+        args, _, _, kwargs, vararg, varkwarg = defs if infix else parse.syntax.argspec(args, definition=False)
 
         self.load(*args, **kwargs)
         self.opcode(
@@ -192,8 +190,8 @@ class Compiler:
 
         if f not in self.bind_hooks or not self.bind_hooks[f](self, arg, right):
 
-            self.load(tree.Link('bind'))
-            self.opcode('CALL_FUNCTION', tree.Link('flip'), f, arg=1, delta=1) if right else self.load(f)
+            self.load(parse.tree.Link('bind'))
+            self.opcode('CALL_FUNCTION', parse.tree.Link('flip'), f, arg=1, delta=1) if right else self.load(f)
             self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
 
   ### ESSENTIAL BUILT-INS
@@ -214,9 +212,9 @@ class Compiler:
 
         if f.infix and not f.closed and (lfe or len(args) == 1):
 
-            self.infixbind(f, args[0] if len(args) == 1 else tree.Expression(op + args), right=lfe)
+            self.infixbind(f, args[0] if len(args) == 1 else parse.tree.Expression(op + args), right=lfe)
 
-        elif isinstance(f, tree.Link) and f in self.builtins:
+        elif isinstance(f, parse.tree.Link) and f in self.builtins:
 
             self.builtins[f](self, *args)
 
@@ -234,7 +232,7 @@ class Compiler:
     #
     def store(self, var, expr):
 
-        var, expr, isimport = syntax.assignment(var, expr)
+        var, expr, isimport = parse.syntax.assignment(var, expr)
 
         if isimport is False:
 
@@ -259,7 +257,7 @@ class Compiler:
     #
     def function(self, args, body):
 
-        args, kwargs, defs, kwdefs, varargs, varkwargs = syntax.argspec(args, definition=True)
+        args, kwargs, defs, kwdefs, varargs, varkwargs = parse.syntax.argspec(args, definition=True)
         code = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
         code = self.compile(body, code, self.name('<lambda>'), self.name('<lambda>', self.qualified_name) + '.<locals>')
         self.make_function(code, defs, kwdefs)

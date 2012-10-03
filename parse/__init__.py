@@ -3,14 +3,13 @@ import ast
 import functools
 import collections
 
-from . import tree
+from . import tree, syntax
 
 
 ### Public API
 
 it = lambda data, filename='<string>': next(ParserState(data, filename))
 fd = lambda fd, name='<stream>': next(ParserState(fd.read(), getattr(fd, 'name', name)))
-
 
 ### Helpers
 
@@ -259,7 +258,6 @@ def infixl_insert_rhs(stream, root, op, rhs):
     e = tree.Expression([op, root] if rhs is None else [op, root, rhs])
     e.closed = unary(op)
     return e.in_between(root, op if rhs is None else rhs)
-
 
 ### Tokens
 

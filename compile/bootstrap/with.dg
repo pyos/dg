@@ -1,6 +1,5 @@
-..compile      = import!
-..parse.tree   = import!
-..parse.syntax = import!
+..compile = import!
+..parse   = import!
 
 
 compile.r.builtins !! 'with' = (self context *: stuff) ->
