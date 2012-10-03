@@ -202,7 +202,7 @@ class MutableCode:
                 *(oparg[-1],) if code >= dis.HAVE_ARGUMENT else ()
             )
 
-    def compile(self, name='<lambda>'):
+    def compile(self, name):
 
         return types.CodeType(
             self.argc,
