@@ -58,6 +58,10 @@ class Expression (list, StructMixIn):
 
     traversable = property(lambda self: not self.closed)
 
+    def __repr__(self):
+
+        return '(({}) {})'.format(self[0], ' '.join(map(repr, self[1:])))
+
 
 class Link (str, StructMixIn):
 
@@ -67,6 +71,10 @@ class Link (str, StructMixIn):
         obj.infix = bool(infix)
         return obj
 
+    def __repr__(self):
+
+        return self
+
 
 class Constant (StructMixIn):
 
@@ -74,6 +82,10 @@ class Constant (StructMixIn):
 
         super().__init__()
         self.value = value
+
+    def __repr__(self):
+
+        return repr(self.value)
 
 
 class Internal (Constant):
