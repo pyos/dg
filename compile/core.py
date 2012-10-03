@@ -13,14 +13,30 @@ class Compiler:
     #
     # :param into_codeobj: a temporary mutable code object to use.
     #
-    def compile(cls, expr, into=None, name='<module>'):
+    def compile(cls, expr, into=None, name='<module>', qualname=''):
 
         self = cls()
+        self.assigned_to    = None
+        self.qualified_name = qualname
         self.code = codegen.MutableCode() if into is None else into
         self.code.filename = expr.location.filename
         self.code.lineno   = expr.location.start[1]
         self.opcode('RETURN_VALUE', expr, delta=0)
         return self.code.compile(name)
+
+    def name(self, default, qname=''):
+
+        if self.assigned_to is None:
+
+            return default
+
+        type, var, args = syntax.assignment_target(self.assigned_to)
+
+        return (
+            '{}{}.{}'      if type == const.AT.ATTR else
+            '({}{} !! {})' if type == const.AT.ITEM else
+            '{0}{2}'
+        ).format(qname + '.' if qname else '', args, var)
 
     # Push the results of some expressions onto the stack.
     #
@@ -143,7 +159,7 @@ class Compiler:
             'MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION', code,
             # Python <  3.3: MAKE_FUNCTION(code)
             # Python >= 3.3: MAKE_FUNCTION(code, qualname)
-            *[code.co_name] if sys.hexversion >= 0x03030000 else [],
+            *[self.name(code.co_name, self.qualified_name)] if sys.hexversion >= 0x03030000 else [],
             arg  =    len(defaults) + 256 * len(kwdefaults),
             delta=1 - len(defaults) -   2 * len(kwdefaults) - bool(code.co_freevars)
         )
@@ -222,7 +238,10 @@ class Compiler:
 
         if isimport is False:
 
+            e = self.assigned_to
+            self.assigned_to = var
             self.load(expr)
+            self.assigned_to = e
 
         else:
 
@@ -242,7 +261,7 @@ class Compiler:
 
         args, kwargs, defs, kwdefs, varargs, varkwargs = syntax.argspec(args, definition=True)
         code = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
-        code = self.compile(body, into=code, name='<lambda>')
+        code = self.compile(body, code, self.name('<lambda>'), self.name('<lambda>', self.qualified_name) + '.<locals>')
         self.make_function(code, defs, kwdefs)
 
     #
