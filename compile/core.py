@@ -11,7 +11,7 @@ class Compiler:
     #
     # :param into_codeobj: a temporary mutable code object to use.
     #
-    def compile(cls, expr, into=None, name='<module>', qualname=''):
+    def compile(cls, expr, into=None, name='<module>', qualname='', hook=lambda self: 0):
 
         self = cls()
         self.assigned_to    = None
@@ -19,6 +19,7 @@ class Compiler:
         self.code = codegen.MutableCode() if into is None else into
         self.code.filename = expr.location.filename
         self.code.lineno   = expr.location.start[1]
+        hook(self)
         self.opcode('RETURN_VALUE', expr, delta=0)
         return self.code.compile(name)
 
@@ -274,8 +275,30 @@ class Compiler:
     def function(self, args, body):
 
         args, kwargs, defs, kwdefs, varargs, varkwargs = parse.syntax.argspec(args, definition=True)
-        code = codegen.MutableCode(True, args, kwargs, varargs, varkwargs, self.code)
-        code = self.compile(body, code, self.name('<lambda>'), self.name('<lambda>', self.qualified_name) + '.<locals>')
+        argnames, targets = [], {}
+
+        for index, arg in enumerate(args):
+
+            if isinstance(arg, parse.tree.Link):
+
+                argnames.append(arg)
+
+            else:
+
+                argnames.append('pattern-{}'.format(index))
+                targets['pattern-{}'.format(index)] = arg
+
+        def hook(self):
+
+            for name, pattern in targets.items():
+
+                self.opcode('LOAD_FAST', arg=name, delta=1)
+                self.store_top(pattern)
+
+            self.opcode('NOP', delta=0)  # lol marker
+
+        code = codegen.MutableCode(True, argnames, kwargs, varargs, varkwargs, self.code)
+        code = self.compile(body, code, self.name('<lambda>'), self.name('<lambda>', self.qualified_name) + '.<locals>', hook)
         self.make_function(code, defs, kwdefs)
 
     #

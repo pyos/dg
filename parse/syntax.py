@@ -131,8 +131,6 @@ def argspec(args, definition):
                     # 2.1. `_: _` should only be followed by `_: _`
                     #      unless `*: _` was already encountered.
                     defaults and not varargs and error(const.ERR.NO_DEFAULT, arg)
-                    # 2.2. `_` is a positional argument name, and should be a link.
-                    isinstance(arg, tree.Link) or error(const.ERR.NONCONST_ARGUMENT, arg)
 
                 # If there was a `*: _`, this is a keyword-only argument.
                 # Unless, of course, this is a function call, in which case
@@ -155,13 +153,13 @@ def argspec(args, definition):
 
                 name, default = kw
 
-                # 5.1. `_: _` is a keyword argument, and its left side is a link.
-                isinstance(name, tree.Link) or error(const.ERR.NONCONST_KEYWORD, name)
-
                 # If there was a `*: _`, guess what.
                 # Or if this is not a definition. It's easier to tell
                 # whether the argument is a keyword that way.
                 if varargs or not definition:
+
+                    # 5.1. `_: _` is a keyword argument, and its left side is a link.
+                    isinstance(name, tree.Link) or error(const.ERR.NONCONST_KEYWORD, name)
 
                     kwarguments.append(name)
                     kwdefaults[name] = default
