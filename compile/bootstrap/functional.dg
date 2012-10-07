@@ -1,3 +1,4 @@
+dis       = import!
 builtins  = import!
 functools = import!
 itertools = import!
@@ -26,3 +27,15 @@ builtins.PatternMatchError = inherit TypeError $
     None
 
   __str__ = self -> 'got {0.received!r} instead of {0.expected!r}'.format self
+
+
+builtins.fallthrough = (*: fs) -> (*: args **: kwargs) ->
+  next $ map (!! 1) $ dropwhile (!! 0) $ map
+    f ->
+      unsafe
+        e = False, f *: args **: kwargs
+        e =
+          offset = e.__traceback__.tb_next.tb_frame.f_lasti
+          raise e unless offset < f.__code__.co_code.find (dis.opmap !! 'NOP')
+          True, None;
+    fs
