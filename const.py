@@ -51,4 +51,4 @@ class ERR:
     NO_DEFAULT = 'one of the arguments lacks the required default value'
 
 
-class AT: UNPACK, ATTR, ITEM, NAME = range(4)
+class AT: UNPACK, ATTR, ITEM, ASSERT, NAME = range(5)

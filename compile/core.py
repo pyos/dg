@@ -123,6 +123,22 @@ class Compiler:
 
             self.opcode('STORE_SUBSCR', args, var, delta=-2)
 
+        elif type == const.AT.ASSERT:
+
+            self.opcode('DUP_TOP',      delta=1) # EXPR{2,3}
+            self.opcode('DUP_TOP', var, delta=2) # EXPR{2,3} VAR{2}
+            self.opcode('ROT_THREE',    delta=0) # EXPR{1,2} VAR EXPR VAR
+            self.opcode('COMPARE_OP', arg='==', delta=-1) # EXPR{1,2} VAR EQ
+
+            jmp = self.opcode('POP_JUMP_IF_TRUE', delta=-1) # EXPR{1,2} VAR
+            self.opcode('LOAD_GLOBAL',   arg='PatternMatchError', delta= 1) # EXPR{1,2} VAR T
+            self.opcode('ROT_THREE',                              delta= 0) # EXPR? T EXPR VAR
+            self.opcode('CALL_FUNCTION', arg=2,                   delta=-2) # EXPR? I
+            self.opcode('RAISE_VARARGS', arg=1,                   delta= 0) # EXPR?
+            jmp()
+            self.opcode('POP_TOP', delta=0) # EXPR{1,2}
+            self.opcode('POP_TOP', delta=0) # EXPR?
+
         else:
 
             var in self.builtins   and parse.syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)

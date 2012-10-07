@@ -15,3 +15,14 @@ builtins.takewhile = itertools.takewhile
 builtins.dropwhile = itertools.dropwhile
 builtins.take      = (n xs) -> itertools.islice xs None n
 builtins.drop      = (n xs) -> itertools.islice xs n None
+
+
+builtins.PatternMatchError = inherit TypeError $
+
+  __init__ = (self expected received) ->
+    super!.__init__ expected received
+    self.expected = expected
+    self.received = received
+    None
+
+  __str__ = self -> 'got {0.received!r} instead of {0.expected!r}'.format self
