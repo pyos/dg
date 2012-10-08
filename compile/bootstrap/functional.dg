@@ -32,10 +32,9 @@ builtins.PatternMatchError = inherit TypeError $
 builtins.fallthrough = (*: fs) -> (*: args **: kwargs) ->
   next $ map (!! 1) $ dropwhile (!! 0) $ map
     f ->
+      offset = f.__code__.co_code.find (bytes $ list' $ dis.opmap !! 'NOP')
       unsafe
         e = False, f *: args **: kwargs
-        e =
-          offset = e.__traceback__.tb_next.tb_frame.f_lasti
-          raise e unless offset < f.__code__.co_code.find (dis.opmap !! 'NOP')
+        e and e.__traceback__.tb_next.tb_frame.f_lasti < offset =
           True, None;
     fs
