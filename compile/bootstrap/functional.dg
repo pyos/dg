@@ -17,6 +17,13 @@ builtins.dropwhile = itertools.dropwhile
 builtins.take      = (n xs) -> itertools.islice xs None n
 builtins.drop      = (n xs) -> itertools.islice xs n None
 
+builtins.head = next <- iter
+builtins.tail = list <- bind drop 1
+builtins.fst  = head
+builtins.snd  = head <- tail
+# FIXME should do not work on iterables
+builtins.init = (!! slice None -1)
+builtins.last = (!! -1)
 
 builtins.PatternMatchError = inherit TypeError $
 
