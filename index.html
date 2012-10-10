@@ -187,7 +187,7 @@ do_something_with
 
 <span class="com"># Tuples</span>
 <span class="typ">2</span><span class="op">,</span> <span class="spc">True</span><span class="op">,</span> <span class="str">'hi'</span> <span class="com"># with multiple items</span>
-<span class="kwd">new</span> <span class="cls">tuple</span>     <span class="com"># empty</span>
+<span class="cls">tuple</span><span class="op">!</span>        <span class="com"># empty</span>
 
 <span class="com"># There is no special syntax for lists. Call either `list`</span>
 <span class="com"># to transform another iterable into a list, or `list'`</span>
@@ -226,10 +226,8 @@ do_something_with
 <span class="com"># Haskell and Smalltalk.</span>
 print <span class="str">'Hello'</span> <span class="str">'print'</span> sep<span class="op">:</span> <span class="str">', '</span> end<span class="op">:</span> <span class="str">'!\n'</span>
 <span class="com"># Obviously, simply typing `print` isn't gonna call anything.</span>
-<span class="com"># Either use `call`...</span>
-<span class="kwd">call</span> print
-<span class="com"># ...or `new`, whichever looks best to you.</span>
-<span class="kwd">new</span> <span class="cls">int</span>
+<span class="com"># Add an exclamation mark after the name of the function to do that.</span>
+print<span class="op">!</span>
 <span class="com"># It's better to not make functions that don't require any arguments</span>
 <span class="com"># in the first place. Avoid magic/side effects and use `property`.</span>
 
@@ -268,11 +266,10 @@ drop_even_numbers <span class="op">=</span> <span class="par">(</span><span clas
 wtf <span class="op">=</span> <span class="cls">staticmethod</span> <span class="par">(</span><span class="par">)</span> <span class="op">-&gt;</span>
   print <span class="str">'A static method outside of a class?!'</span>
 
-<span class="com"># `return` takes one argument (the value to return)</span>
-<span class="com"># and aborts the evaluation immediately as if there was nothing after it.</span>
+<span class="com"># To abort the evaluation immediately, append a semicolon to the expression.</span>
 hello <span class="op">=</span> <span class="par">(</span><span class="par">)</span> <span class="op">-&gt;</span>
-  <span class="kwd">return</span> <span class="op">$</span> print <span class="str">'Hi!'</span>
-  print <span class="str">'F**k you.'</span>
+  print <span class="str">'Hi!'</span><span class="op">;</span>
+  print <span class="str">'F**k you.'</span>  <span class="com"># won't get printed</span>
 
 <span class="com"># <a href="http://docs.python.org/py3k/reference/simple_stmts.html#the-yield-statement">`yield`</a> turns a function into a <a href="http://docs.python.org/dev/glossary.html#term-generator">generator</a>.</span>
 count <span class="op">=</span> start <span class="op">-&gt;</span>
@@ -390,7 +387,7 @@ h <span class="str">'h is not a singleton tuple!'</span>  <span class="com">#=> 
               </tr>
 
               <tr>
-                <td><code>:.</code></td>
+                <td><code>!.</code></td>
                 <td>Call a function with no arguments, then fetch an attribute.</td>
                 <td class="no" rowspan="2">No</td>
               </tr>
@@ -625,9 +622,9 @@ module <span class="op">=</span> <span class="kwd">import</span> <span class="st
 
 <span class="com"># You can omit the module name if it can be inferred.</span>
 <span class="com"># (If it can't, TypeError will be raised at runtime.)</span>
-sys <span class="op">=</span> <span class="kwd">new</span> <span class="kwd">import</span>
-os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">new</span> <span class="kwd">import</span>
-<span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">new</span> <span class="kwd">import</span>
+sys <span class="op">=</span> <span class="kwd">import</span><span class="op">!</span>
+os<span class="op">.</span>path <span class="op">=</span> <span class="kwd">import</span><span class="op">!</span>
+<span class="op">.</span>relative<span class="op">.</span>import <span class="op">=</span> <span class="kwd">import</span><span class="op">!</span>
 
 <span class="com"># Not much else to show here. Star-imports will never be supported.</span>
 </pre>
@@ -762,9 +759,7 @@ file <span class="op">=</span> <span class="kwd">unsafe</span>
 <span class="cls">Animal</span> <span class="op">=</span> <span class="kwd">inherit</span> <span class="op">$</span>
   <span class="com"># Classes can have methods, which are actually functions.</span>
   __init__ <span class="op">=</span> <span class="par">(</span><span class="spc">self</span> name<span class="par">)</span> <span class="op">-&gt;</span>
-    <span class="com"># Retrieving an attribute of a value returned by a function</span>
-    <span class="com"># is pretty common, so there is a special operator for that.</span>
-    <span class="kwd">call</span> <span class="cls">super</span><span class="op">:.</span>__init__  <span class="com"># See <a href="http://docs.python.org/dev/library/functions.html#super">Python docs</a> for details</span>
+    <span class="cls">super</span><span class="op">!.</span>__init__<span class="op">!</span>
 
     <span class="spc">self</span><span class="op">.</span>name <span class="op">=</span> name
     <span class="com"># __init__ must always return None.</span>
@@ -836,16 +831,6 @@ contains <span class="op">=</span> <span class="blt">flip</span> <span class="pa
             <li>Smalltalk</li>
             <li>Lisp</li>
           </ul>
-        </div>
-
-        <div id="thanks" class="section">
-          <h2>Thanks</h2>
-          <p>
-            Thanks to me.
-            Special thanks to Python developers who, as always,
-            <a href="http://docs.python.org/dev/whatsnew/3.3.html">do implement cool features</a>,
-            but release them 2 or 3 months after I want to try them out. :-)
-          </p>
         </div>
       </div>
     </div>
