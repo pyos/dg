@@ -15,7 +15,7 @@ too; just make sure you load the compiler first:
 # my_module.dg
 flask = import!
 
-app   = Flask.flask __name__
+app   = flask.Flask __name__
 hello = (app.route '/') (-> 'Hello World!')
 
 app.run! if __name__ == '__main__'
