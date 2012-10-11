@@ -232,7 +232,7 @@ strict:</p><ul><li>anything that can be assigned to is accepted as an argument n
 <span class="n">map_over_args</span> <span class="n">double</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="c1">#=&gt; `map` object containing 2, 4, and 6</span>
 
 <span class="c1"># This one has one argument with a default value.</span>
-<span class="n">greet</span> <span class="o">=</span> <span class="p">(</span><span class="n">whom</span><span class="o">:</span> <span class="s">&#39;World&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s">&#39;Hello&#39;</span> <span class="n">whom</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;, &#39;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&#39;!</span><span class="se">\n</span><span class="s">&#39;</span>
+<span class="n">greet</span> <span class="o">=</span> <span class="p">(</span><span class="n">whom</span><span class="o">:</span> <span class="s">&#39;World&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&#39;Hello&#39;</span> <span class="n">whom</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;, &#39;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&#39;!</span><span class="se">\n</span><span class="s">&#39;</span>
 <span class="n">greet</span><span class="o">!</span>         <span class="c1">#=&gt; &#39;Hello, World!&#39;</span>
 <span class="n">greet</span> <span class="s">&#39;Reader&#39;</span> <span class="c1">#=&gt; &#39;Hello, Reader!&#39;</span>
 

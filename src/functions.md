@@ -88,7 +88,7 @@ map_over_args double       #=> empty `map` object
 map_over_args double 1 2 3 #=> `map` object containing 2, 4, and 6
 
 # This one has one argument with a default value.
-greet = (whom: 'World') -> 'Hello' whom sep: ', ' end: '!\n'
+greet = (whom: 'World') -> print 'Hello' whom sep: ', ' end: '!\n'
 greet!         #=> 'Hello, World!'
 greet 'Reader' #=> 'Hello, Reader!'
 
