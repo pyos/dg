@@ -256,7 +256,7 @@ def infixl_insert_rhs(stream, root, op, rhs):
     # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
     # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
     e = tree.Expression([op, root] if rhs is None else [op, root, rhs])
-    e.closed = unary(op)
+    e.closed = rhs is None
     return e.in_between(root, op if rhs is None else rhs)
 
 ### Tokens
