@@ -302,6 +302,20 @@ class Compiler:
         self.make_function(code, defs, kwdefs)
 
     #
+    # -> body
+    # argspec ->
+    #
+    # Create a function either without any arguments or a body.
+    #
+    def partial_function(self, body, right):
+
+        self.function(
+          parse.tree.Constant(None).before(body) if right else body,
+          body if right else parse.tree.Constant(None).after(body)
+        )
+        return True
+
+    #
     # object.attribute
     #
     # Retrieve an attribute of some object.
@@ -334,4 +348,4 @@ class Compiler:
     }
 
     fake_attrs = {}
-    bind_hooks = {}
+    bind_hooks = {'->': partial_function}
