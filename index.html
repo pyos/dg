@@ -604,14 +604,16 @@ probably want to wrap them in parentheses. "else" clause can be omitted.</p><div
 <span class="nb">print</span> <span class="s">&#39;ERROR&#39;</span> <span class="ow">unless</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">10</span> <span class="c1">#=&gt; True (does not print anything)</span>
 </pre></div>
 <p>The most powerful, and the simpliest, conditional is <code>switch</code>, which
-is actually not "switch-case", but "if-else if".</p><p><code>switch</code> only accepts expressions in form <code>condition = value</code> as its <em>arguments</em>
+is actually not "switch-case", but "if-else if".</p><div class="highlight"><pre><span class="n">factorial</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-&gt;</span> <span class="kr">switch</span>
+</pre></div>
+<p><code>switch</code> only accepts expressions in form <code>condition = value</code> as its <em>arguments</em>
 (remember to use the line continuation!) The first value assigned to a true
-condition is evaluated.</p><p>Conditions don't have to reference the same variable; they may be completely
-arbitrary. Make use of the fact that <code>True</code> is always true to do something
-if everything else fails.</p><div class="highlight"><pre><span class="n">factorial</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-&gt;</span> <span class="kr">switch</span>
-  <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">=</span> <span class="kr">raise</span> <span class="o">$</span> <span class="ne">ValueError</span> <span class="s">&#39;n &gt;= 0&#39;</span>
+condition is evaluated.</p><div class="highlight"><pre>  <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">=</span> <span class="kr">raise</span> <span class="o">$</span> <span class="ne">ValueError</span> <span class="s">&#39;n &gt;= 0&#39;</span>
   <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="o">=</span> <span class="mi">1</span>
-  <span class="bp">True</span>  <span class="o">=</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+<p>Conditions don't have to reference the same variable; they may be completely
+arbitrary. Make use of the fact that <code>True</code> is always true to do something
+if everything else fails.</p><div class="highlight"><pre>  <span class="bp">True</span>  <span class="o">=</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
         <div id="exceptions"   class="section"><h2>Exceptions</h2><p>Throw exceptions with the <code>raise</code> function. It accepts classes that derive

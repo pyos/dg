@@ -23,17 +23,23 @@ print 'ERROR' unless 10 == 10 #=> True (does not print anything)
 The most powerful, and the simpliest, conditional is `switch`, which
 is actually not "switch-case", but "if-else if".
 
+```dg
+factorial = n -> switch
+```
+
 `switch` only accepts expressions in form `condition = value` as its *arguments*
 (remember to use the line continuation!) The first value assigned to a true
 condition is evaluated.
+
+```dg
+  n < 0 = raise $ ValueError 'n >= 0'
+  n < 2 = 1
+```
 
 Conditions don't have to reference the same variable; they may be completely
 arbitrary. Make use of the fact that `True` is always true to do something
 if everything else fails.
 
 ```dg
-factorial = n -> switch
-  n < 0 = raise $ ValueError 'n >= 0'
-  n < 2 = 1
   True  = n * factorial (n - 1)
 ```
