@@ -11,12 +11,12 @@ complete = code -> unsafe
     expr = res = parse.it code '<stdin>'
 
     # Search for incomplete infix expressions.
-    while (expr :: parse.tree.Expression and not expr.closed and len expr > 2) (expr !!= -1)
+    while (expr :: parse.tree.Expression and not expr.closed) (expr !!= -1)
 
     res if code.endswith '\n' or not
       (code.rsplit '\n' 1 !! -1).startswith ' ' or
         expr :: parse.tree.Link and not expr.closed and expr in compile.r.builtins or
-          expr :: parse.tree.Expression and not expr.closed
+          expr :: parse.tree.Expression and len expr == 2
 
   e :: SyntaxError and (e.args !! 0).startswith 'unexpected EOF' = None
 
