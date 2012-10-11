@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>dg</title>
+    <link href="css/bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="css/bootstrap-responsive.css" rel="stylesheet" type="text/css" />
+    <link href="css/pygments-github.css" rel="stylesheet" type="text/css" />
+    <link href="css/style.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="js/bootstrap.js"></script>
+  </head>
+  <body>
+    <div class="row-fluid side-row hidden-phone">
+      <div class="span2 sidebar">
+        <h1 id="logo">
+          <a href="#">dg</a>
+        </h1>
+        <ul class="nav nav-list">
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#installation">Installation</a></li>
+          <li class="divider"></li>
+          <li><a href="#introduction">Introduction</a></li>
+          <li><a href="#literals">Literals</a></li>
+          <li><a href="#functions">Functions</a></li>
+          <li><a href="#operators">Operators</a></li>
+          <li><a href="#modules">Modules</a></li>
+          <li><a href="#conditionals">Conditionals</a></li>
+          <li><a href="#exceptions">Exceptions</a></li>
+          <li><a href="#objects">Objects</a></li>
+          <li><a href="#builtins">New built-ins</a></li>
+          <li class="divider"></li>
+          <li><a href="#performance">Performance</a></li>
+          <li><a href="#inspired-by">Inspired by</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="row-fluid content-row">
+      <div class="span2 hidden-phone"></div>
+      <div class="span10 content">
+        <div id="overview"     class="section">{overview}</div>
+        <div id="installation" class="section">{installation}</div>
+        <div id="introduction" class="section">{introduction}</div>
+        <div id="literals"     class="section">{literals}</div>
+        <div id="functions"    class="section">{functions}</div>
+
+        <div id="operators" class="section">
+
+          {operators}
+
+          <h3 id="operator-table">The Complete Table of Operators</h3>
+          <p>
+            <a href="http://en.wikipedia.org/wiki/Order_of_operations">Priority</a>
+            defines which operator takes precedence in the absence of parentheses.
+            <a href="http://en.wikipedia.org/wiki/Operator_associativity">Fixity</a>
+            determines how operator expressions with equal priority are parsed.
+          </p>
+
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>Priority</th>
+                <th>Fixity</th>
+                <th>?</th>
+                <th>What</th>
+                <th>Available in runtime</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr>
+                <td rowspan="2">0</td>
+                <td rowspan="4">left</td>
+                <td><code>.</code></td>
+                <td>Attribute lookup</td>
+                <td class="maybe"><code>getattr</code></td>
+              </tr>
+
+              <tr>
+                <td><code>!.</code></td>
+                <td>Call a function with no arguments, then fetch an attribute.</td>
+                <td class="no" rowspan="2">No</td>
+              </tr>
+
+              <tr>
+                <td>-2</td>
+                <td><code></code></td>
+                <td>(Empty operator.) Function call</td>
+              </tr>
+
+              <tr>
+                <td>-3</td>
+                <td><code>!!</code></td>
+                <td>Array subscription (i.e. like <code>a[b]</code> in Python)</td>
+                <td class="yes" rowspan="11">Yes</td>
+              </tr>
+
+              <tr>
+                <td>-4</td>
+                <td>right</td>
+                <td><code>**</code></td>
+                <td>Exponentiation</td>
+              </tr>
+
+              <tr>
+                <td>-5</td>
+                <td rowspan="11">left</td>
+                <td>
+                <code>*</code>
+                  <code>/</code>
+                  <code>//</code>
+                  <code>%</code>
+                </td>
+                <td>Multiplication, division, floor division, and modulus</td>
+              </tr>
+
+              <tr>
+                <td>-6</td>
+                <td>
+                  <code>+</code>
+                  <code>-</code>
+                </td>
+                <td>Addition and subtraction</td>
+              </tr>
+
+              <tr>
+                <td rowspan="3">-8</td>
+                <td>
+                  <code>&lt;</code>
+                  <code>&lt;=</code>
+                  <code>==</code>
+                  <code>!=</code>
+                  <code>&gt;=</code>
+                  <code>&gt;</code>
+                </td>
+                <td>Standard comparison operators</td>
+              </tr>
+
+              <tr>
+                <td><code>is</code></td>
+                <td>Identifier-based comparison</td>
+              </tr>
+
+              <tr>
+                <td><code>in</code></td>
+                <td>Containment check</td>
+              </tr>
+
+              <tr>
+                <td>-10</td>
+                <td>
+                  <code>&lt;&lt;</code>
+                  <code>&gt;&gt;</code>
+                </td>
+                <td>Bitwise shift to the left and to the right</td>
+              </tr>
+
+              <tr>
+                <td>-11</td>
+                <td><code>&amp;</code></td>
+                <td>Bitwise AND</td>
+              </tr>
+
+              <tr>
+                <td>-12</td>
+                <td><code>^</code></td>
+                <td>Bitwise XOR</td>
+              </tr>
+
+              <tr>
+                <td>-13</td>
+                <td><code>|</code></td>
+                <td>Bitwise OR</td>
+              </tr>
+
+              <tr>
+                <td>-14</td>
+                <td><code>and</code></td>
+                <td>Lazy logical conjunction (<code>A and B</code> evaluates B iff A is true)</td>
+                <td class="no" rowspan="2">No</td>
+              </tr>
+
+              <tr>
+                <td>-15</td>
+                <td><code>or</code></td>
+                <td>Lazy logical disjunction (<code>A or B</code> evaluates B iff A is false)</td>
+              </tr>
+
+              <tr>
+                <td>-16</td>
+                <td>right</td>
+                <td><code>$</code></td>
+                <td>Function call with exactly one argument</td>
+                <td class="yes">Yes</td>
+              </tr>
+
+              <tr>
+                <td>-17</td>
+                <td>right</td>
+                <td><code>-&gt;</code></td>
+                <td>Function constructor</td>
+                <td class="no">No</td>
+              </tr>
+
+              <tr>
+                <td>-18</td>
+                <td>left</td>
+                <td><code>,</code></td>
+                <td>Tuple constructor</td>
+                <td class="yes">Yes</td>
+              </tr>
+
+              <tr>
+                <td rowspan="2">-19</td>
+                <td rowspan="4">right</td>
+                <td><code>=</code></td>
+                <td>Assignment</td>
+                <td class="no" rowspan="5">No</td>
+              </tr>
+
+              <tr>
+                <td>
+                  <code>!!=</code>
+                  <code>+=</code>
+                  <code>-=</code>
+                  <code>*=</code>
+                  <code>**=</code>
+                  <code>/=</code>
+                  <code>//=</code>
+                  <code>%=</code>
+                  <code>&amp;=</code>
+                  <code>^=</code>
+                  <code>|=</code>
+                  <code>&lt;&lt;=</code>
+                  <code>&gt;&gt;=</code>
+                </td>
+                <td><a href="http://docs.python.org/dev/reference/simple_stmts.html#augmented-assignment-statements">Augmented assignment</a></td>
+              </tr>
+
+              <tr>
+                <td>-20</td>
+                <td>
+                  <code>if</code>
+                  <code>unless</code>
+                </td>
+                <td>Inline conditional branching (or/and with reversed order of operands)</td>
+              </tr>
+
+              <tr>
+                <td>-21</td>
+                <td><code>else</code></td>
+                <td>Extension clause to the inline conditional branching</td>
+              </tr>
+
+              <tr>
+                <td>-100500</td>
+                <td>left</td>
+                <td><code></code></td>
+                <td>(Line break.) Sequential evaluation</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            All other operators (including those defined at runtime)
+            have priority -7 and left fixity. Some of these are:
+          </p>
+
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>?</th>
+                <th>What</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr>
+                <td><code>.~</code></td>
+                <td>Attribute removal. Returns None, can't be chained.</td>
+              </tr>
+
+              <tr>
+                <td><code>!!~</code></td>
+                <td>Subitem removal. Returns None, can't be chained.</td>
+              </tr>
+
+              <tr>
+                <td><code>..</code></td>
+                <td>Alias for <code>range</code></td>
+              </tr>
+
+              <tr>
+                <td><code>::</code></td>
+                <td>Alias for <code>isinstance</code></td>
+              </tr>
+
+              <tr>
+                <td><code>...</code></td>
+                <td>Alias for <code>Ellipsis</code>, <i>not callable</i></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="modules"      class="section">{modules}</div>
+        <div id="conditionals" class="section">{conditionals}</div>
+        <div id="exceptions"   class="section">{exceptions}</div>
+        <div id="objects"      class="section">{objects}</div>
+        <div id="builtins"     class="section">{builtins}</div>
+
+        <div id="inspired-by" class="section">
+          <h2>Inspired by</h2>
+          <ul>
+            <li>Python, obviously</li>
+            <li>Haskell</li>
+            <li>CoffeeScript and LiveScript</li>
+            <li>Smalltalk</li>
+            <li>Lisp</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
