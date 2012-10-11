@@ -11,8 +11,7 @@ inplace = (c self a b) ->
 
 # NOTE ',' is unfixed
 compile.r.builtins !! ',' = (self *: xs) -> self.opcode 'BUILD_TUPLE' *: xs delta: 1
-compile.r.builtins !! '$' = (self a b: None) ->
-  b = (parse.tree.Constant None).after a if b is None
+compile.r.builtins !! '$' = (self a b) ->
   is_call = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
   self.call a b          unless is_call
   self.call *: (a + list' b) if is_call
