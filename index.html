@@ -48,7 +48,7 @@ too; just make sure you load the compiler first:</p><div class="highlight"><pre>
 <span class="n">flask</span> <span class="o">=</span> <span class="kr">import</span><span class="o">!</span>
 
 <span class="n">app</span>   <span class="o">=</span> <span class="n">flask</span><span class="o">.</span><span class="kt">Flask</span> <span class="n">__name__</span>
-<span class="n">hello</span> <span class="o">=</span> <span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">route</span> <span class="s">&#39;/&#39;</span><span class="p">)</span> <span class="p">(</span><span class="o">-&gt;</span> <span class="s">&#39;Hello World!&#39;</span><span class="p">)</span>
+<span class="n">hello</span> <span class="o">=</span> <span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">route</span> <span class="s">&#39;/&#39;</span><span class="p">)</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="s">&#39;Hello World!&#39;</span>
 
 <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="o">!</span> <span class="ow">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span>
 </pre></div>
@@ -96,7 +96,7 @@ will be treated as if that was an object:</p><div class="highlight"><pre><span c
 <h3>Comments</h3><div class="highlight"><pre><span class="c1"># are sh-style up to the end of the line</span>
 </pre></div>
 <p>There are no docstrings in dg. In fact, there aren't any in Python, too;
-paradoxically, these facts together mean that you <em>can</em> use them:</p><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="o">-&gt;</span>
+paradoxically, these facts together mean that you <em>can</em> use them:</p><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span>
   <span class="s">&#39;&#39;&#39;</span>
 <span class="s">    I hear you asking &quot;WTF?&quot;</span>
 <span class="s">    In Python, &quot;docstring&quot; is simply the first constant used in a function...</span>
@@ -216,10 +216,8 @@ strict:</p><ul><li>anything that can be assigned to is accepted as an argument n
 <span class="n">double</span> <span class="mi">10</span> <span class="c1">#=&gt; 20</span>
 
 <span class="c1"># These have no arguments and always return None.</span>
-<span class="n">constant</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="bp">None</span>
-<span class="n">constant</span> <span class="o">=</span>    <span class="o">-&gt;</span> <span class="bp">None</span>
-<span class="n">constant</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span>
-<span class="n">constant</span> <span class="o">=</span>    <span class="o">-&gt;</span>
+<span class="n">constant</span>  <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="bp">None</span>
+<span class="n">constant&#39;</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="p">()</span>
 
 <span class="c1"># This one accepts any amount of arguments.</span>
 <span class="n">doubleMany</span> <span class="o">=</span> <span class="p">(</span><span class="o">*:</span> <span class="n">xs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">map</span> <span class="n">double</span> <span class="n">xs</span>
@@ -258,9 +256,7 @@ an expression without using parentheses in some cases:</p><div class="highlight"
 <span class="nb">list</span> <span class="o">$</span> <span class="nb">map</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">int</span> <span class="n">x</span> <span class="mi">16</span><span class="p">)</span> <span class="s">&#39;1639F16BA&#39;</span> <span class="c1">#=&gt; 1, 6, 3, 9, 15, 1, 6, 11, 10</span>
 </pre></div>
 <p>Thanks to these awesome anonymous functions, there's little need for decorators
-anymore. Simply pass functions to other functions:</p><div class="highlight"><pre><span class="c1"># Note that writing &#39;staticmethod -&gt;&#39; here would create</span>
-<span class="c1"># a function of one argument.</span>
-<span class="n">wtf</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="p">()</span> <span class="o">-&gt;</span>
+anymore. Simply pass functions to other functions:</p><div class="highlight"><pre><span class="n">wtf</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="p">()</span> <span class="o">-&gt;</span>
   <span class="nb">print</span> <span class="s">&#39;A static method outside of a class?!&#39;</span>
 </pre></div>
 <p>And, of course, <a href="http://docs.python.org/py3k/reference/simple_stmts.html#the-yield-statement">yield</a>

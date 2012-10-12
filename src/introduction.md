@@ -51,7 +51,7 @@ There are no docstrings in dg. In fact, there aren't any in Python, too;
 paradoxically, these facts together mean that you *can* use them:
 
 ```dg
-f = ->
+f = () ->
   '''
     I hear you asking "WTF?"
     In Python, "docstring" is simply the first constant used in a function...

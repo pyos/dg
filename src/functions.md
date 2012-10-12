@@ -72,10 +72,8 @@ double = x -> x * 2
 double 10 #=> 20
 
 # These have no arguments and always return None.
-constant = () -> None
-constant =    -> None
-constant = () ->
-constant =    ->
+constant  = () -> None
+constant' = () -> ()
 
 # This one accepts any amount of arguments.
 doubleMany = (*: xs) -> map double xs
@@ -126,8 +124,6 @@ Thanks to these awesome anonymous functions, there's little need for decorators
 anymore. Simply pass functions to other functions:
 
 ```dg
-# Note that writing 'staticmethod ->' here would create
-# a function of one argument.
 wtf = staticmethod () ->
   print 'A static method outside of a class?!'
 ```
