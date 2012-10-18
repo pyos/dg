@@ -1,4 +1,5 @@
 import sys
+import collections
 
 from . import codegen
 from .. import const, parse
@@ -203,13 +204,29 @@ class Compiler:
             delta=-len(args) -   2 * len(kwargs) - preloaded
         )
 
-    def infixbind(self, f, arg, right):
+    def loadcall(self, args):
 
-        if f not in self.bind_hooks or not self.bind_hooks[f](self, arg, right):
+        self.load(*args) if len(args) < 2 else self.call(*args)
 
-            self.load(parse.tree.Link('bind'))
-            self.opcode('CALL_FUNCTION', parse.tree.Link('flip'), f, arg=1, delta=1) if right else self.load(f)
-            self.opcode('CALL_FUNCTION', arg, arg=2, delta=-1)
+    # Left-bind `f` with `arg`.
+    #
+    # Same as `bind f arg`.
+    #
+    def infixbindl(self, f, arg):
+
+        self.opcode('CALL_FUNCTION', parse.tree.Link('bind'), f, arg, arg=2, delta=-1)
+
+    # Right-bind `f` with `args`.
+    #
+    # No direct equivalent; `R a b c` means `infixbindr(R, a, b, c)`
+    # and is interpreted as `R (a b c)` by default.
+    #
+    def infixbindr(self, f, *args):
+
+        self.load(parse.tree.Link('bind'))
+        self.opcode('CALL_FUNCTION', parse.tree.Link('flip'), f, arg=1, delta=1)
+        self.loadcall(args)
+        self.opcode('CALL_FUNCTION', arg=2, delta=-1)
 
   ### ESSENTIAL BUILT-INS
 
@@ -218,18 +235,15 @@ class Compiler:
     #
     # Call a (possibly built-in) function.
     #
-    def call(self, f, *args):
-
-        lfe = False
+    def call(self, f, *args, rightbind=False):
 
         if f.infix and f == '':  # empty link can't be closed
 
-            *op, (f, *args) = f, args
-            lfe = True
+            (f, *args), rightbind = args, True
 
-        if f.infix and not f.closed and (lfe or len(args) == 1):
+        if f.infix and not f.closed and (rightbind or len(args) == 1):
 
-            self.infixbind(f, args[0] if len(args) == 1 else parse.tree.Expression(op + args), right=lfe)
+            self.bind_hooks[rightbind][f](self, f, *args)
 
         elif isinstance(f, parse.tree.Link) and f in self.builtins:
 
@@ -334,4 +348,7 @@ class Compiler:
     }
 
     fake_attrs = {}
-    bind_hooks = {}
+    bind_hooks = {
+        False: collections.defaultdict(lambda: Compiler.infixbindl)
+      , True:  collections.defaultdict(lambda: Compiler.infixbindr)
+    }
