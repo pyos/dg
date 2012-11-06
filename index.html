@@ -574,8 +574,8 @@ module.</p><div class="highlight"><pre><span class="n">f</span> <span class="o">
           </table>
         </div>
 
-        <div id="modules"      class="section"><h2>Modules</h2><p><em>(The current import function is not very good; it will probably be changed later.)</em></p><p><code>import</code> is an alias to <a href="http://docs.python.org/dev/library/importlib.html#importlib.import_module">importlib.import_module</a>.</p><div class="highlight"><pre><span class="n">module</span>    <span class="o">=</span> <span class="kr">import</span><span class="o">:</span> <span class="s">&#39;os&#39;</span>
-<span class="n">submodule</span> <span class="o">=</span> <span class="kr">import</span><span class="o">:</span> <span class="s">&#39;.submodule&#39;</span> <span class="n">package</span><span class="o">:</span> <span class="n">__package__</span>
+        <div id="modules"      class="section"><h2>Modules</h2><p><em>(The current import function is not very good; it will probably be changed later.)</em></p><p><code>import</code> is an alias to <a href="http://docs.python.org/dev/library/importlib.html#importlib.import_module">importlib.import_module</a>.</p><div class="highlight"><pre><span class="n">module</span>    <span class="o">=</span> <span class="kr">import</span> <span class="s">&#39;os&#39;</span>
+<span class="n">submodule</span> <span class="o">=</span> <span class="kr">import</span> <span class="s">&#39;.submodule&#39;</span> <span class="n">package</span><span class="o">:</span> <span class="n">__package__</span>
 </pre></div>
 <p>As a special case, when <code>import</code> is called without any arguments, dg will
 attempt to infer the module name from the variable name. In that case
