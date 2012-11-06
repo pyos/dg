@@ -13,7 +13,7 @@ a *
 ```
 
 To find out whether you need to use parentheses, see
-(the operator precedence table)[#operator-table] below.
+[the operator precedence table](#operator-table) below.
 
 The indentation, however, has one more effect.
 Aside from grouping expressions on the right side of an operator,
