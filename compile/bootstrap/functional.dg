@@ -21,7 +21,7 @@ builtins.head = next <- iter
 builtins.tail = list <- bind drop 1
 builtins.fst  = head
 builtins.snd  = head <- tail
-# FIXME should do not work on iterables
+# FIXME should also work on iterables somehow
 builtins.init = (!! slice None -1)
 builtins.last = (!! -1)
 
