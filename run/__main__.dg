@@ -2,6 +2,6 @@ sys   = import!
 ..run = import!
 
 sys.argv.pop 0
-sys.argv.append '-' unless sys.argv
+sys.argv.append '-' if not sys.argv
 fn = sys.argv !! 0
 run.it (sys.stdin if fn == '-' else open fn)

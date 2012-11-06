@@ -158,7 +158,6 @@ has_priority = functools.partial(
       '>>=':  19,
       # Conditionals
        'if':  20,
-   'unless':  20,
      'else':  21,
       # Immediate return
         ';': -100499,
@@ -343,7 +342,7 @@ def string(stream, token):
 #
 # word = ( < alphanumeric > | '_' ) +, "'" *
 #
-def link(stream, token, infixn={'if', 'else', 'unless', 'or', 'and', 'in', 'is', 'where'}):
+def link(stream, token, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'}):
 
     infix = token.group(2) or token.group(3) or token.group(4)
     yield tree.Link(infix or token.group(), infix or (token.group() in infixn))

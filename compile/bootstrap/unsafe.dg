@@ -14,8 +14,8 @@ compile._callable = f -> (self *: args) ->
 unsafe_s = cases ->
   parsed = list $ map parse.syntax.ST_ASSIGN cases
   not_eq = map x -> (x !! 1) $ filter x -> (x !! 0) $ zip parsed cases
-  parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH $ next not_eq unless all parsed
-  parse.syntax.error const.ERR.DEFAULT cases unless parsed
+  parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH $ next not_eq if not (all parsed)
+  parse.syntax.error const.ERR.DEFAULT cases if not parsed
 
   parsed.append (None, None) if len parsed < 2 or not (ST_EXC_FINALLY $ parsed !! -1 !! 0)
   parsed

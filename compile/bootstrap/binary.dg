@@ -13,7 +13,7 @@ inplace = (c self a b) ->
 compile.r.builtins !! ',' = (self *: xs) -> self.opcode 'BUILD_TUPLE' *: xs delta: 1
 compile.r.builtins !! '$' = (self a b) ->
   is_call = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
-  self.call a b          unless is_call
+  self.call a b          if not is_call
   self.call *: (a + list' b) if is_call
 
 compile.r.builtins !! '!!'  = bind stacked 'BINARY_SUBSCR'
@@ -46,7 +46,7 @@ compile.r.builtins !! '>>=' = bind inplace 'INPLACE_RSHIFT'
 
 compile.r.builtins !! '!!~' = (self a b) -> self.opcode 'DELETE_SUBSCR' None a b delta: 1
 compile.r.builtins !! '.~'  = (self a b) ->
-  parse.syntax.error const.ERR.NONCONST_ATTR b unless b :: parse.tree.Link
+  parse.syntax.error const.ERR.NONCONST_ATTR b if not (b :: parse.tree.Link)
   self.opcode 'DELETE_ATTR' None a arg: b delta: 1
 
 compile.r.builtins !! '!.'  = (self a b) ->

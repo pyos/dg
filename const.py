@@ -31,7 +31,7 @@ class ERR:
     VARARG_WITH_BUILTIN = 'can\'t call compile-time functions with *varargs'
 
     # `else` did not follow an `if` directly.
-    NOT_AFTER_IF = 'if/unless was expected here'
+    NOT_AFTER_IF = '`if` was expected here'
 
     # `switch` contains something other than assignments
     INVALID_STMT_IN_SWITCH = 'switch must only contain `if = then` pairs'

@@ -2,34 +2,25 @@
 ..parse   = import!
 ..const   = import!
 
-ST_EXPR_IF      = parse.syntax.MATCH_A $ parse.tree.Expression (parse.tree.Link 'if',     parse.syntax.ANY, parse.syntax.ANY)
-ST_EXPR_UNLESS  = parse.syntax.MATCH_A $ parse.tree.Expression (parse.tree.Link 'unless', parse.syntax.ANY, parse.syntax.ANY)
-
-
-else_s = cond ->
-  args1 = ST_EXPR_IF     cond
-  args2 = ST_EXPR_UNLESS cond
-  parse.syntax.error const.ERR.NOT_AFTER_IF cond unless args1 or args2
-  args1, args1 or args2
+ST_EXPR_IF = parse.syntax.MATCH_A $ parse.tree.Expression (parse.tree.Link 'if',     parse.syntax.ANY, parse.syntax.ANY)
 
 
 switch_s = cases ->
   parsed = list $ map parse.syntax.ST_ASSIGN cases
   not_eq = map x -> (x !! 1) $ filter x -> (not $ x !! 0) $ zip parsed cases
-  parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH (next not_eq) unless all parsed
+  parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH (next not_eq) if not (all parsed)
   parsed
 
 
 #
 # a if b else c
-# a unless b else c
 #
 # Obvious ternary conditional.
 #
 compile.r.builtins !! 'else' = (self cond otherwise) ->
-  is_if, (then, cond) = else_s cond
-  ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0 if     is_if
-  ptr = self.opcode 'POP_JUMP_IF_TRUE'  cond delta: 0 unless is_if
+  then, cond = ST_EXPR_IF cond or (None, None)
+  parse.syntax.error const.ERR.NOT_AFTER_IF cond if then is None
+  ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
   jmp = self.opcode 'JUMP_FORWARD'      then delta: 0
 
   ptr!
