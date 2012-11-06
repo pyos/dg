@@ -69,7 +69,7 @@ h 'this is not a singleton!' #=> (1, 'this is not a singleton!')
 
 It is possible to define new operators if their names conform to 2 rules:
 
-  * it must consist of characters in `!$%&amp;*+-./:<=>?@\^|~` or commas (**not both** at the same time — `$,` is invalid;) and
+  * it must consist of characters in `!$%&*+-./:<=>?@\^|~` or commas (**not both** at the same time — `$,` is invalid;) and
   * it must not start with one or more asterisks followed by a colon (`***:!` is not valid, but `:***:!` is.)
 
 ```dg
