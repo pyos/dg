@@ -20,7 +20,7 @@ conditional:
 
 ```dg
 print $ '* {}'.format 'Take out the trash'
-print $ '* {}'.format 'Clean the kitchen' unless kitchen.clean
+print $ '* {}'.format 'Clean the kitchen' if not kitchen.clean
 ```
 
 Obviously, simply typing `print` won't call it (instead, it would yield the
@@ -104,8 +104,8 @@ told to do otherwise by adding a semicolon to an expression:
 
 ```dg
 doubleIf = (f x) ->
-  x; unless f x
-  x * 2
+  x * 2; if f x
+  x
 
 doubleIf (> 5) 10  #=> 20
 doubleIf (> 5)  3  #=>  3

@@ -188,7 +188,7 @@ commas in between them.</p><div class="highlight"><pre><span class="c1"># Here `
 <p>If the last argument is a call to another function, <code>$</code> will work
 as a large parenthesis lasting up to the next comma, assignment, or
 conditional:</p><div class="highlight"><pre><span class="nb">print</span> <span class="o">$</span> <span class="s">&#39;* {}&#39;</span><span class="o">.</span><span class="n">format</span> <span class="s">&#39;Take out the trash&#39;</span>
-<span class="nb">print</span> <span class="o">$</span> <span class="s">&#39;* {}&#39;</span><span class="o">.</span><span class="n">format</span> <span class="s">&#39;Clean the kitchen&#39;</span> <span class="ow">unless</span> <span class="n">kitchen</span><span class="o">.</span><span class="n">clean</span>
+<span class="nb">print</span> <span class="o">$</span> <span class="s">&#39;* {}&#39;</span><span class="o">.</span><span class="n">format</span> <span class="s">&#39;Clean the kitchen&#39;</span> <span class="ow">if</span> <span class="kr">not</span> <span class="n">kitchen</span><span class="o">.</span><span class="n">clean</span>
 </pre></div>
 <p>Obviously, simply typing <code>print</code> won't call it (instead, it would yield the
 function object itself.) To call a function with no arguments, add
@@ -244,8 +244,8 @@ strict:</p><ul><li>anything that can be assigned to is accepted as an argument n
 </pre></div>
 <p>Functions return the last value they evaluate unless explicitly
 told to do otherwise by adding a semicolon to an expression:</p><div class="highlight"><pre><span class="n">doubleIf</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span>
-  <span class="n">x</span><span class="o">;</span> <span class="ow">unless</span> <span class="n">f</span> <span class="n">x</span>
-  <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>
+  <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span><span class="o">;</span> <span class="ow">if</span> <span class="n">f</span> <span class="n">x</span>
+  <span class="n">x</span>
 
 <span class="n">doubleIf</span> <span class="p">(</span><span class="o">&gt;</span> <span class="mi">5</span><span class="p">)</span> <span class="mi">10</span>  <span class="c1">#=&gt; 20</span>
 <span class="n">doubleIf</span> <span class="p">(</span><span class="o">&gt;</span> <span class="mi">5</span><span class="p">)</span>  <span class="mi">3</span>  <span class="c1">#=&gt;  3</span>
@@ -592,12 +592,9 @@ operators. <code>a or b</code> means <code>a if a else b</code>, and <code>a and
 <code>b if a else a</code> (of course, they only evaluate <code>a</code> once.)</p><div class="highlight"><pre><span class="bp">True</span> <span class="ow">or</span>  <span class="nb">print</span> <span class="mi">1</span> <span class="c1">#=&gt; True (does not print anything)</span>
 <span class="bp">True</span> <span class="ow">and</span> <span class="nb">print</span> <span class="mi">1</span> <span class="c1">#=&gt; None (also prints 1)</span>
 </pre></div>
-<p>"if-else" can be used in its infix form; <code>unless</code> means "if not".
-Note that <code>if</code>, <code>unless</code>, and <code>else</code> have really low priority — you will
+<p>"if-else" can be used in its infix form.
+Note that <code>if</code> and <code>else</code> have really low priority — you will
 probably want to wrap them in parentheses. "else" clause can be omitted.</p><div class="highlight"><pre><span class="s">&#39;ok&#39;</span> <span class="ow">if</span> <span class="mi">2</span> <span class="o">&lt;</span> <span class="mi">5</span> <span class="ow">else</span> <span class="s">&#39;wat&#39;</span> <span class="c1">#=&gt; &#39;ok&#39;</span>
-
-<span class="nb">print</span> <span class="s">&#39;Good.&#39;</span> <span class="ow">unless</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">20</span> <span class="c1">#=&gt; None (also prints &#39;Good.&#39;)</span>
-<span class="nb">print</span> <span class="s">&#39;ERROR&#39;</span> <span class="ow">unless</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">10</span> <span class="c1">#=&gt; True (does not print anything)</span>
 </pre></div>
 <p>The most powerful, and the simpliest, conditional is <code>switch</code>, which
 is actually not "switch-case", but "if-else if".</p><div class="highlight"><pre><span class="n">factorial</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-&gt;</span> <span class="kr">switch</span>

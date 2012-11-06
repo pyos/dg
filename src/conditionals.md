@@ -9,15 +9,12 @@ True or  print 1 #=> True (does not print anything)
 True and print 1 #=> None (also prints 1)
 ```
 
-"if-else" can be used in its infix form; `unless` means "if not".
-Note that `if`, `unless`, and `else` have really low priority — you will
+"if-else" can be used in its infix form.
+Note that `if` and `else` have really low priority — you will
 probably want to wrap them in parentheses. "else" clause can be omitted.
 
 ```dg
 'ok' if 2 < 5 else 'wat' #=> 'ok'
-
-print 'Good.' unless 10 == 20 #=> None (also prints 'Good.')
-print 'ERROR' unless 10 == 10 #=> True (does not print anything)
 ```
 
 The most powerful, and the simpliest, conditional is `switch`, which
