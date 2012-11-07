@@ -19,7 +19,7 @@ raise AttributeError caused_by: KeyError
 
 Exceptions can be caught with the `unsafe` function; its syntax is similar
 to `switch`. The first argument is in form `name = expression`,
-where `expression` is what to evaluate and `name` if where to store
+where `expression` is what to evaluate and `name` is where to store
 the exception, if any was thrown.
 
 ```dg
