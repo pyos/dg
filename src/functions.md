@@ -52,7 +52,7 @@ print 1 2 3 sep: ';' end: '.\n'
 
 items   = 1, 2, 3
 options = dict sep: ';' end: '.\n'
-print items **: options
+print *: items **: options
 ```
 
 ### ...and creating new ones.
