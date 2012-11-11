@@ -321,9 +321,9 @@ def number(stream, token):
     yield tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
 
 
-@ParserState.token(r'(b?r?)([\'"]{3}|"|\')((?:\\?.)*?)\2')
+@ParserState.token(r'([br]*)([\'"]{3}|"|\')((?:\\?.)*?)\2')
 #
-# string = 'b' ?, 'r' ?, ( sq_string | dq_string | sq_string_m | dq_string_m )
+# string = ( 'b' | 'r' ) *, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
 # sq_string = "'", ( '\\' ?, < any character > ) * ?, "'"
 # dq_string = '"', ( '\\' ?,  < any character > ) * ?, '"'
@@ -333,7 +333,8 @@ def number(stream, token):
 def string(stream, token):
 
     g = token.group(2) * (4 - len(token.group(2)))
-    yield tree.Constant(ast.literal_eval('{1}{0}{3}{0}'.format(g, *token.groups())))
+    q = ''.join(sorted(set(token.group(1))))
+    yield tree.Constant(ast.literal_eval(''.join([q, g, token.group(3), g])))
 
 
 @ParserState.token(r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
