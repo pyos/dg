@@ -66,7 +66,7 @@ Simply <a href="https://github.com/pyos/dg/zipball/master">download the compiler
 the archive in a directory somewhere in your <code>$PYTHONPATH</code>
 (e.g. <code>/usr/lib/python3.2/site-packages/</code>).</p><p>After installing, simply run dg as a module (i.e. with <code>-m</code>):</p><div class="highlight"><pre>python3 <span class="o">[</span>VM options<span class="o">]</span> -m dg  <span class="c"># starts the REPL</span>
 python3 <span class="o">[</span>VM options<span class="o">]</span> -m dg file.dg <span class="o">[</span>arguments<span class="o">]</span>  <span class="c"># executes a file as a script</span>
-python3 <span class="o">[</span>VM options<span class="o">]</span> -m dg &lt;&lt;&lt; <span class="s2">&quot;some code&quot;</span>  <span class="c"># this is a bash-specific syntax, called a &quot;herestring&quot;</span>
+python3 <span class="o">[</span>VM options<span class="o">]</span> -m dg <span class="o">&lt;&lt;&lt;</span> <span class="s2">&quot;some code&quot;</span>  <span class="c"># this is a bash-specific syntax, called a &quot;herestring&quot;</span>
 </pre></div>
 </div>
         <div id="introduction" class="section"><h2>Tutorial</h2><h3>Parentheses and indentation</h3><p>mean the same thing: they explicitly define the precedence of operators.</p><div class="highlight"><pre><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">,</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span>
@@ -288,7 +288,6 @@ generators with <code>None</code>.</p><div class="highlight"><pre><span class="n
 <p>Most of the operators don't require great detail. The only ones not found
 in Python are:</p><div class="highlight"><pre><span class="c1"># op    #=&gt; `Python equivalent`</span>
 <span class="n">a</span><span class="o">!</span>      <span class="c1">#=&gt; `a()`</span>
-<span class="o">!</span><span class="n">a</span>      <span class="c1">#=&gt; `not a` (not recommended, use `not` instead)</span>
 <span class="n">a</span><span class="o">!.</span><span class="n">b</span>    <span class="c1">#=&gt; `a().b`</span>
 <span class="n">a</span><span class="o">.~</span><span class="n">b</span>    <span class="c1">#=&gt; `del a.b`</span>
 <span class="n">a</span> <span class="o">!!</span> <span class="n">b</span>  <span class="c1">#=&gt; `a[b]`</span>

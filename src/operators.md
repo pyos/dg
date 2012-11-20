@@ -24,7 +24,6 @@ in Python are:
 ```dg
 # op    #=> `Python equivalent`
 a!      #=> `a()`
-!a      #=> `not a` (not recommended, use `not` instead)
 a!.b    #=> `a().b`
 a.~b    #=> `del a.b`
 a !! b  #=> `a[b]`
