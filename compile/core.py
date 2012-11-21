@@ -26,17 +26,8 @@ class Compiler:
 
     def name(self, default, qname=''):
 
-        if self.assigned_to is None:
-
-            return default
-
-        type, var, args = parse.syntax.assignment_target(self.assigned_to)
-
-        return (
-            '{}{}.{}'      if type == const.AT.ATTR else
-            '({}{} !! {})' if type == const.AT.ITEM else
-            '{0}{2}'
-        ).format(qname + '.' if qname else '', args, var)
+        name = default if self.assigned_to is None else repr(self.assigned_to)
+        return qname + (qname and '.') + ('<{}>' if ' ' in name else '{}') .format(name)
 
     # Push the results of some expressions onto the stack.
     #
@@ -119,11 +110,11 @@ class Compiler:
 
         elif type == const.AT.ATTR:
 
-            self.opcode('STORE_ATTR', args, arg=var, delta=-2)
+            self.opcode('STORE_ATTR', args, arg=var, delta=-1)
 
         elif type == const.AT.ITEM:
 
-            self.opcode('STORE_SUBSCR', args, var, delta=-2)
+            self.opcode('STORE_SUBSCR', args, var, delta=-1)
 
         elif type == const.AT.ASSERT:
 
