@@ -12,7 +12,6 @@ comparison = (operator self a b chained: False) ->
   a_is_cmpop = a :: parse.tree.Expression and not a.closed and
     e, *ex = a
     e :: parse.tree.Link and e in compile.r.builtins and
-      p, q = ex
       f = compile.r.builtins !! e
       f :: bind and f.func is comparison
 
@@ -21,7 +20,7 @@ comparison = (operator self a b chained: False) ->
     self.load a
     jmps = list!
   # Otherwise, call `varary_op` with `chained` set to True.
-  jmps = f self p q chained: True if a_is_cmpop
+  jmps = f self *: ex chained: True if a_is_cmpop
 
   chained and
     jmps.append $
