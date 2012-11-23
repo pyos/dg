@@ -2,14 +2,11 @@
 ..parse   = import!
 ..const   = import!
 
-ST_EXPR_IF = parse.syntax.MATCH_A $ parse.tree.Expression (parse.tree.Link 'if',     parse.syntax.ANY, parse.syntax.ANY)
 
-
-switch_s = cases ->
-  parsed = list $ map parse.syntax.ST_ASSIGN cases
-  not_eq = map x -> (x !! 1) $ filter x -> (not $ x !! 0) $ zip parsed cases
-  parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH (next not_eq) if not (all parsed)
-  parsed
+switch_s = cases -> list $ map
+  bind parse.syntax.binary_op '=' on_error:
+    bind parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH
+  cases
 
 
 #
@@ -18,8 +15,8 @@ switch_s = cases ->
 # Obvious ternary conditional.
 #
 compile.r.builtins !! 'else' = (self cond otherwise) ->
-  then, cond = ST_EXPR_IF cond or (None, None)
-  parse.syntax.error const.ERR.NOT_AFTER_IF cond if then is None
+  then, cond = parse.syntax.binary_op 'if' cond
+    bind parse.syntax.error const.ERR.NOT_AFTER_IF
   ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
   jmp = self.opcode 'JUMP_FORWARD'      then delta: 0
 

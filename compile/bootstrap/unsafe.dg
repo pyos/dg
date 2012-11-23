@@ -2,8 +2,6 @@
 ..parse   = import!
 ..const   = import!
 
-ST_EXC_FINALLY = parse.syntax.MATCH_Q $ parse.tree.Link 'True'
-
 
 compile._callable = f -> (self *: args) ->
   posargs, _, _, kwargs, vararg, varkw = parse.syntax.argspec args definition: False
@@ -12,13 +10,14 @@ compile._callable = f -> (self *: args) ->
 
 
 unsafe_s = cases ->
-  parsed = list $ map parse.syntax.ST_ASSIGN cases
-  not_eq = map x -> (x !! 1) $ filter x -> (x !! 0) $ zip parsed cases
-  parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH $ next not_eq if not (all parsed)
-  parse.syntax.error const.ERR.DEFAULT cases if not parsed
+  parse.syntax.error const.ERR.DEFAULT cases if not cases
 
-  parsed.append (None, None) if len parsed < 2 or not (ST_EXC_FINALLY $ parsed !! -1 !! 0)
-  parsed
+  pairs = list $ map
+    bind parse.syntax.binary_op '=' on_error:
+      bind parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH
+    cases
+
+  pairs, (pairs.pop! if len pairs > 1 and pairs !! -1 !! 0 == 'True' else (None, None))
 
 
 #
@@ -39,7 +38,7 @@ compile.r.builtins !! 'raise' = compile._callable $ (self exception caused_by: N
 
 
 #
-# unsafe $
+# unsafe
 #   error = unsafe_code
 #   condition1 = when_condition1_is_True
 #   ...
@@ -59,7 +58,7 @@ compile.r.builtins !! 'raise' = compile._callable $ (self exception caused_by: N
 compile.r.builtins !! 'unsafe' = (self *: cases) ->
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
-  (name, try), *cases, (has_finally, finally) = unsafe_s cases
+  ((name, try), *cases), (has_finally, finally) = unsafe_s cases
 
   # This will be our return value.
   self.load None

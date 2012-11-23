@@ -1,34 +1,15 @@
 from . import tree
 from .. import const
 
-MATCH_A = lambda p: lambda f: tree.matchA(f, p)
-MATCH_Q = lambda p: lambda f: tree.matchQ(f, p)
-UNCURRY = lambda p, n=...: lambda f, n=n: f[1:] if isinstance(f, tree.Expression) and tree.matchQ(f[0], p) else [f] if n is ... else n
 
-def UNASSOC(p):
+def binary_op(id, expr, on_error):
 
-    def g(f):
-
-        q = tree.matchA(f, p)
-        return g(q.pop(0)) + q if q else [f]
-
-    return g
+    return expr[1:] if isinstance(expr, tree.Expression) and len(expr) > 2 and expr[0] == id else on_error(expr)
 
 
-ANY = tree.Link('_')
+def unfold(id, expr):
 
-ST_CALL        = UNCURRY(tree.Link(''))
-ST_PACK        = UNCURRY(tree.Link(','))
-ST_PACK_STAR   = MATCH_A(tree.Expression((tree.Link(''),  tree.Link('*'),  ANY)))
-ST_ARG_KW      = MATCH_A(tree.Expression((tree.Link(':'), ANY,             ANY)))
-ST_ARG_VAR     = MATCH_Q(tree.Link('*'))
-ST_ARG_VAR_KW  = MATCH_Q(tree.Link('**'))
-ST_IMPORT      = MATCH_Q(tree.Expression((tree.Link('!'), tree.Link('import'))))
-ST_IMPORT_SEP  = UNASSOC(tree.Expression((tree.Link('.'),  ANY, ANY)))
-ST_IMPORT_REL  = MATCH_A(tree.Expression((tree.Link(''),   ANY, ANY)))
-ST_ASSIGN      = MATCH_A(tree.Expression((tree.Link('='),  ANY, ANY)))
-ST_ASSIGN_ATTR = MATCH_A(tree.Expression((tree.Link('.'),  ANY, ANY)))
-ST_ASSIGN_ITEM = MATCH_A(tree.Expression((tree.Link('!!'), ANY, ANY)))
+    return unfold(id, expr[1]) + expr[2:] if isinstance(expr, tree.Expression) and len(expr) == 3 and expr[0] == id else [expr]
 
 
 def error(description, at):
@@ -48,10 +29,10 @@ def error(description, at):
 #
 def assignment(var, expr):
 
-    if ST_IMPORT(expr):
+    if expr == ['!', 'import']:
 
-        parent, name = ST_IMPORT_REL(var) or [tree.Link(''), var]
-        args = ST_IMPORT_SEP(name) or [name]
+        parent, name = binary_op('', var, lambda x: (tree.Link(''), x))
+        args = unfold('.', name)
 
         if isinstance(parent, tree.Link) and len(parent) == parent.count('.') and all(isinstance(a, tree.Link) for a in args):
 
@@ -71,35 +52,40 @@ def assignment(var, expr):
 def assignment_target(var):
 
     # Attempt to do iterable unpacking first.
-    pack = ST_PACK(var, ())
+    pack = binary_op(',', var, lambda _: None)
 
     if pack:
 
         # Allow one starred argument that is similar to `varargs`.
-        star = [i for i, q in enumerate(pack) if ST_PACK_STAR(q)] or [-1]
-        len(star) > 1 and error(const.ERR.MULTIPLE_VARARGS, pack[star[1]])
-        star[0] > 255 and error(const.ERR.TOO_MANY_ITEMS_BEFORE_STAR, pack[star[0]])
+        star = -1
 
-        if star[0] >= 0:
+        for i, q in enumerate(pack):
 
-            # Remove the star. We know it's there, that's enough.
-            pack[star[0]], = ST_PACK_STAR(pack[star[0]])
+            if isinstance(q, list) and q[:2] == ['', '*']:
 
-        return const.AT.UNPACK, pack, [len(pack), star[0]]
+                if star > -1:
 
-    var_a = ST_ASSIGN_ATTR(var)
-    var_i = ST_ASSIGN_ITEM(var)
+                    error(const.ERR.MULTIPLE_VARARGS, q)
 
-    if var_a:
+                if i > 255:
 
-        rest, attr = var_a
+                    error(const.ERR.TOO_MANY_ITEMS_BEFORE_STAR, q)
+
+                star, pack[i] = i, q[2]
+
+        return const.AT.UNPACK, pack, (len(pack), star)
+
+    var, attr = binary_op('.',  var, lambda x: (x, None))
+    var, item = binary_op('!!', var, lambda x: (x, None))
+
+    if attr:
+
         isinstance(attr, tree.Link) or error(const.ERR.NONCONST_ATTR, attr)
-        return const.AT.ATTR, attr, rest
+        return const.AT.ATTR, attr, var
 
-    if var_i:
+    if item:
 
-        rest, item = var_i
-        return const.AT.ITEM, item, rest
+        return const.AT.ITEM, item, var
 
     return (const.AT.NAME if isinstance(var, tree.Link) else const.AT.ASSERT), var, []
 
@@ -117,41 +103,39 @@ def argspec(args, definition):
 
     if not isinstance(args, tree.Constant) or args.value is not None:
 
-        for arg in (ST_CALL(args) if definition else args):
+        for arg in (binary_op('', args, lambda x: [x]) if definition else args):
 
             # 1. `**: _` should be the last argument.
             varkwargs and error(const.ERR.ARG_AFTER_VARARGS, arg)
 
-            kw = ST_ARG_KW(arg)
+            kw, value = binary_op(':', arg, lambda x: (None, x))
 
-            if not kw:
+            if kw is None:
 
                 if definition:
 
                     # 2.1. `_: _` should only be followed by `_: _`
                     #      unless `*: _` was already encountered.
-                    defaults and not varargs and error(const.ERR.NO_DEFAULT, arg)
+                    defaults and not varargs and error(const.ERR.NO_DEFAULT, value)
 
                 # If there was a `*: _`, this is a keyword-only argument.
                 # Unless, of course, this is a function call, in which case
                 # it doesn't really matter.
-                (kwarguments if varargs and definition else arguments).append(arg)
+                (kwarguments if varargs and definition else arguments).append(value)
 
-            elif ST_ARG_VAR(kw[0]):
+            elif kw == '*':
 
                 # 3.1. `*: _` cannot be followed by another `*: _`.
-                varargs and error(const.ERR.MULTIPLE_VARARGS, kw[0])
-                varargs.append(kw[1])
+                varargs and error(const.ERR.MULTIPLE_VARARGS, kw)
+                varargs.append(value)
 
-            elif ST_ARG_VAR_KW(kw[0]):
+            elif kw == '**':
 
                 # 4.1. Just in case. Should not be triggered.
-                varkwargs and error(const.ERR.MULTIPLE_VARKWARGS, kw[0])
-                varkwargs.append(kw[1])
+                varkwargs and error(const.ERR.MULTIPLE_VARKWARGS, kw)
+                varkwargs.append(value)
 
             else:
-
-                name, default = kw
 
                 # If there was a `*: _`, guess what.
                 # Or if this is not a definition. It's easier to tell
@@ -159,15 +143,15 @@ def argspec(args, definition):
                 if varargs or not definition:
 
                     # 5.1. `_: _` is a keyword argument, and its left side is a link.
-                    isinstance(name, tree.Link) or error(const.ERR.NONCONST_KEYWORD, name)
+                    isinstance(kw, tree.Link) or error(const.ERR.NONCONST_KEYWORD, kw)
 
-                    kwarguments.append(name)
-                    kwdefaults[name] = default
+                    kwarguments.append(kw)
+                    kwdefaults[kw] = value
 
                 else:
 
-                    arguments.append(name)
-                    defaults.append(default)
+                    arguments.append(kw)
+                    defaults.append(value)
 
     len(arguments) > 255 and error(const.ERR.TOO_MANY_ARGS, args)  # *sigh*
   # If this is a function call, not a definition:
