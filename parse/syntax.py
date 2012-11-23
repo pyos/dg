@@ -61,15 +61,10 @@ def assignment_target(var):
 
         for i, q in enumerate(pack):
 
-            if isinstance(q, list) and q[:2] == ['', '*']:
+            if isinstance(q, list) and len(q) == 3 and q[:2] == ['', '*']:
 
-                if star > -1:
-
-                    error(const.ERR.MULTIPLE_VARARGS, q)
-
-                if i > 255:
-
-                    error(const.ERR.TOO_MANY_ITEMS_BEFORE_STAR, q)
+                star > -1 and error(const.ERR.MULTIPLE_VARARGS, q)
+                i > 255   and error(const.ERR.TOO_MANY_ITEMS_BEFORE_STAR, q)
 
                 star, pack[i] = i, q[2]
 
