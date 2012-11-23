@@ -27,8 +27,8 @@ builtins.last = (!! -1)
 
 builtins.PatternMatchError = inherit TypeError $
 
-  __init__ = (self expected received) ->
-    super!.__init__ expected received
+  __init__ = (self received expected) ->
+    super!.__init__ received expected
     self.expected = expected
     self.received = received
     None
