@@ -369,7 +369,7 @@ class Compiler:
         else:
 
             *mod, mname = path
-            self.opcode('IMPORT_NAME', parent, (mname,), arg='.'.join(mod) or mname, delta=-1)
+            self.opcode('IMPORT_NAME', parent, (mname,) if mod else None, arg='.'.join(mod) or mname, delta=-1)
             mod and self.opcode('IMPORT_FROM', arg=mname, delta=1)
             self.store_top(parse.tree.Link(mname).before(name))
             mod and self.opcode('ROT_TWO', delta=0)
