@@ -5,34 +5,42 @@ import collections
 
 from . import tree, syntax
 
-
 ### Public API
 
-it = lambda data, filename='<string>': next(ParserState(data, filename))
-fd = lambda fd, name='<stream>': next(ParserState(fd.read(), getattr(fd, 'name', name)))
+it = lambda data, filename='<string>': next(_State(data, filename))
+fd = lambda fd, name='<stream>': it(fd.read(), getattr(fd, 'name', name))
 
 ### Helpers
 
-class ParserState (collections.Iterator):
+class _State (collections.Iterator, collections.deque):
 
     tokens  = []
-    stuff   = None
-    atstart = True
-    offset  = 0
-
-    @classmethod
-    def token(cls, regex, atstart=False):
-
-        return lambda f: cls.tokens.append((re.compile(regex, re.DOTALL).match, f, atstart)) or f
 
     def __init__(self, data, filename):
 
         super().__init__()
+        self.linestart = True
+        self.filename  = filename
         self.buffer = data
-        self.pstack = collections.deque()
-        self.repeat = collections.deque()
+        self.offset = 0
         self.indent = collections.deque([-1])
-        self.filename = filename
+
+    def __next__(self):
+
+        while not self:
+
+            f, match = next((func, match)
+                for regex, func, st in self.tokens              if st is self.linestart
+                for match in [regex(self.buffer, self.offset)]  if match
+            )
+
+            self.offset    = match.end()
+            self.linestart = match.group().endswith('\n')
+
+            q = f(self, match)
+            q is None or self.appendleft(q.at(self, match.start()))
+
+        return self.popleft()
 
     def position(self, offset):
 
@@ -42,30 +50,17 @@ class ParserState (collections.Iterator):
     def error(self, description, at):
 
         offset, lineno, charno = self.position(at)
-        raise SyntaxError(description, (self.filename, lineno, charno, self.line(offset)))
-
-    def __next__(self):
-
-        while not self.repeat:
-
-            matches = (
-                (func, atstart is self.atstart and regex(self.buffer, self.offset))
-                for regex, func, atstart in self.tokens
-            )
-
-            f, match = next(m for m in matches if m[1])
-            self.pstack.append(self.offset)
-            self.offset  = match.end()
-            self.atstart = match.group().endswith('\n')
-            self.repeat.extend(q.at(self) for q in f(self, match))
-            self.pstack.pop()
-
-        return self.repeat.popleft()
+        raise SyntaxError(description, (self.filename, lineno, charno, self.line(at)))
 
     line = lambda self, offset: self.buffer[
         self.buffer.rfind('\n', 0, offset) + 1:
         self.buffer. find('\n',    offset) + 1 or None  # 0 won't do here
     ]
+
+
+def token(regex, linestart=False):
+
+    return lambda f: _State.tokens.append((re.compile(regex, re.DOTALL).match, f, linestart)) or f
 
 
 # Whether an infix link's priority is higher than the other one's.
@@ -93,76 +88,76 @@ has_priority = functools.partial(
         #
         link == '->' or
           infixr(precedence(link)) < abs(precedence(in_relation_to))
-    )
+    ),
     # Right-fixed links have positive precedence, left-fixed ones have negative.
-  , lambda x: abs(x) - (x > 0)
-  , lambda i, q={
+    lambda x: abs(x) - (x > 0),
+    lambda i, q={
       # Scope resolution
         '.':   0,
-       '!.':   0,
+        '!.':  0,
         '!':   1,
       # Keyword arguments
         ':':   1,
       # Function application
-         '':  -2,
+        '':   -2,
       # Container subscription
-       '!!':  -3,
+        '!!': -3,
       # Math
-       '**':   4,
+        '**':  4,
         '*':  -5,
         '/':  -5,
-       '//':  -5,
+        '//': -5,
         '%':  -5,
         '+':  -6,
         '-':  -6,
       # Comparison
         '<':  -8,
-       '<=':  -8,
-       '>=':  -8,
+        '<=': -8,
+        '>=': -8,
         '>':  -8,
-       '==':  -8,
-       '!=':  -8,
-       'is':  -8,
-       'in':  -8,
+        '==': -8,
+        '!=': -8,
+        'is': -8,
+        'in': -8,
       # Binary operations
-       '<<': -10,
-       '>>': -10,
-        '&': -11,
-        '^': -12,
-        '|': -13,
+        '<<': -10,
+        '>>': -10,
+        '&':  -11,
+        '^':  -12,
+        '|':  -13,
       # Logic
-      'and': -14,
-       'or': -15,
+        'and': -14,
+        'or':  -15,
       # Low-priority binding
-        '$':  16,
+        '$':   16,
       # Function definition
-       '->':  17,
+        '->':  17,
       # Sequential evaluation
-        ',': -18,
+        ',':  -18,
       # Local binding
-    'where':  19,
+        'where': 19,
       # Assignment
-        '=':  19,
-      '!!=':  19,
-       '+=':  19,
-       '-=':  19,
-       '*=':  19,
-      '**=':  19,
-       '/=':  19,
-      '//=':  19,
-       '%=':  19,
-       '&=':  19,
-       '^=':  19,
-       '|=':  19,
-      '<<=':  19,
-      '>>=':  19,
+        '=':   19,
+        '!!=': 19,
+        '+=':  19,
+        '-=':  19,
+        '*=':  19,
+        '**=': 19,
+        '/=':  19,
+        '//=': 19,
+        '%=':  19,
+        '&=':  19,
+        '^=':  19,
+        '|=':  19,
+        '<<=': 19,
+        '>>=': 19,
       # Conditionals
-       'if':  20,
-     'else':  21,
+        'if':   20,
+        'else': 21,
       # Immediate return
-        ';': -100499,
+        ';':  -100499,
       # Chaining
-       '\n': -100500,
+        '\n': -100500,
     }.get: q(i, -7)  # Default
 )
 
@@ -176,12 +171,11 @@ unary   = {'!', ';'}.__contains__
 
 # Handle an infix link.
 #
-# The right-hand statement is assumed to be unparsed yet.
+# :param lhs, op, rhs: respective parts of an infix expression.
 #
-def infixl(stream, op):
+def infixl(stream, lhs, op, rhs):
 
-    br  = False
-    rhs = next(stream)
+    br       = False
     rhsbound = None
 
     # Note that constant strings aren't equal to anything but themselves.
@@ -194,7 +188,7 @@ def infixl(stream, op):
     if isinstance(rhs, tree.Internal) or unary(op):
 
         # `(a R)`
-        stream.repeat.appendleft(rhs)
+        stream.appendleft(rhs)
         rhs = None
 
     elif br == '\n' and op == '' and rhs.indented:
@@ -206,14 +200,14 @@ def infixl(stream, op):
 
         for q in qs:
 
-            stream.stuff = infixl_insert_rhs(stream, stream.stuff, op, q)
+            lhs = infixl_insert_rhs(lhs, op, q)
 
-        return None # Nothing to do here.
+        return lhs
 
     elif br == '\n' != op and not rhs.indented:
 
         # `a R \n b` <=> `a R b` iff `b` is indented.
-        stream.repeat.appendleft(rhs)
+        stream.appendleft(rhs)
         rhs = br
 
     if isinstance(rhs, tree.Link) and not rhs.closed and rhs.infix:
@@ -225,9 +219,9 @@ def infixl(stream, op):
     # Chaining a single expression doesn't make sense.
     if rhs is not None or op not in ('\n', ''):
 
-        stream.stuff = infixl_insert_rhs(stream, stream.stuff, op, rhs)
+        lhs = infixl_insert_rhs(lhs, op, rhs)
 
-    rhsbound and infixl(stream, rhsbound)
+    return infixl(stream, lhs, rhsbound, next(stream)) if rhsbound else lhs
 
 
 # Recursive implementation of bracketless shunting-yard algorithm.
@@ -235,20 +229,20 @@ def infixl(stream, op):
 # Tests show that it's NOT much slower than iterative version, but this one looks
 # neater. Note that if this hits the stack limit, the compiler would do that, too.
 #
-def infixl_insert_rhs(stream, root, op, rhs):
+def infixl_insert_rhs(root, op, rhs):
 
     if root.traversable:
 
         if has_priority(op, root[0]):
 
             # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R
-            root.append(infixl_insert_rhs(stream, root.pop(), op, rhs))
+            root.append(infixl_insert_rhs(root.pop(), op, rhs))
             return root
 
         elif op == root[0] and unassoc(op) and rhs is not None:
 
-            root.append(rhs)  # A small extension to the shunting-yard.
-            return root       # `a R b R c` <=> `R a b c` if R is left-fixed.
+            root.append(rhs)  # `a R b R c` <=> `R a b c`
+            return root
 
     # `R`         <=> `Link R`
     # `R rhs`     <=> `Expression [ Link '', Link R, Link rhs ]`
@@ -260,7 +254,8 @@ def infixl_insert_rhs(stream, root, op, rhs):
 
 ### Tokens
 
-@ParserState.token(r' *', atstart=True)
+
+@token(r' *', linestart=True)
 #
 # indent = ^ ' ' *
 #
@@ -271,28 +266,24 @@ def indent(stream, token):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-      # yield from do(stream, token, preserve_close_state=True)
-        for _ in do(stream, token, preserve_close_state=True): yield _
-        return
+        return do(stream, token, preserve_close_state=True)
 
     while indent != stream.indent.pop():
 
-        yield tree.Internal('')
-        stream.indent or stream.error('no matching indentation level', stream.pstack[-1])
+        stream.appendleft(tree.Internal('').at(stream, token.end()))
+        stream.indent or stream.error('no matching indentation level', token.start())
 
     stream.indent.append(indent)
 
 
-@ParserState.token(r'[^\S\n]+|\s*#[^\n]*')
+@token(r'[^\S\n]+|\s*#[^\n]*')
 #
 # whitespace = < whitespace > | '#', < anything but line feed >
 #
-def whitespace(stream, token):
-
-    return ()
+def whitespace(stream, token): pass
 
 
-@ParserState.token(r'(?i)0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
+@token(r'(?i)0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
 #
 # intb = int2 | int8 | int16
 # int2 = '0b', ( '0' .. '1' ) +
@@ -301,10 +292,10 @@ def whitespace(stream, token):
 #
 def intb(stream, token):
 
-    yield tree.Constant(ast.literal_eval(token.group()))
+    return tree.Constant(ast.literal_eval(token.group()))
 
 
-@ParserState.token(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
+@token(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
 #
 # number = int10s, ( '.', int10 ) ?, ( [eE], int10s ) ?, [jJ] ?
 #
@@ -318,10 +309,10 @@ def number(stream, token):
     imag     = 1j if imag        else 1
     exponent = int(exponent or 0)
     fraction = int(fraction) / 10 ** (len(fraction) - exponent) if fraction else 0
-    yield tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
+    return tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
 
 
-@ParserState.token(r'([br]*)([\'"]{3}|"|\')((?:\\?.)*?)\2')
+@token(r'([br]*)([\'"]{3}|"|\')((?:\\?.)*?)\2')
 #
 # string = ( 'b' | 'r' ) *, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
@@ -334,10 +325,10 @@ def string(stream, token):
 
     g = token.group(2) * (4 - len(token.group(2)))
     q = ''.join(sorted(set(token.group(1))))
-    yield tree.Constant(ast.literal_eval(''.join([q, g, token.group(3), g])))
+    return tree.Constant(ast.literal_eval(''.join([q, g, token.group(3), g])))
 
 
-@ParserState.token(r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
+@token(r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
 #
 # link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
 #
@@ -346,20 +337,18 @@ def string(stream, token):
 def link(stream, token, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'}):
 
     infix = token.group(2) or token.group(3) or token.group(4)
-    yield tree.Link(infix or token.group(), infix or (token.group() in infixn))
+    return tree.Link(infix or token.group(), infix or (token.group() in infixn))
 
 
-@ParserState.token('\(')
+@token('\(')
 #
 # do = '('
 #
 def do(stream, token, preserve_close_state=False):
 
     par = token.group().strip() if token else ''
-    stuff_backup = stream.stuff
-
-    stream.stuff = tree.Constant(None).at(stream)
-    after_object = False
+    object   = tree.Constant(None).at(stream, token.end())
+    can_join = False
 
     for item in stream:
 
@@ -369,57 +358,51 @@ def do(stream, token, preserve_close_state=False):
               'unexpected EOF'         if par and stream.offset >= len(stream.buffer) else
               'unexpected dedent'      if par and not item.value else
               'unexpected close-paren' if not par and item.value else
-              'invalid close-paren', at=item.location.start[0]
+              'invalid close-paren', item.location.start[0]
             )
 
             break
 
-        elif after_object:
+        elif can_join:
 
             # Two objects in a row should be joined with an empty infix link.
-            stream.repeat.appendleft(item)
-            infixl(stream, tree.Link('', True).before(item))
+            object = infixl(stream, object, tree.Link('', True).before(item), item)
 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
 
-            stream.stuff = item
-            after_object = True
-
-    stream.stuff.indented = not par
-    stream.stuff.closed  |= not preserve_close_state
+            object, can_join = item, True
 
     # Further expressions should not touch this block.
-    par or stream.repeat.appendleft(tree.Link('\n', True).at(stream))
+    par or stream.appendleft(tree.Link('\n', True).after(object))
 
-    stream.repeat.appendleft(stream.stuff)
+    object.indented = not par
+    object.closed  |= not preserve_close_state
+    return object
 
-    stream.stuff = stuff_backup
-    return ()
 
-
-@ParserState.token(r'\)|$')
+@token(r'\)|$')
 #
-# end = ')' | ']' | '}' | $
+# end = ')' | $
 #
 def end(stream, token):
 
-    yield tree.Internal(token.group())
+    return tree.Internal(token.group())
 
 
-@ParserState.token(r'"|\'')
+@token(r'"|\'')
 #
 # string_err = "'" | '"'
 #
 def string_err(stream, token):
 
-    stream.error('unexpected EOF while reading a string literal', stream.pstack[-1])
+    stream.error('unexpected EOF while reading a string literal', token.start())
 
 
-@ParserState.token(r'.')
+@token(r'.')
 #
 # error = < unmatched symbol >
 #
 def error(stream, token):
 
-    stream.error('invalid input', stream.pstack[-1])
+    stream.error('invalid input', token.start())

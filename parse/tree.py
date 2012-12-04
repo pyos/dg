@@ -42,13 +42,13 @@ class StructMixIn:
         )
         return self
 
-    def at(self, stream):
+    def at(self, stream, start):
 
         self.location = Location(
-            stream.position(stream.pstack[-1]),
+            stream.position(start),
             stream.position(stream.offset),
             stream.filename,
-            stream.line(stream.pstack[-1])
+            stream.line(start)
         )
         return self
 
