@@ -1,8 +1,8 @@
-builtins    = import!
-collections = import!
+import '/builtins'
+import '/collections'
 
-..compile = import!
-..parse   = import!
+import '../compile'
+import '../parse'
 
 
 #

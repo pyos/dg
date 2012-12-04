@@ -1,5 +1,5 @@
-.codegen  = import!
-..compile = import!
+import 'codegen'
+import '../compile'
 
 
 #

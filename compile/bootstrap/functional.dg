@@ -1,7 +1,7 @@
-dis       = import!
-builtins  = import!
-functools = import!
-itertools = import!
+import '/dis'
+import '/builtins'
+import '/functools'
+import '/itertools'
 
 
 builtins.foldl  = (f st xs) -> functools.reduce f xs st

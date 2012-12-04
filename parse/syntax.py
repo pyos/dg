@@ -7,39 +7,10 @@ def binary_op(id, expr, on_error):
     return expr[1:] if isinstance(expr, tree.Expression) and len(expr) > 2 and expr[0] == id else on_error(expr)
 
 
-def unfold(id, expr):
-
-    return unfold(id, expr[1]) + expr[2:] if isinstance(expr, tree.Expression) and len(expr) == 3 and expr[0] == id else [expr]
-
-
 def error(description, at):
 
     (_, line, char), _, filename, text = at.location
     raise SyntaxError(description, (filename, line, char, text))
-
-
-# assignment::
-#
-#   assignment_target = expression
-#   dotname = link('import')
-#
-# where::
-#
-#   dotname = link(.*) | link('.' *) link(.*)
-#
-def assignment(var, expr):
-
-    if expr == ['!', 'import']:
-
-        parent, name = binary_op('', var, lambda x: (tree.Link(''), x))
-        args = unfold('.', name)
-
-        if isinstance(parent, tree.Link) and len(parent) == parent.count('.') and all(isinstance(a, tree.Link) for a in args):
-
-            return args[0], '.'.join(args), len(parent)
-
-    # Other assignment types do not depend on right-hand statement value.
-    return var, expr, False
 
 
 # assignment_target::
