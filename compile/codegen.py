@@ -1,9 +1,7 @@
 import dis
 import types
-import struct
-import functools
 import itertools
-import collections
+
 
 CO_OPTIMIZED = 1
 CO_NEWLOCALS = 2
@@ -13,9 +11,6 @@ CO_NESTED    = 16
 CO_GENERATOR = 32
 CO_NOFREE    = 64
 
-OPCODE   = struct.Struct('<B').pack
-OPCODE_A = struct.Struct('<BH').pack
-EXTEND_A = functools.partial(OPCODE_A, dis.opmap['EXTENDED_ARG'])
 
 nsplit  = lambda x, q: nsplit(x // q, q) + [x % q] if x >= q else [x]
 delay   = lambda f, g=None: type('delay', (), {'__int__': f, '__call__': g})()
@@ -34,15 +29,14 @@ class MutableCode:
         self.argc   = len(args)
         self.kwargc = len(kwargs)
 
-        self.names    = collections.defaultdict(itertools.count().__next__)
-        self.consts   = collections.defaultdict(itertools.count().__next__)
-        self.freevars = collections.defaultdict(itertools.count().__next__)
-        self.cellvars = collections.defaultdict(itertools.count().__next__)
-        self.varnames = collections.defaultdict(itertools.count().__next__)
-
-        for name in itertools.chain(args, kwargs, varargs, varkwargs):
-
-            self.varnames[name]
+        self.names    = PartialOrderedMap()
+        self.consts   = PartialOrderedMap()
+        self.freevars = PartialOrderedMap()
+        self.cellvars = PartialOrderedMap()
+        self.varnames = PartialOrderedMap(zip(
+            itertools.chain(args, kwargs, varargs, varkwargs),
+            itertools.count()
+        ))
 
         self.flags = (
            (CO_OPTIMIZED | CO_NEWLOCALS) * bool(isfunc)
@@ -70,22 +64,6 @@ class MutableCode:
     def mark(self, e):
 
         self.lnotab[len(self.bytecode)] = e.location.start[1]
-
-    def make_lnotab(self):
-
-        offset = 0
-        lineno = self.lineno
-
-        for offset_, lineno_ in sorted(self.lnotab.items()):
-
-            if lineno_ > lineno:
-
-                bytediff = codelen(self.bytecode[offset:offset_])
-                linediff = lineno_ - lineno
-                yield b'\xff\x00' * (bytediff // 256)
-                yield b'\x00\xff' * (linediff // 256)
-                yield bytes((bytediff % 256, linediff % 256))
-                offset, lineno = offset_, lineno_
 
     def jump(self, absolute, reverse=False):
 
@@ -140,19 +118,23 @@ class MutableCode:
     #
     # :param name: name of the bytecode (should be in `dis.opmap`.)
     #
-    # :param value: opcode-dependent.
+    # :param value: opcode-dependent::
     #
-    #   argumentless opcodes: ignored
-    #   relative jumps:: ignored
-    #   absolute jumps:: the jump is in reverse direction when negative
-    #   name ops::       name of the variable to use
-    #   LOAD_CONST::     the value to load
-    #   COMPARE_OP::     the operator name
-    #   all others::     passed as is (must be an integer)
+    #   argumentless opcodes | ignored
+    #   relative jumps       | -
+    #   absolute jumps       | the jump is in reverse direction when true
+    #   name operations      | name of the variable to use
+    #   LOAD_CONST           | the value to load
+    #   COMPARE_OP           | the operator name
+    #   all others           | an integer argument
     #
     # :param delta: how much items will this opcode push onto the stack.
     #
-    # :return: the argument to that opcode.
+    # :return: opcode-dependent::
+    #
+    #   forward jumps  | a callable that sets the target
+    #   backward jumps | a callable that inserts the jump opcode
+    #   all others     | pretty much meaningless integer
     #
     def append(self, name, value=0, delta=0):
 
@@ -166,11 +148,9 @@ class MutableCode:
             # Reverse jump.
             # Note that relative jumps can't be in reverse direction.
             jmp = self.jump(absolute=True, reverse=True)
-            # No need to call `jmp`, it will ignore that anyway.
             return lambda: self.bytecode.append((code, jmp))
 
-        self.bytecode.append((
-            code,
+        self.bytecode.append((code,
             dis.cmp_op.index(value)         if code in dis.hascompare else
             self.jump(absolute=False)       if code in dis.hasjrel    else
             self.jump(absolute=True)        if code in dis.hasjabs    else
@@ -190,37 +170,60 @@ class MutableCode:
         self.depth   += delta
         return self.bytecode[-1][1]
 
-    def make_bytecode(self):
-
-        for code, value in self.bytecode:
-
-            oparg = nsplit(int(value), 0x10000)
-          # yield from map(EXTEND_A, oparg[:-1])
-            yield b''.join(map(EXTEND_A, oparg[:-1]))
-            yield (OPCODE_A if code >= dis.HAVE_ARGUMENT else OPCODE)(
-                code,
-                *(oparg[-1],) if code >= dis.HAVE_ARGUMENT else ()
-            )
-
     def compile(self, name):
+
+        lnotab  = []
+        coderes = []
+        lineno_q = self.lineno
+        offset_q = 0
+
+        for offset, (code, value) in enumerate(self.bytecode):
+
+            if offset in self.lnotab:
+
+                lineno = self.lnotab[offset]
+                lnotab.extend([255, 0] * (offset - offset_q))
+                lnotab.extend([0, 255] * (offset - offset_q))
+                lnotab.extend([(offset - offset_q) % 256, (lineno - lineno_q) % 256])
+                offset_q, lineno_q = offset, lineno
+
+            *ext, arg = nsplit(int(value), 0x10000)
+
+            for e in ext:
+
+                coderes.extend([dis.opmap['EXTENDED_ARG'], e % 256, e // 256])
+
+            coderes.extend([code] + [arg % 256, arg // 256] * (code >= dis.HAVE_ARGUMENT))
 
         return types.CodeType(
             self.argc,
             self.kwargc,
             len(self.varnames),
             self.m_depth,
-            self.flags | (
-                CO_NESTED * bool(self.freevars)
-              | CO_NOFREE * (not self.cellvars)
-            ),
-            b''.join(self.make_bytecode()),
-            tuple(sorted(self.consts,   key=self.consts.__getitem__)),
-            tuple(sorted(self.names,    key=self.names.__getitem__)),
-            tuple(sorted(self.varnames, key=self.varnames.__getitem__)),
-            self.filename,
-            name,
-            self.lineno,
-            b''.join(self.make_lnotab()),
-            tuple(sorted(self.freevars, key=self.freevars.__getitem__)),
-            tuple(sorted(self.cellvars, key=self.cellvars.__getitem__))
+            self.flags
+              | CO_NESTED * bool(self.freevars)
+              | CO_NOFREE * (not self.cellvars), bytes(coderes),
+            tuple(self.consts.sorted),
+            tuple(self.names.sorted),
+            tuple(self.varnames.sorted),
+            self.filename, name,
+            self.lineno, bytes(lnotab),
+            tuple(self.freevars.sorted),
+            tuple(self.cellvars.sorted)
         )
+
+
+class PartialOrderedMap (dict):
+
+    def __missing__(self, k):
+
+        self[k] = len(self)
+        return self[k]
+
+    @property
+    #
+    # Sort keys by creation order.
+    #
+    def sorted(self):
+
+        return sorted(self, key=self.__getitem__)
