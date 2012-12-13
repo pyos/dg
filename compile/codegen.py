@@ -172,18 +172,20 @@ class MutableCode:
 
     def compile(self, name):
 
-        lnotab  = []
-        coderes = []
-        lineno_q = self.lineno
+        lnotab   = []
+        coderes  = []
         offset_q = 0
+        lineno_q = self.lineno
 
-        for offset, (code, value) in enumerate(self.bytecode):
+        for btoffset, (code, value) in enumerate(self.bytecode):
 
-            if offset in self.lnotab:
+            lineno = self.lnotab.get(btoffset, 0)
 
-                lineno = self.lnotab[offset]
-                lnotab.extend([255, 0] * (offset - offset_q))
-                lnotab.extend([0, 255] * (offset - offset_q))
+            if lineno > lineno_q:
+
+                offset = len(coderes)
+                lnotab.extend((offset - offset_q) // 256 * [255, 0])
+                lnotab.extend((lineno - lineno_q) // 256 * [0, 255])
                 lnotab.extend([(offset - offset_q) % 256, (lineno - lineno_q) % 256])
                 offset_q, lineno_q = offset, lineno
 
