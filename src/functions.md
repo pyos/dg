@@ -81,9 +81,9 @@ doubleMany!      #=> empty `map` object
 doubleMany 1 2 3 #=> `map` object containing 2, 4, and 6
 
 # This one requires one argument and will accept more.
-map_over_args = (function *: xs) -> map function xs
-map_over_args double       #=> empty `map` object
-map_over_args double 1 2 3 #=> `map` object containing 2, 4, and 6
+mapOverArgs = (function *: xs) -> map function xs
+mapOverArgs double       #=> empty `map` object
+mapOverArgs double 1 2 3 #=> `map` object containing 2, 4, and 6
 
 # This one has one argument with a default value.
 greet = (whom: 'World') -> print 'Hello' whom sep: ', ' end: '!\n'
@@ -95,8 +95,8 @@ dict'' = (**: kwargs) -> kwargs
 
 # And this one unpacks a tuple when called.
 # Simulating Python syntax 'n' stuff.
-lol_parentheses = (a, b) -> a + b
-lol_parentheses (1, 2)
+lolParentheses = (a, b) -> a + b
+lolParentheses (1, 2)
 ```
 
 Functions return the last value they evaluate unless explicitly
