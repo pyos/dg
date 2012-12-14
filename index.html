@@ -572,17 +572,21 @@ module.</p><div class="highlight"><pre><span class="n">f</span> <span class="o">
           </table>
         </div>
 
-        <div id="modules"      class="section"><h2>Modules</h2><p><em>(The current import function is not very good; it will probably be changed later.)</em></p><p><code>import</code> is an alias to <a href="http://docs.python.org/dev/library/importlib.html#importlib.import_module">importlib.import_module</a>.</p><div class="highlight"><pre><span class="n">module</span>    <span class="o">=</span> <span class="kr">import</span> <span class="s">&#39;os&#39;</span>
-<span class="n">submodule</span> <span class="o">=</span> <span class="kr">import</span> <span class="s">&#39;.submodule&#39;</span> <span class="n">package</span><span class="o">:</span> <span class="n">__package__</span>
+        <div id="modules"      class="section"><h2>Modules</h2><p>As stated earlier, dg can import any Python module you have, but the syntax is a bit different. All module names are POSIX paths rather than identifiers:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/sys&#39;</span>  <span class="c1"># =&gt; import sys</span>
 </pre></div>
-<p>As a special case, when <code>import</code> is called without any arguments, dg will
-attempt to infer the module name from the variable name. In that case
-a variable name can be a dotted path, prefixed by any number of dots:</p><div class="highlight"><pre><span class="n">os</span>  <span class="o">=</span> <span class="kr">import</span><span class="o">!</span>
-<span class="n">sys</span> <span class="o">=</span> <span class="kr">import</span><span class="o">!</span>
-
-<span class="n">importlib</span><span class="o">.</span><span class="n">util</span> <span class="o">=</span> <span class="kr">import</span><span class="o">!</span>
-
-<span class="o">.</span><span class="n">submodule</span> <span class="o">=</span> <span class="kr">import</span><span class="o">!</span>
+<p>Module names are relative by default, unless explicitly made absolute as shown above:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;asd&#39;</span>            <span class="c1"># =&gt; from . import asd</span>
+<span class="kr">import</span> <span class="s">&#39;../asd&#39;</span>         <span class="c1"># =&gt; from .. import asd</span>
+<span class="kr">import</span> <span class="s">&#39;../../asd&#39;</span>      <span class="c1"># =&gt; from ... import asd</span>
+<span class="kr">import</span> <span class="s">&#39;../../asd/qwe&#39;</span>  <span class="c1"># =&gt; from ...asd import qwe</span>
+</pre></div>
+<p><code>import</code> behaves as Python's <code>from ... import ...</code> by default; this can be averted by adding the <code>qualified</code> keyword after the module name:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span>            <span class="c1"># =&gt; from os import path</span>
+<span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="n">qualified</span>  <span class="c1"># =&gt; import os.path</span>
+</pre></div>
+<p>Note that all paths are normalized automatically.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/asd/../sys&#39;</span>  <span class="c1"># =&gt; import sys</span>
+</pre></div>
+<p>You can't do <code>import .asd</code> in Python; likewise, you can't use <code>qualified</code> when performing relative imports in dg.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;../asd&#39;</span> <span class="n">qualified</span>  <span class="c1"># =&gt; syntax error</span>
+</pre></div>
+<p><code>import</code> returns the object it has imported.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="o">==</span> <span class="n">os</span>
 </pre></div>
 </div>
         <div id="conditionals" class="section"><h2>Conditionals</h2><p><code>or</code> and <code>and</code> can be treated as conditionals, in addition to being Boolean

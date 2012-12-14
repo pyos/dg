@@ -1,23 +1,41 @@
 ## Modules
 
-*(The current import function is not very good; it will probably be changed later.)*
-
-`import` is an alias to [importlib.import_module](http://docs.python.org/dev/library/importlib.html#importlib.import_module).
+As stated earlier, dg can import any Python module you have, but the syntax is a bit different. All module names are POSIX paths rather than identifiers:
 
 ```dg
-module    = import 'os'
-submodule = import '.submodule' package: __package__
+import '/sys'  # => import sys
 ```
 
-As a special case, when `import` is called without any arguments, dg will
-attempt to infer the module name from the variable name. In that case
-a variable name can be a dotted path, prefixed by any number of dots:
+Module names are relative by default, unless explicitly made absolute as shown above:
 
 ```dg
-os  = import!
-sys = import!
+import 'asd'            # => from . import asd
+import '../asd'         # => from .. import asd
+import '../../asd'      # => from ... import asd
+import '../../asd/qwe'  # => from ...asd import qwe
+```
 
-importlib.util = import!
+`import` behaves as Python's `from ... import ...` by default; this can be averted by adding the `qualified` keyword after the module name:
 
-.submodule = import!
+```dg
+import '/os/path'            # => from os import path
+import '/os/path' qualified  # => import os.path
+```
+
+Note that all paths are normalized automatically.
+
+```dg
+import '/asd/../sys'  # => import sys
+```
+
+You can't do `import .asd` in Python; likewise, you can't use `qualified` when performing relative imports in dg.
+
+```dg
+import '../asd' qualified  # => syntax error
+```
+
+`import` returns the object it has imported.
+
+```dg
+import '/os' == os
 ```
