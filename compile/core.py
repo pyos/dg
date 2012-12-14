@@ -344,16 +344,16 @@ class Compiler:
 
         parent = 1
 
-        while not path[0]:
+        while path and not path[0]:
 
             path.pop(0)
             parent = 0
 
-        while path[0] == posixpath.curdir:
+        while path and path[0] == posixpath.curdir:
 
             path.pop(0)
 
-        while path[0] == posixpath.pardir:
+        while path and path[0] == posixpath.pardir:
 
             path.pop(0)
             parent += 1
