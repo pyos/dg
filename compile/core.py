@@ -1,4 +1,5 @@
 import sys
+import posixpath
 import collections
 
 from . import codegen
@@ -254,19 +255,10 @@ class Compiler:
     #
     def store(self, var, expr):
 
-        var, expr, isimport = parse.syntax.assignment(var, expr)
-
-        if isimport is False:
-
-            e = self.assigned_to
-            self.assigned_to = var
-            self.load(expr)
-            self.assigned_to = e
-
-        else:
-
-            self.opcode('IMPORT_NAME', isimport, None, arg=expr, delta=1)
-
+        e = self.assigned_to
+        self.assigned_to = var
+        self.load(expr)
+        self.assigned_to = e
         self.store_top(var)
 
     #
@@ -330,12 +322,66 @@ class Compiler:
             self.opcode('POP_TOP', delta=-1)
             self.load(b)
 
+    #
+    # import '/global_module'
+    # import '/global_module/with_submodule' qualified
+    # import 'relative_module'
+    # import '../relative_module_in_parent_package'
+    #
+    # Import a module given a POSIX-style path.
+    # Normally, this function works as `from ... import ...` in Python;
+    # however, supplying "qualified" keyword after a module name makes it
+    # work like a simple `import`. (This only affects paths with multiple slashes.)
+    #
+    def import_(self, name, qualified=None):
+
+        isinstance(name, parse.tree.Constant) or parse.syntax.error('should be constant', name)
+        isinstance(name.value, str) or parse.syntax.error('should be a string', name)
+
+        qualified in (None, 'qualified') or parse.syntax.error('"qualified"', name)
+
+        path = posixpath.normpath(name.value).split(posixpath.sep)
+
+        parent = 1
+
+        while path and not path[0]:
+
+            path.pop(0)
+            parent = 0
+
+        while path and path[0] == posixpath.curdir:
+
+            path.pop(0)
+
+        while path and path[0] == posixpath.pardir:
+
+            path.pop(0)
+            parent += 1
+
+        path or parse.syntax.error('no module name', name)
+
+        if qualified:
+
+            parent and parse.syntax.error('cannot perform qualified relative imports', qualified)
+            self.opcode('IMPORT_NAME', 0, None, arg='.'.join(path), delta=1)
+            self.store_top(parse.tree.Link(path[0]).before(name))
+
+        else:
+
+            *mod, mname = path
+            self.opcode('IMPORT_NAME', parent, (mname,) if mod else None, arg='.'.join(mod) or mname, delta=-1)
+            mod and self.opcode('IMPORT_FROM', arg=mname, delta=1)
+            self.store_top(parse.tree.Link(mname).before(name))
+            mod and self.opcode('ROT_TWO', delta=0)
+            mod and self.opcode('POP_TOP', delta=-1)
+
     builtins = {
         '':   call
       , '=':  store
       , '.':  getattr
       , '\n': chain
       , '->': function
+      , 'import': import_
     }
 
     fake_attrs = {}

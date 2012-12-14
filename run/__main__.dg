@@ -1,5 +1,5 @@
-sys   = import!
-..run = import!
+import '/sys'
+import '../run'
 
 sys.argv.pop 0
 sys.argv.append '-' if not sys.argv

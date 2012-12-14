@@ -1,9 +1,9 @@
-os       = import!
-sys      = import!
-builtins = import!
+import '/os'
+import '/sys'
+import '/builtins'
 
-..parse   = import!
-..compile = import!
+import '../compile'
+import '../parse'
 
 
 complete = code -> unsafe

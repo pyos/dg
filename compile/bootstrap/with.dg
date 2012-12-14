@@ -1,5 +1,5 @@
-..compile = import!
-..parse   = import!
+import '../compile'
+import '../parse'
 
 
 compile.r.builtins !! 'with' = (self context *: stuff) ->

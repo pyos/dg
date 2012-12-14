@@ -1,4 +1,4 @@
-..compile = import!
+import '../compile'
 
 
 rjump = (jump self b a) -> fjump jump self a b

@@ -1,7 +1,6 @@
-builtins  = import!
-operator  = import!
-functools = import!
-importlib = import!
+import '/builtins'
+import '/operator'
+import '/functools'
 
 
 # Shorthand type constructors (e.g. `set' a b`  <=> `set (a, b)`.)
@@ -12,7 +11,6 @@ builtins.dict'  = (*: xs **: ys) -> dict xs **: ys
 
 builtins.bind   = functools.partial
 builtins.flip   = f -> (x y) -> f y x
-builtins.import = importlib.import_module
 
 builtins.call = builtins.(!) = builtins.($) = (f *: xs) -> f *: xs
 builtins.(,)  = builtins.tuple' = (*: xs) -> xs

@@ -1,13 +1,12 @@
-os             = import!
-imp            = import!
-sys            = import!
-marshal        = import!
-itertools      = import!
-importlib.util = import!
+import '/os'
+import '/imp'
+import '/sys'
+import '/marshal'
+import '/itertools'
+import '/importlib/util' qualified
 
-
-..parse   = import!
-..compile = import!
+import '../compile'
+import '../parse'
 
 
 sys.meta_path.insert 0 $ inherit str $

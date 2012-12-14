@@ -1,8 +1,8 @@
-builtins    = import!
-collections = import!
+import '/builtins'
+import '/collections'
 
-..compile = import!
-..parse   = import!
+import '../compile'
+import '../parse'
 
 
 #
@@ -15,7 +15,7 @@ compile.r.builtins !! 'while' = (self cond *: block) ->
   exit_ptr = self.opcode 'SETUP_LOOP'             delta: 0
   cond_ptr = self.opcode 'JUMP_ABSOLUTE'  arg: -1 delta: 0
   else_ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
-  self.chain *: block if block
+  self.chain *: block if block else self.load None
   self.opcode 'ROT_TWO' delta:  0
   self.opcode 'POP_TOP' delta: -1
   cond_ptr!

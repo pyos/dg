@@ -22,4 +22,3 @@ All Python 2 implementations are unable to run the compiler at all.
  * ^ + function annotations (they are quite simple, but the syntax is a problem)
  * parser and compiler performance improvements
  * ^ + bytecode optimizer (or an interface to `PyCode_Optimize`)
- * ^ + a better module import syntax

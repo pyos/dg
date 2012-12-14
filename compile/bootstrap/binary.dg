@@ -1,6 +1,6 @@
-..compile = import!
-..parse   = import!
-..const   = import!
+import '../compile'
+import '../parse'
+import '../const'
 
 
 stacked = (c self a b) -> self.opcode c a b delta: 1
