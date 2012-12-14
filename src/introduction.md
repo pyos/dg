@@ -90,6 +90,13 @@ is_   == 'reserved'
 mine  == 'name'
 ```
 
+Oh, you can also assign to values. If both sides of an assignment are equal, nothing will happen; otherwise, a `PatternMatchError` will be raised.
+
+```dg
+1 = 1  # ok
+4 / 2 = 1  # PatternMatchError(received=1, expected=2.0)
+```
+
 ### Referential transparency, laziness, and other buzzwords.
 
 There aren't any of these in dg. As in pure Python, the code is as side effect
