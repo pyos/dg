@@ -13,9 +13,9 @@ too; just make sure you load the compiler first:
 
 ```dg
 # my_module.dg
-flask = import!
+import '/flask/Flask'
 
-app   = flask.Flask __name__
+app   = Flask __name__
 hello = (app.route '/') () -> 'Hello World!'
 
 app.run! if __name__ == '__main__'
