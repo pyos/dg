@@ -290,7 +290,7 @@ class Compiler:
             for name, pattern in targets.items():
 
                 self.opcode('LOAD_FAST', arg=name, delta=1)
-                self.store_top(pattern)
+                self.store_top(pattern, dup=False)
 
             self.opcode('NOP', delta=0)  # lol marker
 
