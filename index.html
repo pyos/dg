@@ -122,9 +122,6 @@ though not recommended, way of writing comments.</p><h3>Assignment</h3><p>is don
 <span class="n">is_</span>   <span class="o">==</span> <span class="s">&#39;reserved&#39;</span>
 <span class="n">mine</span>  <span class="o">==</span> <span class="s">&#39;name&#39;</span>
 </pre></div>
-<p>Oh, you can also assign to values. If both sides of an assignment are equal, nothing will happen; otherwise, a <code>PatternMatchError</code> will be raised.</p><div class="highlight"><pre><span class="mi">1</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># ok</span>
-<span class="mi">4</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># PatternMatchError(received=1, expected=2.0)</span>
-</pre></div>
 <h3>Referential transparency, laziness, and other buzzwords.</h3><p>There aren't any of these in dg. As in pure Python, the code is as side effect
 free as you write it, and all expressions are evaluated eagerly.</p><p>But there <em>is</em> one trendy feature: everything is an expression! That means
 it is possible to create multi-line anonymous functions (aka "lambdas"),
