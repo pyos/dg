@@ -1,4 +1,3 @@
-import '/dis'
 import '/builtins'
 import '/functools'
 import '/itertools'
@@ -24,24 +23,3 @@ builtins.snd  = head <- tail
 # FIXME should also work on iterables somehow
 builtins.init = (!! slice None -1)
 builtins.last = (!! -1)
-
-builtins.PatternMatchError = inherit TypeError $
-
-  __init__ = (self received expected) ->
-    super!.__init__ received expected
-    self.expected = expected
-    self.received = received
-    None
-
-  __str__ = self -> 'got {0.received!r} instead of {0.expected!r}'.format self
-
-
-builtins.fallthrough = (*: fs) -> (*: args **: kwargs) ->
-  next $ map (!! 1) $ dropwhile (!! 0) $ map
-    f ->
-      offset = f.__code__.co_code.find (bytes $ list' $ dis.opmap !! 'NOP')
-      unsafe
-        e = False, f *: args **: kwargs
-        e and e.__traceback__.tb_next.tb_frame.f_lasti < offset =
-          True, None;
-    fs

@@ -53,7 +53,8 @@ def assignment_target(var):
 
         return const.AT.ITEM, item, var
 
-    return (const.AT.NAME if isinstance(var, tree.Link) else const.AT.ASSERT), var, []
+    isinstance(var, tree.Link) or error(const.ERR.NONCONST_VARNAME, var)
+    return const.AT.NAME, var, []
 
 
 def argspec(args, definition):
