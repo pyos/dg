@@ -156,7 +156,7 @@ class MutableCode:
             self.jump(absolute=True)        if code in dis.hasjabs    else
             self.names[value]               if code in dis.hasname    else
             self.varnames[value]            if code in dis.haslocal   else
-            self.consts[value]              if code in dis.hasconst   else
+            self.consts[value, type(value)] if code in dis.hasconst   else
             (
                 # Free and cell variables use the same index space, so we
                 # don't know their indices right now.
@@ -205,7 +205,7 @@ class MutableCode:
             self.flags
               | CO_NESTED * bool(self.freevars)
               | CO_NOFREE * (not self.cellvars), bytes(coderes),
-            tuple(self.consts.sorted),
+            tuple(x for x, _ in self.consts.sorted),
             tuple(self.names.sorted),
             tuple(self.varnames.sorted),
             self.filename, name,
