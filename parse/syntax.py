@@ -73,7 +73,7 @@ def argspec(args, definition):
         for arg in (binary_op('', args, lambda x: [x]) if definition else args):
 
             # 1. `**: _` should be the last argument.
-            varkwargs and error(const.ERR.ARG_AFTER_VARARGS, arg)
+            varkwargs and error(const.ERR.ARG_AFTER_VARKWARGS, arg)
 
             kw, value = binary_op(':', arg, lambda x: (None, x))
 
