@@ -161,7 +161,7 @@ class MutableCode:
                 # Free and cell variables use the same index space, so we
                 # don't know their indices right now.
                 delay(lambda _, i=self.freevars[value]: i + len(self.cellvars))
-                if value in self.cellnames else self.cellvars[value]
+                if value in self.cellnames and value not in self.varnames else self.cellvars[value]
             )                               if code in dis.hasfree    else
             value
         ))
