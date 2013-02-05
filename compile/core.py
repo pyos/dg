@@ -260,7 +260,7 @@ class Compiler:
 
         for index, arg in enumerate(args):
 
-            if isinstance(arg, parse.tree.Link):
+            if isinstance(arg, parse.tree.Link) and arg not in argnames:
 
                 argnames.append(arg)
 
