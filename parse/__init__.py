@@ -312,7 +312,7 @@ def number(stream, token):
     return tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
 
 
-@token(r'([br]*)([\'"]{3}|"|\')((?:\\?.)*?)\2')
+@token(r'([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
 #
 # string = ( 'b' | 'r' ) *, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
