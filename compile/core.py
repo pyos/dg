@@ -276,8 +276,6 @@ class Compiler:
                 self.opcode('LOAD_FAST', arg=name, delta=1)
                 self.store_top(pattern, dup=False)
 
-            self.opcode('NOP', delta=0)  # lol marker
-
         code = codegen.MutableCode(True, argnames, kwargs, varargs, varkwargs, self.code)
         code = self.compile(body, code, self.name('<lambda>'), self.name('<lambda>', self.qualified_name) + '.<locals>', hook)
         self.make_function(code, defs, kwdefs)
