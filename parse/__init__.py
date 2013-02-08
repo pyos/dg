@@ -86,8 +86,13 @@ has_priority = functools.partial(
         # a $ b -> c $ d     a $ (b -> (c $ d))  everything's True
         # a b -> c.d         a (b -> (c.d))      also True
         #
-        link == '->' or
+        link == '->' or (
+          # `a -> b where c` <=> `a -> (b where c)` for obvious reasons,
+          # buf `a -> b, c` <=> `(a -> b), c` for probably not so obvious ones.
+          not (link == ',' and in_relation_to == '->') and
+          # The only line that makes sense.
           infixr(precedence(link)) < abs(precedence(in_relation_to))
+        )
     ),
     # Right-fixed links have positive precedence, left-fixed ones have negative.
     lambda x: abs(x) - (x > 0),
@@ -130,27 +135,27 @@ has_priority = functools.partial(
         'or':  -15,
       # Low-priority binding
         '$':   16,
-      # Function definition
-        '->':  17,
       # Sequential evaluation
-        ',':  -18,
+        ',':  -17,
       # Local binding
-        'where': 19,
+        'where': 18,
       # Assignment
-        '=':   19,
-        '!!=': 19,
-        '+=':  19,
-        '-=':  19,
-        '*=':  19,
-        '**=': 19,
-        '/=':  19,
-        '//=': 19,
-        '%=':  19,
-        '&=':  19,
-        '^=':  19,
-        '|=':  19,
-        '<<=': 19,
-        '>>=': 19,
+        '=':   18,
+        '!!=': 18,
+        '+=':  18,
+        '-=':  18,
+        '*=':  18,
+        '**=': 18,
+        '/=':  18,
+        '//=': 18,
+        '%=':  18,
+        '&=':  18,
+        '^=':  18,
+        '|=':  18,
+        '<<=': 18,
+        '>>=': 18,
+      # Function definition
+        '->':  19,
       # Conditionals
         'if':   20,
         'else': 21,
