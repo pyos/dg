@@ -283,7 +283,7 @@ def indent(stream, token):
 def whitespace(stream, token): pass
 
 
-@token(r'(?i)0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
+@token(r'(?i)[+-]?0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
 #
 # intb = int2 | int8 | int16
 # int2 = '0b', ( '0' .. '1' ) +
