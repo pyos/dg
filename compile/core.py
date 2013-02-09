@@ -131,8 +131,9 @@ class Compiler:
 
     # Create a function from a given immutable code object and default arguments.
     #
-    # In Python 3.3, the qualified name of the function is assumed to be
-    # the same as the unqualified one. FIXME.
+    # Note that this completely freezes its `cellnames`, meaning that
+    # all variables created after the code object will be ignored
+    # by the closed function.
     #
     def make_function(self, code, defaults, kwdefaults):
 
