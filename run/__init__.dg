@@ -2,42 +2,51 @@ import '/os'
 import '/sys'
 import '/builtins'
 
-import '../compile'
 import '../parse'
+import '../compile'
 
 
-complete = code -> unsafe
+# command :: str -> Maybe code
+#
+# Compile some code if it's a complete statement in an interactive shell.
+#
+# .. seealso:: `code.compile_command`
+#
+command = code -> unsafe
   e =
-    expr = res = parse.it code '<stdin>'
+    res = parse.it code '<stdin>'
 
-    # Search for incomplete infix expressions.
-    while (expr :: parse.tree.Expression and not expr.closed) (expr !!= -1)
+    # Search for incomplete infix expressions or continued builtins.
+    expr = dropwhile e -> (e :: parse.tree.Expression and not e.closed) $ iterate (!! -1) res
+    fail = expr :: parse.tree.Expression and len expr == 2 or
+           expr :: parse.tree.Link and not expr.closed and expr in compile.r.builtins
 
-    res if code.endswith '\n' or not
-      (code.rsplit '\n' 1 !! -1).startswith ' ' or
-        expr :: parse.tree.Link and not expr.closed and expr in compile.r.builtins or
-          expr :: parse.tree.Expression and len expr == 2
+    res if code.endswith '\n' or not fail or not
+      (last $ code.rsplit '\n' 1).startswith ' '
 
-  e :: SyntaxError and (e.args !! 0).startswith 'unexpected EOF' = None
+  e :: SyntaxError and (head e.args).startswith 'unexpected EOF' = None
 
 
-# Start an interactive shell.
+# it :: TextIOBase -> _|_
 #
-# :param name: name of the module.
+# Evaluate the contents of a file, then exit.
 #
-# :return: runs indefinitely.
-#
-it = (fd __name__: '__main__') ->
-  environ  = dict __name__: __name__ __builtins__: __builtins__
+it = fd ->
+  st  = os.environ.get 'PYTHONSTARTUP' ''
+  env = dict __name__: '__main__' __builtins__: __builtins__
 
   fd.isatty! or unsafe
-    e = eval (compile.it $ parse.it filename: fd.name $ fd.read -1) environ, exit 0
-    e and not (e :: SystemExit) = sys.excepthook (type e) e e.__traceback__.tb_next, exit 1
+    e =
+      eval (compile.fd fd) env
+      exit 0
+    e :: Exception =
+      sys.excepthook (type e) e e.__traceback__.tb_next
+      exit 1
 
-  fd is sys.stdin and
-    st = os.environ.get 'PYTHONSTARTUP' ''
-    eval (builtins.compile ((open st).read -1) st 'exec') environ if st
+  # Interactive mode below.
+  eval (builtins.compile ((open st).read -1) st 'exec') env if st and fd is sys.stdin
 
+  # These might have been set by PYTHONSTARTUP.
   sys.ps1 = getattr sys 'ps1' '>>> '
   sys.ps2 = getattr sys 'ps2' '... '
   sys.stdin = fd
@@ -45,8 +54,11 @@ it = (fd __name__: '__main__') ->
   while True $ unsafe
     e =
       buf = input sys.ps1
-      while (not (y = complete buf)) (buf += '\n' + input sys.ps2)
-      sys.displayhook $ eval (compile.it y) environ
+      res = next $ dropwhile not $ map command $ iterate x -> (x + '\n' + input sys.ps2) buf
+      sys.displayhook $ eval (compile.it res) env
+    # The empty line is purely for aesthetic purposes.
     e :: EOFError = print!, exit 0
+    # Unlike the above code, we want to catch *everything* but `SystemExit`,
+    # including `KeyboardInterrupt` and `GeneratorExit`.
     e :: SystemExit = raise e
     e = sys.excepthook (type e) e e.__traceback__.tb_next
