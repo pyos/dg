@@ -17,12 +17,12 @@ command = code -> unsafe
     res = parse.it code '<stdin>'
 
     # Search for incomplete infix expressions or continued builtins.
-    expr = dropwhile e -> (e :: parse.tree.Expression and not e.closed) $ iterate (!! -1) res
+    expr = next $ dropwhile e -> (e :: parse.tree.Expression and not e.closed) $ iterate (!! -1) res
     fail = expr :: parse.tree.Expression and len expr == 2 or
            expr :: parse.tree.Link and not expr.closed and expr in compile.r.builtins
 
-    res if code.endswith '\n' or not fail or not
-      (last $ code.rsplit '\n' 1).startswith ' '
+    res if code.endswith '\n' or not
+      (last $ code.rsplit '\n' 1).startswith ' ' or fail
 
   e :: SyntaxError and (head e.args).startswith 'unexpected EOF' = None
 
