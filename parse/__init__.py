@@ -88,7 +88,7 @@ has_priority = functools.partial(
         #
         link == '->' or (
           # `a -> b where c` <=> `a -> (b where c)` for obvious reasons,
-          # buf `a -> b, c` <=> `(a -> b), c` for probably not so obvious ones.
+          # but `a -> b, c` <=> `(a -> b), c` for probably not so obvious ones.
           not (link == ',' and in_relation_to == '->') and
           # The only line that makes sense.
           infixr(precedence(link)) < abs(precedence(in_relation_to))
