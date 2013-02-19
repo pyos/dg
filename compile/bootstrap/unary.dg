@@ -5,8 +5,6 @@ import '../parse'
 compile.r.builtins !! 'not' = (self a) -> self.opcode 'UNARY_NOT'         a delta: 1
 compile.r.builtins !! '~'   = (self a) -> self.opcode 'UNARY_INVERT'      a delta: 1
 
-compile.r.fake_attrs !! '_' = self -> self.opcode 'CALL_FUNCTION' arg: 0 delta: 0
-
 compile.r.bind_hooks !! False !! ';' = (self _ q) -> self.opcode 'RETURN_VALUE' None q delta: 1
 compile.r.bind_hooks !! False !! '!' = (self _ q) -> self.call q
 
