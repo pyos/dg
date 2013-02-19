@@ -11,7 +11,7 @@ class Compiler:
     @classmethod
     # Compile a parser output tree into an immutable code object.
     #
-    # :param into_codeobj: a temporary mutable code object to use.
+    # :param into: a temporary mutable code object to use.
     #
     def compile(cls, expr, into=None, name='<module>', qualname='', hook=lambda self: 0):
 
@@ -235,8 +235,6 @@ class Compiler:
     # name = expression
     #
     # Store the result of `expression` in `name`.
-    # If `expression` is `import`, attempt to derive the module name
-    # from `name`.
     #
     def store(self, var, expr):
 
