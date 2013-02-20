@@ -5,18 +5,14 @@ import collections
 
 from . import tree, syntax
 
-### Public API
 
-it = lambda data, filename='<string>': next(_State(data, filename))
-fd = lambda fd, name='<stream>': it(fd.read(), getattr(fd, 'name', name))
+it = lambda it, filename='<string>': next(State(it, filename, tokens))
+fd = lambda fd, filename='<stream>': it(fd.read(), getattr(fd, 'name', filename))
 
-### Helpers
 
-class _State (collections.Iterator, collections.deque):
+class State (collections.Iterator, collections.deque):
 
-    tokens  = []
-
-    def __init__(self, data, filename):
+    def __init__(self, data, filename, tokens):
 
         super().__init__()
         self.linestart = True
@@ -24,79 +20,117 @@ class _State (collections.Iterator, collections.deque):
         self.buffer = data
         self.offset = 0
         self.indent = collections.deque([-1])
+        self.tokens = tokens
 
     def __next__(self):
 
         while not self:
 
-            f, match = next((func, match)
-                for regex, func, st in self.tokens              if st is self.linestart
-                for match in [regex(self.buffer, self.offset)]  if match
-            )
-
+            f, match = self.tokens.match(self.buffer, self.offset, self.linestart)
             self.offset    = match.end()
             self.linestart = match.group().endswith('\n')
-
             q = f(self, match)
             q is None or self.appendleft(q.at(self, match.start()))
 
         return self.popleft()
 
+    # position :: int -> (int, int, int)
+    #
+    # Transform a character offset into an (offset, lineno, charno) triple.
+    #
     def position(self, offset):
 
         part = self.buffer[:offset]
         return (offset, 1 + part.count('\n'), offset - part.rfind('\n'))
 
+    # error :: (str, int) -> _|_
+    #
+    # Raise a `SyntaxError` at a given offset.
+    #
     def error(self, description, at):
 
         offset, lineno, charno = self.position(at)
         raise SyntaxError(description, (self.filename, lineno, charno, self.line(at)))
 
-    line = lambda self, offset: self.buffer[
-        self.buffer.rfind('\n', 0, offset) + 1:
-        self.buffer. find('\n',    offset) + 1 or None  # 0 won't do here
-    ]
+    # line :: int -> str
+    #
+    # Get a line which contains the character at a given offset.
+    #
+    def line(self, offset):
+
+        return self.buffer[
+            self.buffer.rfind('\n', 0, offset) + 1:
+            self.buffer. find('\n',    offset) + 1 or None  # 0 won't do here
+        ]
 
 
-def token(regex, linestart=False):
+class TokenSet (list):
 
-    return lambda f: _State.tokens.append((re.compile(regex, re.DOTALL).match, f, linestart)) or f
+    # type TokenHandler = (Stream, MatchObject) -> Maybe StructMixIn
+    # type TokenSet = [((str, int) -> Maybe MatchObject, TokenHandler, bool)]
+    #
+    # () :: (str, Optional bool) -> TokenHandler -> TokenHandler
+    #
+    # A decorator-generating version of :meth:`add`.
+    #
+    def __call__(self, regex, at_line_start=False):
+
+        return functools.partial(self.add, regex, at_line_start=at_line_start)
+
+    # add :: (str, TokenHandler, Optional bool) -> TokenHandler
+    #
+    # Add a handler for some token.
+    #
+    # NOTE unlike `(?m)^`, using `at_line_start` guarantees that
+    #   a handler won't be called the second time if
+    #   the match is empty.
+    #
+    def add(self, regex, f, at_line_start=False):
+
+        self.append((re.compile(regex, re.DOTALL).match, f, at_line_start))
+        return f
+
+    # match :: (str, int, bool) -> (TokenHandler, MatchObject)
+    #
+    # Attempt to find a handler suitable for parsing a part of a string.
+    #
+    def match(self, text, offset, at_line_start):
+
+        return next((func, match)
+            for regex, func, als_flag in self   if als_flag is at_line_start
+            for match in [regex(text, offset)]  if match
+        )
 
 
-# Whether an infix link's priority is higher than the other one's.
+# In all comments below, `R` and `Q` are infix links, while lowercase letters
+# are arbitrary expressions.
+tokens = TokenSet()
+
+# has_priority :: (Link, Link) -> bool
 #
-# :param link: link to the right.
+# Whether the first infix link has priority over the second one.
 #
-# :param in_relation_to: link to the left.
+# NOTE in `a R b Q c`, `Q` should be the first link.
 #
 has_priority = functools.partial(
-    lambda infixr, precedence, link, in_relation_to: (
-        # `a R b -> c` should always parse as `a R (b -> c)`.
-        #
-        # Note that this means that for `a R b -> c Q d` to parse
-        # as `a R (b -> (c Q d))` this method should return True for both
-        # (Q, R) and (Q, ->). Otherwise, the output is `a R (b -> c) Q d`.
-        # That's not of concern when doing stuff like `f = x -> print 1`
-        # 'cause `=` has the lowest possible priority.
-        #
-        # What               How                 Why
-        # -----------------------------------------------------------
-        # a b -> c d         a (b -> c) d        (, ) is False
-        # a = b -> c = d     a = (b -> c) = d    (=, ->) is False
-        # a $ b -> c $ d     a $ (b -> (c $ d))  everything's True
-        # a b -> c.d         a (b -> (c.d))      also True
-        #
+    lambda link, in_relation_to, infixr, precedence: (
+        # `a R b -> c` <=> `a R (b -> c)` for all `R`.
+        # `a R b -> c Q d` <=> `a R (b -> c Q d)` iff
+        #   `has_priority(Q, R) and has_priority(Q, '->')`
+        #  `a R (b -> c) Q d` otherwise.
         link == '->' or (
-          # `a -> b where c` <=> `a -> (b where c)` for obvious reasons,
-          # but `a -> b, c` <=> `(a -> b), c` for probably not so obvious ones.
+          # `a -> b where c` <=> `a -> (b where c)` for obvious reasons.
+          # `a -> b, c` <=> `(a -> b), c` for probably not so obvious ones.
           not (link == ',' and in_relation_to == '->') and
-          # The only line that makes sense.
+          # No other operator is that complex.
           infixr(precedence(link)) < abs(precedence(in_relation_to))
         )
     ),
     # Right-fixed links have positive precedence, left-fixed ones have negative.
-    lambda x: abs(x) - (x > 0),
-    lambda i, q={
+    # Right-fixed ones gain +1 to their priority, but since `<` is used above
+    # rather than `<=`, that only affects expressions like `a R b R c`.
+    infixr     = lambda x: abs(x) - (x > 0),
+    precedence = lambda i, q={
       # Scope resolution
         '.':   0,
         '!.':  0,
@@ -167,53 +201,56 @@ has_priority = functools.partial(
 )
 
 
-# Whether an operator is non-associative with itself (i.e. should be joined.)
-# Note that this is only necessary if you're not doing some kind of fold.
-# Unless, of course, you don't want the compiler to consume the whole stack.
+# If `unassoc(R)`: `a R b R c` <=> `Expression [ Link R, Link a, Link b, Link c]`
+# Otherwise:       `a R b R c` <=> `Expression [ Link R, Expression [...], Link c]`
+# (This doesn't apply to right-fixed links.)
 unassoc = {',', '..', '::', '', '\n'}.__contains__
-unary   = {'!', ';'}.__contains__
+
+# These operators have no right-hand statement part in any case.
+unary = {'!', ';'}.__contains__
 
 
-# Handle an infix link.
+# infixl :: (State, StructMixIn, Link, StructMixIn) -> StructMixIn
 #
-# :param lhs, op, rhs: respective parts of an infix expression.
+# Handle an infix expression given its all three parts.
+#
+# If that particular expression has no right-hand statement part,
+# `rhs` will be pushed to the object queue.
 #
 def infixl(stream, lhs, op, rhs):
 
-    br       = False
+    break_   = False
     rhsbound = None
 
-    # Note that constant strings aren't equal to anything but themselves.
-    # This will only return True for a link.
     while rhs == '\n' and not unary(op):
 
-        br  = br or rhs
-        rhs = next(stream)
+        break_, rhs = rhs, next(stream)
 
     if isinstance(rhs, tree.Internal) or unary(op):
 
-        # `(a R)`
+        # `(a R)`, and `rhs` is a close-paren.
         stream.appendleft(rhs)
         rhs = None
 
-    elif br == '\n' and op == '' and rhs.indented:
+    elif break_ and op == '' and rhs.indented:
 
         # `a \n b ...` <=> `a b ...` iff `b ...` is indented.
-        # i.e. an indented block with no infix link before it means
-        # line continuation.
-        qs = rhs[1:] if isinstance(rhs, tree.Expression) and rhs[0] == '\n' else [rhs]
+        #
+        # That is, if an indented block follows a line with an empty infix
+        # link at the end, each line of that block is an additional
+        # argument to that empty link.
+        for rhs in syntax.binary_op('\n', rhs, lambda e: [e]):
 
-        for q in qs:
-
-            lhs = infixl_insert_rhs(lhs, op, q)
+            lhs = infixl_insert_rhs(lhs, op, rhs)
 
         return lhs
 
-    elif br == '\n' != op and not rhs.indented:
+    elif break_ and op != '\n' and not rhs.indented:
 
-        # `a R \n b` <=> `a R b` iff `b` is indented.
+        # `a R`. There was no `rhs` before a line break,
+        # and no indented block immediately after it either.
         stream.appendleft(rhs)
-        rhs = br
+        rhs = break_
 
     if isinstance(rhs, tree.Link) and not rhs.closed and rhs.infix:
 
@@ -229,10 +266,12 @@ def infixl(stream, lhs, op, rhs):
     return infixl(stream, lhs, rhsbound, next(stream)) if rhsbound else lhs
 
 
-# Recursive implementation of bracketless shunting-yard algorithm.
+# infixl_insert_rhs :: (StructMixIn, Link, StructMixIn) -> StructMixIn
 #
-# Tests show that it's NOT much slower than iterative version, but this one looks
-# neater. Note that if this hits the stack limit, the compiler would do that, too.
+# Recursively descends into `root` if infix precedence rules allow it to,
+# otherwise simply creates and returns a new infix expression AST node.
+#
+# That is, it's a recursive bracketless shunting-yard algorithm implementation.
 #
 def infixl_insert_rhs(root, op, rhs):
 
@@ -257,10 +296,8 @@ def infixl_insert_rhs(root, op, rhs):
     e.closed = rhs is None
     return e.in_between(root, op if rhs is None else rhs)
 
-### Tokens
 
-
-@token(r' *', linestart=True)
+@tokens(r' *', at_line_start=True)
 #
 # indent = ^ ' ' *
 #
@@ -281,14 +318,14 @@ def indent(stream, token):
     stream.indent.append(indent)
 
 
-@token(r'[^\S\n]+|\s*#[^\n]*')
+@tokens(r'[^\S\n]+|\s*#[^\n]*')
 #
 # whitespace = < whitespace > | '#', < anything but line feed >
 #
 def whitespace(stream, token): pass
 
 
-@token(r'(?i)[+-]?0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
+@tokens(r'(?i)[+-]?0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
 #
 # intb = int2 | int8 | int16
 # int2 = '0b', ( '0' .. '1' ) +
@@ -300,7 +337,7 @@ def intb(stream, token):
     return tree.Constant(ast.literal_eval(token.group()))
 
 
-@token(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
+@tokens(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
 #
 # number = int10s, ( '.', int10 ) ?, ( [eE], int10s ) ?, [jJ] ?
 #
@@ -317,7 +354,7 @@ def number(stream, token):
     return tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
 
 
-@token(r'([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
+@tokens(r'([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
 #
 # string = ( 'b' | 'r' ) *, ( sq_string | dq_string | sq_string_m | dq_string_m )
 #
@@ -333,7 +370,7 @@ def string(stream, token):
     return tree.Constant(ast.literal_eval(''.join([q, g, token.group(3), g])))
 
 
-@token(r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
+@tokens(r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
 #
 # link = word | < ascii punctuation > + | ',' + | ( '`', word, '`' ) | '\n'
 #
@@ -345,7 +382,7 @@ def link(stream, token, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'})
     return tree.Link(infix or token.group(), infix or (token.group() in infixn))
 
 
-@token('\(')
+@tokens('\(')
 #
 # do = '('
 #
@@ -386,7 +423,7 @@ def do(stream, token, preserve_close_state=False):
     return object
 
 
-@token(r'\)|$')
+@tokens(r'\)|$')
 #
 # end = ')' | $
 #
@@ -395,7 +432,7 @@ def end(stream, token):
     return tree.Internal(token.group())
 
 
-@token(r'"|\'')
+@tokens(r'"|\'')
 #
 # string_err = "'" | '"'
 #
@@ -404,7 +441,7 @@ def string_err(stream, token):
     stream.error('unexpected EOF while reading a string literal', token.start())
 
 
-@token(r'.')
+@tokens(r'.')
 #
 # error = < unmatched symbol >
 #
