@@ -2,6 +2,10 @@ from . import tree
 from .. import const
 
 
+# binary_op :: (Link, object, object -> [object]) -> [object]
+#
+# Return the arguments of a call `expr` to the varary operator `id`.
+#
 def binary_op(id, expr, on_error):
 
     return expr[1:] if isinstance(expr, tree.Expression) and len(expr) > 2 and expr[0] == id else on_error(expr)
@@ -13,16 +17,9 @@ def error(description, at):
     raise SyntaxError(description, (filename, line, char, text))
 
 
-# assignment_target::
-#
-#   link(.*)
-#   expression.link(.*)
-#   expression !! expression
-#   expression(',', assignment_target *)
-#
 def assignment_target(var):
 
-    # Attempt to do iterable unpacking first.
+    # It may be a comma-separated list of other targets.
     pack = binary_op(',', var, lambda _: None)
 
     if pack:
@@ -41,6 +38,7 @@ def assignment_target(var):
 
         return const.AT.UNPACK, pack, (len(pack), star)
 
+    # It may also be an attribute (object.attr) or a subitem (object !! item).
     var, attr = binary_op('.',  var, lambda x: (x, None))
     var, item = binary_op('!!', var, lambda x: (x, None))
 
@@ -53,6 +51,7 @@ def assignment_target(var):
 
         return const.AT.ITEM, item, var
 
+    # If neither, it should be a variable name.
     isinstance(var, tree.Link) or error(const.ERR.NONCONST_VARNAME, var)
     return const.AT.NAME, var, []
 
@@ -68,12 +67,13 @@ def argspec(args, definition):
     varargs     = []  # `[]` or `[c.co_varnames[c.co_argc + c.co_kwonlyargc]]`
     varkwargs   = []  # `[]` or `[c.co_varnames[c.co_argc + c.co_kwonlyargc + 1]]`
 
+    # `Constant(None)` <=> `()` <=> "no arguments".
     if not isinstance(args, tree.Constant) or args.value is not None:
 
         for arg in (binary_op('', args, lambda x: [x]) if definition else args):
 
-            # 1. `**: _` should be the last argument.
-            varkwargs and error(const.ERR.ARG_AFTER_VARKWARGS, arg)
+            # 1. `**: _` should be the last argument in a function definition.
+            definition and varkwargs and error(const.ERR.ARG_AFTER_VARKWARGS, arg)
 
             kw, value = binary_op(':', arg, lambda x: (None, x))
 
