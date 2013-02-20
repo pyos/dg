@@ -61,7 +61,7 @@ class Expression (list, StructMixIn):
 
         return ('({})' if self.closed else '{}').format(
             ' '.join(map(repr, self[1:])) if self[0] == '' else
-            '{1}{0}{2}'.format(*self)   if len(self) == 3 and self[0] == '.' else
+            '{1}{0}{2}'  .format(*self) if len(self) == 3 and self[0] == '.' else
             '{1} {0} {2}'.format(*self) if len(self) == 3 else
             '{1} {0}'    .format(*self) if len(self) == 2 else
             '({}) {}'.format(self[0], ' '.join(map(repr, self[1:])))
