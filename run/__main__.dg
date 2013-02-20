@@ -1,5 +1,6 @@
 import '/sys'
 import '../run'
 
-execname, filename, *_ = sys.argv + list' '-'
+sys.argv.pop 0
+filename, *_ = sys.argv + list' '-'
 run.it (sys.stdin if filename == '-' else open filename)
