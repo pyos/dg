@@ -49,10 +49,10 @@ class Compiler:
             elif isinstance(e, parse.tree.Link):
 
                 self.opcode(
-                    'LOAD_DEREF' if e in self.code.cellvars  else
-                    'LOAD_FAST'  if e in self.code.varnames  else
-                    'LOAD_DEREF' if e in self.code.cellnames else
-                    'LOAD_NAME'  if self.code.slowlocals     else
+                    'LOAD_DEREF' if e in self.code.cellvars else
+                    'LOAD_FAST'  if e in self.code.varnames else
+                    'LOAD_DEREF' if e in self.code.enclosed else
+                    'LOAD_NAME'  if self.code.slowlocals    else
                     'LOAD_GLOBAL', arg=e, delta=1
                 )
 
@@ -123,7 +123,7 @@ class Compiler:
           # var in self.fake_attrs and parse.syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
 
             self.opcode(
-                'STORE_DEREF' if var in self.code.cellnames else
+                'STORE_DEREF' if var in self.code.enclosed else
                 'STORE_DEREF' if var in self.code.cellvars else
                 'STORE_NAME'  if self.code.slowlocals else
                 'STORE_FAST', arg=var, delta=-1
@@ -131,9 +131,9 @@ class Compiler:
 
     # Create a function from a given immutable code object and default arguments.
     #
-    # Note that this completely freezes its `cellnames`, meaning that
+    # Note that this completely freezes its `freevars`, meaning that
     # all variables created after the code object will be ignored
-    # by the closed function.
+    # by the enclosed function.
     #
     def make_function(self, code, defaults, kwdefaults):
 
@@ -276,6 +276,9 @@ class Compiler:
                 self.store_top(pattern, dup=False)
 
         code = codegen.MutableCode(True, argnames, kwargs, varargs, varkwargs, self.code)
+
+        getattr(self.code, 'cellhook', lambda _: None)(code)
+
         code = self.compile(body, code, self.name('<lambda>'), self.name('<lambda>', self.qualified_name) + '.<locals>', hook)
         self.make_function(code, defs, kwdefs)
 
