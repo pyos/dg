@@ -168,7 +168,7 @@ class MutableCode:
         if name in self.varnames:
 
             var  = self.varnames[name]
-            cell = self.cellvars[var]
+            cell = self.cellvars[name]
 
             for i, (op, arg) in enumerate(self.bytecode):
                 # LOAD_FAST <= op <= STORE_FAST
