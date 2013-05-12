@@ -11,6 +11,17 @@ CO_NESTED    = 16  # uses free variables
 CO_GENERATOR = 32  # uses YIELD_VALUE/YIELD_FROM
 CO_NOFREE    = 64  # does not export free variables
 
+EXTENDED_ARG = dis.opmap['EXTENDED_ARG']
+LOAD_FAST    = dis.opmap['LOAD_FAST']
+STORE_FAST   = dis.opmap['STORE_FAST']
+LOAD_DEREF   = dis.opmap['LOAD_DEREF']
+
+
+def opcode(op, arg):
+
+    return (opcode(EXTENDED_ARG, arg >> 16) if arg >= 0x10000 else b'') + \
+           bytes([op, arg % 256, arg // 256 % 256])
+
 
 #
 # A set that automatically assigns indices to its items.
@@ -33,7 +44,7 @@ class IndexedSet (dict):
     #
     def sorted(self):
 
-        return sorted(self, key=self.__getitem__)
+        return tuple(sorted(self, key=self.__getitem__))
 
 
 #
@@ -64,14 +75,14 @@ class JumpObject (LazyInt):
 
         self.op    = op
         self.code  = code
-        self.start = len(code.bytecode)
+        self.start = len(code)
 
         assert not reverse or absolute, 'reverse => absolute'
         self.absolute = absolute
         self.reverse  = reverse
         self._value   = -1
 
-        reverse or self.code.bytecode.append((self.op, self))
+        reverse or code.append((self.op, self))
 
     def __call__(self):
 
@@ -79,9 +90,9 @@ class JumpObject (LazyInt):
 
         self._value = sum(
             1 if c < dis.HAVE_ARGUMENT else 3 + abs(int(v).bit_length() - 1) // 16 * 3
-            for c, v in self.code.bytecode[
+            for c, v in self.code[
                 0          if self.absolute else self.start + 1:
-                self.start if self.reverse  else len(self.code.bytecode)
+                self.start if self.reverse  else len(self.code)
             ]
         )
 
@@ -95,7 +106,7 @@ class JumpObject (LazyInt):
                 self._value += 3  # 1-byte opcode + 2-byte argument
                 sz <<= 16
 
-        self.reverse and self.code.bytecode.append((self.op, self._value))
+        self.reverse and self.code.append((self.op, self._value))
 
 
 # MutableCode --
@@ -103,7 +114,7 @@ class JumpObject (LazyInt):
 #
 class MutableCode:
 
-    # (bool, [Link], [Link], [Link], [Link], Maybe MutableCode) -> MutableCode
+    # (bool, [str], [str], [str], [str], Maybe MutableCode) -> MutableCode
     #
     # isfunc    -- whether to add function-specific flags (OPTIMIZED and NEWLOCALS)
     # args      -- list of positional argument names
@@ -147,7 +158,7 @@ class MutableCode:
 
         self.filename = '<generated>'
         self.lineno   = 1
-        self.lnotab   = {}  # offset -> lineno mapping
+        self.lnotab   = [(0, 0, 0, 0)]
 
     # mark :: StructMixIn -> NoneType
     #
@@ -155,7 +166,17 @@ class MutableCode:
     #
     def mark(self, e):
 
-        self.lnotab[len(self.bytecode)] = e.location.start[1]
+        byteoffabs = len(self.bytecode)
+        lineoffabs = e.location.start[1] - self.lineno
+        byteoff = byteoffabs - self.lnotab[-1][3]
+        lineoff = lineoffabs - self.lnotab[-1][2]
+
+        self.lnotab += lineoff // 256 * [(0, 255, lineoffabs, byteoffabs)]
+        self.lnotab += byteoff // 256 * [(255, 0, lineoffabs, byteoffabs)]
+
+        if lineoff > 0 and byteoff > 0:
+
+            self.lnotab.append((byteoff % 256, lineoff % 256, lineoffabs, byteoffabs))
 
     # cellify :: Link -> Link
     #
@@ -171,10 +192,10 @@ class MutableCode:
             cell = self.cellvars[name]
 
             for i, (op, arg) in enumerate(self.bytecode):
-                # LOAD_FAST <= op <= STORE_FAST
-                if 124 <= op <= 125 and arg == var:
-                    # op + LOAD_DEREF - LOAD_FAST
-                    self.bytecode[i] = op + 12, cell
+
+                if LOAD_FAST <= op <= STORE_FAST and arg == var:
+
+                    self.bytecode[i] = op + LOAD_DEREF - LOAD_FAST, cell
 
         return name
 
@@ -207,63 +228,36 @@ class MutableCode:
 
         if code in dis.hasjabs + dis.hasjrel:
 
-            return JumpObject(self, value < 0, code in dis.hasjabs, op=code)
+            return JumpObject(self.bytecode, value < 0, code in dis.hasjabs, op=code)
 
         self.bytecode.append((code,
             dis.cmp_op.index(value)           if code in dis.hascompare else
-            self.names   [value]              if code     in dis.hasname  else
-            self.varnames[value]              if code     in dis.haslocal else
-            self.consts  [value, type(value)] if code     in dis.hasconst else
-            value                             if code not in dis.hasfree  else
+            self.names   [value]              if code in dis.hasname else
+            self.varnames[value]              if code in dis.haslocal else
+            self.consts  [value, type(value)] if code in dis.hasconst else
+            value                             if code not in dis.hasfree else
 
             # Free and cell variables use the same index space.
             LazyInt(lambda _, i=self.freevars[value]: i + len(self.cellvars))
             if value in self.enclosed and value not in self.varnames else self.cellvars[value]
         ))
 
+    # compile :: str -> CodeType
+    #
+    # Create an immutable code object with a given name.
+    #
     def compile(self, name):
-
-        lnotab = []
-        code   = []
-        offset_q = 0
-        lineno_q = self.lineno
-
-        for i, (op, arg) in enumerate(self.bytecode):
-
-            arg = int(arg)
-            offset = len(code)
-            lineno = self.lnotab.get(i, lineno_q)
-
-            if lineno > lineno_q:
-
-                lnotab +=  (offset - offset_q >> 8) * [255, 0]
-                lnotab +=  (lineno - lineno_q >> 8) * [0, 255]
-                lnotab += [(offset - offset_q) % 256, (lineno - lineno_q) % 256]
-                offset_q, lineno_q = offset, lineno
-
-            code.append(op)
-
-            if op >= dis.HAVE_ARGUMENT:
-
-                code.append(arg %  256)
-                code.append(arg // 256 % 256)
-
-                for q in range(1, 1 + abs(arg.bit_length() - 1) // 16):
-
-                    arg //= 0x10000
-                    code.insert(-q * 3, 144)  # EXTENDED_ARG
-                    code.insert(-q * 3, arg % 256)
-                    code.insert(-q * 3, arg // 256 % 256)
 
         return types.CodeType(
             self.argc, self.kwargc, len(self.varnames),
             self.m_depth, self.flags | CO_NESTED * bool(self.freevars)
                                      | CO_NOFREE * (not self.cellvars),
-            bytes(code),
+            b''.join(opcode(op, int(arg)) if op >= dis.HAVE_ARGUMENT else bytes([op]) for op, arg in self.bytecode),
             tuple(x for x, _ in self.consts.sorted),
-            tuple(self.names.sorted),
-            tuple(self.varnames.sorted),
-            self.filename, name, self.lineno, bytes(lnotab),
-            tuple(self.freevars.sorted),
-            tuple(self.cellvars.sorted)
+            self.names.sorted,
+            self.varnames.sorted,
+            self.filename, name, self.lineno,
+            bytes(a for b in self.lnotab for a in b[:2]),
+            self.freevars.sorted,
+            self.cellvars.sorted
         )
