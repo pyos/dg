@@ -30,7 +30,10 @@ class State (collections.Iterator, collections.deque):
             self.offset    = match.end()
             self.linestart = match.group().endswith('\n')
             q = f(self, match)
-            q is None or self.appendleft(q.at(self, match.start()))
+
+            if q is not None:
+
+                return q.at(self, match.start())
 
         return self.popleft()
 

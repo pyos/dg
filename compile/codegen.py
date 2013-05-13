@@ -1,6 +1,7 @@
 import dis
 import types
 import itertools
+import collections
 
 
 CO_OPTIMIZED = 1   # does not use slow locals
@@ -11,16 +12,31 @@ CO_NESTED    = 16  # uses free variables
 CO_GENERATOR = 32  # uses YIELD_VALUE/YIELD_FROM
 CO_NOFREE    = 64  # does not export free variables
 
-EXTENDED_ARG = dis.opmap['EXTENDED_ARG']
-LOAD_FAST    = dis.opmap['LOAD_FAST']
-STORE_FAST   = dis.opmap['STORE_FAST']
-LOAD_DEREF   = dis.opmap['LOAD_DEREF']
+EXTENDED_ARG      = dis.opmap['EXTENDED_ARG']
+DEREF_OPCODE_DIFF = dis.opmap['LOAD_DEREF'] - dis.opmap['LOAD_FAST']
+
+hasconst = set(dis.hasconst)
+hasfree  = set(dis.hasfree)
+hasname  = set(dis.hasname)
+hasjrel  = set(dis.hasjrel)
+hasjabs  = set(dis.hasjabs)
+haslocal = set(dis.haslocal)
+hascmp   = set(dis.hascompare)
+hasjump  = hasjrel | hasjabs
 
 
 def opcode(op, arg):
 
     return (opcode(EXTENDED_ARG, arg >> 16) if arg >= 0x10000 else b'') + \
            bytes([op, arg % 256, arg // 256 % 256])
+
+
+def codelen(seq):
+
+    return sum(
+        1 if c < dis.HAVE_ARGUMENT else 3 + abs(int(v).bit_length() - 1) // 16 * 3
+        for c, v in seq
+    )
 
 
 #
@@ -88,12 +104,11 @@ class JumpObject (LazyInt):
 
         assert self._value == -1, 'this jump is already targeted'
 
-        self._value = sum(
-            1 if c < dis.HAVE_ARGUMENT else 3 + abs(int(v).bit_length() - 1) // 16 * 3
-            for c, v in self.code[
-                0          if self.absolute else self.start + 1:
+        self._value = codelen(
+            itertools.islice(self.code,
+                0          if self.absolute else self.start + 1,
                 self.start if self.reverse  else len(self.code)
-            ]
+            )
         )
 
         if self.absolute:
@@ -152,13 +167,14 @@ class MutableCode:
         # may be reenabled at runtime by using `STORE_LOCALS`.
         self.slowlocals = not (self.flags & CO_OPTIMIZED)
 
-        self.bytecode = []  # (opcode, argument) pairs
+        self.bytecode = collections.deque()  # (opcode, argument) pairs
+        self.f_locals = collections.defaultdict(set)
         self.m_depth  = 0   # maximum value of `depth` reached
         self.depth    = 0   # approx. amount of items on the value stack
 
         self.filename = '<generated>'
         self.lineno   = 1
-        self.lnotab   = [(0, 0, 0, 0)]
+        self.lnotab   = collections.deque([(0, 0, 0, 0)])
 
     # mark :: StructMixIn -> NoneType
     #
@@ -168,14 +184,13 @@ class MutableCode:
 
         byteoffabs = len(self.bytecode)
         lineoffabs = e.location.start[1] - self.lineno
-        byteoff = byteoffabs - self.lnotab[-1][3]
+        byteoff = codelen(itertools.islice(self.bytecode, self.lnotab[-1][3], None))
         lineoff = lineoffabs - self.lnotab[-1][2]
-
-        self.lnotab += lineoff // 256 * [(0, 255, lineoffabs, byteoffabs)]
-        self.lnotab += byteoff // 256 * [(255, 0, lineoffabs, byteoffabs)]
 
         if lineoff > 0 and byteoff > 0:
 
+            self.lnotab.extend((0, 255, lineoffabs, byteoffabs) for _ in range(lineoff // 256))
+            self.lnotab.extend((255, 0, lineoffabs, byteoffabs) for _ in range(byteoff // 256))
             self.lnotab.append((byteoff % 256, lineoff % 256, lineoffabs, byteoffabs))
 
     # cellify :: Link -> Link
@@ -186,16 +201,9 @@ class MutableCode:
     #
     def cellify(self, name):
 
-        if name in self.varnames:
+        for i, c in self.f_locals[name]:
 
-            var  = self.varnames[name]
-            cell = self.cellvars[name]
-
-            for i, (op, arg) in enumerate(self.bytecode):
-
-                if LOAD_FAST <= op <= STORE_FAST and arg == var:
-
-                    self.bytecode[i] = op + LOAD_DEREF - LOAD_FAST, cell
+            self.bytecode[i] = c, self.cellvars[name]
 
         return name
 
@@ -226,16 +234,20 @@ class MutableCode:
         self.m_depth += max(0, delta)
         self.depth   += delta
 
-        if code in dis.hasjabs + dis.hasjrel:
+        if code in hasjump:
 
-            return JumpObject(self.bytecode, value < 0, code in dis.hasjabs, op=code)
+            return JumpObject(self.bytecode, value < 0, code in hasjabs, op=code)
+
+        if code in haslocal:
+
+            self.f_locals[value].add((len(self.bytecode), code + DEREF_OPCODE_DIFF))
 
         self.bytecode.append((code,
-            dis.cmp_op.index(value)           if code in dis.hascompare else
-            self.names   [value]              if code in dis.hasname else
-            self.varnames[value]              if code in dis.haslocal else
-            self.consts  [value, type(value)] if code in dis.hasconst else
-            value                             if code not in dis.hasfree else
+            dis.cmp_op.index(value)           if code in hascmp else
+            self.names   [value]              if code in hasname else
+            self.varnames[value]              if code in haslocal else
+            self.consts  [value, type(value)] if code in hasconst else
+            value                             if code not in hasfree else
 
             # Free and cell variables use the same index space.
             LazyInt(lambda _, i=self.freevars[value]: i + len(self.cellvars))
