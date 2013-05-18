@@ -2,14 +2,18 @@ import '../compile'
 import '../parse'
 
 
-compile.r.builtins !! 'not' = (self a) -> self.opcode 'UNARY_NOT'         a delta: 1
-compile.r.builtins !! '~'   = (self a) -> self.opcode 'UNARY_INVERT'      a delta: 1
+compile.r.builtins !! 'not' = (self a) -> self.opcode 'UNARY_NOT' a delta: 1
 
+compile.r.bind_hooks !! False !! '~' = (self f _) -> parse.syntax.error 'this operator is unary' f
 compile.r.bind_hooks !! False !! ';' = (self _ q) -> self.opcode 'RETURN_VALUE' None q delta: 1
 compile.r.bind_hooks !! False !! '!' = (self _ q) -> self.call q
-
 compile.r.bind_hooks !! True  !! ';' = (self f *: _) -> parse.syntax.error 'put semicolon on the right side, please' f
 compile.r.bind_hooks !! True  !! '!' = (self f *: _) -> parse.syntax.error 'use "not"' f
+
+compile.r.bind_hooks !! True  !! '~' = (self _ *: args) ->
+  self.loadcall args
+  self.opcode 'UNARY_INVERT' delta: 0
+
 compile.r.bind_hooks !! True  !! '-' = (self _ *: args) ->
   self.loadcall args
   self.opcode 'UNARY_NEGATIVE' delta: 0
