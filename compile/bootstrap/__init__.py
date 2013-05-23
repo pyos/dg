@@ -24,7 +24,7 @@ def unpack(f, args, min, max, keywords, var):
     KERR = 'unknown keywords: {}'
     VERR = 'varargs are not allowed here'
 
-    a, _, _, kw, va, vkw = args, (), (), {}, (), () if f.infix and not f.closed \
+    a, _, _, kw, va, vkw = (args, (), (), {}, (), ()) if f.infix and not f.closed \
                       else parse.syntax.argspec(args, definition=False)
 
     len(a) < min and parse.syntax.error(LOW .format(len(a), min), f)
