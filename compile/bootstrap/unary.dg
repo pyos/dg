@@ -1,19 +1,16 @@
-import '../compile'
-import '../parse'
+PREFIX !! 'not' = (self f args) -> self.loadop 'UNARY_NOT' (unpack f args 1 1 !! 0 !! 0) delta: 1
 
+INFIXR !! ';' = (self f _) -> parse.syntax.error 'put semicolon on the right side, please' f
+INFIXR !! '!' = (self f _) -> parse.syntax.error 'use "not"' f
+INFIXL !! '~' = (self f _) -> parse.syntax.error 'this operator is unary' f
 
-compile.r.builtins !! 'not' = (self a) -> self.opcode 'UNARY_NOT' a delta: 1
+INFIXL !! ';' = (self _ q) -> self.loadop 'RETURN_VALUE' None q delta: 1
+INFIXL !! '!' = (self _ q) -> self.call q
 
-compile.r.bind_hooks !! False !! '~' = (self f _) -> parse.syntax.error 'this operator is unary' f
-compile.r.bind_hooks !! False !! ';' = (self _ q) -> self.opcode 'RETURN_VALUE' None q delta: 1
-compile.r.bind_hooks !! False !! '!' = (self _ q) -> self.call q
-compile.r.bind_hooks !! True  !! ';' = (self f *: _) -> parse.syntax.error 'put semicolon on the right side, please' f
-compile.r.bind_hooks !! True  !! '!' = (self f *: _) -> parse.syntax.error 'use "not"' f
-
-compile.r.bind_hooks !! True  !! '~' = (self _ *: args) ->
+INFIXR !! '~' = (self _ args) ->
   self.loadcall args
-  self.opcode 'UNARY_INVERT' delta: 0
+  self.loadop 'UNARY_INVERT' delta: 0
 
-compile.r.bind_hooks !! True  !! '-' = (self _ *: args) ->
+INFIXR !! '-' = (self _ args) ->
   self.loadcall args
-  self.opcode 'UNARY_NEGATIVE' delta: 0
+  self.loadop 'UNARY_NEGATIVE' delta: 0

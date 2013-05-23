@@ -96,7 +96,7 @@ def import_(self, _, name, qualified=None):
 
 for f in [
        'shortcuts.dg'
-  , 'conditionals.dg',      #'unary.dg'
+  , 'conditionals.dg',      'unary.dg'
   #,       'binary.dg', 'comparison.dg'
   #,      'inherit.dg',     'switch.dg', 'where.dg'
   #,        'loops.dg',     'unsafe.dg',  'with.dg', 'yield.dg'
