@@ -1,6 +1,7 @@
 import os
 import imp
 import marshal
+import posixpath
 
 from ..core import CodeGenerator, INFIXL, INFIXR, PREFIX
 from ...    import parse
@@ -9,29 +10,32 @@ from ...    import parse
 PREFIX.update({
     '\n':  lambda self, _, args: self.chain   (*args)
   , '':    lambda self, _, args: self.call    (*args, rightbind=True)
-  , '=':   lambda self, f, args: self.store   (*unpack(f, args, 2, 2, set(), False)[0])
-  , '->':  lambda self, f, args: self.function(*unpack(f, args, 2, 2, set(), False)[0])
+  , '=':   lambda self, f, args: self.store   (*unpack(f, args, 2, 2)[0])
+  , '->':  lambda self, f, args: self.function(*unpack(f, args, 2, 2)[0])
 
-  , '.':      lambda self, f, args: getattr(self, f, *unpack(f, args, 2, 2, set(), False)[0])
-  , 'import': lambda self, f, args: import_(self, f, *unpack(f, args, 1, 2, set(), False)[0])
+  , '.':      lambda self, f, args: getattr(self, f, *unpack(f, args, 2, 2)[0])
+  , 'import': lambda self, f, args: import_(self, f, *unpack(f, args, 1, 2)[0])
 })
 
 
-def unpack(f, args, min, max, keywords, var):
+def unpack(f, args, min, max, keywords=None, var=False):
 
     LOW  = 'not enough arguments (got {}, min. {})'
     HIGH = 'too many aguments (got {}, max. {})'
     KERR = 'unknown keywords: {}'
     VERR = 'varargs are not allowed here'
 
-    a, _, _, kw, va, vkw = (args, (), (), {}, (), ()) if f.infix and not f.closed \
-                      else parse.syntax.argspec(args, definition=False)
+    a, _, _, kw, va, vkw = \
+      (args, (), (), {}, (), ()) if keywords is None or (f.infix and not f.closed) else \
+      parse.syntax.argspec(args, definition=False)
 
     len(a) < min and parse.syntax.error(LOW .format(len(a), min), f)
     len(a) > max and parse.syntax.error(HIGH.format(len(a), max), f)
 
-    unknown = kw.keys() - keywords
-    unknown and parse.syntax.error(KERR.format(unknown), f)
+    if kw:
+        unknown = kw.keys() - keywords
+        unknown and parse.syntax.error(KERR.format(unknown), f)
+
     not var and (va or vkw) and parse.syntax.error(VERR, f)
     return a, kw, va, vkw
     
@@ -113,7 +117,8 @@ for f in [
 
         os.makedirs(os.path.dirname(q), exist_ok=True)
         p = CodeGenerator('<module>', '')
-        p.opcode('RETURN_VALUE', parse.fd(open(f)), delta=0)
-        marshal.dump(p.compiled, open(q, 'wb'))
+        p.loadop('RETURN_VALUE', parse.fd(open(f)), delta=0)
+        c = p.compiled
+        marshal.dump(c, open(q, 'wb'))
 
     eval(c, {'__package__': __package__, 'INFIXL': INFIXL, 'INFIXR': INFIXR, 'PREFIX': PREFIX, 'parse': parse, 'unpack': unpack})
