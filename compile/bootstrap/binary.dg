@@ -1,54 +1,55 @@
-import '../compile'
-import '../parse'
-import '../const'
+binary = g -> (self f xs) ->
+  (a, b), _, _, _ = unpack f xs 2 2
+  g self f a b
 
-
-stacked = (c self a b) -> self.opcode c a b delta: 1
-inplace = (c self a b) ->
-  self.opcode c a b delta: 1
+stacked = c -> binary (self _ a b) -> (self.loadop c a b delta: 1)
+inplace = c -> binary (self _ a b) ->
+  self.loadop c a b     delta: 1
+  self.loadop 'DUP_TOP' delta: 1
   self.store_top a
 
 
 # NOTE ',' is unfixed
-compile.r.builtins !! ',' = (self *: xs) -> self.opcode 'BUILD_TUPLE' *: xs delta: 1
-compile.r.builtins !! '$' = (self a b) ->
-  is_call = a :: parse.tree.Expression and not a.closed and self.builtins.get (a !! 0) is compile.r.call
+PREFIX !! ',' = (self f xs) -> self.loadop 'BUILD_TUPLE' *: xs delta: 1
+PREFIX !! '$' = binary (self f a b) ->
+  is_call = a :: parse.tree.Expression and not a.closed and a !! 0 == ''
   self.call a b          if not is_call
   self.call *: (a + list' b) if is_call
 
-compile.r.builtins !! '!!'  = bind stacked 'BINARY_SUBSCR'
-compile.r.builtins !! '+'   = bind stacked 'BINARY_ADD'
-compile.r.builtins !! '-'   = bind stacked 'BINARY_SUBTRACT'
-compile.r.builtins !! '*'   = bind stacked 'BINARY_MULTIPLY'
-compile.r.builtins !! '**'  = bind stacked 'BINARY_POWER'
-compile.r.builtins !! '/'   = bind stacked 'BINARY_TRUE_DIVIDE'
-compile.r.builtins !! '//'  = bind stacked 'BINARY_FLOOR_DIVIDE'
-compile.r.builtins !! '%'   = bind stacked 'BINARY_MODULO'
-compile.r.builtins !! '&'   = bind stacked 'BINARY_AND'
-compile.r.builtins !! '^'   = bind stacked 'BINARY_XOR'
-compile.r.builtins !! '|'   = bind stacked 'BINARY_OR'
-compile.r.builtins !! '<<'  = bind stacked 'BINARY_LSHIFT'
-compile.r.builtins !! '>>'  = bind stacked 'BINARY_RSHIFT'
+PREFIX !! '!!'  = stacked 'BINARY_SUBSCR'
+PREFIX !! '+'   = stacked 'BINARY_ADD'
+PREFIX !! '-'   = stacked 'BINARY_SUBTRACT'
+PREFIX !! '*'   = stacked 'BINARY_MULTIPLY'
+PREFIX !! '**'  = stacked 'BINARY_POWER'
+PREFIX !! '/'   = stacked 'BINARY_TRUE_DIVIDE'
+PREFIX !! '//'  = stacked 'BINARY_FLOOR_DIVIDE'
+PREFIX !! '%'   = stacked 'BINARY_MODULO'
+PREFIX !! '&'   = stacked 'BINARY_AND'
+PREFIX !! '^'   = stacked 'BINARY_XOR'
+PREFIX !! '|'   = stacked 'BINARY_OR'
+PREFIX !! '<<'  = stacked 'BINARY_LSHIFT'
+PREFIX !! '>>'  = stacked 'BINARY_RSHIFT'
 
-compile.r.builtins !! '!!=' = bind inplace 'BINARY_SUBSCR'
-compile.r.builtins !! '+='  = bind inplace 'INPLACE_ADD'
-compile.r.builtins !! '-='  = bind inplace 'INPLACE_SUBTRACT'
-compile.r.builtins !! '*='  = bind inplace 'INPLACE_MULTIPLY'
-compile.r.builtins !! '**=' = bind inplace 'INPLACE_POWER'
-compile.r.builtins !! '/='  = bind inplace 'INPLACE_TRUE_DIVIDE'
-compile.r.builtins !! '//=' = bind inplace 'INPLACE_FLOOR_DIVIDE'
-compile.r.builtins !! '%='  = bind inplace 'INPLACE_MODULO'
-compile.r.builtins !! '&='  = bind inplace 'INPLACE_AND'
-compile.r.builtins !! '^='  = bind inplace 'INPLACE_XOR'
-compile.r.builtins !! '|='  = bind inplace 'INPLACE_OR'
-compile.r.builtins !! '<<=' = bind inplace 'INPLACE_LSHIFT'
-compile.r.builtins !! '>>=' = bind inplace 'INPLACE_RSHIFT'
+PREFIX !! '!!=' = inplace 'BINARY_SUBSCR'
+PREFIX !! '+='  = inplace 'INPLACE_ADD'
+PREFIX !! '-='  = inplace 'INPLACE_SUBTRACT'
+PREFIX !! '*='  = inplace 'INPLACE_MULTIPLY'
+PREFIX !! '**=' = inplace 'INPLACE_POWER'
+PREFIX !! '/='  = inplace 'INPLACE_TRUE_DIVIDE'
+PREFIX !! '//=' = inplace 'INPLACE_FLOOR_DIVIDE'
+PREFIX !! '%='  = inplace 'INPLACE_MODULO'
+PREFIX !! '&='  = inplace 'INPLACE_AND'
+PREFIX !! '^='  = inplace 'INPLACE_XOR'
+PREFIX !! '|='  = inplace 'INPLACE_OR'
+PREFIX !! '<<=' = inplace 'INPLACE_LSHIFT'
+PREFIX !! '>>=' = inplace 'INPLACE_RSHIFT'
 
-compile.r.builtins !! '!!~' = (self a b) -> self.opcode 'DELETE_SUBSCR' None a b delta: 1
-compile.r.builtins !! '.~'  = (self a b) ->
-  parse.syntax.error const.ERR.NONCONST_ATTR b if not (b :: parse.tree.Link)
-  self.opcode 'DELETE_ATTR' None a arg: b delta: 1
+PREFIX !! '!!~' = binary (self _ a b) -> (self.loadop 'DELETE_SUBSCR' None a b delta: 1)
+PREFIX !! '.~'  = binary (self _ a b) ->
+  parse.syntax.error 'not an attribute' b if not (b :: parse.tree.Link)
+  self.loadop 'DELETE_ATTR' None a arg: b delta: 1
 
-compile.r.builtins !! '!.'  = (self a b) ->
-  self.call   a
-  self.ldattr b
+PREFIX !! '!.'  = binary (self _ a b) ->
+  parse.syntax.error 'not an attribute' b if not (b :: parse.tree.Link)
+  self.call                    a
+  self.loadop 'LOAD_ATTR' arg: b delta: 0
