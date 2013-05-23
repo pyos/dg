@@ -1,46 +1,41 @@
-import sys
 import posixpath
 import collections
 
-from . import codegen
+from .  import codegen
 from .. import const, parse
 
 
-class Compiler:
+class CodeGenerator (codegen.MutableCode):
 
-    @classmethod
-    # Compile a parser output tree into an immutable code object.
-    #
-    # :param into: a temporary mutable code object to use.
-    #
-    def compile(cls, expr, into=None, name='<module>', qualname='', hook=lambda self: 0):
+    def __init__(self, *args, **kwargs):
 
-        self = cls()
-        self.assigned_to    = None
-        self.qualified_name = qualname
-        self.code = codegen.MutableCode() if into is None else into
-        self.code.filename = expr.location.filename
-        self.code.lineno   = expr.location.start[1]
-        hook(self)
-        self.opcode('RETURN_VALUE', expr, delta=0)
-        return self.code.compile(name)
+        super().__init__(*args, **kwargs)
 
-    def name(self, default, qname=''):
+        self._inner_assignment = None
 
-        name = default if self.assigned_to is None else repr(self.assigned_to)
-        return qname + (qname and '.') + ('<{}>' if ' ' in name else '{}') .format(name)
+    def child_name(self, default):
+        '''Create a name for a code object that is inside this one.
 
-    # Push the results of some expressions onto the stack.
-    #
-    # NOTE `load(a=b)` loads string `'a'`, then the result of `b`.
-    # NOTE `load`ing an expression multiple times evaluates it multiple times.
-    #   Use `DUP_TOP` opcode when necessary.
-    #
-    def load(self, *es, **kws):
+            :param default: the name to fall back to if none is specified
+               in the source code.
+
+        '''
+        name = str(self._inner_assignment or default)
+        return ('{}' if name.isidentifier() else '<{}>').format(name)
+
+    def load(self, *es):
+        '''Push the result of evaluating some expressions onto the stack.
+
+            :param es: expressions to evaluate.
+
+            NOTE this method always evaluates the expression again, even if
+              it was already `load`ed. Use `DUP_TOP` when necessary.
+
+        '''
 
         for e in es:
 
-            hasattr(e, 'location') and self.code.mark(e)
+            hasattr(e, 'location') and self.mark(e)
 
             if isinstance(e, parse.tree.Expression):
 
@@ -48,328 +43,240 @@ class Compiler:
 
             elif isinstance(e, parse.tree.Link):
 
-                self.opcode(
-                    'LOAD_DEREF' if e in self.code.cellvars else
-                    'LOAD_FAST'  if e in self.code.varnames else
-                    'LOAD_DEREF' if e in self.code.enclosed else
-                    'LOAD_NAME'  if self.code.slowlocals    else
+                self.loadop(
+                    'LOAD_DEREF' if e in self.cellvars else
+                    'LOAD_FAST'  if e in self.varnames else
+                    'LOAD_DEREF' if e in self.enclosed else
+                    'LOAD_NAME'  if self.slowlocals    else
                     'LOAD_GLOBAL', arg=e, delta=1
                 )
 
             elif isinstance(e, parse.tree.Constant):
 
-                self.opcode('LOAD_CONST', arg=e.value, delta=1)
+                self.loadop('LOAD_CONST', arg=e.value, delta=1)
 
             else:
 
-                self.opcode('LOAD_CONST', arg=e, delta=1)
+                self.loadop('LOAD_CONST', arg=e, delta=1)
 
-        for k, v in kws.items():
+    def loadop(self, opcode, *args, delta, arg=...):
+        '''Add an opcode, feeding it some items from the value stack.
 
-            self.load(str(k), v)
+            :param opcode: see :meth:`codegen.MutableCode.append`.
+            :param arg:    see :meth:`codegen.MutableCode.append`. Default: `len(args)`.
+            :param args:   items to push onto the stack first.
+            :param delta:  value stack size difference.
 
-    # Append a single opcode with some non-integer arguments.
-    #
-    # :param args: objects to pass to :meth:`load`.
-    #
-    # :param delta: how much items the opcode will pop **excluding :obj:`args`**
-    #
-    # :param arg: the argument to that opcode, defaults to `len(args)`.
-    #
-    def opcode(self, opcode, *args, delta, **kwargs):
+            NOTE it's impossible use `Ellipsis` as an argument.
+              However, since the only opcode that can make use of it
+              is `LOAD_CONST`, the use of `LOAD_NAME "Ellipsis"` is advised.
+
+        '''
 
         self.load(*args)
-        return self.code.append(opcode, kwargs.get('arg', len(args)), -len(args) + delta)
+        return self.append(opcode, len(args) if arg is ... else arg, delta - len(args))
 
-    # Store whatever is on top of the stack in a variable.
-    #
-    # :param dup: whether to leave the stored object on the stack afterwards.
-    #
-    # Supported name schemes::
-    #
-    #   name = ...              | variable assignment
-    #   object.name = ...       | object.__setattr__('name', ...)
-    #   object !! object = ...  | object.__setitem__(object, ...)
-    #   scheme, ... = ...       | recursive iterable unpacking
-    #
-    def store_top(self, var, dup=True):
+    def store_top(self, var):
+        '''Take an item off the value stack, put it in a variable.
 
-        dup and self.opcode('DUP_TOP', delta=1)
+            :param var: one of the supported left-hand statements of `=`.
 
-        type, var, args = parse.syntax.assignment_target(var)
+        '''
+
+        type, target, misc = parse.syntax.assignment_target(var)
 
         if type == const.AT.UNPACK:
 
-            ln, star = args
+            # `target` -- a list of items
+            # `misc`   -- number of items to the right and left of a starred one
+            ln, star = misc
+            #     w/o a starred item                 w/ a starred item
             op  = 'UNPACK_SEQUENCE' if star < 0 else 'UNPACK_EX'
             arg = ln                if star < 0 else star + 256 * (ln - star - 1)
-            self.opcode(op, arg=arg, delta=ln - 1)
+            self.loadop(op, arg=arg, delta=ln - 1)
 
-            for item in var:
+            for item in target:
 
-                self.store_top(item, dup=False)
+                self.store_top(item)
 
         elif type == const.AT.ATTR:
 
-            self.opcode('STORE_ATTR', args, arg=var, delta=-1)
+            # `target` -- the attribute
+            # `misc`   -- its owner
+            self.loadop('STORE_ATTR', misc, arg=target, delta=-1)
 
         elif type == const.AT.ITEM:
 
-            self.opcode('STORE_SUBSCR', args, var, delta=-1)
+            # `target` -- the key
+            # `misc`   -- the container
+            self.loadop('STORE_SUBSCR', misc, target, delta=-1)
 
         else:
 
-            var in self.builtins   and parse.syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
-          # var in self.fake_attrs and parse.syntax.error(const.ERR.BUILTIN_ASSIGNMENT, var)
-
-            self.opcode(
-                'STORE_DEREF' if var in self.code.enclosed else
-                'STORE_DEREF' if var in self.code.cellvars else
-                'STORE_NAME'  if self.code.slowlocals else
-                'STORE_FAST', arg=var, delta=-1
+            # `target` -- name of the variable
+            # `misc`   -- unused
+            self.loadop(
+                # XXX isn't it bad design if a `=` in a closure
+                #     modifies enclosed variables by default?
+                'STORE_DEREF' if target in self.enclosed else
+                'STORE_DEREF' if target in self.cellvars else
+                'STORE_NAME'  if self.slowlocals else
+                'STORE_FAST', arg=target, delta=-1
             )
 
-    # Create a function from a given immutable code object and default arguments.
-    #
-    # Note that this completely freezes its `freevars`, meaning that
-    # all variables created after the code object will be ignored
-    # by the enclosed function.
-    #
     def make_function(self, code, defaults, kwdefaults):
+        '''Create a function given an immutable code object.
 
-        self.load(**kwdefaults)
+            :param code:       a `CodeType`.
+            :param defaults:   as in `FunctionType.__defaults__`.
+            :param kwdefaults: as in `FunctionType.__kwdefaults__`.
+
+            FIXME since there's no way to modify `co_freevars` anymore,
+              any local variables created after this function will be ignored.
+              Yes, this breaks recursion unless you create a variable by
+              assigning something to it first.
+
+        '''
+
+        for k, v in kwdefaults.items():
+
+            self.load(str(k), v)
+
         self.load(*defaults)
 
-        if code.co_freevars:
+        # I used to separate MAKE_CLOSURE from MAKE_FUNCTION,
+        # but it turns out there's no real difference. See `Python/ceval.c`.
+        for freevar in code.co_freevars:
 
-            for freevar in code.co_freevars:
+            self.loadop('LOAD_CLOSURE', arg=self.cellify(freevar), delta=1)
 
-                self.opcode('LOAD_CLOSURE', arg=self.code.cellify(freevar), delta=1)
-
-            self.opcode('BUILD_TUPLE', arg=len(code.co_freevars), delta=-len(code.co_freevars) + 1)
-
-        self.opcode(
-            'MAKE_CLOSURE' if code.co_freevars else 'MAKE_FUNCTION', code,
-            # Python <  3.3: MAKE_FUNCTION(code)
-            # Python >= 3.3: MAKE_FUNCTION(code, qualname)
-            *[self.name(code.co_name, self.qualified_name)] if sys.hexversion >= 0x03030000 else [],
+        self.loadop('BUILD_TUPLE', arg=len(code.co_freevars), delta=1 - len(code.co_freevars))
+        self.loadop(
+            # Python 3.3+ only now.
+            'MAKE_CLOSURE', code, self.qualname + '.' + code.co_name,
             arg  =    len(defaults) + 256 * len(kwdefaults),
             delta=1 - len(defaults) -   2 * len(kwdefaults) - bool(code.co_freevars)
         )
 
-    # Load an attribute given its name.
-    #
-    # Default behavior is to use LOAD_ATTR(name).
-    # Built-in functions may override that.
-    #
-    def ldattr(self, name):
+    def nativecall(self, f, args, preloaded, infix):
+        '''Call a function, ignore all macros.
 
-        isinstance(name, parse.tree.Link) or parse.syntax.error(const.ERR.NONCONST_ATTR, name)
-        self.fake_attrs[name](self) if name in self.fake_attrs else \
-        self.opcode('LOAD_ATTR', arg=name, delta=0)
+            :param args: a list of unparsed (i.e. `StructMixIn`) arguments.
+            :param preloaded: how many arguments are already on the stack.
+            :param infix: whether to disable keyword arguments and varargs.
 
-    def nativecall(self, args, preloaded, infix=False):
+        '''
 
-        defs  = args, None, None, {}, (), ()
-        args, _, _, kwargs, vararg, varkwarg = defs if infix else parse.syntax.argspec(args, definition=False)
+        (a, _, _, kw, va, vkw) = (args, (), (), {}, (), ()) if infix \
+                            else parse.syntax.argspec(args, definition=False)
 
-        self.load(*args, **kwargs)
-        self.opcode(
-            'CALL_FUNCTION' + ('_VAR' if vararg else '') + ('_KW' if varkwarg else ''),
-            *vararg + varkwarg,
-            arg  = len(args) + 256 * len(kwargs) + preloaded,
-            delta=-len(args) -   2 * len(kwargs) - preloaded
+        self.load(f, *args)
+
+        for k, v in kw.items():
+
+            self.load(str(k), v)
+
+        self.loadop(
+            'CALL_FUNCTION' + '_VAR' * bool(va) + '_KW' * bool(vkw), *va + vkw,
+            arg  = len(a) + 256 * len(kw) + preloaded,
+            # Minus callable, plus result.
+            delta=-len(a) -   2 * len(kw) - preloaded
         )
 
     def loadcall(self, args):
+        '''If there's a single object, load it. Otherwise, call a function.'''
 
         self.load(*args) if len(args) < 2 else self.call(*args)
 
-    # Left-bind `f` with `arg`.
-    #
-    # Same as `bind f arg`.
-    #
     def infixbindl(self, f, arg):
+        '''Default implementation of a left infix bind.'''
 
-        self.opcode('CALL_FUNCTION', parse.tree.Link('bind'), f, arg, arg=2, delta=-1)
+        self.loadop('CALL_FUNCTION', parse.tree.Link('bind'), f, arg, arg=2, delta=-1)
 
-    # Right-bind `f` with `args`.
-    #
-    # No direct equivalent; `R a b c` means `infixbindr(R, a, b, c)`
-    # and is interpreted as `R (a b c)` by default.
-    #
-    def infixbindr(self, f, *args):
+    def infixbindr(self, f, args):
+        '''Default implementation of a right infix bind.'''
 
         self.load(parse.tree.Link('bind'))
-        self.opcode('CALL_FUNCTION', parse.tree.Link('flip'), f, arg=1, delta=1)
+        self.loadop('CALL_FUNCTION', parse.tree.Link('flip'), f, arg=1, delta=1)
         self.loadcall(args)
-        self.opcode('CALL_FUNCTION', arg=2, delta=-1)
+        self.loadop('CALL_FUNCTION', arg=2, delta=-1)
 
-  ### ESSENTIAL BUILT-INS
-
-    #
-    # function argument ... keyword: value *: varargs **: varkwargs
-    #
-    # Call a (possibly built-in) function.
-    #
     def call(self, f, *args, rightbind=False):
+        '''Call a function or delegate to a macro.
 
-        if f.infix and f == '':  # empty link can't be closed
+            function argument ... keyword: value *: varargs **: varkwargs
 
-            (f, *args), rightbind = args, True
+        '''
 
-        if f.infix and not f.closed and (rightbind or len(args) == 1):
+        return self.call(*args, rightbind=True) if f.infix and f == '' \
+          else INFIXR[f](self, f,  args) if f.infix and not f.closed and rightbind      \
+          else INFIXL[f](self, f, *args) if f.infix and not f.closed and len(args) == 1 \
+          else PREFIX[f](self, f,  args) if isinstance(f, parse.tree.Link) and f in PREFIX \
+          else self.nativecall(f, args, 0, f.infix and not f.closed)
 
-            self.bind_hooks[rightbind][f](self, f, *args)
+    def store(self, target, expr):
+        '''Store the result of `expr` in `target`.
 
-        elif isinstance(f, parse.tree.Link) and f in self.builtins:
+            target = expr
 
-            self.builtins[f](self, *args)
+        '''
 
-        else:
+        self._inner_assignment, e = repr(target), self._inner_assignment
+        self.loadop('DUP_TOP', expr, delta=2)
+        self._inner_assignment = e
+        self.store_top(target)
 
-            self.load(f)
-            self.nativecall(args, 0, f.infix and not f.closed)
-
-    #
-    # name = expression
-    #
-    # Store the result of `expression` in `name`.
-    #
-    def store(self, var, expr):
-
-        e = self.assigned_to
-        self.assigned_to = var
-        self.load(expr)
-        self.assigned_to = e
-        self.store_top(var)
-
-    #
-    # argspec -> body
-    #
-    # Create a function with a given argument specification
-    # that evaluates its body on call.
-    #
-    # `argspec` may be empty (i.e. `Constant(None)`.)
-    #
     def function(self, args, body):
+        '''Create a function on the value stack.
 
-        args, kwargs, defs, kwdefs, varargs, varkwargs = parse.syntax.argspec(args, definition=True)
-        argnames, targets = [], {}
+            args -> body
 
-        for index, arg in enumerate(args):
+        '''
 
-            if isinstance(arg, parse.tree.Link) and arg not in argnames:
+        a, kw, da, dkw, va, vkw = parse.syntax.argspec(args, definition=True)
+        n = []
+        t = {}
 
-                argnames.append(arg)
+        for index, arg in enumerate(a):
+
+            if isinstance(arg, parse.tree.Link) and arg not in n:
+
+                n.append(arg)
 
             else:
 
-                argnames.append('pattern-{}'.format(index))
-                targets['pattern-{}'.format(index)] = arg
+                n.append('pattern-' + str(index))
+                targets['pattern-' + str(index)] = arg
 
-        def hook(self):
+        code = CodeGenerator(self.child_name('<lambda>'), self.qualname,True, n, kw, va, vkw, self)
 
-            for name, pattern in targets.items():
+        getattr(self, 'cellhook', lambda _: None)(code)
 
-                self.opcode('LOAD_FAST', arg=name, delta=1)
-                self.store_top(pattern, dup=False)
+        for name, pattern in targets.items():
 
-        code = codegen.MutableCode(True, argnames, kwargs, varargs, varkwargs, self.code)
+            code.loadop('LOAD_FAST', arg=name, delta=1)
+            code.store_top(pattern)
 
-        getattr(self.code, 'cellhook', lambda _: None)(code)
+        code.loadop('RETURN_VALUE', body, delta=0)
+        self.make_function(code.compiled, da, dkw)
 
-        code = self.compile(body, code, self.name('<lambda>'), self.name('<lambda>', self.qualified_name) + '.<locals>', hook)
-        self.make_function(code, defs, kwdefs)
-
-    #
-    # object.attribute
-    #
-    # Retrieve an attribute of some object.
-    #
-    def getattr(self, a, b):
-
-        self.load(a)
-        self.ldattr(b)
-
-    #
-    # expression_1 (insert line break here) expression_2
-    #
-    # Evaluate some expressions in a strict order, return the value of the last one.
-    #
     def chain(self, a, *bs):
+        '''Evaluate expressions one by one, discarding all results but last.
+
+            a
+            b1
+            b2
+            ...
+
+        '''
 
         self.load(a)
 
         for b in bs:
 
-            self.opcode('POP_TOP', delta=-1)
+            self.loadop('POP_TOP', delta=-1)
             self.load(b)
 
-    #
-    # import '/global_module'
-    # import '/global_module/with_submodule' qualified
-    # import 'relative_module'
-    # import '../relative_module_in_parent_package'
-    #
-    # Import a module given a POSIX-style path.
-    # Normally, this function works as `from ... import ...` in Python;
-    # however, supplying "qualified" keyword after a module name makes it
-    # work like a simple `import`. (This only affects paths with multiple slashes.)
-    #
-    def import_(self, name, qualified=None):
-
-        isinstance(name, parse.tree.Constant) or parse.syntax.error('should be constant', name)
-        isinstance(name.value, str) or parse.syntax.error('should be a string', name)
-
-        qualified in (None, 'qualified') or parse.syntax.error('"qualified"', name)
-
-        path = posixpath.normpath(name.value).split(posixpath.sep)
-
-        parent = 1
-
-        while path and not path[0]:
-
-            path.pop(0)
-            parent = 0
-
-        while path and path[0] == posixpath.curdir:
-
-            path.pop(0)
-
-        while path and path[0] == posixpath.pardir:
-
-            path.pop(0)
-            parent += 1
-
-        path or parse.syntax.error('no module name', name)
-
-        if qualified:
-
-            parent and parse.syntax.error('cannot perform qualified relative imports', qualified)
-            self.opcode('IMPORT_NAME', 0, None, arg='.'.join(path), delta=1)
-            self.store_top(parse.tree.Link(path[0]).before(name))
-
-        else:
-
-            *mod, mname = path
-            self.opcode('IMPORT_NAME', parent, (mname,) if mod else None, arg='.'.join(mod) or mname, delta=-1)
-            mod and self.opcode('IMPORT_FROM', arg=mname, delta=1)
-            self.store_top(parse.tree.Link(mname).before(name))
-            mod and self.opcode('ROT_TWO', delta=0)
-            mod and self.opcode('POP_TOP', delta=-1)
-
-    builtins = {
-        '':   call
-      , '=':  store
-      , '.':  getattr
-      , '\n': chain
-      , '->': function
-      , 'import': import_
-    }
-
-    fake_attrs = {}
-    bind_hooks = {
-        False: collections.defaultdict(lambda: Compiler.infixbindl)
-      , True:  collections.defaultdict(lambda: Compiler.infixbindr)
-    }
+PREFIX = {}
+INFIXL = collections.defaultdict(lambda: Compiler.infixbindl)
+INFIXR = collections.defaultdict(lambda: Compiler.infixbindr)
