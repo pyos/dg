@@ -278,5 +278,5 @@ class CodeGenerator (codegen.MutableCode):
             self.load(b)
 
 PREFIX = {}
-INFIXL = collections.defaultdict(lambda: Compiler.infixbindl)
-INFIXR = collections.defaultdict(lambda: Compiler.infixbindr)
+INFIXL = collections.defaultdict(lambda: CodeGenerator.infixbindl)
+INFIXR = collections.defaultdict(lambda: CodeGenerator.infixbindr)
