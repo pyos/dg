@@ -1,4 +1,3 @@
-import posixpath
 import collections
 
 from .  import codegen
@@ -20,6 +19,7 @@ class CodeGenerator (codegen.MutableCode):
                in the source code.
 
         '''
+
         name = str(self._inner_assignment or default)
         return ('{}' if name.isidentifier() else '<{}>').format(name)
 
@@ -170,7 +170,7 @@ class CodeGenerator (codegen.MutableCode):
         (a, _, _, kw, va, vkw) = (args, (), (), {}, (), ()) if infix \
                             else parse.syntax.argspec(args, definition=False)
 
-        self.load(f, *args)
+        self.load(f, *a)
 
         for k, v in kw.items():
 
@@ -252,7 +252,7 @@ class CodeGenerator (codegen.MutableCode):
 
         getattr(self, 'cellhook', lambda _: None)(code)
 
-        for name, pattern in targets.items():
+        for name, pattern in t.items():
 
             code.loadop('LOAD_FAST', arg=name, delta=1)
             code.store_top(pattern)
