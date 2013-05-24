@@ -246,7 +246,7 @@ class CodeGenerator (codegen.MutableCode):
             else:
 
                 n.append('pattern-' + str(index))
-                targets['pattern-' + str(index)] = arg
+                t['pattern-' + str(index)] = arg
 
         code = CodeGenerator(self.child_name('<lambda>'), self.qualname,True, n, kw, va, vkw, self)
 
