@@ -1,42 +1,23 @@
 import '/builtins'
 import '/collections'
 
-import '../compile'
-import '../parse'
+inf = float 'inf'
 
 
 #
-# while condition body...
+# while condition body
 #
 # Evaluate the body while condition is true.
 #
-compile.r.builtins !! 'while' = (self cond *: block) ->
-  self.load None
-  exit_ptr = self.opcode 'SETUP_LOOP'             delta: 0
-  cond_ptr = self.opcode 'JUMP_ABSOLUTE'  arg: -1 delta: 0
-  else_ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
-  self.chain *: block if block else self.load None
-  self.opcode 'ROT_TWO' delta:  0
-  self.opcode 'POP_TOP' delta: -1
-  cond_ptr!
-  else_ptr!
-  self.opcode 'POP_BLOCK' delta: 0
-  exit_ptr!
+PREFIX !! 'while' = (self f args) ->
+  (cond, *body), _, _, _ = unpack f args 1 inf
 
-
-#
-# exhaust: iterable
-#
-# Fetch items from an iterable until it's exhausted.
-#
-builtins.exhaust = bind collections.deque maxlen: 0
-
-#
-# for: iterable function
-#
-# Eagerly call function for each item of an iterable,
-# then return the unmodified iterable.
-#
-builtins.for = (iterable function) ->
-  exhaust $ map function iterable
-  iterable
+  self.load None  # This will be the value returned by the last iteration.
+  to_cond = self.loadop 'JUMP_FORWARD'             delta:  0
+  to_body = self.loadop 'POP_JUMP_IF_TRUE' arg: -1 delta: -1  # delta = ???
+  self.chain *: body if body else self.load None
+  self.loadop 'ROT_TWO' delta:  0
+  self.loadop 'POP_TOP' delta: -1
+  to_cond!
+  self.load cond
+  to_body!

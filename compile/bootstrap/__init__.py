@@ -98,7 +98,7 @@ for f in [
        'shortcuts.dg'
   , 'conditionals.dg',      'unary.dg'
   ,       'binary.dg',     'switch.dg', 'inherit.dg'
-  ,   'comparison.dg',      'where.dg'
+  ,   'comparison.dg',      'where.dg',   'loops.dg'
   #,        'loops.dg',     'unsafe.dg',       'with.dg', 'yield.dg'
   #,      'imphook.dg', 'functional.dg'
 ]:
