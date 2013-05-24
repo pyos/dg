@@ -1,18 +1,19 @@
-import '../compile'
-import '../parse'
-
+import '../core/CodeGenerator'
 
 #
-# expr where clause
+# doStuff where something
 #
 # Syntactic sugar for
 #
 #    call () ->
-#      clause
-#      expr
+#      something
+#      doStuff
 #
-compile.r.builtins !! 'where' = (self expr clause) ->
-  self.function (parse.tree.Constant None) $
-    e = parse.tree.Expression $ list' (parse.tree.Link '\n') clause expr
-    e.in_between expr clause
-  self.opcode 'CALL_FUNCTION' arg: 0 delta: 0
+PREFIX !! 'where' = (self f args) ->
+  (end, start), _, _, _ = unpack f args 2 2
+
+  code = CodeGenerator (self.child_name '<lambda>') self.qualname True cell: self
+  code.loadop 'POP_TOP'      start delta: 0
+  code.loadop 'RETURN_VALUE' end   delta: 0
+  self.make_function code.compiled list! dict!
+  self.loadop 'CALL_FUNCTION' arg: 0 delta: 0
