@@ -21,7 +21,8 @@ class CodeGenerator (codegen.MutableCode):
         '''
 
         name = str(self._inner_assignment or default)
-        return ('{}' if name.isidentifier() else '<{}>').format(name)
+        isid = name.isidentifier() or (name.startswith('<') and name.endswith('>'))
+        return ('{}' if isid else '<{}>').format(name)
 
     def load(self, *es):
         '''Push the result of evaluating some expressions onto the stack.
