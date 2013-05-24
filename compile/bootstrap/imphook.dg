@@ -5,8 +5,8 @@ import '/marshal'
 import '/itertools'
 import '/importlib/util' qualified
 
-import '../compile'
-import '../parse'
+import '../../compile'
+import '../../parse'
 
 
 sys.meta_path.insert 0 $ inherit str $

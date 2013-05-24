@@ -100,7 +100,7 @@ for f in [
   ,       'binary.dg', 'switch.dg', 'inherit.dg'
   ,   'comparison.dg',  'where.dg',   'loops.dg', 'yield.dg'
   ,   'functional.dg', 'unsafe.dg',    'with.dg'
-  #,      'imphook.dg'
+  ,      'imphook.dg'
 ]:
     f = os.path.join(__path__[0], f)
     q = imp.cache_from_source(f)

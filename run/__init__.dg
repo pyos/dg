@@ -22,7 +22,7 @@ command = code -> unsafe
     fail = expr :: parse.tree.Expression and len expr == 2 or
            #   2. the last expression is accessing a built-in, which
            #      doesn't make sense (unlike a call to that built-in;)
-           expr :: parse.tree.Link and not expr.closed and expr in compile.r.builtins or
+           expr :: parse.tree.Link and not expr.closed and expr in compile.core.PREFIX or
            #   3. the last line of the code is indented.
             (last $ code.rsplit '\n' 1).startswith ' '
 
