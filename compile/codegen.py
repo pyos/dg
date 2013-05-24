@@ -138,9 +138,12 @@ class MutableCode:
     # varkwargs -- a singleton list with a double-starred argument name, if any
     # cell      -- parent code object (e.g. enclosing function)
     #
-    def __init__(self, isfunc=False, args=(), kwargs=(), varargs=(), varkwargs=(), cell=None):
+    def __init__(self, name, qualifier, isfunc=False, args=(), kwargs=(), varargs=(), varkwargs=(), cell=None):
 
         super().__init__()
+
+        self.name     = name
+        self.qualname = qualifier + '.' + name if qualifier else name
 
         self.argc   = len(args)
         self.kwargc = len(kwargs)
@@ -174,13 +177,19 @@ class MutableCode:
 
         self.filename = '<generated>'
         self.lineno   = 1
-        self.lnotab   = collections.deque([(0, 0, 0, 0)])
+        self.lnotab   = collections.deque()
 
     # mark :: StructMixIn -> NoneType
     #
     # Add a location to the code object's `lnotab`.
     #
     def mark(self, e):
+
+        if not self.lnotab:
+
+            self.filename = e.location.filename
+            self.lineno   = e.location.start[1]
+            return self.lnotab.append((0, 0, 0, 0))
 
         byteoffabs = len(self.bytecode)
         lineoffabs = e.location.start[1] - self.lineno
@@ -254,11 +263,12 @@ class MutableCode:
             if value in self.enclosed and value not in self.varnames else self.cellvars[value]
         ))
 
-    # compile :: str -> CodeType
+    @property
+    # compiled :: CodeType
     #
-    # Create an immutable code object with a given name.
+    # Create an immutable code object.
     #
-    def compile(self, name):
+    def compiled(self):
 
         return types.CodeType(
             self.argc, self.kwargc, len(self.varnames),
@@ -268,7 +278,7 @@ class MutableCode:
             tuple(x for x, _ in self.consts.sorted),
             self.names.sorted,
             self.varnames.sorted,
-            self.filename, name, self.lineno,
+            self.filename, self.name, self.lineno,
             bytes(a for b in self.lnotab for a in b[:2]),
             self.freevars.sorted,
             self.cellvars.sorted

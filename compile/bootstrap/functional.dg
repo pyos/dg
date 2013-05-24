@@ -1,6 +1,7 @@
 import '/builtins'
 import '/functools'
 import '/itertools'
+import '/collections'
 
 
 builtins.foldl  = (f st xs) -> functools.reduce f xs st
@@ -10,6 +11,8 @@ builtins.scanl1 = (f xs)    -> itertools.accumulate xs f
 # FIXME should also define foldr and scanr.
 builtins.(<-)   = (f g) -> (*: a **: k) -> f $ g *: a **: k
 
+builtins.exhaust   = bind collections.deque maxlen: 0
+builtins.for       = exhaust <- flip map
 builtins.iterate   = (f x) -> while True (yield x) (x = f x)
 builtins.takewhile = itertools.takewhile
 builtins.dropwhile = itertools.dropwhile

@@ -1,10 +1,8 @@
-import '../compile'
+PREFIX !! 'yield' = (self f args) ->
+  args, kwargs, _, _ = unpack f args 0 2 $ set' 'item' 'from'
+  item = kwargs.get 'item' (args !! 0 if len args > 0 else None)
+  from = kwargs.get 'from' (args !! 1 if len args > 1 else None)
 
-
-compile.r.builtins !! 'yield' = compile._callable $ (self item: None from: None) ->
-  switch
-    from is None =
-      self.opcode 'YIELD_VALUE' item delta: 1
-    True =
-      self.opcode 'GET_ITER'    from delta: 1
-      self.opcode 'YIELD_FROM'  item delta: 0
+  self.loadop 'YIELD_VALUE' item delta: 1 if from is None else
+    self.loadop 'GET_ITER'    from delta: 1
+    self.loadop 'YIELD_FROM'  item delta: 0

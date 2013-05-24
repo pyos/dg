@@ -1,24 +1,14 @@
-import '../compile'
-import '../parse'
-import '../const'
-
-
-switch_s = cases -> list $ map
-  bind parse.syntax.binary_op '=' on_error:
-    bind parse.syntax.error const.ERR.INVALID_STMT_IN_SWITCH
-  cases
-
-
 #
 # a if b else c
 #
 # Obvious ternary conditional.
 #
-compile.r.builtins !! 'else' = (self cond otherwise) ->
-  then, cond = parse.syntax.binary_op 'if' cond
-    bind parse.syntax.error const.ERR.NOT_AFTER_IF
-  ptr = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
-  jmp = self.opcode 'JUMP_FORWARD'      then delta: 0
+PREFIX !! 'else' = (self f args) ->
+  (cond, otherwise), _, _, _ = unpack f args 2 2
+  then, cond = parse.syntax.binary_op 'if' cond $ bind parse.syntax.error 'first goes `if`, then `else`'
+
+  ptr = self.loadop 'POP_JUMP_IF_FALSE' cond delta: 0
+  jmp = self.loadop 'JUMP_FORWARD'      then delta: 0
 
   ptr!
   self.load otherwise
@@ -31,14 +21,20 @@ compile.r.builtins !! 'else' = (self cond otherwise) ->
 #   ...
 #   conditionN = when_conditionN_is_true
 #
+switch_s = cases -> list $ map
+  bind parse.syntax.binary_op '=' on_error:
+    bind parse.syntax.error '`switch` expected (condition = action) pairs'
+  cases
+
+
+#
 # Evaluate the first action assigned to a true condition.
 # `if-elif` is probably a better equivalent than `switch-case`.
 #
-compile.r.builtins !! 'switch' = (self *: cases) ->
-  jumps = list $ map c -> (
-    cond, action = c
-    next = self.opcode 'POP_JUMP_IF_FALSE' cond delta: 0
-    end  = self.opcode 'JUMP_FORWARD'    action delta: 0
+PREFIX !! 'switch' = (self f cases) ->
+  jumps = list $ map (cond, action) -> (
+    next = self.loadop 'POP_JUMP_IF_FALSE' cond delta: 0
+    end  = self.loadop 'JUMP_FORWARD'    action delta: 0
     next!
     end
   ) $ switch_s cases
