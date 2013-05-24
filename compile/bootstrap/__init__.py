@@ -98,8 +98,8 @@ for f in [
        'shortcuts.dg'
   , 'conditionals.dg',      'unary.dg'
   ,       'binary.dg',     'switch.dg', 'inherit.dg'
-  ,   'comparison.dg',      'where.dg',   'loops.dg'
-  #,        'loops.dg',     'unsafe.dg',       'with.dg', 'yield.dg'
+  ,   'comparison.dg',      'where.dg',   'loops.dg', 'yield.dg'
+  #,       'unsafe.dg',       'with.dg'
   #,      'imphook.dg', 'functional.dg'
 ]:
     f = os.path.join(__path__[0], f)
