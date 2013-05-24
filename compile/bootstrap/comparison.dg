@@ -12,7 +12,7 @@ comparison = op -> (self f args chain: False) ->
     e :: parse.tree.Link and e in PREFIX and
       f = PREFIX !! e
       # How do I check if that closure is the same as this one?
-      f.__code__ is comparison.__code__.co_consts !! 0
+      getattr f '__code__' None is comparison.__code__.co_consts !! 0
 
   # Now `double` is true iff `a` is another comparison.
   # Also, `e`, `ex`, and `f` will be defined if that is the case.
