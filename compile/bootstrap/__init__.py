@@ -96,11 +96,10 @@ def import_(self, _, name, qualified=None):
 
 for f in [
        'shortcuts.dg'
-  , 'conditionals.dg',      'unary.dg'
-  ,       'binary.dg',     'switch.dg', 'inherit.dg'
-  ,   'comparison.dg',      'where.dg',   'loops.dg', 'yield.dg'
-  ,   'functional.dg'
-  #,       'unsafe.dg',       'with.dg'
+  , 'conditionals.dg',  'unary.dg'
+  ,       'binary.dg', 'switch.dg', 'inherit.dg'
+  ,   'comparison.dg',  'where.dg',   'loops.dg', 'yield.dg'
+  ,   'functional.dg', 'unsafe.dg'#,    'with.dg'
   #,      'imphook.dg'
 ]:
     f = os.path.join(__path__[0], f)
