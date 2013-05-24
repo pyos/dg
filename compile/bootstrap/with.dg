@@ -1,26 +1,31 @@
-import '../compile'
-import '../parse'
+inf = float 'inf'  # Not again.
 
+#
+# with context doSomething
+#
+# 1. Enter `context`
+# 2. `doSomething`
+# 3. Exit `context` even if step 2 raised an exception.
+#
+PREFIX !! 'with' = (self f args) ->
+  (context, *steps), _, _, _ = unpack f args 1 inf
 
-compile.r.builtins !! 'with' = (self context *: stuff) ->
-  '''
-    with context do_something...
-
-    Evaluate `context`, call its `__enter__` method, then `do_something`.
-    `context`'s `__exit__` method is called in the end regardless
-    of whether `do_something` finished successfully; it may also silence
-    the exception.
-
-  '''
-
+  # [whatever-the-name-of-this-language-is-now].
+  # Cheating Python to return a value that was pushed
+  # from inside of a block, since 2012.
   self.load None
-  end_ptr = self.opcode 'SETUP_WITH' context delta: 2
-  self.opcode 'POP_TOP'   delta: -1  # FIXME should store that somewhere.
-  self.chain *: stuff if stuff
-  self.opcode 'ROT_THREE' delta:  0
-  self.opcode 'ROT_TWO'   delta:  0
-  self.opcode 'POP_BLOCK' delta: -1
+
+  end_ptr = self.loadop 'SETUP_WITH' context delta: 2  # wat.
+  # FIXME should store the context somewhere instead.
+  #   That's how `with ... as ...` works.
+  #   Lucky for us, most context managers return themselves, so `with (a = ...)`
+  #   works.
+  self.loadop 'POP_TOP'   delta: -1
+  self.chain *: steps if steps else self.load None
+  self.loadop 'ROT_THREE' delta:  0
+  self.loadop 'ROT_TWO'   delta:  0
+  self.loadop 'POP_BLOCK' delta: -1
   self.load None
   end_ptr!
-  self.opcode 'WITH_CLEANUP' delta: 1
-  self.opcode 'END_FINALLY' delta: -3
+  self.loadop 'WITH_CLEANUP' delta: 1
+  self.loadop 'END_FINALLY' delta: -2
