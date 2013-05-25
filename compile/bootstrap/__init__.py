@@ -116,7 +116,7 @@ for f in [
     if not c:
 
         os.makedirs(os.path.dirname(q), exist_ok=True)
-        p = CodeGenerator('<module>', '')
+        p = CodeGenerator('<module>')
         p.loadop('RETURN_VALUE', parse.fd(open(f)), delta=0)
         c = p.compiled
         marshal.dump(c, open(q, 'wb'))

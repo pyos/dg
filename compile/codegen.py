@@ -131,22 +131,22 @@ class MutableCode:
 
     # (bool, [str], [str], [str], [str], Maybe MutableCode) -> MutableCode
     #
-    # isfunc    -- whether to add function-specific flags (OPTIMIZED and NEWLOCALS)
-    # args      -- list of positional argument names
-    # kwargs    -- list of keyword-only argument names
-    # varargs   -- a singleton list with a starred argument name, if any
-    # varkwargs -- a singleton list with a double-starred argument name, if any
-    # cell      -- parent code object (e.g. enclosing function)
+    # isfunc -- whether to add function-specific flags (OPTIMIZED and NEWLOCALS)
+    # a      -- list of positional argument names
+    # kw     -- list of keyword-only argument names
+    # va     -- a singleton list with a starred argument name, if any
+    # vkw    -- a singleton list with a double-starred argument name, if any
+    # cell   -- parent code object (e.g. enclosing function)
     #
-    def __init__(self, name, qualifier, isfunc=False, args=(), kwargs=(), varargs=(), varkwargs=(), cell=None):
+    def __init__(self, name, isfunc=False, a=(), kw=(), va=(), vkw=(), cell=None):
 
         super().__init__()
 
         self.name     = name
-        self.qualname = qualifier + '.' + name if qualifier else name
+        self.qualname = (cell.qualname + (cell.qualname and '.') + ('<locals>.' * bool(cell.flags & CO_OPTIMIZED)) if cell else '') + name * bool(isfunc)
 
-        self.argc   = len(args)
-        self.kwargc = len(kwargs)
+        self.argc   = len(a)
+        self.kwargc = len(kw)
 
         # * slow locals are stored in a hash map, fast ones - in a PyObject**.
         self.names    = IndexedSet()  # globals, slow* locals, attributes, modules
@@ -154,21 +154,20 @@ class MutableCode:
         self.freevars = IndexedSet()  # locals exported into enclosed code objects
         self.cellvars = IndexedSet()  # locals imported from enclosing code objects
         self.varnames = IndexedSet(   # fast* locals and function arguments
-            zip(itertools.chain(args, kwargs, varargs, varkwargs), itertools.count())
-        )
+            zip(itertools.chain(a, kw, va, vkw), itertools.count()))
 
         self.cell     = cell
         self.enclosed = cell.varnames.keys() | cell.enclosed if cell else set()
 
         self.flags = (
            (CO_OPTIMIZED | CO_NEWLOCALS) * bool(isfunc)
-          | CO_VARARGS   * bool(varargs)
-          | CO_VARKWARGS * bool(varkwargs)
+          | CO_VARARGS   * bool(va)
+          | CO_VARKWARGS * bool(vkw)
         )
 
         # This is tracked separately from `flags` because slow locals
         # may be reenabled at runtime by using `STORE_LOCALS`.
-        self.slowlocals = not (self.flags & CO_OPTIMIZED)
+        self.slowlocals = not isfunc
 
         self.bytecode = collections.deque()  # (opcode, argument) pairs
         self.f_locals = collections.defaultdict(set)

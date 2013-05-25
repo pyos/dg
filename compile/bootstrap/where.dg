@@ -12,8 +12,8 @@ import '../core/CodeGenerator'
 PREFIX !! 'where' = (self f args) ->
   (end, start), _, _, _ = unpack f args 2 2
 
-  code = CodeGenerator (self.child_name '<lambda>') self.qualname True cell: self
+  code = CodeGenerator (self.child_name '<lambda>') True cell: self
   code.loadop 'POP_TOP'      start delta: 0
   code.loadop 'RETURN_VALUE' end   delta: 0
-  self.make_function code.compiled list! dict!
+  self.make_function code list! dict!
   self.loadop 'CALL_FUNCTION' arg: 0 delta: 0

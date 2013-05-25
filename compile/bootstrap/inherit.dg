@@ -14,22 +14,24 @@ PREFIX !! 'inherit' = (self f args) ->
 
   # __build_class__ will also need a `dict -> cell` function.
   name = self.child_name '<class>'
-  code = CodeGenerator name self.qualname True args: (list' '__locals__') cell: self
+  code = CodeGenerator name True (list' '__locals__') cell: self
   code.cellhook = code -> code.freevars !! '__class__'
   code.cellvars !! '__class__'
   code.varnames !! '__class__'
 
   # The argument, __locals__, is what we need to write attributes to.
-  code.loadop 'LOAD_FAST'    arg: '__locals__' delta:  1
-  code.loadop 'STORE_LOCALS'                   delta: -1
-  code.loadop 'LOAD_NAME'    arg: '__name__'   delta:  1
-  code.loadop 'STORE_NAME'   arg: '__module__' delta: -1
-  code.loadop 'POP_TOP'      body              delta:  0
+  code.append 'LOAD_FAST'    '__locals__'   delta:  1
+  code.append 'STORE_LOCALS'                delta: -1
+  code.append 'LOAD_NAME'    '__name__'     delta:  1
+  code.append 'STORE_NAME'   '__module__'   delta: -1
+  code.append 'LOAD_CONST'   code.qualname  delta:  1
+  code.append 'STORE_NAME'   '__qualname__' delta: -1
+  code.loadop 'POP_TOP'      body           delta:  0
   # The return value is a __class__ cell, if any.
   # Python compiler returns None instead if there are no instance methods.
-  code.loadop 'LOAD_CLOSURE' arg: '__class__'  delta:  1
-  code.loadop 'RETURN_VALUE'                   delta: -1
+  code.append 'LOAD_CLOSURE' '__class__'    delta:  1
+  code.append 'RETURN_VALUE'                delta: -1
 
   self.loadop 'LOAD_BUILD_CLASS' delta: 1
-  self.make_function code.compiled tuple! dict!
-  self.nativecall code.qualname args 2 False
+  self.make_function code tuple! dict!
+  self.nativecall code.name args 2 False

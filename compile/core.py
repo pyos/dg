@@ -126,9 +126,9 @@ class CodeGenerator (codegen.MutableCode):
             )
 
     def make_function(self, code, defaults, kwdefaults):
-        '''Create a function given an immutable code object.
+        '''Create a function given an mutable code object.
 
-            :param code:       a `CodeType`.
+            :param code:       a `MutableCode`.
             :param defaults:   as in `FunctionType.__defaults__`.
             :param kwdefaults: as in `FunctionType.__kwdefaults__`.
 
@@ -138,6 +138,7 @@ class CodeGenerator (codegen.MutableCode):
               assigning something to it first.
 
         '''
+        code, name = code.compiled, code.qualname
 
         for k, v in kwdefaults.items():
 
@@ -154,7 +155,7 @@ class CodeGenerator (codegen.MutableCode):
         self.loadop('BUILD_TUPLE', arg=len(code.co_freevars), delta=1 - len(code.co_freevars))
         self.loadop(
             # Python 3.3+ only now.
-            'MAKE_CLOSURE', code, self.qualname + '.' + code.co_name,
+            'MAKE_CLOSURE', code, name,
             arg  =    len(defaults) + 256 * len(kwdefaults),
             delta=1 - len(defaults) -   2 * len(kwdefaults) - bool(code.co_freevars)
         )
@@ -249,7 +250,7 @@ class CodeGenerator (codegen.MutableCode):
                 n.append('pattern-' + str(index))
                 t['pattern-' + str(index)] = arg
 
-        code = CodeGenerator(self.child_name('<lambda>'), self.qualname,True, n, kw, va, vkw, self)
+        code = CodeGenerator(self.child_name('<lambda>'), True, n, kw, va, vkw, self)
 
         getattr(self, 'cellhook', lambda _: None)(code)
 
@@ -259,7 +260,7 @@ class CodeGenerator (codegen.MutableCode):
             code.store_top(pattern)
 
         code.loadop('RETURN_VALUE', body, delta=0)
-        self.make_function(code.compiled, da, dkw)
+        self.make_function(code, da, dkw)
 
     def chain(self, a, *bs):
         '''Evaluate expressions one by one, discarding all results but last.
