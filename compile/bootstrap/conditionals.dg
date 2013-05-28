@@ -1,6 +1,6 @@
 rjump = (jump self f args) -> fjump jump self f (list (reversed args))
 fjump = (jump self f args) ->
-  (a, b), _, _, _ = unpack f args 2 2
+  a, b = ensure f args 2 2
   jmp = self.loadop jump a delta: 0
   self.load b
   call jmp

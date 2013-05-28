@@ -10,35 +10,29 @@ from ...    import parse
 PREFIX.update({
     '\n':  lambda self, _, args: self.chain   (*args)
   , '':    lambda self, _, args: self.call    (*args, rightbind=True)
-  , '=':   lambda self, f, args: self.store   (*unpack(f, args, 2, 2)[0])
-  , '->':  lambda self, f, args: self.function(*unpack(f, args, 2, 2)[0])
+  , '=':   lambda self, f, args: self.store   (*ensure(f, args, 2, 2))
+  , '->':  lambda self, f, args: self.function(*ensure(f, args, 2, 2))
 
-  , '.':      lambda self, f, args: getattr(self, f, *unpack(f, args, 2, 2)[0])
-  , 'import': lambda self, f, args: import_(self, f, *unpack(f, args, 1, 2)[0])
+  , '.':      lambda self, f, args: getattr(self, f, *ensure(f, args, 2, 2))
+  , 'import': lambda self, f, args: import_(self, f, *ensure(f, args, 1, 2))
 })
 
 
-def unpack(f, args, min, max, keywords=None, var=False):
+def ensure(f, args, min=1, max=float('inf')):
 
-    LOW  = 'not enough arguments (got {}, min. {})'
-    HIGH = 'too many aguments (got {}, max. {})'
-    KERR = 'unknown keywords: {}'
-    VERR = 'varargs are not allowed here'
+    len(args) < min and parse.syntax.error('not enough arguments (got {}, min. {})'.format(len(args), min), f)
+    len(args) > max and parse.syntax.error('too many aguments (got {}, max. {})'   .format(len(args), max), f)
+    return args
 
-    a, _, _, kw, va, vkw = \
-      (args, (), (), {}, (), ()) if keywords is None or (f.infix and not f.closed) else \
-      parse.syntax.argspec(args, definition=False)
 
-    len(a) < min and parse.syntax.error(LOW .format(len(a), min), f)
-    len(a) > max and parse.syntax.error(HIGH.format(len(a), max), f)
+def unpack(f, args, min=1, max=float('inf'), keywords=None, var=False):
 
-    if kw:
-        unknown = kw.keys() - keywords
-        unknown and parse.syntax.error(KERR.format(unknown), f)
+    a, _, _, kw, va, vkw = parse.syntax.argspec(args, definition=False)
+    unknown = kw.keys() - keywords
+    unknown and parse.syntax.error('unknown keywords: ' + str(unknown), f)
+    not var and (va or vkw) and parse.syntax.error('varargs are not allowed here', f)
+    return ensure(f, a, min, max), kw, va, vkw
 
-    not var and (va or vkw) and parse.syntax.error(VERR, f)
-    return a, kw, va, vkw
-    
 
 def getattr(self, _, a, b):
     '''Retrieve an attribute of some object.
@@ -121,4 +115,4 @@ for f in [
         c = p.compiled
         marshal.dump(c, open(q, 'wb'))
 
-    eval(c, {'__package__': __package__, 'INFIXL': INFIXL, 'INFIXR': INFIXR, 'PREFIX': PREFIX, 'parse': parse, 'unpack': unpack})
+    eval(c, {'__package__': __package__, 'INFIXL': INFIXL, 'INFIXR': INFIXR, 'PREFIX': PREFIX, 'parse': parse, 'unpack': unpack, 'ensure': ensure})

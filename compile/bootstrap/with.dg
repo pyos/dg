@@ -1,5 +1,3 @@
-inf = float 'inf'  # Not again.
-
 #
 # with context doSomething
 #
@@ -8,7 +6,7 @@ inf = float 'inf'  # Not again.
 # 3. Exit `context` even if step 2 raised an exception.
 #
 PREFIX !! 'with' = (self f args) ->
-  (context, *steps), _, _, _ = unpack f args 1 inf
+  context, *steps = ensure f args
 
   # [whatever-the-name-of-this-language-is-now].
   # Cheating Python to return a value that was pushed

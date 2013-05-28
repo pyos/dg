@@ -1,13 +1,10 @@
-inf = float 'inf'
-
-
 #
 # while condition body
 #
 # Evaluate the body while condition is true.
 #
 PREFIX !! 'while' = (self f args) ->
-  (cond, *body), _, _, _ = unpack f args 1 inf
+  cond, *body = ensure f args
 
   self.load None  # This will be the value returned by the last iteration.
   to_cond = self.loadop 'JUMP_FORWARD'             delta:  0

@@ -5,7 +5,7 @@
 # (Yes, Python compiler generates the same bytecode.)
 #
 comparison = op -> (self f args chain: False) ->
-  (a, b), _, _, _ = unpack f args 2 2
+  a, b = ensure f args 2 2
 
   double = a :: parse.tree.Expression and not a.closed and
     e, *ex = a

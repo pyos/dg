@@ -1,5 +1,3 @@
-inf = float 'inf'  # I seem to be using that a lot lately.
-
 unsafe_s = cases ->
   pairs = list $ map
     bind parse.syntax.binary_op '=' on_error:
@@ -40,7 +38,7 @@ PREFIX !! 'raise' = (self f args) ->
 PREFIX !! 'unsafe' = (self f cases) ->
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
-  ((name, try), *cases), (has_finally, finally) = unsafe_s $ unpack f cases 1 inf !! 0
+  ((name, try), *cases), (has_finally, finally) = unsafe_s $ ensure f cases
 
   # This will be our return value.
   self.load None

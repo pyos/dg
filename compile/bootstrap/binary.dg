@@ -1,5 +1,5 @@
 binary = g -> (self f xs) ->
-  (a, b), _, _, _ = unpack f xs 2 2
+  a, b = ensure f xs 2 2
   g self f a b
 
 stacked = c -> binary (self _ a b) -> (self.loadop c a b delta: 1)

@@ -1,6 +1,5 @@
 import '../core/CodeGenerator'
 
-inf = float 'inf'  # `inherit` accepts any number of arguments >= 1
 
 #
 # inherit: ... block
@@ -10,7 +9,7 @@ inf = float 'inf'  # `inherit` accepts any number of arguments >= 1
 # function.
 #
 PREFIX !! 'inherit' = (self f args) ->
-  (*args, body), _, _, _ = unpack f args 1 inf
+  *args, body = ensure f args
 
   # __build_class__ will also need a `dict -> cell` function.
   name = self.child_name '<class>'

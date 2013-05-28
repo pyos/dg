@@ -4,7 +4,7 @@
 # Obvious ternary conditional.
 #
 PREFIX !! 'else' = (self f args) ->
-  (cond, otherwise), _, _, _ = unpack f args 2 2
+  cond, otherwise = ensure f args 2 2
   then, cond = parse.syntax.binary_op 'if' cond $ bind parse.syntax.error 'first goes `if`, then `else`'
 
   ptr = self.loadop 'POP_JUMP_IF_FALSE' cond delta: 0

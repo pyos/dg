@@ -10,7 +10,7 @@ import '../core/CodeGenerator'
 #      doStuff
 #
 PREFIX !! 'where' = (self f args) ->
-  (end, start), _, _, _ = unpack f args 2 2
+  end, start = ensure f args 2 2
 
   code = CodeGenerator (self.child_name '<lambda>') True cell: self
   code.loadop 'POP_TOP'      start delta: 0
