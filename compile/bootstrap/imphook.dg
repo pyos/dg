@@ -39,6 +39,8 @@ sys.meta_path.insert 0 $ inherit str $
       marshal.dump code $ open cache 'wb'
       code
 
+  get_filename = (self name) -> self
+
   load_module = importlib.util.module_for_loader $ (self module) ->
     init = (module.__name__.rpartition '.' !! 0) or None
     code = self.get_code module.__name__
