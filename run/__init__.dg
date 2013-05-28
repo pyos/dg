@@ -61,7 +61,7 @@ it = fd ->
     e =
       buf = input sys.ps1
       res = next $ dropwhile not $ map command $ iterate x -> (x + '\n' + input sys.ps2) buf
-      sys.displayhook $ eval (compile.it res) env
+      sys.displayhook $ eval (compile.ast res) env
     # The empty line is purely for aesthetic purposes.
     e :: EOFError = print!, exit 0
     # Unlike the above code, we want to catch *everything* but `SystemExit`,

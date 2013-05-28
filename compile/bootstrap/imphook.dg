@@ -6,7 +6,6 @@ import '/itertools'
 import '/importlib/util' qualified
 
 import '../../compile'
-import '../../parse'
 
 
 sys.meta_path.insert 0 $ inherit str $
@@ -34,7 +33,7 @@ sys.meta_path.insert 0 $ inherit str $
       e :: Exception = None
 
     code or
-      code = compile.it $ parse.fd $ open $ str self
+      code = compile.fd $ open $ str self
 
       os.makedirs (os.path.dirname cache) exist_ok: True
       marshal.dump code $ open cache 'wb'
