@@ -1,6 +1,0 @@
-import '/sys'
-import '../run'
-
-sys.argv.pop 0
-filename, *_ = sys.argv + list' '-'
-run.it (sys.stdin if filename == '-' else open filename)
