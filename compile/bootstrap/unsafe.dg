@@ -14,8 +14,7 @@ unsafe_s = cases ->
 # (See Python documentation if you don't know what a cause is.)
 #
 PREFIX !! 'raise' = (self f args) ->
-  args, kwargs, _, _ = unpack f args 1 2 $ set' 'caused_by'
-  args.append $ kwargs.get 'caused_by' (args.pop 1 if len args > 1 else None)
+  args = unpack f args (exception caused_by: None) -> (tuple' exception if caused_by is None else exception, caused_by)
   self.loadop 'RAISE_VARARGS' *: args delta: 0
   self.load   None  # We've got to return something.
 

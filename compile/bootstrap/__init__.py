@@ -25,13 +25,17 @@ def ensure(f, args, min=1, max=float('inf')):
     return args
 
 
-def unpack(f, args, min=1, max=float('inf'), keywords=None, var=False):
+def unpack(f, args, g):
 
-    a, _, _, kw, va, vkw = parse.syntax.argspec(args, definition=False)
-    unknown = kw.keys() - keywords
-    unknown and parse.syntax.error('unknown keywords: ' + str(unknown), f)
-    not var and (va or vkw) and parse.syntax.error('varargs are not allowed here', f)
-    return ensure(f, a, min, max), kw, va, vkw
+    try:
+
+        a, _, _, kw, va, vkw = parse.syntax.argspec(args, definition=False)
+        (va or vkw) and parse.syntax.error("can't use varargs with macros", f)
+        return g(*a, **kw)
+
+    except TypeError as e:
+
+        parse.syntax.error(str(e), f)
 
 
 def getattr(self, _, a, b):
