@@ -39,14 +39,15 @@ def codelen(seq):
     )
 
 
-#
-# A set that automatically assigns indices to its items.
-# Well, not actually a set, but a hashmap.
-#
-# NOTE Python uses (==) to check for equality; therefore, some objects
-#   may be considered equal when they are not (e.g. 1 == 1.0).
-#
 class IndexedSet (dict):
+    '''
+        A set that automatically assigns indices to its items.
+        Well, not actually a set, but a hashmap.
+
+        NOTE Python uses (==) to check for equality; therefore, some objects
+          may be considered equal when they are not (e.g. 1 == 1.0).
+
+    '''
 
     def __missing__(self, k):
 
@@ -54,19 +55,14 @@ class IndexedSet (dict):
         return self[k]
 
     @property
-    # sorted :: [object]
-    #
-    # Items from this set in the same order they were inserted in.
-    #
     def sorted(self):
+        '''Get items from this set in the order they were inserted in.'''
 
         return tuple(sorted(self, key=self.__getitem__))
 
 
-#
-# An "integer" that actually calculates its value on demand.
-#
 class LazyInt:
+    '''An "integer" that calculates its value on demand.'''
 
     def __init__(self, calculate):
 
@@ -79,11 +75,13 @@ class LazyInt:
         return self.calculate(self)
 
 
-#
-# An argument to a jump opcode.
-# Calling this object will set the jump target.
-#
 class JumpObject (LazyInt):
+    '''An argument to a jump opcode.
+
+        Call this object to set the jump target (in case of a forward jump)
+        or a jump source (for a reverse jump.)
+
+    '''
 
     def __init__(self, code, reverse, absolute=False, op=None):
 
@@ -124,20 +122,18 @@ class JumpObject (LazyInt):
         self.reverse and self.code.append((self.op, self._value))
 
 
-# MutableCode --
-#   something like `types.CodeType`, only mutable, I think.
-#
 class MutableCode:
+    '''Something like `types.CodeType`, only mutable.
 
-    # (bool, [str], [str], [str], [str], Maybe MutableCode) -> MutableCode
-    #
-    # isfunc -- whether to add function-specific flags (OPTIMIZED and NEWLOCALS)
-    # a      -- list of positional argument names
-    # kw     -- list of keyword-only argument names
-    # va     -- a singleton list with a starred argument name, if any
-    # vkw    -- a singleton list with a double-starred argument name, if any
-    # cell   -- parent code object (e.g. enclosing function)
-    #
+        :param isfunc: whether to add function-specific flags (OPTIMIZED and NEWLOCALS)
+        :param a:      list of positional argument names
+        :param kw:     list of keyword-only argument names
+        :param va:     a singleton list with a starred argument name, if any
+        :param vkw:    a singleton list with a double-starred argument name, if any
+        :param cell:   parent code object (e.g. enclosing function)
+
+    '''
+
     def __init__(self, name, isfunc=False, a=(), kw=(), va=(), vkw=(), cell=None):
 
         super().__init__()
@@ -148,7 +144,7 @@ class MutableCode:
         self.argc   = len(a)
         self.kwargc = len(kw)
 
-        # * slow locals are stored in a hash map, fast ones - in a PyObject**.
+        # * slow locals are stored in a hash map, fast ones - in a `PyObject**`.
         self.names    = IndexedSet()  # globals, slow* locals, attributes, modules
         self.consts   = IndexedSet()  # (constant, type) pairs
         self.freevars = IndexedSet()  # locals exported into enclosed code objects
@@ -178,20 +174,22 @@ class MutableCode:
         self.lineno   = 1
         self.lnotab   = collections.deque()
 
-    # mark :: StructMixIn -> NoneType
-    #
-    # Add a location to the code object's `lnotab`.
-    #
     def mark(self, e):
+        '''Mark the location of a `StructMixIn` in lnotab.
+
+            NOTE this method assumes all objects you pass to it
+              are taken from the same file.
+
+        '''
 
         if not self.lnotab:
 
             self.filename = e.location.filename
             self.lineno   = e.location.start[1]
-            return self.lnotab.append((0, 0, 0, 0))
+            return self.lnotab.append((0, 0, self.lineno, 0))
 
         byteoffabs = len(self.bytecode)
-        lineoffabs = e.location.start[1] - self.lineno
+        lineoffabs = e.location.start[1]
         byteoff = codelen(itertools.islice(self.bytecode, self.lnotab[-1][3], None))
         lineoff = lineoffabs - self.lnotab[-1][2]
 
@@ -201,13 +199,13 @@ class MutableCode:
             self.lnotab.extend((255, 0, lineoffabs, byteoffabs) for _ in range(byteoff // 256))
             self.lnotab.append((byteoff % 256, lineoff % 256, lineoffabs, byteoffabs))
 
-    # cellify :: Link -> Link
-    #
-    # Replace all uses of a fast local with a corresponding `cellvar`.
-    # If the fast local does not exist, the call to this function
-    # will be ignored.
-    #
     def cellify(self, name):
+        '''Replace all uses of a fast local with a corresponding `cellvar`.
+
+            If the fast local does not exist, the call to this function
+            will be ignored.
+
+        '''
 
         for i, c in self.f_locals[name]:
 
@@ -215,24 +213,26 @@ class MutableCode:
 
         return name
 
-    # append :: (str, optional object, optional int)
-    #
-    # Append a new opcode to the bytecode sequence given its name and argument.
-    # Return the `JumpObject` for jumps, garbage value otherwise.
-    #
-    # Argument type is opcode-dependent.
-    #
-    #   argumentless opcodes    object; ignored
-    #   relative jumps          object; ignored
-    #   LOAD_CONST              object; something to push onto the stack
-    #   name-related stuff      str; name of the variable to use
-    #   COMPARE_OP              str; the operator to use
-    #   absolute jumps          int; if negative, jump direction is reversed
-    #   everything else         int; added as-is
-    #
-    # `delta` affects the size of the value stack.
-    #
     def append(self, name, value=0, delta=0):
+        '''
+            Append a new opcode to the bytecode sequence given its name and argument.
+            Return the `JumpObject` for jumps, garbage value otherwise.
+
+            :param name:  opcode, as a string in `dis.opmap`.
+            :param value: argument, see below.
+            :param delta: how the opcode affects the size of the value stack.
+
+            Argument type is opcode-dependent.
+
+              argumentless opcodes    object; ignored
+              relative jumps          object; ignored
+              LOAD_CONST              object; something to push onto the stack
+              name-related stuff      str; name of the variable to use
+              COMPARE_OP              str; the operator to use
+              absolute jumps          int; if negative, jump direction is reversed
+              everything else         int; added as-is
+
+        '''
 
         code = dis.opmap[name]
 
@@ -263,11 +263,8 @@ class MutableCode:
         ))
 
     @property
-    # compiled :: CodeType
-    #
-    # Create an immutable code object.
-    #
     def compiled(self):
+        '''Freeze the code object, creating `types.CodeType`.'''
 
         return types.CodeType(
             self.argc, self.kwargc, len(self.varnames),
