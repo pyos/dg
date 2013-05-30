@@ -54,8 +54,8 @@ def getattr(self, _, a, b):
 def import_(self, _, name, qualified=None):
     '''Import a module given a POSIX-style path.
 
-        import '/path/to/the/object'            # => `object`
-        import '/path/to/the/object' qualified  # => `path`
+        import 'path/to/the/object'            # => `object`
+        import 'path/to/the/object' qualified  # => `path`
 
         All paths are relative to the current package.
         Absolute imports start with a single slash.
@@ -77,10 +77,7 @@ def import_(self, _, name, qualified=None):
 
     if qualified or len(path) == 1:
 
-        qualified and parent and parse.syntax.error("relative imports can't be qualified", qualified)
         self.loadop('IMPORT_NAME', parent, None, arg='.'.join(path), delta=1)
-        self.loadop('DUP_TOP', delta=1)
-        self.store_top(parse.tree.Link(path[0]).before(name))
 
     else:
 
@@ -89,8 +86,9 @@ def import_(self, _, name, qualified=None):
         self.loadop('IMPORT_FROM', arg=file, delta=1)
         self.loadop('ROT_TWO', delta=0)
         self.loadop('POP_TOP', delta=-1)
-        self.loadop('DUP_TOP', delta=1)
-        self.store_top(parse.tree.Link(file).before(name))
+
+    self.loadop('DUP_TOP', delta=1)
+    self.store_top(parse.tree.Link(path[-(not qualified)]).before(name))
 
 
 for f in [
