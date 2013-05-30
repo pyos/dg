@@ -1,21 +1,5 @@
-import os
-import imp
-import marshal
-import posixpath
-
 from ..core import CodeGenerator, INFIXL, INFIXR, PREFIX
 from ...    import parse
-
-
-PREFIX.update({
-    '\n':  lambda self, _, args: self.chain   (*args)
-  , '':    lambda self, _, args: self.call    (*args, rightbind=True)
-  , '=':   lambda self, f, args: self.store   (*ensure(f, args, 2, 2))
-  , '->':  lambda self, f, args: self.function(*ensure(f, args, 2, 2))
-
-  , '.':      lambda self, f, args: getattr(self, f, *ensure(f, args, 2, 2))
-  , 'import': lambda self, f, args: import_(self, f, *ensure(f, args, 1, 2))
-})
 
 
 def ensure(f, args, min=1, max=float('inf')):
@@ -36,6 +20,23 @@ def unpack(f, args, g):
     except TypeError as e:
 
         parse.syntax.error(str(e), f)
+
+SUBMODULE_NS = globals().copy()
+
+import os
+import imp
+import marshal
+import posixpath
+
+PREFIX.update({
+    '\n':  lambda self, _, args: self.chain   (*args)
+  , '':    lambda self, _, args: self.call    (*args, rightbind=True)
+  , '=':   lambda self, f, args: self.store   (*ensure(f, args, 2, 2))
+  , '->':  lambda self, f, args: self.function(*ensure(f, args, 2, 2))
+
+  , '.':      lambda self, f, args: getattr(self, f, *ensure(f, args, 2, 2))
+  , 'import': lambda self, f, args: import_(self, f, *ensure(f, args, 1, 2))
+})
 
 
 def getattr(self, _, a, b):
@@ -119,4 +120,4 @@ for f in [
         c = p.compiled
         marshal.dump(c, open(q, 'wb'))
 
-    eval(c, {'__package__': __package__, 'INFIXL': INFIXL, 'INFIXR': INFIXR, 'PREFIX': PREFIX, 'parse': parse, 'unpack': unpack, 'ensure': ensure})
+    eval(c, SUBMODULE_NS.copy())
