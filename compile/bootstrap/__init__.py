@@ -88,7 +88,7 @@ def import_(self, _, name, qualified=None):
         self.loadop('POP_TOP', delta=-1)
 
     self.loadop('DUP_TOP', delta=1)
-    self.store_top(parse.tree.Link(path[-(not qualified)]).before(name))
+    self.store_var(path[-(not qualified)])
 
 
 for f in [

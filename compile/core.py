@@ -114,16 +114,19 @@ class CodeGenerator (codegen.MutableCode):
 
         else:
 
-            # `target` -- name of the variable
-            # `misc`   -- unused
-            self.loadop(
-                # XXX isn't it bad design if a `=` in a closure
-                #     modifies enclosed variables by default?
-                'STORE_DEREF' if target in self.enclosed else
-                'STORE_DEREF' if target in self.cellvars else
-                'STORE_NAME'  if self.slowlocals else
-                'STORE_FAST', arg=target, delta=-1
-            )
+            self.store_var(target)
+
+    def store_var(self, target):
+        '''Pop an item off the stack, store it in a variable.'''
+
+        self.loadop(
+            # XXX isn't it bad design if a `=` in a closure
+            #     modifies enclosed variables by default?
+            'STORE_DEREF' if target in self.enclosed else
+            'STORE_DEREF' if target in self.cellvars else
+            'STORE_NAME'  if self.slowlocals else
+            'STORE_FAST', arg=target, delta=-1
+        )
 
     def make_function(self, code, defaults, kwdefaults):
         '''Create a function given an mutable code object.
