@@ -186,7 +186,6 @@ has_priority = functools.partial(
         'if':   20,  # binary conditional
         'else': 21,  # ternary conditional (always follows an `a if b` expression)
 
-        ';':  -100499,  # stop code object evaluation
         '\n': -100500,  # do A then B
     }.get: q(i, -7)  # Default
 )
@@ -198,7 +197,7 @@ has_priority = functools.partial(
 unassoc = {',', '..', '::', '', '\n'}.__contains__
 
 # These operators have no right-hand statement part in any case.
-unary = {'!', ';'}.__contains__
+unary = {'!'}.__contains__
 
 
 # infixl :: (State, StructMixIn, Link, StructMixIn) -> StructMixIn
