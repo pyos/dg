@@ -193,13 +193,15 @@ class CodeGenerator (codegen.MutableCode):
     def infixbindl(self, f, arg):
         '''Default implementation of a left infix bind.'''
 
-        self.loadop('CALL_FUNCTION', parse.tree.Link('bind'), f, arg, arg=2, delta=-1)
+        self.loadop('LOAD_GLOBAL', arg='bind', delta=1)
+        self.loadop('CALL_FUNCTION', f, arg,   delta=0)
 
     def infixbindr(self, f, args):
         '''Default implementation of a right infix bind.'''
 
-        self.load(parse.tree.Link('bind'))
-        self.loadop('CALL_FUNCTION', parse.tree.Link('flip'), f, arg=1, delta=1)
+        self.loadop('LOAD_GLOBAL', arg='bind', delta=1)
+        self.loadop('LOAD_GLOBAL', arg='flip', delta=1)
+        self.loadop('CALL_FUNCTION', f,        delta=0)
         self.loadcall(args)
         self.loadop('CALL_FUNCTION', arg=2, delta=-1)
 
