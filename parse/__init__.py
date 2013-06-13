@@ -311,7 +311,7 @@ def indent(stream, token):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-        return do(stream, token, preserve_close_state=True)
+        return do(stream, token, {''}, preserve_close_state=True)
 
     while indent != stream.indent.pop():
 
@@ -328,33 +328,18 @@ def indent(stream, token):
 def whitespace(stream, token): pass
 
 
-@tokens(r'(?i)[+-]?0(b[0-1]+|o[0-7]+|x[0-9a-f]+)')
+@tokens(r'(?i)[+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|\d+(?:\.\d+)?(?:e[+-]?\d+)?j?)')
 #
-# intb = int2 | int8 | int16
+# number = [+-] ?, (int2 | int8 | int16 | (int10, ( '.', int10 ) ?, ( e, [+-] ?, int10 ) ?, j ?))
+#
 # int2 = '0b', ( '0' .. '1' ) +
 # int8 = '0o', ( '0' .. '7' ) +
-# int16 = '0x', ( '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' ) +
-#
-def intb(stream, token):
-
-    return tree.Constant(ast.literal_eval(token.group()))
-
-
-@tokens(r'([+-]?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?(j|J)?')
-#
-# number = int10s, ( '.', int10 ) ?, ( [eE], int10s ) ?, [jJ] ?
-#
-# int10s = ( '+' | '-' ) ?, int10
-# int10  = < any digit > +
+# int10 = ( '0' .. '9' ) +
+# int16 = '0x', ( '0' .. '9' | 'a' .. 'f' ) +
 #
 def number(stream, token):
 
-    sign, integral, fraction, exponent, imag = token.groups()
-    sign     = -1 if sign == '-' else 1
-    imag     = 1j if imag        else 1
-    exponent = int(exponent or 0)
-    fraction = int(fraction) / 10 ** (len(fraction) - exponent) if fraction else 0
-    return tree.Constant((int(integral) * 10 ** exponent + fraction) * sign * imag)
+    return tree.Constant(ast.literal_eval(token.group()))
 
 
 @tokens(r'([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
@@ -389,7 +374,7 @@ def link(stream, token, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'})
 #
 # do = '('
 #
-def do(stream, token, preserve_close_state=False):
+def do(stream, token, ends={')'}, preserve_close_state=False):
 
     par = token.group().strip() if token else ''
     object   = tree.Constant(None).at(stream, token.end())
@@ -399,11 +384,10 @@ def do(stream, token, preserve_close_state=False):
 
         if isinstance(item, tree.Internal):
 
-            (par + item.value) in ('', '()') or stream.error(
-              'unexpected EOF'         if par and stream.offset >= len(stream.buffer) else
-              'unexpected dedent'      if par and not item.value else
-              'unexpected close-paren' if not par and item.value else
-              'invalid close-paren', item.location.start[0]
+            item.value in ends or stream.error(
+              'unexpected block delimiter' if item.value else
+              'unexpected EOF'             if stream.offset >= len(stream.buffer) else
+              'unexpected dedent', item.location.start[0]
             )
 
             break
