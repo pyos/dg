@@ -39,7 +39,7 @@ class State (collections.Iterator, collections.deque):
 
     # position :: int -> (int, int, int)
     #
-    # Transform a character offset into an (offset, lineno, charno) triple.
+    # Given a character offset, get an (offset, lineno, charno) triple.
     #
     def position(self, offset):
 
@@ -62,40 +62,39 @@ class State (collections.Iterator, collections.deque):
     def line(self, offset):
 
         return self.buffer[
-            self.buffer.rfind('\n', 0, offset) + 1:
-            self.buffer. find('\n',    offset) + 1 or None  # 0 won't do here
+            self.buffer.rfind('\n', 0, offset) + 1 or None:
+            self.buffer. find('\n',    offset) + 1 or None
         ]
 
 
 class TokenSet (list):
 
-    # type TokenHandler = (Stream, MatchObject) -> Maybe StructMixIn
-    # type TokenSet = [((str, int) -> Maybe MatchObject, TokenHandler, bool)]
+    # () :: (str, bool) -> function -> function
     #
-    # () :: (str, Optional bool) -> TokenHandler -> TokenHandler
+    # A decorator version of `add`.
     #
-    # A decorator-generating version of :meth:`add`.
+    #    @token_set(syntax, at_line_start)
+    #    def handler(state, match): return ast_object
     #
     def __call__(self, regex, at_line_start=False):
 
-        return functools.partial(self.add, regex, at_line_start=at_line_start)
+        return lambda f: self.add(regex, f, at_line_start) or f
 
-    # add :: (str, TokenHandler, Optional bool) -> TokenHandler
+    # add :: (str, function, bool) -> NoneType
     #
-    # Add a handler for some token.
+    # Register a handler for some syntactic feature described by a regex.
     #
-    # NOTE unlike `(?m)^`, using `at_line_start` guarantees that
-    #   a handler won't be called the second time if
-    #   the match is empty.
+    # NOTE `at_line_start` is equivalent to `(?m)^`, but guarantees
+    #   that a handler will only be called once even if the match was empty.
     #
     def add(self, regex, f, at_line_start=False):
 
         self.append((re.compile(regex, re.DOTALL).match, f, at_line_start))
-        return f
 
-    # match :: (str, int, bool) -> (TokenHandler, MatchObject)
+    # match :: (str, int, bool) -> (function, MatchObject)
     #
-    # Attempt to find a handler suitable for parsing a part of a string.
+    # Find a handler that can parse some part of the string;
+    # raise `StopIteration` if there is none.
     #
     def match(self, text, offset, at_line_start):
 
@@ -109,76 +108,64 @@ class TokenSet (list):
 # are arbitrary expressions.
 tokens = TokenSet()
 
-# has_priority :: (Link, Link) -> bool
-#
-# Whether the first infix link has priority over the second one.
-#
-# NOTE in `a R b Q c`, `Q` should be the first link.
-#
 has_priority = functools.partial(
-    lambda link, in_relation_to, infixr, precedence: (
+    # Whether an infix link has priority over the previous one.
+    #
+    # If it does, then `a R b Q c` should be parsed as `a R (b Q c)`.
+    #
+    lambda precedence, link, in_relation_to: (
         # `a R b -> c` <=> `a R (b -> c)` for all `R`.
-        # `a R b -> c Q d` <=> `a R (b -> c Q d)` iff
-        #   `has_priority(Q, R) and has_priority(Q, '->')`
-        #  `a R (b -> c) Q d` otherwise.
         link == '->' or (
           # `a -> b where c` <=> `a -> (b where c)` for obvious reasons.
           # `a -> b, c` <=> `(a -> b), c` for probably not so obvious ones.
           not (link == ',' and in_relation_to == '->') and
           # No other operator is that complex.
-          infixr(precedence(link)) < abs(precedence(in_relation_to))
+          abs(precedence(in_relation_to)) > abs(precedence(link)) - (precedence(link) > 0)
         )
     ),
-    # Right-fixed links have positive precedence, left-fixed ones have negative.
-    # Right-fixed ones gain +1 to their priority, but since `<` is used above
-    # rather than `<=`, that only affects expressions like `a R b R c`.
-    infixr     = lambda x: abs(x) - (x > 0),
-    precedence = lambda i, q={
-      # Scope resolution
-        '.':   0,
-        '!.':  0,
-        '!':   1,
-      # Keyword arguments
-        ':':   1,
-      # Function application
-        '':   -2,
-      # Container subscription
-        '!!': -3,
-      # Math
-        '**':  4,
-        '*':  -5,
-        '/':  -5,
-        '//': -5,
-        '%':  -5,
-        '+':  -6,
-        '-':  -6,
-      # Comparison
-        '<':  -8,
-        '<=': -8,
-        '>=': -8,
-        '>':  -8,
-        '==': -8,
-        '!=': -8,
-        'is': -8,
-        'in': -8,
-      # Binary operations
-        '<<': -10,
-        '>>': -10,
-        '&':  -11,
-        '^':  -12,
-        '|':  -13,
-      # Logic
-        'and': -14,
-        'or':  -15,
-      # Low-priority binding
-        '$':   16,
-      # Sequential evaluation
-        ',':  -17,
-      # Local binding
-        'where': 18,
-      # Assignment
-        '=':   18,
-        '!!=': 18,
+    lambda i, q={
+        # Right-fixed links have positive precedence, left-fixed ones have negative.
+        # You can assign non-integer precedences, but that's not advisable.
+        '.':     0,  # getattr
+        '!.':    0,  # call with no arguments, then getattr
+        '!':     1,  # call with no arguments
+        ':':     1,  # keyword argument
+        '':     -2,  # call with an argument
+
+        '!!':   -3,  # container subscription (i.e. `a[b]`)
+        '**':    4,  # exponentiation
+        '*':    -5,  # multiplication
+        '/':    -5,  # fp division
+        '//':   -5,  # int division
+        '%':    -5,  # modulus
+        '+':    -6,  # addition
+        '-':    -6,  # subtraction
+        # -7 is the default value for everything not on this list.
+        '<':    -8,  # less than
+        '<=':   -8,  # ^ or equal
+        '>':    -8,  # greater than
+        '>=':   -8,  # ^ or equal
+        '==':   -8,  # equal
+        '!=':   -8,  # not ^
+        'is':   -8,  # occupies the same memory location as
+        'in':   -8,  # is one of the elements of
+
+        '<<':  -10,  # *  2 **
+        '>>':  -10,  # // 2 **
+        '&':   -11,  # bitwise and
+        '^':   -12,  # bitwise xor
+        '|':   -13,  # bitwise or
+
+        'and': -14,  # B if A else A
+        'or':  -15,  # A if A else B
+
+        '$':    16,  # call with one argument and no f-ing parentheses
+                     # (e.g. `a $ b c` <=> `a (b c)`)
+
+        ',':    -17,  # a tuple
+
+        '=':   18,  # assignment
+        '!!=': 18,  # in-place versions of some of the other functions
         '+=':  18,
         '-=':  18,
         '*=':  18,
@@ -191,15 +178,16 @@ has_priority = functools.partial(
         '|=':  18,
         '<<=': 18,
         '>>=': 18,
-      # Function definition
-        '->':  19,
-      # Conditionals
-        'if':   20,
-        'else': 21,
-      # Immediate return
-        ';':  -100499,
-      # Chaining
-        '\n': -100500,
+
+        'where': 18,  # with some stuff that is not visible outside of that expression
+
+        '->': 19,  # a function
+
+        'if':   20,  # binary conditional
+        'else': 21,  # ternary conditional (always follows an `a if b` expression)
+
+        ';':  -100499,  # stop code object evaluation
+        '\n': -100500,  # do A then B
     }.get: q(i, -7)  # Default
 )
 
@@ -311,7 +299,11 @@ def indent(stream, token):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-        return do(stream, token, {''}, preserve_close_state=True)
+        block = do(stream, token, {''}, preserve_close_state=True)
+        block.indented = True
+        # Further expressions should not touch this block.
+        stream.appendleft(tree.Link('\n', True).after(block))
+        return block
 
     while indent != stream.indent.pop():
 
@@ -376,7 +368,6 @@ def link(stream, token, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'})
 #
 def do(stream, token, ends={')'}, preserve_close_state=False):
 
-    par = token.group().strip() if token else ''
     object   = tree.Constant(None).at(stream, token.end())
     can_join = False
 
@@ -395,18 +386,14 @@ def do(stream, token, ends={')'}, preserve_close_state=False):
         elif can_join:
 
             # Two objects in a row should be joined with an empty infix link.
-            object = infixl(stream, object, tree.Link('', True).before(item), item)
+            object = infixl(stream, object, tree.Link('', True).after(object), item)
 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
 
             object, can_join = item, True
 
-    # Further expressions should not touch this block.
-    par or stream.appendleft(tree.Link('\n', True).after(object))
-
-    object.indented = not par
-    object.closed  |= not preserve_close_state
+    object.closed |= not preserve_close_state
     return object
 
 
