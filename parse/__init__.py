@@ -285,7 +285,13 @@ def infixl_insert_rhs(root, op, rhs):
     # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
     e = tree.Expression([op, root] if rhs is None else [op, root, rhs])
     e.closed = rhs is None
-    return e.in_between(root, op if rhs is None else rhs)
+    e.location = tree.Location(
+        root.location.start,
+        e[-(not e.closed)].location.end,
+        root.location.filename,
+        root.location.first_line
+    )
+    return e
 
 
 @tokens(r' *', at_line_start=True)

@@ -10,28 +10,6 @@ class StructMixIn:
     indented    = False
     traversable = False
 
-  ### TOKEN AUTOLOCATION
-
-    def in_between(self, left, right):
-
-        self.location = Location(
-            left.location.start,
-            right.location.end,
-            right.location.filename,
-            left.location.first_line
-        )
-        return self
-
-    def before(self, other):
-
-        self.location = Location(
-            other.location.start,
-            other.location.start,
-            other.location.filename,
-            other.location.first_line
-        )
-        return self
-
     def after(self, other):
 
         self.location = Location(
