@@ -1,7 +1,6 @@
-import ast
-import functools
-
 from re          import compile
+from ast         import literal_eval
+from functools   import reduce
 from collections import Iterator, deque
 
 from .     import syntax
@@ -91,28 +90,23 @@ def infixl(stream, lhs, op, rhs):
 
         break_, rhs = rhs, next(stream)
 
-    if isinstance(rhs, Internal) or unary(op):
+    if isinstance(rhs, Internal) or unary(op):  # `(a R)`
 
-        # `(a R)`, and `rhs` is a close-paren.
         stream.appendleft(rhs)
         return postfixl()
 
     if break_ and op == '' and rhs.indented:
 
-        # `a \n b ...` <=> `a b ...` iff `b ...` is indented.
-        #
-        # That is, if an indented block follows a line with an empty infix
-        # link at the end, each line of that block is an additional
-        # argument to that empty link.
-        return functools.reduce(
+        # a
+        #   b         <=>  a b (c d)
+        #   c d
+        return reduce(
             lambda lhs, rhs: infixl_insert_rhs(lhs, op, rhs),
             rhs[1:] if isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs], lhs
         )
 
-    if break_ and op != '\n' and not rhs.indented:
+    if break_ and op != '\n' and not rhs.indented:  # `a R`
 
-        # `a R`. There was no `rhs` before a line break,
-        # and no indented block immediately after it either.
         return infixl(stream, postfixl(), break_, rhs)
 
     if not rhs.closed and rhs.infix and (op == '' or has_priority(op, rhs)):
@@ -128,11 +122,9 @@ def infixl(stream, lhs, op, rhs):
 # Recursively descends into `root` if infix precedence rules allow it to,
 # otherwise simply creates and returns a new infix expression AST node.
 #
-# That is, it's a recursive bracketless shunting-yard algorithm implementation.
-#
 def infixl_insert_rhs(root, op, rhs):
 
-    if root.traversable:
+    if isinstance(root, Expression) and not root.closed:
 
         if has_priority(op, root[0]):
 
@@ -169,16 +161,13 @@ def indent(stream, token):
         stream.indent.append(indent)
         block = do(stream, token, {''}, preserve_close_state=True)
         block.indented = True
-        # Further expressions should not touch this block.
-        stream.appendleft(Link('\n', True).after(block))
         return block
 
-    while indent != stream.indent.pop():
+    while indent != stream.indent[-1]:
 
+        stream.indent.pop() < 0 and stream.error('no matching indentation level', token.start())
+        stream.appendleft(Link('\n', True).at(stream, token.end()))
         stream.appendleft(Internal('').at(stream, token.end()))
-        stream.indent or stream.error('no matching indentation level', token.start())
-
-    stream.indent.append(indent)
 
 
 def whitespace(stream, token): pass
@@ -186,14 +175,14 @@ def whitespace(stream, token): pass
 
 def number(stream, token):
 
-    return Constant(ast.literal_eval(token.group()))
+    return Constant(literal_eval(token.group()))
 
 
 def string(stream, token):
 
     g = token.group(2) * (4 - len(token.group(2)))
     q = ''.join(sorted(set(token.group(1))))
-    return Constant(ast.literal_eval(''.join([q, g, token.group(3), g])))
+    return Constant(literal_eval(''.join([q, g, token.group(3), g])))
 
 
 def link(stream, token, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'}):
@@ -248,33 +237,32 @@ def error(stream, token):
     stream.error('invalid input', token.start())
 
 
-def R(flag, func, expr):
+def R(func, expr):
 
-    return flag, func, compile(expr).match
+    return func, compile(expr).match
 
 
 class it (Iterator, deque):
 
-    tokens = [
-        R(True,  indent,     r' *')
-      , R(False, whitespace, r'[^\S\n]+|\s*#[^\n]*')
-      , R(False, number,     r'(?i)[+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|\d+(?:\.\d+)?(?:e[+-]?\d+)?j?)')
-      , R(False, string,     r'([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
-      , R(False, link,       r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
-      , R(False, do,         r'\(')
-      , R(False, end,        r'\)|$')
-      , R(False, string_err, r'''['"]''')
-      , R(False, error,      r'.')
+    tokens = [R(indent, r' *')], [
+        R(whitespace, r'[^\S\n]+|\s*#.*')
+      , R(number,     r'(?i)[+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|\d+(?:\.\d+)?(?:e[+-]?\d+)?j?)')
+      , R(string,     r'(?s)([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
+      , R(link,       r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
+      , R(do,         r'\(')
+      , R(end,        r'\)|$')
+      , R(string_err, r'''['"]''')
+      , R(error,      r'.')
     ]
 
     def __new__(cls, data, filename='<string>'):
 
         self = super(it, cls).__new__(cls)
-        self.linestart = True
-        self.filename  = filename
-        self.buffer = data
-        self.offset = 0
-        self.indent = deque([-1])
+        self.filename = filename
+        self.buffer   = data
+        self.offset   = 0
+        self.indent   = deque([-1])
+        self.nextset  = self.tokens[0]
         return next(self)
 
     def __next__(self):
@@ -282,11 +270,11 @@ class it (Iterator, deque):
         while not self:
 
             f, match = next((f, match)
-                for als, f, re in self.tokens if als is self.linestart
+                for f, re in self.nextset
                 for match in [re(self.buffer, self.offset)] if match
             )
-            self.offset    = match.end()
-            self.linestart = match.group().endswith('\n')
+            self.offset  = match.end()
+            self.nextset = self.tokens[not match.group().endswith('\n')]
             q = f(self, match)
 
             if q is not None:

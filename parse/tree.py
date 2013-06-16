@@ -8,7 +8,6 @@ class StructMixIn:
     infix       = False
     closed      = False
     indented    = False
-    traversable = False
 
     def after(self, other):
 
@@ -32,8 +31,6 @@ class StructMixIn:
 
 
 class Expression (list, StructMixIn):
-
-    traversable = property(lambda self: not self.closed)
 
     def __repr__(self):
 
