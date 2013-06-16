@@ -12,7 +12,7 @@ inplace = c -> binary (self _ a b) ->
 # NOTE ',' is unfixed
 PREFIX !! ',' = (self f xs) -> self.loadop 'BUILD_TUPLE' *: xs delta: 1
 PREFIX !! '$' = binary (self f a b) ->
-  is_call = a :: parse.tree.Expression and not a.closed and a !! 0 == ''
+  is_call = a :: parse.Expression and not a.closed and a !! 0 == ''
   self.call a b          if not is_call
   self.call *: (a + list' b) if is_call
 
@@ -46,10 +46,10 @@ PREFIX !! '>>=' = inplace 'INPLACE_RSHIFT'
 
 PREFIX !! '!!~' = binary (self _ a b) -> (self.loadop 'DELETE_SUBSCR' None a b delta: 1)
 PREFIX !! '.~'  = binary (self _ a b) ->
-  parse.syntax.error 'not an attribute' b if not (b :: parse.tree.Link)
+  syntax.error 'not an attribute' b if not (b :: parse.Link)
   self.loadop 'DELETE_ATTR' None a arg: b delta: 1
 
 PREFIX !! '!.'  = binary (self _ a b) ->
-  parse.syntax.error 'not an attribute' b if not (b :: parse.tree.Link)
+  syntax.error 'not an attribute' b if not (b :: parse.Link)
   self.call                    a
   self.loadop 'LOAD_ATTR' arg: b delta: 0

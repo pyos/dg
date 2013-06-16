@@ -1,6 +1,6 @@
 import collections
 
-from .  import codegen
+from .  import codegen, syntax
 from .. import parse
 
 
@@ -38,11 +38,11 @@ class CodeGenerator (codegen.MutableCode):
 
             hasattr(e, 'location') and self.mark(e)
 
-            if isinstance(e, parse.tree.Expression):
+            if isinstance(e, parse.Expression):
 
                 self.call(*e)
 
-            elif isinstance(e, parse.tree.Link):
+            elif isinstance(e, parse.Link):
 
                 self.loadop(
                     'LOAD_DEREF' if e in self.cellvars else
@@ -52,7 +52,7 @@ class CodeGenerator (codegen.MutableCode):
                     'LOAD_GLOBAL', arg=e, delta=1
                 )
 
-            elif isinstance(e, parse.tree.Constant):
+            elif isinstance(e, parse.Constant):
 
                 self.loadop('LOAD_CONST', arg=e.value, delta=1)
 
@@ -84,37 +84,50 @@ class CodeGenerator (codegen.MutableCode):
 
         '''
 
-        type, target, misc = parse.syntax.assignment_target(var)
+        # It may be a comma-separated list of other targets.
+        pack = syntax.binary_op(',', var, lambda _: None)
 
-        if type == 0:
+        if pack:
 
-            # `target` -- a list of items
-            # `misc`   -- number of items to the right and left of a starred one
-            ln, star = misc
+            # Allow one starred argument that is similar to `varargs`.
+            star = -1
+
+            for i, q in enumerate(pack):
+
+                if isinstance(q, list) and len(q) == 3 and q[:2] == ['', '*']:
+
+                    star > -1 and syntax.error('can only have one *starred item', q)
+                    i > 255   and syntax.error('CPython cannot handle that many items', q)
+
+                    star, pack[i] = i, q[2]
+
             #     w/o a starred item                 w/ a starred item
             op  = 'UNPACK_SEQUENCE' if star < 0 else 'UNPACK_EX'
-            arg = ln                if star < 0 else star + 256 * (ln - star - 1)
-            self.loadop(op, arg=arg, delta=ln - 1)
+            arg = len(pack)         if star < 0 else star + 256 * (len(pack) - star - 1)
+            self.loadop(op, arg=arg, delta=len(pack) - 1)
 
-            for item in target:
+            for item in pack:
 
                 self.store_top(item)
 
-        elif type == 1:
+            return
 
-            # `target` -- the attribute
-            # `misc`   -- its owner
-            self.loadop('STORE_ATTR', misc, arg=target, delta=-1)
+        # It may also be an attribute (object.attr) or a subitem (object !! item).
+        var, attr = syntax.binary_op('.',  var, lambda x: (x, None))
+        var, item = syntax.binary_op('!!', var, lambda x: (x, None))
 
-        elif type == 2:
+        if attr:
 
-            # `target` -- the key
-            # `misc`   -- the container
-            self.loadop('STORE_SUBSCR', misc, target, delta=-1)
+            isinstance(attr, parse.Link) or syntax.error('not an attribute', attr)
+            return self.loadop('STORE_ATTR', var, arg=attr, delta=-1)
 
-        else:
+        if item:
 
-            self.store_var(target)
+            return self.loadop('STORE_SUBSCR', var, item, delta=-1)
+
+        # If neither, it should be a variable name.
+        isinstance(var, parse.Link) or syntax.error('not something one can assign to', var)
+        self.store_var(var)
 
     def store_var(self, target):
         '''Pop an item off the stack, store it in a variable.'''
@@ -173,7 +186,7 @@ class CodeGenerator (codegen.MutableCode):
         '''
 
         (a, _, _, kw, va, vkw) = (args, (), (), {}, (), ()) if infix \
-                            else parse.syntax.argspec(args, definition=False)
+                            else syntax.argspec(args, definition=False)
 
         self.load(f, *a)
 
@@ -218,7 +231,7 @@ class CodeGenerator (codegen.MutableCode):
         return self.call(*args, rightbind=True) if f.infix and f == '' \
           else INFIXR[f](self, f,  args) if f.infix and not f.closed and rightbind      \
           else INFIXL[f](self, f, *args) if f.infix and not f.closed and len(args) == 1 \
-          else PREFIX[f](self, f,  args) if isinstance(f, parse.tree.Link) and f in PREFIX \
+          else PREFIX[f](self, f,  args) if isinstance(f, parse.Link) and f in PREFIX \
           else self.nativecall(f, args, 0, f.infix and not f.closed)
 
     def store(self, target, expr):
@@ -240,13 +253,13 @@ class CodeGenerator (codegen.MutableCode):
 
         '''
 
-        a, kw, da, dkw, va, vkw = parse.syntax.argspec(args, definition=True)
+        a, kw, da, dkw, va, vkw = syntax.argspec(args, definition=True)
         n = []
         t = {}
 
         for index, arg in enumerate(a):
 
-            if isinstance(arg, parse.tree.Link) and arg not in n:
+            if isinstance(arg, parse.Link) and arg not in n:
 
                 n.append(arg)
 

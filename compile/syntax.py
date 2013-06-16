@@ -1,4 +1,4 @@
-from . import tree
+from .. import parse
 
 
 # binary_op :: (Link, object, object -> [object]) -> [object]
@@ -7,52 +7,13 @@ from . import tree
 #
 def binary_op(id, expr, on_error):
 
-    return expr[1:] if isinstance(expr, tree.Expression) and len(expr) > 2 and expr[0] == id else on_error(expr)
+    return expr[1:] if isinstance(expr, parse.Expression) and len(expr) > 2 and expr[0] == id else on_error(expr)
 
 
 def error(description, at):
 
     (_, line, char), _, filename, text = at.location
     raise SyntaxError(description, (filename, line, char, text))
-
-
-def assignment_target(var):
-
-    # It may be a comma-separated list of other targets.
-    pack = binary_op(',', var, lambda _: None)
-
-    if pack:
-
-        # Allow one starred argument that is similar to `varargs`.
-        star = -1
-
-        for i, q in enumerate(pack):
-
-            if isinstance(q, list) and len(q) == 3 and q[:2] == ['', '*']:
-
-                star > -1 and error('can only have one *starred item', q)
-                i > 255   and error('CPython cannot handle that many items', q)
-
-                star, pack[i] = i, q[2]
-
-        return 0, pack, (len(pack), star)
-
-    # It may also be an attribute (object.attr) or a subitem (object !! item).
-    var, attr = binary_op('.',  var, lambda x: (x, None))
-    var, item = binary_op('!!', var, lambda x: (x, None))
-
-    if attr:
-
-        isinstance(attr, tree.Link) or error('not an attribute', attr)
-        return 1, attr, var
-
-    if item:
-
-        return 2, item, var
-
-    # If neither, it should be a variable name.
-    isinstance(var, tree.Link) or error('not something one can assign to', var)
-    return 3, var, []
 
 
 def argspec(args, definition):
@@ -67,7 +28,7 @@ def argspec(args, definition):
     varkwargs   = []  # `[]` or `[c.co_varnames[c.co_argc + c.co_kwonlyargc + 1]]`
 
     # `Constant(None)` <=> `()` <=> "no arguments".
-    if not isinstance(args, tree.Constant) or args.value is not None:
+    if not isinstance(args, parse.Constant) or args.value is not None:
 
         for arg in (binary_op('', args, lambda x: [x]) if definition else args):
 
@@ -109,7 +70,7 @@ def argspec(args, definition):
                 if varargs or not definition:
 
                     # 5.1. `_: _` is a keyword argument, and its left side is a link.
-                    isinstance(kw, tree.Link) or error('keywords cannot be pattern-matched', kw)
+                    isinstance(kw, parse.Link) or error('keywords cannot be pattern-matched', kw)
 
                     kwarguments.append(kw)
                     kwdefaults[kw] = value

@@ -1,9 +1,9 @@
 PREFIX !! 'not' = (self f args) -> self.loadop 'UNARY_NOT' (ensure f args 1 1 !! 0) delta: 1
 
 INFIXL !! '!' = (self _ q) -> self.call q
-INFIXR !! '!' = (self f _) -> parse.syntax.error 'use "not"' f
+INFIXR !! '!' = (self f _) -> syntax.error 'use "not"' f
 
-INFIXL !! '~' = (self f _) -> parse.syntax.error 'this operator is unary' f
+INFIXL !! '~' = (self f _) -> syntax.error 'this operator is unary' f
 INFIXR !! '~' = (self _ args) ->
   self.loadcall args
   self.loadop 'UNARY_INVERT' delta: 0

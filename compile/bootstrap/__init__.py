@@ -1,11 +1,12 @@
 from ..core import CodeGenerator, INFIXL, INFIXR, PREFIX
+from ..     import syntax
 from ...    import parse
 
 
 def ensure(f, args, min=1, max=float('inf')):
 
-    len(args) < min and parse.syntax.error('not enough arguments (got {}, min. {})'.format(len(args), min), f)
-    len(args) > max and parse.syntax.error('too many aguments (got {}, max. {})'   .format(len(args), max), f)
+    len(args) < min and syntax.error('not enough arguments (got {}, min. {})'.format(len(args), min), f)
+    len(args) > max and syntax.error('too many aguments (got {}, max. {})'   .format(len(args), max), f)
     return args
 
 
@@ -13,13 +14,13 @@ def unpack(f, args, g):
 
     try:
 
-        a, _, _, kw, va, vkw = parse.syntax.argspec(args, definition=False)
-        (va or vkw) and parse.syntax.error("can't use varargs with macros", f)
+        a, _, _, kw, va, vkw = syntax.argspec(args, definition=False)
+        (va or vkw) and syntax.error("can't use varargs with macros", f)
         return g(*a, **kw)
 
     except TypeError as e:
 
-        parse.syntax.error(str(e), f)
+        syntax.error(str(e), f)
 
 SUBMODULE_NS = globals().copy()
 
@@ -46,7 +47,7 @@ def getattr(self, _, a, b):
 
     '''
 
-    isinstance(b, parse.tree.Link) or parse.syntax.error('not an attribute', b)
+    isinstance(b, parse.Link) or syntax.error('not an attribute', b)
     self.load(a)
     self.loadop('LOAD_ATTR', arg=b, delta=0)
 
@@ -62,9 +63,9 @@ def import_(self, _, name, qualified=None):
 
     '''
 
-    isinstance(name, parse.tree.Constant) or parse.syntax.error('should be constant', name)
-    isinstance(name.value, str)           or parse.syntax.error('should be a string', name)
-    qualified in (None, 'qualified') or parse.syntax.error('invalid argument', qualified)
+    isinstance(name, parse.Constant) or syntax.error('should be constant', name)
+    isinstance(name.value, str)      or syntax.error('should be a string', name)
+    qualified in (None, 'qualified') or syntax.error('invalid argument', qualified)
 
     path   = posixpath.normpath(name.value).split(posixpath.sep)
     parent = 1
@@ -73,7 +74,7 @@ def import_(self, _, name, qualified=None):
     while path and path[0] == posixpath.pardir and path.pop(0): parent += 1
     while path and path[0] == posixpath.curdir and path.pop(0): pass
 
-    path or parse.syntax.error('no module name', name)
+    path or syntax.error('no module name', name)
 
     if qualified or len(path) == 1:
 

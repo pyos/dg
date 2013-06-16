@@ -1,7 +1,7 @@
 unsafe_s = cases ->
   pairs = list $ map
-    bind parse.syntax.binary_op '=' on_error:
-      bind parse.syntax.error '`unsafe` requires `condition = action` pairs'
+    bind syntax.binary_op '=' on_error:
+      bind syntax.error '`unsafe` requires `condition = action` pairs'
     cases
 
   pairs, (pairs.pop! if len pairs > 1 and pairs !! -1 !! 0 == 'True' else (None, None))

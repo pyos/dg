@@ -7,9 +7,9 @@
 comparison = op -> (self f args chain: False) ->
   a, b = ensure f args 2 2
 
-  double = a :: parse.tree.Expression and not a.closed and
+  double = a :: parse.Expression and not a.closed and
     e, *ex = a
-    e :: parse.tree.Link and e in PREFIX and
+    e :: parse.Link and e in PREFIX and
       f = PREFIX !! e
       # How do I check if that closure is the same as this one?
       getattr f '__code__' None is comparison.__code__.co_consts !! 0
