@@ -1,7 +1,7 @@
 import collections
 
 from .  import codegen
-from .. import const, parse
+from .. import parse
 
 
 class CodeGenerator (codegen.MutableCode):
@@ -86,7 +86,7 @@ class CodeGenerator (codegen.MutableCode):
 
         type, target, misc = parse.syntax.assignment_target(var)
 
-        if type == const.AT.UNPACK:
+        if type == 0:
 
             # `target` -- a list of items
             # `misc`   -- number of items to the right and left of a starred one
@@ -100,13 +100,13 @@ class CodeGenerator (codegen.MutableCode):
 
                 self.store_top(item)
 
-        elif type == const.AT.ATTR:
+        elif type == 1:
 
             # `target` -- the attribute
             # `misc`   -- its owner
             self.loadop('STORE_ATTR', misc, arg=target, delta=-1)
 
-        elif type == const.AT.ITEM:
+        elif type == 2:
 
             # `target` -- the key
             # `misc`   -- the container

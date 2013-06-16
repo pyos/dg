@@ -1,5 +1,4 @@
 from . import tree
-from .. import const
 
 
 # binary_op :: (Link, object, object -> [object]) -> [object]
@@ -31,12 +30,12 @@ def assignment_target(var):
 
             if isinstance(q, list) and len(q) == 3 and q[:2] == ['', '*']:
 
-                star > -1 and error(const.ERR.MULTIPLE_VARARGS, q)
-                i > 255   and error(const.ERR.TOO_MANY_ITEMS_BEFORE_STAR, q)
+                star > -1 and error('can only have one *starred item', q)
+                i > 255   and error('CPython cannot handle that many items', q)
 
                 star, pack[i] = i, q[2]
 
-        return const.AT.UNPACK, pack, (len(pack), star)
+        return 0, pack, (len(pack), star)
 
     # It may also be an attribute (object.attr) or a subitem (object !! item).
     var, attr = binary_op('.',  var, lambda x: (x, None))
@@ -44,16 +43,16 @@ def assignment_target(var):
 
     if attr:
 
-        isinstance(attr, tree.Link) or error(const.ERR.NONCONST_ATTR, attr)
-        return const.AT.ATTR, attr, var
+        isinstance(attr, tree.Link) or error('not an attribute', attr)
+        return 1, attr, var
 
     if item:
 
-        return const.AT.ITEM, item, var
+        return 2, item, var
 
     # If neither, it should be a variable name.
-    isinstance(var, tree.Link) or error(const.ERR.NONCONST_VARNAME, var)
-    return const.AT.NAME, var, []
+    isinstance(var, tree.Link) or error('not something one can assign to', var)
+    return 3, var, []
 
 
 def argspec(args, definition):
@@ -73,7 +72,7 @@ def argspec(args, definition):
         for arg in (binary_op('', args, lambda x: [x]) if definition else args):
 
             # 1. `**: _` should be the last argument in a function definition.
-            definition and varkwargs and error(const.ERR.ARG_AFTER_VARKWARGS, arg)
+            definition and varkwargs and error('**double-starred argument is always the last one', arg)
 
             kw, value = binary_op(':', arg, lambda x: (None, x))
 
@@ -83,7 +82,7 @@ def argspec(args, definition):
 
                     # 2.1. `_: _` should only be followed by `_: _`
                     #      unless `*: _` was already encountered.
-                    defaults and not varargs and error(const.ERR.NO_DEFAULT, value)
+                    defaults and not varargs and error('this argument should have a default value', value)
 
                 # If there was a `*: _`, this is a keyword-only argument.
                 # Unless, of course, this is a function call, in which case
@@ -93,13 +92,13 @@ def argspec(args, definition):
             elif kw == '*':
 
                 # 3.1. `*: _` cannot be followed by another `*: _`.
-                varargs and error(const.ERR.MULTIPLE_VARARGS, kw)
+                varargs and error('can only have one *starred argument', kw)
                 varargs.append(value)
 
             elif kw == '**':
 
                 # 4.1. Just in case. Should not be triggered.
-                varkwargs and error(const.ERR.MULTIPLE_VARKWARGS, kw)
+                varkwargs and error('can only have one **double-starred argument', kw)
                 varkwargs.append(value)
 
             else:
@@ -110,7 +109,7 @@ def argspec(args, definition):
                 if varargs or not definition:
 
                     # 5.1. `_: _` is a keyword argument, and its left side is a link.
-                    isinstance(kw, tree.Link) or error(const.ERR.NONCONST_KEYWORD, kw)
+                    isinstance(kw, tree.Link) or error('keywords cannot be pattern-matched', kw)
 
                     kwarguments.append(kw)
                     kwdefaults[kw] = value
@@ -120,7 +119,7 @@ def argspec(args, definition):
                     arguments.append(kw)
                     defaults.append(value)
 
-    len(arguments) > 255 and error(const.ERR.TOO_MANY_ARGS, args)  # *sigh*
+    len(arguments) > 255 and error('CPython cannot handle that many arguments', args)  # *sigh*
   # If this is a function call, not a definition:
   #        posargs,   _,           _,        kwargs,     varargs, varkwargs
     return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs
