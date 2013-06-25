@@ -1,5 +1,7 @@
 from .. import parse
 
+error = parse.error
+
 
 # binary_op :: (Link, object, object -> [object]) -> [object]
 #
@@ -8,12 +10,6 @@ from .. import parse
 def binary_op(id, expr, on_error):
 
     return expr[1:] if isinstance(expr, parse.Expression) and len(expr) > 2 and expr[0] == id else on_error(expr)
-
-
-def error(description, at):
-
-    (_, line, char), _, filename, text = at.location
-    raise SyntaxError(description, (filename, line, char, text))
 
 
 def argspec(args, definition):
