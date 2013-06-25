@@ -236,7 +236,7 @@ def indent(stream, token, pos):
 
     while indent != stream.indent[-1]:
 
-        stream.indent.pop() < 0 and stream.error('no matching indentation level', token.start())
+        stream.indent.pop() < 0 and error('no matching indentation level', pos)
         stream.appendleft(Link('\n', True).at(pos, stream))
         stream.appendleft(Internal('').at(pos, stream))
 
@@ -260,10 +260,10 @@ def do(stream, token, pos, ends={')'}, preserve_close_state=False):
 
         if isinstance(item, Internal):
 
-            item.value in ends or stream.error(
+            item.value in ends or error(
               'unexpected block delimiter' if item.value else
               'unexpected EOF'             if stream.offset >= len(stream.buffer) else
-              'unexpected dedent', item.location.start[0]
+              'unexpected dedent', item
             )
 
             break
