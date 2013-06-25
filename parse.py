@@ -1,12 +1,14 @@
 from re          import compile
 from ast         import literal_eval
-from functools   import reduce
+from functools   import reduce, partial
 from collections import Iterator, deque, namedtuple
+
+__all__ = ['Node', 'Expression', 'Link', 'Constant', 'Location', 'error', 'it', 'fd']
 
 Location = namedtuple('Location', 'start, end, filename, first_line')
 
 
-class StructMixIn:
+class Node:
 
     infix       = False
     closed      = False
@@ -22,18 +24,18 @@ class StructMixIn:
         )
         return self
 
-    def at(self, stream, start):
+    def at(self, start, stream):
 
         self.location = Location(
-            stream.position(start),
-            stream.position(stream.offset),
-            stream.filename,
-            stream.line(start)
+            start.start,
+            (stream.offset, stream.lineno, stream.charno),
+            start.filename,
+            start.first_line
         )
         return self
 
 
-class Expression (list, StructMixIn):
+class Expression (list, Node):
 
     def __repr__(self):
 
@@ -46,7 +48,7 @@ class Expression (list, StructMixIn):
         )
 
 
-class Link (str, StructMixIn):
+class Link (str, Node):
 
     def __new__(cls, data, infix=False):
 
@@ -59,7 +61,7 @@ class Link (str, StructMixIn):
         return self
 
 
-class Constant (StructMixIn):
+class Constant (Node):
 
     def __init__(self, value):
 
@@ -74,6 +76,12 @@ class Constant (StructMixIn):
 class Internal (Constant):
 
     pass
+
+
+def error(description, at):
+    (_, lineno, charno), _, filename, line = at.location if isinstance(at, Node) else at
+    raise SyntaxError(description, (filename, lineno, charno, line))
+
 
 # In all comments below, `R` and `Q` are infix links, while lowercase letters
 # are arbitrary expressions.
@@ -133,135 +141,119 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
 }.get: g(m, (-7, -7)))  # Default
 
 
-# If `unassoc(R)`: `a R b R c` <=> `Expression [ Link R, Link a, Link b, Link c]`
-# Otherwise:       `a R b R c` <=> `Expression [ Link R, Expression [...], Link c]`
-# (This doesn't apply to right-fixed links.)
+# If `unassoc(R)` is true, `Expression`s starting with `R` are allowed
+# to contain any number of arguments rather than only two.
 unassoc = {',', '..', '::', '', '\n'}.__contains__
 
 # These operators have no right-hand statement part in any case.
 unary = {'!'}.__contains__
 
 
-# infixl :: (State, StructMixIn, Link, StructMixIn) -> StructMixIn
-#
-# Handle an infix expression given its all three parts.
-#
-# If that particular expression has no right-hand statement part,
-# `rhs` will be pushed to the object queue.
-#
-def infixl(stream, lhs, op, rhs):
-
-    break_   = False
-    postfixl = lambda: (lhs if op in '\n ' else infixl_insert_rhs(lhs, op, None))
+def infix(self, lhs, op, rhs):
+    br = False
 
     while rhs == '\n' and not unary(op):
+        # There are some special cases for indented RHS,
+        # so we'll have to ignore the line breaks for now.
+        br, rhs = rhs, next(self)
 
-        break_, rhs = rhs, next(stream)
+    if op == '':
+        if isinstance(rhs, Internal):
+            # `(a\n)`.
+            self.appendleft(rhs)
+            return lhs
 
-    if isinstance(rhs, Internal) or unary(op):  # `(a R)`
+        if br and rhs.indented:
+            # a b
+            #   c         <=>  a b c (d e)
+            #   d e
+            args = rhs[1:] if isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs]
+            return reduce(partial(infixin, op), args, lhs)
 
-        stream.appendleft(rhs)
-        return postfixl()
+        if br:
+            # `a\n`.
+            return infixin(br, lhs, rhs)
 
-    if break_ and op == '' and rhs.indented:
+        if rhs.infix and not rhs.closed:
+            # `a R b`. There's no empty operator at all.
+            return infix(self, lhs, rhs, next(self))
 
-        # a
-        #   b         <=>  a b (c d)
-        #   c d
-        return reduce(
-            lambda lhs, rhs: infixl_insert_rhs(lhs, op, rhs),
-            rhs[1:] if isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs], lhs
-        )
+    else:
+        if isinstance(rhs, Internal) or unary(op):
+            # `(a R)`
+            return infixin(op, lhs, self.appendleft(rhs))
 
-    if break_ and op != '\n' and not rhs.indented:  # `a R`
+        if rhs.infix and not rhs.closed and has_priority(op, rhs):
+            # `a R Q b` <=> `(a R) Q b` if R has priority over Q.
+            return infix(self, infixin(op, lhs), rhs, next(self))
 
-        return infixl(stream, postfixl(), break_, rhs)
+        if br and not rhs.indented:
+            # `a R\n`.
+            return infixin(br, infixin(op, lhs), rhs)
 
-    if not rhs.closed and rhs.infix and (op == '' or has_priority(op, rhs)):
-
-        # `a R Q b` <=> `(a R) Q b` if R is prioritized over Q or R is empty.
-        return infixl(stream, postfixl(), rhs, next(stream))
-
-    return infixl_insert_rhs(lhs, op, rhs)
+    return infixin(op, lhs, rhs)
 
 
-# infixl_insert_rhs :: (StructMixIn, Link, StructMixIn) -> StructMixIn
-#
-# Recursively descends into `root` if infix precedence rules allow it to,
-# otherwise simply creates and returns a new infix expression AST node.
-#
-def infixl_insert_rhs(root, op, rhs):
+def infixin(op, lhs, rhs=None):
 
-    if isinstance(root, Expression) and not root.closed:
+    if isinstance(lhs, Expression) and not lhs.closed:
 
-        if has_priority(op, root[0]):
+        if has_priority(op, lhs[0]):
+            # `a R b Q c` <=> `a R (b Q c)` if Q has priority over R
+            lhs.append(infixin(op, lhs.pop(), rhs))
+            return lhs
 
-            # `a R b Q c` <=> `a R (b Q c)` if Q is prioritized over R
-            root.append(infixl_insert_rhs(root.pop(), op, rhs))
-            return root
-
-        elif op == root[0] and unassoc(op) and rhs is not None:
-
-            root.append(rhs)  # `a R b R c` <=> `R a b c`
-            return root
+        elif op == lhs[0] and unassoc(op) and rhs is not None:
+            # `a R b R c` <=> `R a b c`
+            lhs.append(rhs)
+            return lhs
 
     # `R`         <=> `Link R`
     # `R rhs`     <=> `Expression [ Link '', Link R, Link rhs ]`
     # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
     # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
-    e = Expression([op, root] if rhs is None else [op, root, rhs])
+    e = Expression([op, lhs] if rhs is None else [op, lhs, rhs])
     e.closed = rhs is None
     e.location = Location(
-        root.location.start,
+        lhs.location.start,
         e[-(not e.closed)].location.end,
-        root.location.filename,
-        root.location.first_line
+        lhs.location.filename,
+        lhs.location.first_line
     )
     return e
 
 
-def indent(stream, token):
+def indent(stream, token, pos):
 
     indent = len(token.group())
 
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-        block = do(stream, token, {''}, preserve_close_state=True)
+        block = do(stream, token, pos, {''}, preserve_close_state=True)
         block.indented = True
-        return block
+        return stream.appendleft(block)  # it already has a location.
 
     while indent != stream.indent[-1]:
 
         stream.indent.pop() < 0 and stream.error('no matching indentation level', token.start())
-        stream.appendleft(Link('\n', True).at(stream, token.end()))
-        stream.appendleft(Internal('').at(stream, token.end()))
+        stream.appendleft(Link('\n', True).at(pos, stream))
+        stream.appendleft(Internal('').at(pos, stream))
 
 
-def whitespace(stream, token): pass
-
-
-def number(stream, token):
-
-    return Constant(literal_eval(token.group()))
-
-
-def string(stream, token):
-
+def string(stream, token, pos):
     g = token.group(2) * (4 - len(token.group(2)))
     q = ''.join(sorted(set(token.group(1))))
     return Constant(literal_eval(''.join([q, g, token.group(3), g])))
 
 
-def link(stream, token, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'}):
-
+def link(stream, token, pos, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'}):
     infix = token.group(2) or token.group(3) or token.group(4)
     return Link(infix or token.group(), infix or (token.group() in infixn))
 
 
-def do(stream, token, ends={')'}, preserve_close_state=False):
-
-    object   = Constant(None).at(stream, token.end())
+def do(stream, token, pos, ends={')'}, preserve_close_state=False):
+    object   = Constant(None).at(pos, stream)
     can_join = False
 
     for item in stream:
@@ -279,7 +271,7 @@ def do(stream, token, ends={')'}, preserve_close_state=False):
         elif can_join:
 
             # Two objects in a row should be joined with an empty infix link.
-            object = infixl(stream, object, Link('', True).after(object), item)
+            object = infix(stream, object, Link('', True).after(object), item)
 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
@@ -290,37 +282,27 @@ def do(stream, token, ends={')'}, preserve_close_state=False):
     return object
 
 
-def end(stream, token):
-
-    return Internal(token.group())
-
-
-def string_err(stream, token):
-
-    stream.error('unexpected EOF while reading a string literal', token.start())
+def space (stream, token, pos): pass
+def number(stream, token, pos): return Constant(literal_eval(token.group()))
+def end   (stream, token, pos): return Internal(token.group())
+def errors(stream, token, pos): error('unexpected EOF while reading a string literal', pos)
+def errorh(stream, token, pos): error('invalid input', pos)
 
 
-def error(stream, token):
-
-    stream.error('invalid input', token.start())
-
-
-def R(func, expr):
-
-    return func, compile(expr).match
+def R(func, expr): return func, compile(expr).match
 
 
 class it (Iterator, deque):
 
     tokens = [R(indent, r' *')], [
-        R(whitespace, r'[^\S\n]+|\s*#.*')
-      , R(number,     r'(?i)[+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|\d+(?:\.\d+)?(?:e[+-]?\d+)?j?)')
-      , R(string,     r'(?s)([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
-      , R(link,       r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
-      , R(do,         r'\(')
-      , R(end,        r'\)|$')
-      , R(string_err, r'''['"]''')
-      , R(error,      r'.')
+        R(space,  r'[^\S\n]+|\s*#.*')
+      , R(number, r'(?i)[+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|\d+(?:\.\d+)?(?:e[+-]?\d+)?j?)')
+      , R(string, r'(?s)([br]*)(\'\'\'|"""|"|\')((?:\\?.)*?)\2')
+      , R(link,   r"(\w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+|,+))|\s*(\n)|`(\w+'*)`")
+      , R(do,     r'\(')
+      , R(end,    r'\)|$')
+      , R(errors, r'''['"]''')
+      , R(errorh, r'.')
     ]
 
     def __new__(cls, data, filename='<string>'):
@@ -328,8 +310,11 @@ class it (Iterator, deque):
         self = super(it, cls).__new__(cls)
         self.filename = filename
         self.buffer   = data
-        self.offset   = 0
+        self.lines    = deque(data.split('\n'))
         self.indent   = deque([-1])
+        self.offset   = 0
+        self.lineno   = 1
+        self.charno   = 1
         self.nextset  = self.tokens[0]
         return next(self)
 
@@ -337,48 +322,26 @@ class it (Iterator, deque):
 
         while not self:
 
+            pos = Location((self.offset, self.lineno, self.charno), None, self.filename, self.lines[0])
             f, match = next((f, match)
                 for f, re in self.nextset
                 for match in [re(self.buffer, self.offset)] if match
             )
+
+            if '\n' in match.group():
+                self.lines.popleft()
+                self.lineno +=  match.group().count('\n')
+                self.charno  = -match.group().rfind('\n')
+
             self.offset  = match.end()
+            self.charno += self.offset - match.start()
             self.nextset = self.tokens[not match.group().endswith('\n')]
-            q = f(self, match)
+            q = f(self, match, pos)
 
             if q is not None:
 
-                return q.at(self, match.start())
+                return q.at(pos, self)
 
         return self.popleft()
-
-    # position :: int -> (int, int, int)
-    #
-    # Given a character offset, get an (offset, lineno, charno) triple.
-    #
-    def position(self, offset):
-
-        return (offset,
-            1      + self.buffer.count('\n', 0, offset),
-            offset - self.buffer.rfind('\n', 0, offset))
-
-    # error :: (str, int) -> _|_
-    #
-    # Raise a `SyntaxError` at a given offset.
-    #
-    def error(self, description, at):
-
-        _, lineno, charno = self.position(at)
-        raise SyntaxError(description, (self.filename, lineno, charno, self.line(at)))
-
-    # line :: int -> str
-    #
-    # Get a line which contains the character at a given offset.
-    #
-    def line(self, offset):
-
-        return self.buffer[
-            self.buffer.rfind('\n', 0, offset) + 1 or None:
-            self.buffer. find('\n',    offset) + 1 or None
-        ]
 
 fd = lambda fd, filename='<stream>': it(fd.read(), getattr(fd, 'name', filename))
