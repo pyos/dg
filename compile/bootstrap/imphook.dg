@@ -8,7 +8,7 @@ import '/importlib/util' qualified
 import '../../compile'
 
 
-sys.meta_path.insert 0 $ inherit str $
+sys.meta_path.insert 0 $ subclass str where
 
   find_module = classmethod $ (cls mod path: None) ->
     name = mod.rsplit '.' 1 !! -1
