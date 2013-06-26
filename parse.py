@@ -329,7 +329,7 @@ class it (Iterator, deque):
             )
 
             if '\n' in match.group():
-                self.lines.popleft()
+                for _ in range(match.group().count('\n')): self.lines.popleft()
                 self.lineno +=  match.group().count('\n')
                 self.charno  = -match.group().rfind('\n')
 
