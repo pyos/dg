@@ -1,6 +1,8 @@
 import '/builtins'
 import '/operator'
+import '/itertools'
 import '/functools'
+import '/collections'
 
 
 # Shorthand type constructors (e.g. `set' a b`  <=> `set (a, b)`.)
@@ -48,3 +50,25 @@ builtins.(!!~) = operator.delitem
 builtins.(...)  = Ellipsis
 builtins.(..)   = range
 builtins.(::)   = (a *: xs) -> a `isinstance` xs
+
+# Functional stuff.
+builtins.(<-)   = (f g) -> (*: a **: k) -> f $ g *: a **: k
+builtins.foldl  = (f st xs) -> functools.reduce f xs st
+builtins.foldl1 = (f xs)    -> functools.reduce f xs
+builtins.scanl  = (f st xs) -> itertools.accumulate (itertools.chain (list' st) xs) f
+builtins.scanl1 = (f xs)    -> itertools.accumulate xs f
+# FIXME should also define foldr(1) and scanr(1). Probably.
+
+builtins.exhaust   = bind collections.deque maxlen: 0
+builtins.for       = exhaust <- flip map
+builtins.takewhile = itertools.takewhile
+builtins.dropwhile = itertools.dropwhile
+builtins.take      = (n xs) -> itertools.islice xs None n
+builtins.drop      = (n xs) -> itertools.islice xs n None
+
+builtins.head = next <- iter
+builtins.tail = list <- bind drop 1
+builtins.fst  = head
+builtins.snd  = head <- bind drop 1
+builtins.init = (!! slice None -1)
+builtins.last = (!! -1)

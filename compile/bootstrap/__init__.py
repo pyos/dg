@@ -27,6 +27,7 @@ SUBMODULE_NS = globals().copy()
 import os
 import imp
 import marshal
+import builtins
 import posixpath
 
 PREFIX.update({
@@ -92,31 +93,36 @@ def import_(self, _, name, qualified=None):
     self.store_var(path[-(not qualified)])
 
 
-for f in [
-       'shortcuts.dg'
-  , 'conditionals.dg',  'unary.dg'
-  ,       'binary.dg', 'switch.dg', 'inherit.dg'
-  ,   'comparison.dg',  'where.dg',   'loops.dg', 'yield.dg'
-  ,   'functional.dg', 'unsafe.dg',    'with.dg'
-  ,      'imphook.dg'
-]:
-    f = os.path.join(__path__[0], f)
-    q = imp.cache_from_source(f)
+def iterate(f, x):
 
-    try:
+    while True:
 
-        c = os.stat(q).st_mtime > os.stat(f).st_mtime and marshal.load(open(q, 'rb'))
+        yield x
+        x = f(x)
 
-    except Exception:
+builtins.iterate = iterate
 
-        c = None
+for f in sorted(os.listdir(__path__[0])):
 
-    if not c:
+    if f.endswith('.dg'):
 
-        os.makedirs(os.path.dirname(q), exist_ok=True)
-        p = CodeGenerator('<module>')
-        p.loadop('RETURN_VALUE', parse.fd(open(f)), delta=0)
-        c = p.compiled
-        marshal.dump(c, open(q, 'wb'))
+        f = os.path.join(__path__[0], f)
+        q = imp.cache_from_source(f)
 
-    eval(c, SUBMODULE_NS.copy())
+        try:
+
+            c = os.stat(q).st_mtime > os.stat(f).st_mtime and marshal.load(open(q, 'rb'))
+
+        except Exception:
+
+            c = None
+
+        if not c:
+
+            os.makedirs(os.path.dirname(q), exist_ok=True)
+            p = CodeGenerator('<module>')
+            p.loadop('RETURN_VALUE', parse.fd(open(f)), delta=0)
+            c = p.compiled
+            marshal.dump(c, open(q, 'wb'))
+
+        eval(c, SUBMODULE_NS.copy())

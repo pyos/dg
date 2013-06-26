@@ -1,7 +1,4 @@
-binary = g -> (self f xs) ->
-  a, b = ensure f xs 2 2
-  g self f a b
-
+binary  = g -> (self f xs) -> g self f *: (ensure f xs 2 2)
 stacked = c -> binary (self _ a b) -> (self.loadop c a b delta: 1)
 inplace = c -> binary (self _ a b) ->
   self.loadop c a b     delta: 1
@@ -12,9 +9,9 @@ inplace = c -> binary (self _ a b) ->
 # NOTE ',' is unfixed
 PREFIX !! ',' = (self f xs) -> self.loadop 'BUILD_TUPLE' *: xs delta: 1
 PREFIX !! '$' = binary (self f a b) ->
-  is_call = a :: parse.Expression and not a.closed and a !! 0 == ''
-  self.call a b          if not is_call
-  self.call *: (a + list' b) if is_call
+  switch
+    a :: parse.Expression and not a.closed and a !! 0 == '' = self.call *: (a + list' b)
+    True = self.call a b
 
 PREFIX !! '!!'  = stacked 'BINARY_SUBSCR'
 PREFIX !! '+'   = stacked 'BINARY_ADD'
@@ -46,10 +43,10 @@ PREFIX !! '>>=' = inplace 'INPLACE_RSHIFT'
 
 PREFIX !! '!!~' = binary (self _ a b) -> (self.loadop 'DELETE_SUBSCR' None a b delta: 1)
 PREFIX !! '.~'  = binary (self _ a b) ->
-  syntax.error 'not an attribute' b if not (b :: parse.Link)
+  b :: parse.Link or syntax.error 'not an attribute'
   self.loadop 'DELETE_ATTR' None a arg: b delta: 1
 
 PREFIX !! '!.'  = binary (self _ a b) ->
-  syntax.error 'not an attribute' b if not (b :: parse.Link)
-  self.call                    a
+  b :: parse.Link or syntax.error 'not an attribute'
+  self.call a
   self.loadop 'LOAD_ATTR' arg: b delta: 0
