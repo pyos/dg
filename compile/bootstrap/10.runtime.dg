@@ -60,7 +60,6 @@ builtins.scanl1 = (f xs)    -> itertools.accumulate xs f
 # FIXME should also define foldr(1) and scanr(1). Probably.
 
 builtins.exhaust   = bind collections.deque maxlen: 0
-builtins.for       = exhaust <- flip map
 builtins.takewhile = itertools.takewhile
 builtins.dropwhile = itertools.dropwhile
 builtins.take      = (n xs) -> itertools.islice xs None n
@@ -72,3 +71,6 @@ builtins.fst  = head
 builtins.snd  = head <- bind drop 1
 builtins.init = (!! slice None -1)
 builtins.last = (!! -1)
+
+# An alias for neater `if`s.
+builtins.otherwise = True

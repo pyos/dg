@@ -4,7 +4,9 @@ unsafe_s = cases ->
       bind syntax.error '`unsafe` requires `condition = action` pairs'
     cases
 
-  pairs, (pairs.pop! if len pairs > 1 and pairs !! -1 !! 0 == 'True' else (None, None))
+  pairs,
+    if len pairs > 1 and pairs !! -1 !! 0 == 'True' do pairs.pop!
+       otherwise do None, None
 
 
 #
@@ -14,7 +16,9 @@ unsafe_s = cases ->
 # (See Python documentation if you don't know what a cause is.)
 #
 PREFIX !! 'raise' = (self f args) ->
-  args = unpack f args (exception caused_by: None) -> (tuple' exception if caused_by is None else exception, caused_by)
+  args = unpack f args (exception caused_by: None) ->
+    if caused_by is None do tuple' exception
+       otherwise         do exception, caused_by
   self.loadop 'RAISE_VARARGS' *: args delta: 0
   self.load   None  # We've got to return something.
 
@@ -42,7 +46,7 @@ PREFIX !! 'unsafe' = (self f cases) ->
   # This will be our return value.
   self.load None
 
-  to_finally = self.loadop 'SETUP_FINALLY' delta: 0 if has_finally
+  to_finally = has_finally and self.loadop 'SETUP_FINALLY' delta: 0
   to_except  = self.loadop 'SETUP_EXCEPT'  delta: 0
   # Replace that None with the value returned by `try_`
   # to fool the POP_BLOCK instruction.

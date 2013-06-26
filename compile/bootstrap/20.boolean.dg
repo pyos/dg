@@ -1,11 +1,10 @@
 switch_s = cases -> list
   map
-    bind syntax.binary_op '=' on_error:
-      bind syntax.error '`switch` expected (condition = action) pairs'
+    bind syntax.binary_op 'do' on_error:
+      bind syntax.error '`if` expected (condition do action) pairs'
     cases
 
 
-rjump = (jump self f args) -> fjump jump self f (list (reversed args))
 fjump = (jump self f args) ->
   a, b = ensure f args 2 2
   jmp = self.loadop jump a delta: 0
@@ -16,7 +15,6 @@ fjump = (jump self f args) ->
 PREFIX !! 'not'  = (self f args) -> self.loadop 'UNARY_NOT' (ensure f args 1 1 !! 0) delta: 1
 PREFIX !! 'or'   = bind fjump 'JUMP_IF_TRUE_OR_POP'
 PREFIX !! 'and'  = bind fjump 'JUMP_IF_FALSE_OR_POP'
-PREFIX !! 'if'   = bind rjump 'JUMP_IF_FALSE_OR_POP'
 PREFIX !! 'else' = (self f args) ->
   cond, otherwise = ensure f args 2 2
   then, cond = syntax.binary_op 'if' cond (bind syntax.error 'first goes `if`, then `else`')
@@ -28,7 +26,7 @@ PREFIX !! 'else' = (self f args) ->
   self.load otherwise
   call jmp
 
-PREFIX !! 'switch' = (self f cases) ->
+PREFIX !! 'if' = (self f cases) ->
   jumps = list
     map
       (cond, action) ->

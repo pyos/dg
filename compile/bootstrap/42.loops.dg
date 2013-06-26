@@ -9,7 +9,8 @@ PREFIX !! 'while' = (self f args) ->
   self.load None  # This will be the value returned by the last iteration.
   to_cond = self.loadop 'JUMP_FORWARD'             delta:  0
   to_body = self.loadop 'POP_JUMP_IF_TRUE' arg: -1 delta: -1  # delta = ???
-  self.chain *: body if body else self.load None
+  if body      do self.chain *: body
+     otherwise do self.load None
   self.loadop 'ROT_TWO' delta:  0
   self.loadop 'POP_TOP' delta: -1
   to_cond!

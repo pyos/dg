@@ -1,5 +1,6 @@
 PREFIX !! 'yield' = (self f args) ->
   item, from = unpack f args (item: None from: None) -> (item, from)
-  self.loadop 'YIELD_VALUE' item delta: 1 if from is None else
-    self.loadop 'GET_ITER'    from delta: 1
-    self.loadop 'YIELD_FROM'  item delta: 0
+  if from is None do self.loadop 'YIELD_VALUE' item delta: 1
+     otherwise    do
+       self.loadop 'GET_ITER'    from delta: 1
+       self.loadop 'YIELD_FROM'  item delta: 0

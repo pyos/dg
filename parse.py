@@ -135,8 +135,9 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
     '<<=':   (-17, -18),
     '>>=':   (-17, -18),
     'where': (-17, -18),  # with some stuff that is not visible outside of that expression
-    'if':    (-19, -20),  # binary conditional
-    'else':  (-20, -21),  # ternary conditional (always follows an `a if b` expression)
+    'for':   (-18, -19),  # evaluate stuff for each item in an iterable
+    'while': (-18, -19),  # evaluate stuff until condition becomes false
+    'do':    (-22, -22),  # ???????
     '\n':    (-23, -23),  # do A then B
 }.get: g(m, (-7, -7)))  # Default
 
@@ -230,7 +231,7 @@ def indent(stream, token, pos):
     if indent > stream.indent[-1]:
 
         stream.indent.append(indent)
-        block = do(stream, token, pos, {''}, preserve_close_state=True)
+        block = do(stream, token, pos, lambda x: isinstance(x, Internal) and not x.value, preserve_close_state=True)
         block.indented = True
         return stream.appendleft(block)  # it already has a location.
 
@@ -247,26 +248,47 @@ def string(stream, token, pos):
     return Constant(literal_eval(''.join([q, g, token.group(3), g])))
 
 
-def link(stream, token, pos, infixn={'if', 'else', 'or', 'and', 'in', 'is', 'where'}):
-    infix = token.group(2) or token.group(3) or token.group(4)
-    return Link(infix or token.group(), infix or (token.group() in infixn))
+def link(stream, token, pos, infixn={'do', 'or', 'and', 'in', 'is', 'where'}):
+    inf  = token.group(2) or token.group(3) or token.group(4)
+    name = Link(inf or token.group(), inf or (token.group() in infixn)).at(pos, stream)
+
+    if name in {'for', 'while'}:
+
+        return infix(stream, do(stream, token, pos, end=lambda x: x == 'do'), name, next(stream))
+
+    if name in {'if'}:
+
+        block = do(stream, token, pos, end=lambda x: x == 'do' or ((x == '\n' or isinstance(x, Internal)) and (stream.appendleft(x) or True)))
+
+        if not isinstance(block, Constant) or block.value is not None:
+
+            return infix(stream, name,
+                Link('', True).after(name),
+                infix(stream, block, Link('do', True).after(block), next(stream))
+            )
+
+    if name in {'do'}:
+
+        block = do(stream, token, pos, end=lambda x: (x == '\n' or isinstance(x, Internal)) and (stream.appendleft(x) or True))
+
+        if not isinstance(block, Constant) or block.value is not None:
+
+            stream.appendleft(block)
+
+    return name
 
 
-def do(stream, token, pos, ends={')'}, preserve_close_state=False):
+def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == ')', preserve_close_state=False):
     object   = Constant(None).at(pos, stream)
     can_join = False
 
     for item in stream:
 
+        if end(item): break
+
         if isinstance(item, Internal):
 
-            item.value in ends or error(
-              'unexpected block delimiter' if item.value else
-              'unexpected EOF'             if stream.offset >= len(stream.buffer) else
-              'unexpected dedent', item
-            )
-
-            break
+            error('unmatched block start', pos)
 
         elif can_join:
 
