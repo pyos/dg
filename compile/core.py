@@ -270,8 +270,6 @@ class CodeGenerator (codegen.MutableCode):
 
         code = CodeGenerator(self.child_name('<lambda>'), True, n, kw, va, vkw, self)
 
-        getattr(self, 'cellhook', lambda _: None)(code)
-
         for name, pattern in t.items():
 
             code.loadop('LOAD_FAST', arg=name, delta=1)

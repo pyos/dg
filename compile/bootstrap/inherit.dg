@@ -15,12 +15,7 @@ target.update $ dict __module__: __name__ __qualname__: name
 #
 PREFIX !! 'subclass' = (self f args) ->
   code = CodeGenerator (self.child_name '<class>') True (list' 'data' 'name' 'target') cell: self
-  code.cellhook = code -> code.freevars !! '__class__'
-  code.cellvars !! '__class__'
-  code.varnames !! '__class__'
-  code.load cinit
-  code.append 'LOAD_CLOSURE' '__class__'    delta:  1
-  code.append 'RETURN_VALUE'                delta: -1
+  code.loadop 'RETURN_VALUE' cinit delta: 0
 
   self.loadop 'LOAD_BUILD_CLASS' delta: 1
   self.append 'LOAD_GLOBAL'  'bind'         delta:  1
