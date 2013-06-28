@@ -258,22 +258,11 @@ def link(stream, token, pos, infixn={'do', 'or', 'and', 'in', 'is', 'where'}):
 
     if name in {'if'}:
 
-        block = do(stream, token, pos, end=lambda x: x == 'do' or ((x == '\n' or isinstance(x, Internal)) and (stream.appendleft(x) or True)))
+        block = do(stream, token, pos, end=lambda x: ((x == '\n' or isinstance(x, Internal)) and (stream.appendleft(x) or True)))
 
         if not isinstance(block, Constant) or block.value is not None:
 
-            return infix(stream, name,
-                Link('', True).after(name),
-                infix(stream, block, Link('do', True).after(block), next(stream))
-            )
-
-    if name in {'do'}:
-
-        block = do(stream, token, pos, end=lambda x: (x == '\n' or isinstance(x, Internal)) and (stream.appendleft(x) or True))
-
-        if not isinstance(block, Constant) or block.value is not None:
-
-            stream.appendleft(block)
+            return infix(stream, name, Link('', True).after(name), block)
 
     return name
 
