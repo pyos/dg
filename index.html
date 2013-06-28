@@ -372,7 +372,7 @@ from evaluating. Use <code>::</code> (or <code>isinstance</code>) to check the e
 <p>As in <code>if</code>, conditions may be completely arbitrary.</p><div class="highlight"><pre>  <span class="n">error</span> <span class="o">::</span> <span class="p">(</span><span class="ne">OSError</span><span class="o">,</span> <span class="ne">IOError</span><span class="p">)</span> <span class="ow">and</span> <span class="n">error</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="mi">13</span> <span class="o">=&gt;</span> <span class="nb">print</span> <span class="s">&#39;Permission denied&#39;</span>
 </pre></div>
 <p>If no exception was raised by the statement, the provided variable
-will be set to <code>None</code>.</p><div class="highlight"><pre>  <span class="n">error</span> <span class="ow">is</span> <span class="bp">None</span> <span class="o">=&gt;</span> <span class="kr">raise</span> <span class="o">$</span> <span class="ne">AssertionError</span> <span class="s">&#39;but that code was cleary incorrect!&#39;</span>
+will be set to <code>None</code>.</p><div class="highlight"><pre>  <span class="n">error</span> <span class="ow">is</span> <span class="bp">None</span> <span class="o">=&gt;</span> <span class="kr">raise</span> <span class="o">$</span> <span class="ne">AssertionError</span> <span class="s">&#39;but that code was clearly incorrect!&#39;</span>
 </pre></div>
 <p>If the last action is assigned to <code>finally</code>, rather than being treated
 as a condition, it works just like <a href="http://docs.python.org/dev/reference/compound_stmts.html#finally">finally</a>

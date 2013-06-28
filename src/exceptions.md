@@ -50,7 +50,7 @@ If no exception was raised by the statement, the provided variable
 will be set to `None`.
 
 ```dg
-  error is None => raise $ AssertionError 'but that code was cleary incorrect!'
+  error is None => raise $ AssertionError 'but that code was clearly incorrect!'
 ```
 
 If the last action is assigned to `finally`, rather than being treated
