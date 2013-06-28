@@ -1,10 +1,6 @@
-unsafe_s = cases ->
-  pairs = list $ map
-    bind syntax.binary_op '=' on_error:
-      bind syntax.error '`unsafe` requires `condition = action` pairs'
-    cases
-
-  pairs, if len pairs > 1 and head (last pairs) == 'True' => pairs.pop!
+except_syntax = cases ->
+  pairs = if_syntax cases
+  pairs, if len pairs > 1 and head (last pairs) == 'finally' => pairs.pop!
             otherwise => None, None
 
 
@@ -23,11 +19,11 @@ PREFIX !! 'raise' = (self f args) ->
 
 
 #
-# unsafe
-#   error = expression
-#   condition = when_condition_is_True
+# except
+#   error => expression
+#   condition => when_condition_is_True
 #   ...
-#   True = cleanup
+#   finally => cleanup
 #
 # 1. Evaluate `expression`.
 # 2. Store either the exception or `None` in `error`.
@@ -37,10 +33,10 @@ PREFIX !! 'raise' = (self f args) ->
 #
 # Returns `expression` if it was successful, `None` otherwise.
 #
-PREFIX !! 'unsafe' = (self f cases) ->
+PREFIX !! 'except' = (self f cases) ->
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
-  ((name, try), *cases), (has_finally, finally) = unsafe_s $ ensure f cases
+  ((name, try), *cases), (has_finally, finally) = except_syntax $ ensure f cases
 
   # This will be our return value.
   self.load None

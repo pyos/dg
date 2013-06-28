@@ -18,18 +18,18 @@ sys.meta_path.insert 0 $ subclass str where
         os.path.join base '__init__.dg',  base + '.dg'
       filter os.path.isdir $ map os.path.abspath (path or sys.path)
 
-    unsafe
-      e = cls $ next $ filter os.path.isfile mods
-      e :: StopIteration = None
+    except
+      e => cls $ next $ filter os.path.isfile mods
+      e :: StopIteration => None
 
   is_package = (self name) ->
     name.rsplit '.' 1 !! -1 != (os.path.basename self).rsplit '.' 1 !! 0
 
   get_code = (self name) ->
     cache = imp.cache_from_source self
-    code  = unsafe
-      e = (os.stat self).st_mtime <= (os.stat cache).st_mtime and marshal.load (open cache 'rb')
-      e :: Exception = None
+    code  = except
+      e => (os.stat self).st_mtime <= (os.stat cache).st_mtime and marshal.load (open cache 'rb')
+      e :: Exception => None
 
     code or
       code = compile.fd $ open $ str self

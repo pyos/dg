@@ -26,8 +26,8 @@ ns.source.isatty! or
 #
 # Compile some code if it's a complete statement in an interactive shell.
 #
-command = code -> unsafe
-  e =
+command = code -> except
+  e =>
     res  = parse.it code '<stdin>'
     expr = next $ dropwhile e -> (e :: parse.Expression and not e.closed) $ iterate last res
 
@@ -44,7 +44,7 @@ command = code -> unsafe
     ) => res
 
   # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
-  e :: SyntaxError and (head e.args).startswith 'unexpected EOF' = None
+  e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None
 
 st = os.environ.get 'PYTHONSTARTUP' ''
 st and ns.source is sys.stdin and eval (builtins.compile ((open st).read -1) st 'exec') env
@@ -53,10 +53,10 @@ sys.stdin = ns.source
 sys.ps1 = getattr sys 'ps1' '>>> '
 sys.ps2 = getattr sys 'ps2' '... '
 
-while True => unsafe
-  e = sys.displayhook $ eval
+while True => except
+  e => sys.displayhook $ eval
     compile.ast $ next $ dropwhile not $ map command $ iterate x -> (x + '\n' + input sys.ps2) $ input sys.ps1
     env
-  e :: EOFError   = raise SystemExit
-  e :: SystemExit = raise e
-  e = sys.excepthook (type e) e e.__traceback__.tb_next
+  e :: EOFError   => raise SystemExit
+  e :: SystemExit => raise e
+  e => sys.excepthook (type e) e e.__traceback__.tb_next

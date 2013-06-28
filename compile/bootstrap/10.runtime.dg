@@ -72,5 +72,6 @@ builtins.snd  = head <- bind drop 1
 builtins.init = (!! slice None -1)
 builtins.last = (!! -1)
 
-# An alias for neater `if`s.
+# An alias for neater `if`s and `except`s.
 builtins.otherwise = True
+builtins.finally   = Ellipsis  # not actually used

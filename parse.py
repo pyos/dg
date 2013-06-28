@@ -256,7 +256,7 @@ def link(stream, token, pos, infixn={'or', 'and', 'in', 'is', 'where'}):
 
         return infix(stream, do(stream, token, pos, end=lambda x: x == '=>'), name, next(stream))
 
-    if name in {'if'}:
+    if name in {'if', 'except'}:
 
         block = do(stream, token, pos, end=lambda x: ((x == '\n' or isinstance(x, Internal)) and (stream.appendleft(x) or True)))
 
