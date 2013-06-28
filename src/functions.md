@@ -64,7 +64,7 @@ are similar to those when calling functions, but with a few quirks.
  * `*: a` stores the [remainder of the positional arguments](http://en.wikipedia.org/wiki/Variadic_function) in `a`;
  * `**: a` does the same thing for keyword arguments;
  * if a positional argument has a default value, all positional arguments that come after it must have them, too;
- * `**: a`, if defined, it should be the last argument.
+ * `**: a`, if defined, should be the last argument.
 
 And, most importantly,
 
