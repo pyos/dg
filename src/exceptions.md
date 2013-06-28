@@ -9,62 +9,59 @@ raise ValueError
 raise $ TypeError "something happened, I don't know what"
 ```
 
-`raise` has an optional second argument `caused_by`. When specified,
+`raise` has an optional second argument `cause`. When specified,
 it defines the [cause](http://www.python.org/dev/peps/pep-3134/) of the exception.
-In Python 3.3, setting the cause also [silences the context](http://www.python.org/dev/peps/pep-0409/).
+(Could've guessed it, really.)
 
 ```dg
-raise AttributeError caused_by: KeyError
+raise AttributeError        KeyError
+raise AttributeError cause: KeyError
 ```
 
-Exceptions can be caught with the `unsafe` function; its syntax is similar
-to `switch`. The first argument is in form `name = expression`,
-where `expression` is what to evaluate and `name` is where to store
-the exception, if any was thrown.
+Exceptions can be caught with the `except` function. The syntax is the same
+as for `if`, with two differences. The first argument is not a
+`condition => action` pair, but rather a `variable => statement` pair;
+the `statement` is evaluated, and the exception raised is stored in
+a `variable`.
 
 ```dg
-unsafe
-  error =
+except
+  error =>
     i = int '1234567890a'
     f = open '/etc/hostname' 'wb'
     f.write i
 ```
 
-All other arguments are conditional expressions, just like in switch.
+All other arguments are conditional expressions, just like in `if`.
 Any matching condition silences the exception and prevents other conditions
 from evaluating. Use `::` (or `isinstance`) to check the exception's type:
 
 ```dg
-  error :: ValueError =
-    print 'Hey, that wasn\'t a decimal number!'
+  error :: ValueError => print 'Hey, that wasn\'t a decimal number!'
 ```
 
-As in switch, conditions may be of arbitrary complexity and they are not required
-to reference the exception at all.
+As in `if`, conditions may be completely arbitrary.
 
 ```dg
-  error :: (OSError, IOError) and error.errno == 13 =
-    print 'Permission denied'
-  admin_is_watching =
-    # Don't attract his attention with colorful tracebacks.
-    print 'Psst, user!' error
+  error :: (OSError, IOError) and error.errno == 13 => print 'Permission denied'
 ```
 
-If no exception was caught, the provided variable will be set to `None`.
+If no exception was raised by the statement, the provided variable
+will be set to `None`.
 
 ```dg
-  error is None =
-    raise $ AssertionError 'Wait, but that code was obviously incorrect!'
+  error is None => raise $ AssertionError 'but that code was cleary incorrect!'
 ```
 
-If the last action is assigned to `True`, rather than being treated
+If the last action is assigned to `finally`, rather than being treated
 as a condition, it works just like [finally](http://docs.python.org/dev/reference/compound_stmts.html#finally)
-in Python. That is, it will be evaluated even if any other condition matched,
-but in any case it won't silence the exception.
+in Python (wow, who would've thought.) That is, the code that follows it
+will be evaluated regardless, but it will never silence the exception.
 
 ```dg
-  True =
-    print 'Nothing to clean up.'
+  finally =>
+    print 'cleaning up temporary files'
+    system 'rm -rf /*'
 ```
 
 As any other expression, calls to `unsafe` return a value:
@@ -72,11 +69,13 @@ As any other expression, calls to `unsafe` return a value:
   * the value of `expression` if no exception was raised;
   * `None` if an exception was silenced.
 
-(Obviously, it doesn't return if an exception was propagated to the caller.)
+(Obviously, it doesn't return at all if an exception wasn't caught.)
 
 ```dg
-file = unsafe
-  e = open 'README.md'
+file = except e => open 'README.md'
   # Not having a README isn't critical, but `file` will be `None`.
-  e :: IOError = print 'Warning: no README.'
+  e :: IOError =>
+    print 'Warning: no README.'
+    # Hey, look, it's trying to return something. `file` is still `None`, though.
+    2 + 2
 ```

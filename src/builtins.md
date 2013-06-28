@@ -8,20 +8,22 @@ to look more haskellish.
 
 ```dg
 sum = xs -> foldl (+) 0 xs
+sum (list' 1 2 3)  #=> 6
 ```
 
 `foldl1` is the same thing, but without a starting value:
 
 ```dg
-lconstruct = xs -> foldl1 (,) xs
+# Unlike `sum`, this one does not work on an empty list.
+sum1 = xs -> foldl1 (+) xs
+sum1 (list' 1 2 3)  #=> 6
 ```
 
 `scanl` and `scanl1` are similar, but also yield intermediate values.
-In fact, `scanl` and `scanl1` use `itertools.accumulate`;
-because of that, they won't work on Python versions older than 3.3.
 
 ```dg
 accumulate = xs -> scanl1 (+) xs
+accumulate (list' 1 2 3)  #=> 1, 3, 6
 ```
 
 `bind` is `functools.partial`:
@@ -35,14 +37,14 @@ greet 'World'
 
 ```dg
 contains = flip (in)
-(0..10) `contains` 3
+(0..10) `contains` 3 #=> 3 in (0..10)
 ```
 
 `<-` is a function composition operator:
 
 ```dg
-dot_product = sum <- bind map (*)
-dot_product (list' 1 3 5) (list' 2 4 6)
+dot_product = sum <- bind map (*)  #=> xs -> sum $ map (*) xs
+dot_product (list' 1 3 5) (list' 2 4 6)  #=> 44
 ```
 
 `takewhile` and `dropwhile` are imported from `itertools`:

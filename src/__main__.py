@@ -3,6 +3,7 @@ import glob
 
 from . import __path__
 
+import dg
 import dmark
 
 

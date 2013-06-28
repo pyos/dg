@@ -1,15 +1,29 @@
 ## Installation
 
-Since dg is a Python 3 module, barely any installation is required.
-Simply [download the compiler](https://github.com/pyos/dg/zipball/master)
-(or fetch it using git: `git clone https://github.com/pyos/dg.git`) and extract
-the archive in a directory somewhere in your `$PYTHONPATH`
-(e.g. `/usr/lib/python3.2/site-packages/`).
+Freaking easy:
 
-After installing, simply run dg as a module (i.e. with `-m`):
+1. [download the compiler](https://github.com/pyos/dg/zipball/master) OR fetch it with git: `git clone https://github.com/pyos/dg.git`;
+2. put the "dg" directory somewhere in `$PYTHONPATH`, or `/usr/lib/python3.*/site-packages/`, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.
+
+### Usage
+
+Even easier.
 
 ```bash
-python3 [VM options] -m dg  # starts the REPL
-python3 [VM options] -m dg file.dg [arguments]  # executes a file as a script
-python3 [VM options] -m dg <<< "some code"  # this is a bash-specific syntax, called a "herestring"
+# Start the REPL (supports $PYTHONSTARTUP
+# in case you want to customize the prompt or whatever):
+python3 [VM options] -m dg
+# Execute a script:
+python3 [VM options] -m dg file.dg [arguments]
+# Execute "some code":
+python3 [VM options] -m dg <<< "some code"
+python3 [VM options] -m dg <<EOF
+some code
+EOF
 ```
+
+### Writing runnable packages in dg
+
+If you wish to [make your package runnable](http://docs.python.org/dev/using/cmdline.html#cmdoption-m),
+simply import `dg` somewhere in `__init__.py` of that package and add
+a `__main__.dg`. Python's import machinery will do the rest.

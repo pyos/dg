@@ -11,22 +11,15 @@ Since it runs on the same VM, it can fully interoperate with any Python 3
 code, from simple modules to stuff full of magic. dg code itself can be imported,
 too; just make sure you load the compiler first:
 
-```dg
-# my_module.dg
-import '/flask/Flask'
-
-app   = Flask __name__
-hello = (app.route '/') () -> 'Hello World!'
-
-app.run! if __name__ == '__main__'
-```
-
 ```python
 # __main__.py
 import dg
 import my_module
+```
 
-my_module.app.run()
+```dg
+# my_module.dg
+print "Hello, World!"
 ```
 
 Unlike Python, dg does not attempt to be an "interpreted pseudocode";

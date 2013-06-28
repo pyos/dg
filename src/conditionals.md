@@ -1,6 +1,6 @@
 ## Conditionals
 
-`or` and `and` can be treated as conditionals, in addition to being Boolean
+`or` and `and` can be used as conditionals, in addition to being Boolean
 operators. `a or b` means `a if a else b`, and `a and b` means
 `b if a else a` (of course, they only evaluate `a` once.)
 
@@ -9,34 +9,50 @@ True or  print 1 #=> True (does not print anything)
 True and print 1 #=> None (also prints 1)
 ```
 
-"if-else" can be used in its infix form.
-Note that `if` and `else` have really low priority — you will
-probably want to wrap them in parentheses. "else" clause can be omitted.
+`=>` is an alias for `and`. It may seem the same, but it's semantically different.
+While `and` is used in boolean expressions, `=>` is used in imperative code
+in place of a single-clause `if`.
 
 ```dg
-'ok' if 2 < 5 else 'wat' #=> 'ok'
+print 1
+
+input 'did you see that? ' == 'no' =>
+  print 'i said,' 1
 ```
 
-The most powerful, and the simpliest, conditional is `switch`, which
-is actually not "switch-case", but "if-else if".
+The only other conditional is `if`. Each of its arguments should be in
+`condition => action` form. The first action mapped to a true condition is
+evaluated, the rest is ignored. Conditions may be completely arbitrary.
 
 ```dg
-factorial = n -> switch
+factorial = n -> if
+  n < 0     => raise $ ValueError 'n >= 0'
+  n < 2     => 1
+  otherwise => n * factorial (n - 1)
 ```
 
-`switch` only accepts expressions in form `condition = value` as its *arguments*
-(remember to use the line continuation!) The first value assigned to a true
-condition is evaluated.
+(`otherwise` is just an alias for `True`, not a keyword.)
+
+The first condition may be placed on the same line as `if`. That doesn't work
+in the REPL, though, as it assumes you're done entering a command.
 
 ```dg
-  n < 0 = raise $ ValueError 'n >= 0'
-  n < 2 = 1
+fibonacchi = n -> if n < 0     => raise $ ValueError 'n >= 0'
+                     n < 2     => n
+                     otherwise => fibonacchi (n - 1) + fibonacchi (n - 2)
 ```
 
-Conditions don't have to reference the same variable; they may be completely
-arbitrary. Make use of the fact that `True` is always true to do something
-if everything else fails.
+In fact, it is completely possible to place all conditions on one line.
+Each must be wrapped in parentheses, though.
 
 ```dg
-  True  = n * factorial (n - 1)
+abs = x -> if (x >= 0 => x) (otherwise => -x)
+```
+
+Be ware, though, that `if` always consumes everything until the end of the
+line/block. Once you write it, there's no going back.
+
+```dg
+1 +  if (x >= 0 => x) (otherwise => -x)  + 2  # syntax error
+1 + (if (x >= 0 => x) (otherwise => -x)) + 2  # correct version
 ```

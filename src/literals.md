@@ -16,26 +16,27 @@ Compile-time constants:
 'Any of these
 can have line breaks in them, as well as\n escapes and Unicode characters ☺'
 
-r'raw strings preserve \backslashes, but do not support escapes'
-b'binary strings represent non-string data, and can only contain ASCII'
+r'Raw strings preserve \backslashes, but do not support escapes.'
+b'Binary strings represent non-string data, and can only contain ASCII\x2e'
 rb'guess what raw binary strings do'
 
-'''More quotes is always better.'''
-"""Am I right?"""
+"""More quotes is always better."""
+'''Ok, not always, but only if you don't want to escape single quotes.'''
 ```
 
 Runtime constants:
 
 ```dg
-True   # Tautology
-False  # Contradiction
-None   # The only instance of the unit type, NoneType
+True, False, None  # Self-explanatory.
+Ellipsis, (...)  # Has something to do with slices.
 ```
 
 Tuples are ordered immutable collections:
 
 ```dg
 2, True, 'this tuple contains random stuff'
+# OR
+tuple' 3 False 'so does this'
 ```
 
 Empty tuple does not have a special syntax.
@@ -44,7 +45,7 @@ Empty tuple does not have a special syntax.
 tuple! # this one is empty
 ```
 
-Note that using `tuple'` is the only way to create
+Note that using `tuple'` is the ~~only~~ simpliest way to create
 a singleton tuple. Why would you want to do that? Use lists.
 
 ```dg
@@ -63,10 +64,10 @@ Same thing applies to sets...
 
 ```dg
 set  'abcdabc'
-set' 'a' 'd' 'c' b'
+set' 'a' 'd' 'c' 'b'
 ```
 
-...and dictionaries, aka hashmaps. The latter require an iterable of *pairs*,
+...and dictionaries, aka hashmaps. These require *pairs*,
 (i.e. 2-tuples,) though.
 
 ```dg

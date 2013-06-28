@@ -1,32 +1,67 @@
-## Objects
+## Objects and types
 
-Creating a type is done by calling `inherit` with class body.
-
-```dg
-Animal = inherit $
-  __init__ = (self name) ->
-    super!.__init__!
-    self.name = name
-    # __init__ must always return None.
-    None
-
-Movable = inherit $
-  move = (self distance) ->
-    # Inches? Feet? Miles? Nah.
-    '{} moved {} meters.'.format self.name distance
-```
-
-`inherit` also accepts any number of base classes, as well as keyword arguments.
+`subclass` duplicates the current local namespace as a type.
 
 ```dg
-Horse = inherit Movable Animal metaclass: type $
-  gallop = self ->
-    self.move 40
+__init__ = (self name) ->
+  self.name = name
+  # __init__ must always return None.
+  None
+
+Animal = subclass object
 ```
 
-Instantiating a class is done by calling it.
+It accepts any number of base classes, as well as keyword arguments.
+
+```dg
+# Make sure to clean the local namespace before running this.
+move = (self distance) ->
+  # Inches? Feet? Miles? Nah.
+  '{} moved {} meters.'.format self.name distance
+
+Movable = subclass object
+```
+
+```dg
+gallop = property $ self ->
+  self.move 10
+
+Horse = subclass Movable Animal metaclass: type
+```
+
+Instantiating a class is done by calling it, as in Python.
 
 ```dg
 sam = Horse 'Sam'
-sam.gallop!
+sam.gallop
+```
+
+Now, it is not very easy to reset the namespace every time you need
+to create a class. That is why there is
+
+## Local name binding
+
+Also known among Python devs as ["given" clause](http://www.python.org/dev/peps/pep-3150/).
+
+In simplier terms, writing `a where b` evaluates `a` in a new local namespace
+defined only by `b`.
+
+```dg
+Frog = subclass Movable Animal where
+  # None of the crap we defined above will make it into this class.
+  leap = property $ self ->
+    self.move 20
+```
+
+It also works with...well, anything.
+
+```dg
+print a where
+  b = 1
+  print 'calculating a'
+  a = b + 2
+#=> calculating a
+#=> 3
+print a
+#=> OH GOD NAMEERROR
 ```
