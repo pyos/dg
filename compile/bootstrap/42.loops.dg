@@ -1,3 +1,7 @@
+import '/itertools/repeat'
+import '/itertools/product'
+
+
 #
 # while condition => body
 #
@@ -17,40 +21,13 @@ PREFIX !! 'while' = (self f args) ->
   to_body!
 
 
-###
-
-import '/itertools/repeat'
-import '/itertools/product'
-
-mke = (k v) -> parse.Expression $ list' (parse.Link '' True) k v
-mkn = v -> mke (parse.Link 'not' False) v
-
-or'  = ((p, a) (q, b)) -> (p | q), (a + b)
-and' = ((p, a) (q, b)) -> (p | q), list
-  map
-    ((r1, p1), (r2, p2)) -> (r, p) where
-      r = dict r2
-      r.update r1
-      p = p1 + p2
-      exhaust $ map (k -> p.append $ mke k $ r2 !! k) (r1.keys! & r2.keys!)
-    product a b
-
-not' = x -> if x :: parse.Constant => set!,         list' (dict!, list' (mkn x))
-               x :: parse.Link     => set' x,       list' (dict!, list' (mkn x))
-               fst x == 'in'       => set' (snd x), list' (dict!, list' (mkn x))
-               fst x == 'or'       => and' (not' $ snd x) (not' $ last x)
-               fst x == 'and'      => or'  (not' $ snd x) (not' $ last x)
-               fst x == '' and snd x == 'not' => for' $ last x
-               otherwise => syntax.error 'not an allowed construct' x
-
-for' = x -> if x :: parse.Constant => set!,         list' (dict!, list' x)
-               x :: parse.Link     => set' x,       list' (dict!, list' x)
-               fst x == 'in'       => set' (snd x), list' (dict' (tail x), list!)
-               fst x == 'or'       => or'  (for' $ snd x) (for' $ last x)
-               fst x == 'and'      => and' (for' $ snd x) (for' $ last x)
-               fst x == '' and snd x == 'not' => not' $ last x
-               otherwise => syntax.error 'not an allowed construct' x
-
+# for condition => body
+#
+# Evaluate the body with all possible variable sets that make `condition` true.
+#
+# E.g. for a in b  => assert a in b
+#      for a and b => assert a and b
+#
 PREFIX !! 'for' = (self f args) ->
   condition, body = ensure f args 2 2
   vars, sets = for' condition
@@ -88,3 +65,33 @@ PREFIX !! 'for' = (self f args) ->
     sets
 
   self.load None
+
+
+mke = (k v) -> parse.Expression $ list' (parse.Link '' True) k v
+mkn = v -> mke (parse.Link 'not' False) v
+
+or'  = ((p, a) (q, b)) -> (p | q), (a + b)
+and' = ((p, a) (q, b)) -> (p | q), list
+  map
+    ((r1, p1), (r2, p2)) -> (r, p) where
+      r = dict r2
+      r.update r1
+      p = p1 + p2
+      exhaust $ map (k -> p.append $ mke k $ r2 !! k) (r1.keys! & r2.keys!)
+    product a b
+
+not' = x -> if x :: parse.Constant => set!,         list' (dict!, list' (mkn x))
+               x :: parse.Link     => set' x,       list' (dict!, list' (mkn x))
+               fst x == 'in'       => set' (snd x), list' (dict!, list' (mkn x))
+               fst x == 'or'       => and' (not' $ snd x) (not' $ last x)
+               fst x == 'and'      => or'  (not' $ snd x) (not' $ last x)
+               fst x == '' and snd x == 'not' => for' $ last x
+               otherwise => syntax.error 'not an allowed construct' x
+
+for' = x -> if x :: parse.Constant => set!,         list' (dict!, list' x)
+               x :: parse.Link     => set' x,       list' (dict!, list' x)
+               fst x == 'in'       => set' (snd x), list' (dict' (tail x), list!)
+               fst x == 'or'       => or'  (for' $ snd x) (for' $ last x)
+               fst x == 'and'      => and' (for' $ snd x) (for' $ last x)
+               fst x == '' and snd x == 'not' => not' $ last x
+               otherwise => syntax.error 'not an allowed construct' x
