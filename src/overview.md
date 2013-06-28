@@ -1,3 +1,5 @@
+#### note: this document is applicable to the [ok-syntax](https://github.com/pyos/dg/tree/ok-syntax) branch only.
+
 [dg](https://github.com/pyos/dg)
 is a ~~simple-as-in-LISP~~ functional/object-oriented language that compiles to
 [CPython](http://python.org/) [bytecode](http://docs.python.org/dev/library/dis.html).
