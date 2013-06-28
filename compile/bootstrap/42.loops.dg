@@ -1,5 +1,5 @@
 #
-# while condition body
+# while condition => body
 #
 # Evaluate the body while condition is true.
 #
@@ -15,3 +15,76 @@ PREFIX !! 'while' = (self f args) ->
   to_cond!
   self.load cond
   to_body!
+
+
+###
+
+import '/itertools/repeat'
+import '/itertools/product'
+
+mke = (k v) -> parse.Expression $ list' (parse.Link '' True) k v
+mkn = v -> mke (parse.Link 'not' False) v
+
+or'  = ((p, a) (q, b)) -> (p | q), (a + b)
+and' = ((p, a) (q, b)) -> (p | q), list
+  map
+    ((r1, p1), (r2, p2)) -> (r, p) where
+      r = dict r2
+      r.update r1
+      p = p1 + p2
+      exhaust $ map (k -> p.append $ mke k $ r2 !! k) (r1.keys! & r2.keys!)
+    product a b
+
+not' = x -> if x :: parse.Constant => set!,         list' (dict!, list' (mkn x))
+               x :: parse.Link     => set' x,       list' (dict!, list' (mkn x))
+               fst x == 'in'       => set' (snd x), list' (dict!, list' (mkn x))
+               fst x == 'or'       => and' (not' $ snd x) (not' $ last x)
+               fst x == 'and'      => or'  (not' $ snd x) (not' $ last x)
+               fst x == '' and snd x == 'not' => for' $ last x
+               otherwise => syntax.error 'not an allowed construct' x
+
+for' = x -> if x :: parse.Constant => set!,         list' (dict!, list' x)
+               x :: parse.Link     => set' x,       list' (dict!, list' x)
+               fst x == 'in'       => set' (snd x), list' (dict' (tail x), list!)
+               fst x == 'or'       => or'  (for' $ snd x) (for' $ last x)
+               fst x == 'and'      => and' (for' $ snd x) (for' $ last x)
+               fst x == '' and snd x == 'not' => not' $ last x
+               otherwise => syntax.error 'not an allowed construct' x
+
+PREFIX !! 'for' = (self f args) ->
+  condition, body = ensure f args 2 2
+  vars, sets = for' condition
+
+  exhaust $ map (bind syntax.error 'all variables should be explicitly named') $ dropwhile (:: parse.Link) vars
+  exhaust $ map
+    (ranges, tests) ->
+      block = self.loadop 'SETUP_LOOP' delta: 0
+      self.loadop 'IMPORT_NAME' 0 None arg: 'itertools' delta: 1
+      self.loadop 'LOAD_ATTR'          arg: 'product'   delta: 0
+      exhaust $ map self.load ranges.values!
+      exhaust $ map self.load $ repeat (False, True) (len vars - len ranges)
+      self.loadop 'CALL_FUNCTION' arg: (len vars) delta: (-len vars)
+
+      loop = self.loadop 'JUMP_ABSOLUTE'     arg: -1 delta: 0
+      skip = self.loadop 'POP_JUMP_IF_FALSE' arg: -1 delta: 0
+      end  = self.loadop 'FOR_ITER'                  delta: 1
+
+      self.loadop 'UNPACK_SEQUENCE' arg: (len vars) delta: (len vars - 1)
+      exhaust $ map self.store_top ranges.keys!
+      exhaust $ map self.store_top (vars - ranges.keys!)
+      exhaust $ map
+        t ->
+          self.load t
+          self.depth -= 1
+          skip!
+        tests
+
+      self.load body
+      self.loadop 'POP_TOP' delta: -1
+      loop!
+      end!
+      self.loadop 'POP_BLOCK' delta: -1
+      block!
+    sets
+
+  self.load None
