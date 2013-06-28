@@ -10,13 +10,13 @@ unsafe_s = cases ->
 
 
 #
-# raise exception [[caused_by:] cause]
+# raise exception [[cause:] another_exception]
 #
 # Raise an exception with a given cause (or None).
 # (See Python documentation if you don't know what a cause is.)
 #
 PREFIX !! 'raise' = (self f args) ->
-  args = unpack f args (exception caused_by: None) ->
+  args = unpack f args (exception cause: None) ->
     if caused_by is None do tuple' exception
        otherwise         do exception, caused_by
   self.loadop 'RAISE_VARARGS' *: args delta: 0
