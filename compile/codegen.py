@@ -100,24 +100,26 @@ class JumpObject (LazyInt):
 
     def __call__(self):
 
-        assert self._value == -1, 'this jump is already targeted'
+        assert self._value == -1 or self.reverse, 'this jump is already targeted'
 
-        self._value = codelen(
-            itertools.islice(self.code,
-                0          if self.absolute else self.start + 1,
-                self.start if self.reverse  else len(self.code)
+        if self._value == -1:
+
+            self._value = codelen(
+                itertools.islice(self.code,
+                    0          if self.absolute else self.start + 1,
+                    self.start if self.reverse  else len(self.code)
+                )
             )
-        )
 
-        if self.absolute:
+            if self.absolute:
 
-            sz = 0x10000
+                sz = 0x10000
 
-            while self._value > sz:
+                while self._value > sz:
 
-                # This jump needs to account for itself.
-                self._value += 3  # 1-byte opcode + 2-byte argument
-                sz <<= 16
+                    # This jump needs to account for itself.
+                    self._value += 3  # 1-byte opcode + 2-byte argument
+                    sz <<= 16
 
         self.reverse and self.code.append((self.op, self._value))
 
