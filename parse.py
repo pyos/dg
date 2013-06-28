@@ -277,6 +277,8 @@ def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == 
 
         if isinstance(item, Internal):
 
+            error('unexpected block end', item) if not token.group().strip() else \
+            error('unexpected EOF in a block', pos) if not item.value else \
             error('unmatched block start', pos)
 
         elif can_join:
