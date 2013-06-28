@@ -39,7 +39,7 @@ in the REPL, though, as it assumes you're done entering a command.
 ```dg
 fibonacci = n -> if n < 0     => raise $ ValueError 'n >= 0'
                     n < 2     => n
-                    otherwise => fibonacchi (n - 1) + fibonacchi (n - 2)
+                    otherwise => fibonacci (n - 1) + fibonacci (n - 2)
 ```
 
 In fact, it is completely possible to place all conditions on one line.
