@@ -1,0 +1,163 @@
+import '/sys/stdin'
+import '/re/compile'
+import '/itertools/groupby'
+import '/collections/deque'
+import '/xml/sax/saxutils/escape'
+
+except
+  e =>
+    import '/pygments/lexers'     qualified
+    import '/pygments/formatters' qualified
+  e :: ImportError => ()
+
+
+# etail :: ({ pop :: -> a }, a) -> iter [a]
+#
+# Pop elements from the end of a sequence until `elem` is encountered.
+#
+etail = (seq elem) -> takewhile _ -> (seq.pop! != elem) $ reversed $ list seq
+
+# strip :: MatchObject -> str
+#
+# Get everything after the end of a regex match.
+#
+strip = m -> ''.join $ drop m.end! m.string
+
+# inline :: (* -> str) -> (MatchObject, deque str) -> str
+#
+# Call a function with matched regex groups.
+#
+inline = f -> (match stack) -> f *: (filter (:: str) match.groups!)
+
+# wrapped :: (str, str) -> (MatchObject, deque str) -> str
+#
+# Open a tag on first call, close it (and everything inside) on second call.
+#
+wrapped = (start end) -> (match stack) -> if
+  end in stack => ''.join (etail stack end) + end
+  otherwise    => stack.append end or start
+
+
+i_re = compile $ ''.join $ list'
+  '(?i)'
+  r'(?P<code>(`+)(.*?)\2)'  # NOTE:: `\2` should point to ``(`+)``
+  r'|(?P<strong>\*\*|__)'
+  r'|(?P<emphasis>\*|_)'
+  r'|(?P<deleted>~~)'
+
+  r'|\b(?P<youtube>http://(?:www\.)?youtube\.com/watch\?v=([a-z0-9_-]+)[&=\d\w]*)'
+  r'|\b(?P<generic>[a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%\d{2}|\([^\s(<>)"\']+\))+)'
+  r'|\b(?P<email>[\w\.%+-]+@[\w\.-]+\.\w{2,4})\b'
+  r'|(?P<namedlink>\[(.*?)\]\(((?:[^()]+|\(.*?\)|[^)])*)\))'
+
+  r'|(?P<escape>\\(.))'
+  r'|(?P<text>[\w-]*[^\W_-]|.)'
+
+
+# i_subst :: dict str ((MatchObject, deque str) -> str)
+#
+# Map group names to token handlers.
+# The first argument is a regex match (obviously.)
+# The second argument is a deque of tags to be closed.
+#
+i_subst = dict'
+  'code',      inline '<code>{2}</code>'.format
+  'strong',    wrapped '<strong>' '</strong>'
+  'emphasis',  wrapped '<em>'     '</em>'
+  'deleted',   wrapped '<del>'    '</del>'
+
+  'youtube',   inline '<iframe width="560" height="315" frameborder="0" allowfullscreen src="http://youtube.com/embed/{1}"></iframe>'.format
+  'generic',   inline '<a href="{0}">{0}</a>'.format
+  'namedlink', inline '<a href="{2}">{1}</a>'.format
+  'email',     inline '<a href="mailto:{0}">{0}</a>'.format
+
+  'escape',    inline '{1}'.format
+  'text',      inline '{0}'.format
+
+
+# i_parse :: str -> str
+#
+# Substitute matches of `i_re` with contents of `i_subst`.
+#
+i_parse = line ->
+  stack = deque!
+  i_re.sub m -> ((i_subst !! m.lastgroup) m stack) (escape line) + ''.join (reversed stack)
+
+
+# block :: (str, str, Maybe str) -> (iter [str], iter [str]) -> str
+#
+# Apply `i_parse` to each line, then join them with a separator,
+# then wrap the result in a pair of tags.
+#
+# If separator is `None` rather than an empty string, the text is split into
+# blocks a second time.
+#
+block = (start end separator) -> (tokens block) ->
+  text = map strip block
+  html = map i_parse text
+  start + (if (separator is None => parse text) (otherwise => separator.join html)) + end
+
+
+# highlight :: (str, str) -> str
+#
+# Apply syntax highlighting to a piece of code.
+#
+highlight = (lang code) -> text where except
+  e => text = pygments.highlight code
+    pygments.lexers.get_lexer_by_name lang
+    pygments.formatters.HtmlFormatter!
+  e :: Exception => text = '<pre>{}</pre>'.format (escape code)
+
+
+g_re = compile $ ''.join $ list'
+  '(?i)'
+  r'(?P<fenced>```)'
+  r'|(?P<code> {4}|\t)'
+  r'|(?P<rule>([*-]\s*){3,}$)'
+  r'|(?P<ol>\s*\d+\.\s+)'
+  r'|(?P<ul>\s*[*+-]\s+)'
+  r'|(?P<h>\s*(#{1,6})\s*)'
+  r'|(?P<quote>\s*>)'
+  r'|(?P<break>\s*$)'
+  r'|(?P<p>\s*)'
+
+
+# g_subst :: dict str ((iter [str], iter [str]) -> str)
+#
+# Map group names to token handlers.
+# The first argument is `g_re` applied to each line.
+# The second argument is the same thing, but stops upon reaching a block
+# of a different kind.
+#
+g_subst = dict'
+  'quote',  block '<blockquote>' '</blockquote>' None
+  'ol',     block '<ol><li>'     '</li></ol>'    '</li><li>'
+  'ul',     block '<ul><li>'     '</li></ul>'    '</li><li>'
+  'p',      block '<p>'          '</p>'          '\n'
+
+  'break',  (tokens block) -> ''
+  'rule',   (tokens block) -> '<hr />'
+  'code',   (tokens block) -> highlight '' $ '\n'.join $ map strip block
+  'fenced', (tokens block) -> highlight
+    (strip $ next block).strip!
+    '\n'.join $ map (.'string') $ takewhile m -> (m.lastgroup != 'fenced') tokens
+
+  'h',      (tokens block) -> ''.join $ map
+    match -> '<h{0}>{1}</h{0}>'.format
+      len $ next $ drop 1 $ filter (:: str) match.groups!
+      i_parse $ strip match
+    block
+
+
+# parse :: Either str (iter [str]) -> str
+#
+# Parse a string or an iterable of lines as pseudomarkdown text.
+#
+parse = text ->
+  types = map g_re.match $ if (text :: str => text.splitlines!) (otherwise => text)
+  ''.join $ map
+    (kind, block) -> (g_subst !! kind) types block
+    groupby types (.'lastgroup')
+
+
+__name__ == '__main__' => print $ parse $ stdin.read -1
