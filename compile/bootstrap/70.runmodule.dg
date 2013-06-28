@@ -16,9 +16,7 @@ sys.meta_path.insert 0 $ subclass str where
       dir ->
         base = os.path.join dir name
         os.path.join base '__init__.dg',  base + '.dg'
-      filter os.path.isdir $ map os.path.abspath
-        if path is None do sys.path
-           otherwise    do path
+      filter os.path.isdir $ map os.path.abspath (path or sys.path)
 
     unsafe
       e = cls $ next $ filter os.path.isfile mods

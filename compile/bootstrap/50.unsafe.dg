@@ -4,9 +4,8 @@ unsafe_s = cases ->
       bind syntax.error '`unsafe` requires `condition = action` pairs'
     cases
 
-  pairs,
-    if len pairs > 1 and pairs !! -1 !! 0 == 'True' do pairs.pop!
-       otherwise do None, None
+  pairs, if len pairs > 1 and head (last pairs) == 'True' do pairs.pop!
+            otherwise do None, None
 
 
 #
@@ -17,8 +16,8 @@ unsafe_s = cases ->
 #
 PREFIX !! 'raise' = (self f args) ->
   args = unpack f args (exception cause: None) ->
-    if caused_by is None do tuple' exception
-       otherwise         do exception, caused_by
+    if cause is None do tuple' exception
+       otherwise     do exception, cause
   self.loadop 'RAISE_VARARGS' *: args delta: 0
   self.load   None  # We've got to return something.
 

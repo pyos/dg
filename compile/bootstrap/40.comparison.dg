@@ -16,8 +16,7 @@ comparison = op -> (self f args chain: False) ->
 
   # Now `double` is true iff `a` is another comparison.
   # Also, `e`, `ex`, and `f` will be defined if that is the case.
-  jumps = if double    do f self e ex chain: True
-             otherwise do list!
+  jumps = if (double do f self e ex chain: True) (otherwise do list!)
 
   # If not, then `a` is a plain old boring expression.
   if not double do self.load a
