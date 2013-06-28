@@ -15,7 +15,7 @@ ns  = argp.parse_args!
 env = dict __name__: '__main__' __builtins__: __builtins__
 
 sys.argv = ns.args
-sys.argv.insert 0 $ if (ns.source is sys.stdin do '') (otherwise do ns.source.name)
+sys.argv.insert 0 $ if (ns.source is sys.stdin => '') (otherwise => ns.source.name)
 
 ns.source.isatty! or
   eval (compile.fd ns.source) env
@@ -32,7 +32,7 @@ command = code -> unsafe
     expr = next $ dropwhile e -> (e :: parse.Expression and not e.closed) $ iterate last res
 
     # Tap `Return` twice to override any of these checks.
-    if (code.endswith '\n' or not
+    (code.endswith '\n' or not
       # There may be an indented block in the next line if
       #     1. the last operator has no right-hand side;
       expr :: parse.Expression and len expr == 2 and not (parse.unary $ head expr) or
@@ -41,7 +41,7 @@ command = code -> unsafe
         expr :: parse.Link and not expr.closed and expr in compile.core.PREFIX or
           # 3. the last line of the code is indented.
           (last $ code.rsplit '\n' 1).startswith ' '
-    ) do res
+    ) => res
 
   # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
   e :: SyntaxError and (head e.args).startswith 'unexpected EOF' = None
@@ -53,7 +53,7 @@ sys.stdin = ns.source
 sys.ps1 = getattr sys 'ps1' '>>> '
 sys.ps2 = getattr sys 'ps2' '... '
 
-while True do unsafe
+while True => unsafe
   e = sys.displayhook $ eval
     compile.ast $ next $ dropwhile not $ map command $ iterate x -> (x + '\n' + input sys.ps2) $ input sys.ps1
     env

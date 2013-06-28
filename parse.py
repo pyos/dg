@@ -137,7 +137,7 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
     'where': (-17, -18),  # with some stuff that is not visible outside of that expression
     'for':   (-18, -19),  # evaluate stuff for each item in an iterable
     'while': (-18, -19),  # evaluate stuff until condition becomes false
-    'do':    (-22, -22),  # ???????
+    '=>':    (-22, -22),  # ???????
     '\n':    (-23, -23),  # do A then B
 }.get: g(m, (-7, -7)))  # Default
 
@@ -248,13 +248,13 @@ def string(stream, token, pos):
     return Constant(literal_eval(''.join([q, g, token.group(3), g])))
 
 
-def link(stream, token, pos, infixn={'do', 'or', 'and', 'in', 'is', 'where'}):
+def link(stream, token, pos, infixn={'or', 'and', 'in', 'is', 'where'}):
     inf  = token.group(2) or token.group(3) or token.group(4)
     name = Link(inf or token.group(), inf or (token.group() in infixn)).at(pos, stream)
 
     if name in {'for', 'while'}:
 
-        return infix(stream, do(stream, token, pos, end=lambda x: x == 'do'), name, next(stream))
+        return infix(stream, do(stream, token, pos, end=lambda x: x == '=>'), name, next(stream))
 
     if name in {'if'}:
 

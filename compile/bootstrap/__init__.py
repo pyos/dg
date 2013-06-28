@@ -25,12 +25,12 @@ def unpack(f, args, g):
 def if_syntax(cases):
     # To parse `if` statements we need an `if` statement. *sigh*
     try:
-        # if a do b
-        #    c do e
-        return [syntax.binary_op('do', x, lambda y: syntax.error('`if` expected (condition do action) pairs', y)) for x in cases]
+        # if a => b
+        #    c => e
+        return [syntax.binary_op('=>', x, lambda y: syntax.error('`if` expected (condition => action) pairs', y)) for x in cases]
     except SyntaxError:
         if len(cases) == 1 and isinstance(cases[0], parse.Expression) and cases[0][0] == '':
-            # if (a do b) (c do e)
+            # if (a => b) (c => e)
             return if_syntax(cases[0][1:])
         raise
 

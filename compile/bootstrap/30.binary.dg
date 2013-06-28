@@ -9,8 +9,8 @@ inplace = c -> binary (self _ a b) ->
 # NOTE ',' is unfixed
 PREFIX !! ',' = (self f xs) -> self.loadop 'BUILD_TUPLE' *: xs delta: 1
 PREFIX !! '$' = binary (self f a b) ->
-  if a :: parse.Expression and not a.closed and a !! 0 == '' do self.call *: (a + list' b)
-     otherwise do self.call a b
+  if a :: parse.Expression and not a.closed and a !! 0 == '' => self.call *: (a + list' b)
+     otherwise => self.call a b
 
 PREFIX !! '!!'  = stacked 'BINARY_SUBSCR'
 PREFIX !! '+'   = stacked 'BINARY_ADD'

@@ -19,7 +19,7 @@ PREFIX !! 'with' = (self f args) ->
   #   Lucky for us, most context managers return themselves, so `with (a = ...)`
   #   works.
   self.loadop 'POP_TOP'   delta: -1
-  if (steps do self.chain *: steps) (otherwise do self.load None)
+  if (steps => self.chain *: steps) (otherwise => self.load None)
   self.loadop 'ROT_THREE' delta:  0
   self.loadop 'ROT_TWO'   delta:  0
   self.loadop 'POP_BLOCK' delta: -1

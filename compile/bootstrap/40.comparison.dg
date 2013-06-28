@@ -16,24 +16,24 @@ comparison = op -> (self f args chain: False) ->
 
   # Now `double` is true iff `a` is another comparison.
   # Also, `e`, `ex`, and `f` will be defined if that is the case.
-  jumps = if (double do f self e ex chain: True) (otherwise do list!)
+  jumps = if (double => f self e ex chain: True) (otherwise => list!)
 
   # If not, then `a` is a plain old boring expression.
-  if not double do self.load a
+  not double => self.load a
 
   if
-    chain do jumps.append $
+    chain => jumps.append $
       self.loadop 'DUP_TOP'          b   delta:  2  # [a, b]
       self.loadop 'ROT_THREE'            delta:  0  # [b, a, b]
       self.loadop 'COMPARE_OP' arg: op   delta: -1  # [b, a R b]
       self.loadop 'JUMP_IF_FALSE_OR_POP' delta: -1  # [b, True] if a R b else [b]
 
-    otherwise do
+    otherwise =>
       self.load   b
       self.loadop 'COMPARE_OP' arg: op   delta: -1  # [a R b]
       # Now, what if one of the comparisons returned False?
       # First, we jump here.
-      if jumps do
+      jumps =>
         ontrue = self.loadop 'JUMP_FORWARD' delta: 0
         list $ map call jumps
         # Then we remove the unneeded item, leaving `False` on the stack.

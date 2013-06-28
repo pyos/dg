@@ -48,7 +48,7 @@ sys.meta_path.insert 0 $ subclass str where
     module.__loader__  = self
     module.__package__ = init
 
-    if self.is_package module.__name__ do
+    if self.is_package module.__name__ =>
       module.__path__    = list' $ os.path.dirname self
       module.__package__ = module.__name__
 

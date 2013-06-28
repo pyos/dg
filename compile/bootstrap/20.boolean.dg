@@ -5,21 +5,11 @@ fjump = (jump self f args) ->
   call jmp
 
 
-PREFIX !! 'or'   = bind fjump 'JUMP_IF_TRUE_OR_POP'
-PREFIX !! 'and'  = bind fjump 'JUMP_IF_FALSE_OR_POP'
-PREFIX !! 'not'  = (self f args) -> self.loadop 'UNARY_NOT' (ensure f args 1 1 !! 0) delta: 1
-PREFIX !! 'else' = (self f args) ->
-  cond, otherwise = ensure f args 2 2
-  then, cond = syntax.binary_op 'if' cond (bind syntax.error 'first goes `if`, then `else`')
-
-  ptr = self.loadop 'POP_JUMP_IF_FALSE' cond delta: 0
-  jmp = self.loadop 'JUMP_FORWARD'      then delta: 0
-
-  call ptr
-  self.load otherwise
-  call jmp
-
-PREFIX !! 'if' = (self f args) ->
+PREFIX !! 'not' = (self f args) -> self.loadop 'UNARY_NOT' (ensure f args 1 1 !! 0) delta: 1
+PREFIX !! 'and' = bind fjump 'JUMP_IF_FALSE_OR_POP'
+PREFIX !! '=>'  = bind fjump 'JUMP_IF_FALSE_OR_POP'
+PREFIX !! 'or'  = bind fjump 'JUMP_IF_TRUE_OR_POP'
+PREFIX !! 'if'  = (self f args) ->
   jumps = list
     map
       (cond, action) ->
