@@ -4,7 +4,8 @@ If there is a good imperative-style code, nobody can object to the fact that
 it would probably contain some loops. That's why there are two kinds of these
 in dg. Both are pretty simple, though.
 
-`while` loops while a condition is satisfied.
+`while` loops while a condition is satisfied, and returns the value
+of its last iteration.
 
 ```dg
 a = 0
@@ -12,6 +13,7 @@ a = 0
 while a < 5 =>
   print a
   a += 1
+#=> Prints out 0, 1, 2, 3, 4; returns 5.
 ```
 
 `for`, given a boolean expression, attempts to determine all possible

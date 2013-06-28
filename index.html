@@ -430,11 +430,13 @@ defined only by <code>b</code>.</p><div class="highlight"><pre><span class="kt">
 </div>
         <div id="loops"        class="section"><h2>Imperative looping constructs</h2><p>If there is a good imperative-style code, nobody can object to the fact that
 it would probably contain some loops. That's why there are two kinds of these
-in dg. Both are pretty simple, though.</p><p><code>while</code> loops while a condition is satisfied.</p><div class="highlight"><pre><span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
+in dg. Both are pretty simple, though.</p><p><code>while</code> loops while a condition is satisfied, and returns the value
+of its last iteration.</p><div class="highlight"><pre><span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
 
 <span class="kr">while</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mi">5</span> <span class="o">=&gt;</span>
   <span class="nb">print</span> <span class="n">a</span>
   <span class="n">a</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="c1">#=&gt; Prints out 0, 1, 2, 3, 4; returns 5.</span>
 </pre></div>
 <p><code>for</code>, given a boolean expression, attempts to determine all possible
 combinations of values that make that expression true, then evaluates
