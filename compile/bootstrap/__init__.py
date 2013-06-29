@@ -59,8 +59,7 @@ def getattr(self, _, a, b):
     '''
 
     isinstance(b, parse.Link) or syntax.error('not an attribute', b)
-    self.load(a)
-    self.loadop('LOAD_ATTR', arg=b, delta=0)
+    self.loadop('LOAD_ATTR', a, arg=b, delta=1)
 
 
 def import_(self, _, name, qualified=None):
