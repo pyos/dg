@@ -127,6 +127,7 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
     'or':    (-150, -150),  # A if A else B
     '$':     (-150, -160),  # call with one argument and no f-ing parentheses
     '->':    (-5,   -180),  # a function
+    '~>':    (-5,   -180),  # a method (i.e. a function with `self` as an argument)
     ',':     (-170, -170),  # a tuple
     '=':     (-170, -180),  # assignment
     '!!=':   (-170, -180),  # in-place versions of some of the other functions

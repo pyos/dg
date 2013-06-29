@@ -49,3 +49,15 @@ PREFIX !! '!.'  = binary (self _ a b) ->
   b :: parse.Link or syntax.error 'not an attribute'
   self.call a
   self.loadop 'LOAD_ATTR' arg: b delta: 0
+
+PREFIX !! '~>' = (self f q) ->
+  args, body = ensure f q 2 2
+  prop = args :: parse.Constant and args.value is None
+  prop => self.loadop 'LOAD_GLOBAL' arg: 'property' delta: 1
+
+  if args :: parse.Expression and head args == '' => args.insert 1 (parse.Link 'self')
+     prop      => args = parse.Link 'self'
+     otherwise => args = parse.Expression (list' (parse.Link '') (parse.Link 'self') args)
+
+  self.function args body
+  prop => self.loadop 'CALL_FUNCTION' arg: 1 delta: -1
