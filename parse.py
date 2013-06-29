@@ -2,8 +2,6 @@ from re          import compile
 from ast         import literal_eval
 from collections import Iterator, deque, namedtuple
 
-__all__ = ['Node', 'Expression', 'Link', 'Constant', 'Location', 'error', 'it', 'fd']
-
 Location = namedtuple('Location', 'start, end, filename, first_line')
 
 
@@ -45,6 +43,10 @@ class Expression (list, Node):
             '{1} {0}'    .format(*self) if len(self) == 2 else
             '({}) {}'.format(self[0], ' '.join(map(repr, self[1:])))
         )
+
+
+class ExpressionL (Expression): closed = True
+class ExpressionR (Expression): closed = False
 
 
 class Link (str, Node):
@@ -163,13 +165,7 @@ def infix(self, lhs, op, rhs):
             self.appendleft(rhs)
             return lhs
 
-        if br and rhs.indented:
-            # a
-            #   b   <=>  a b (c d), but only if `a` is not infix.
-            #   c d
-            return infixin(op, lhs, rhs, True)
-
-        if br:
+        if br and not rhs.indented:
             # `a\n`.
             return infixin(br, lhs, rhs)
 
@@ -182,15 +178,15 @@ def infix(self, lhs, op, rhs):
             # `(a R)`
             return infixin(op, lhs, self.appendleft(rhs))
 
-        if rhs.infix and not rhs.closed and not has_priority(rhs, op):
-            # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
-            return infix(self, infixin(op, lhs), rhs, next(self))
-
         if br and not rhs.indented:
             # `a R\n`.
             return infixin(br, infixin(op, lhs), rhs)
 
-    return infixin(op, lhs, rhs)
+        if rhs.infix and not rhs.closed and not has_priority(rhs, op):
+            # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
+            return infix(self, infixin(op, lhs), rhs, next(self))
+
+    return infixin(op, lhs, rhs, op == '' and rhs.indented)
 
 
 def infixin(op, lhs, rhs=None, indent=False):
@@ -207,12 +203,18 @@ def infixin(op, lhs, rhs=None, indent=False):
             lhs.extend(rhs[1:] if indent and isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs])
             return lhs
 
-    # `R`         <=> `Link R`
-    # `R rhs`     <=> `Expression [ Link '', Link R, Link rhs ]`
-    # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
-    # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
-    e = Expression([op, lhs] if rhs is None else [op, lhs] + (rhs[1:] if indent and isinstance(rhs, Expression) and rhs[0] == '\n' and (lhs.closed or not lhs.infix) else [rhs]))
-    e.closed = rhs is None
+    e = (
+        # `R rhs` => `ExpressionR [ Link R, Link rhs ]`
+        ExpressionR([lhs, rhs]) if lhs.infix and not lhs.closed and op == '' else
+        # `lhs R` => `ExpressionL [ Link R, Link lhs ]`
+        ExpressionL([op, lhs]) if rhs is None else
+        # `lhs
+        #    a  => Expression [ Link '', lhs, a, b ]
+        #    b`
+        Expression([op, lhs] + rhs[1:]) if indent and isinstance(rhs, Expression) and rhs[0] == '\n' else
+        # `lhs R rhs` => `Expression [ Link R, Link lhs, Link rhs ]`
+        Expression([op, lhs, rhs])
+    )
     e.location = Location(
         lhs.location.start,
         e[-(not e.closed)].location.end,

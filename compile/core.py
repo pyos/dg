@@ -38,10 +38,9 @@ class CodeGenerator (codegen.MutableCode):
 
             hasattr(e, 'location') and self.mark(e)
 
-            if isinstance(e, parse.Expression):
-
-                self.call(*e)
-
+            if   isinstance(e, parse.ExpressionL): INFIXL[e[0]](self, *e)
+            elif isinstance(e, parse.ExpressionR): INFIXR[e[0]](self, *e)
+            elif isinstance(e, parse.Expression):  self.call(*e)
             elif isinstance(e, parse.Link):
 
                 self.loadop(
@@ -94,12 +93,12 @@ class CodeGenerator (codegen.MutableCode):
 
             for i, q in enumerate(pack):
 
-                if isinstance(q, list) and len(q) == 3 and q[:2] == ['', '*']:
+                if isinstance(q, parse.ExpressionR) and q[0] == '*':
 
                     star > -1 and syntax.error('can only have one *starred item', q)
                     i > 255   and syntax.error('CPython cannot handle that many items', q)
 
-                    star, pack[i] = i, q[2]
+                    star, pack[i] = i, q[1]
 
             #     w/o a starred item                 w/ a starred item
             op  = 'UNPACK_SEQUENCE' if star < 0 else 'UNPACK_EX'
@@ -201,37 +200,28 @@ class CodeGenerator (codegen.MutableCode):
             delta=-len(a) -   2 * len(kw) - preloaded
         )
 
-    def loadcall(self, args):
-        '''If there's a single object, load it. Otherwise, call a function.'''
-
-        self.load(*args) if len(args) < 2 else self.call(*args)
-
     def infixbindl(self, f, arg):
         '''Default implementation of a left infix bind.'''
 
         self.loadop('LOAD_GLOBAL', arg='bind', delta=1)
         self.loadop('CALL_FUNCTION', f, arg,   delta=0)
 
-    def infixbindr(self, f, args):
+    def infixbindr(self, f, arg):
         '''Default implementation of a right infix bind.'''
 
-        self.loadop('LOAD_GLOBAL', arg='bind', delta=1)
-        self.loadop('LOAD_GLOBAL', arg='flip', delta=1)
-        self.loadop('CALL_FUNCTION', f,        delta=0)
-        self.loadcall(args)
-        self.loadop('CALL_FUNCTION', arg=2, delta=-1)
+        self.loadop('LOAD_GLOBAL', arg='bind',   delta=1)
+        self.loadop('LOAD_GLOBAL', arg='flip',   delta=1)
+        self.loadop('CALL_FUNCTION', f,          delta=0)
+        self.loadop('CALL_FUNCTION', arg, arg=2, delta=-1)
 
-    def call(self, f, *args, rightbind=False):
+    def call(self, f, *args):
         '''Call a function or delegate to a macro.
 
             function argument ... keyword: value *: varargs **: varkwargs
 
         '''
 
-        return self.call(*args, rightbind=True) if f.infix and f == '' \
-          else INFIXR[f](self, f,  args) if f.infix and not f.closed and rightbind      \
-          else INFIXL[f](self, f, *args) if f.infix and not f.closed and len(args) == 1 \
-          else PREFIX[f](self, f,  args) if isinstance(f, parse.Link) and f in PREFIX \
+        return PREFIX[f](self, f,  args) if isinstance(f, parse.Link) and f in PREFIX \
           else self.nativecall(f, args, 0, f.infix and not f.closed)
 
     def store(self, target, expr):
@@ -295,6 +285,6 @@ class CodeGenerator (codegen.MutableCode):
             self.loadop('POP_TOP', delta=-1)
             self.load(b)
 
-PREFIX = {}
+PREFIX = {'\n': lambda s, _, q: s.chain(*q), '': lambda s, _, q: s.call(*q)}
 INFIXL = collections.defaultdict(lambda: CodeGenerator.infixbindl)
 INFIXR = collections.defaultdict(lambda: CodeGenerator.infixbindr)

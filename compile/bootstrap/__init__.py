@@ -43,9 +43,7 @@ import builtins
 import posixpath
 
 PREFIX.update({
-    '\n':  lambda self, _, args: self.chain   (*args)
-  , '':    lambda self, _, args: self.call    (*args, rightbind=True)
-  , '=':   lambda self, f, args: self.store   (*ensure(f, args, 2, 2))
+    '=':   lambda self, f, args: self.store   (*ensure(f, args, 2, 2))
   , '->':  lambda self, f, args: self.function(*ensure(f, args, 2, 2))
 
   , '.':      lambda self, f, args: getattr(self, f, *ensure(f, args, 2, 2))
