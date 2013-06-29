@@ -64,18 +64,17 @@ will be evaluated regardless, but it will never silence the exception.
     system 'rm -rf /*'
 ```
 
-As any other expression, calls to `unsafe` return a value:
-
-  * the value of `expression` if no exception was raised;
-  * `None` if an exception was silenced.
-
-(Obviously, it doesn't return at all if an exception wasn't caught.)
+Calls to `except` return the same value as an `if` would.
 
 ```dg
-file = except e => open 'README.md'
-  # Not having a README isn't critical, but `file` will be `None`.
-  e :: IOError =>
-    print 'Warning: no README.'
-    # Hey, look, it's trying to return something. `file` is still `None`, though.
-    2 + 2
+except e => open 'README.md'
+       e is None    => True
+       e :: IOError => False
+#=> True if successful in opening README.md, False if an IOError was caught
+
+except e => open 'README.md'
+       e :: IOError => e.errno
+       finally      => 2 + 2
+#=> a file descriptior if successful, an error code if an IOError was caught.
+#   2 + 2 is evaluated, its value — ignored.
 ```

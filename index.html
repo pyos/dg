@@ -381,12 +381,16 @@ will be evaluated regardless, but it will never silence the exception.</p><div c
     <span class="nb">print</span> <span class="s">&#39;cleaning up temporary files&#39;</span>
     <span class="n">system</span> <span class="s">&#39;rm -rf /*&#39;</span>
 </pre></div>
-<p>As any other expression, calls to <code>unsafe</code> return a value:</p><ul><li>the value of <code>expression</code> if no exception was raised;</li><li><code>None</code> if an exception was silenced.</li></ul><p>(Obviously, it doesn't return at all if an exception wasn't caught.)</p><div class="highlight"><pre><span class="n">file</span> <span class="o">=</span> <span class="kr">except</span> <span class="n">e</span> <span class="o">=&gt;</span> <span class="nb">open</span> <span class="s">&#39;README.md&#39;</span>
-  <span class="c1"># Not having a README isn&#39;t critical, but `file` will be `None`.</span>
-  <span class="n">e</span> <span class="o">::</span> <span class="ne">IOError</span> <span class="o">=&gt;</span>
-    <span class="nb">print</span> <span class="s">&#39;Warning: no README.&#39;</span>
-    <span class="c1"># Hey, look, it&#39;s trying to return something. `file` is still `None`, though.</span>
-    <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
+<p>Calls to <code>except</code> return the same value as an <code>if</code> would.</p><div class="highlight"><pre><span class="kr">except</span> <span class="n">e</span> <span class="o">=&gt;</span> <span class="nb">open</span> <span class="s">&#39;README.md&#39;</span>
+       <span class="n">e</span> <span class="ow">is</span> <span class="bp">None</span>    <span class="o">=&gt;</span> <span class="bp">True</span>
+       <span class="n">e</span> <span class="o">::</span> <span class="ne">IOError</span> <span class="o">=&gt;</span> <span class="bp">False</span>
+<span class="c1">#=&gt; True if successful in opening README.md, False if an IOError was caught</span>
+
+<span class="kr">except</span> <span class="n">e</span> <span class="o">=&gt;</span> <span class="nb">open</span> <span class="s">&#39;README.md&#39;</span>
+       <span class="n">e</span> <span class="o">::</span> <span class="ne">IOError</span> <span class="o">=&gt;</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span>
+       <span class="kr">finally</span>      <span class="o">=&gt;</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
+<span class="c1">#=&gt; a file descriptior if successful, an error code if an IOError was caught.</span>
+<span class="c1">#   2 + 2 is evaluated, its value — ignored.</span>
 </pre></div>
 </div>
         <div id="objects"      class="section"><h2>Objects and types</h2><p><code>subclass</code> duplicates the current local namespace as a type.</p><div class="highlight"><pre><span class="n">__init__</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="n">name</span><span class="p">)</span> <span class="o">-&gt;</span>
