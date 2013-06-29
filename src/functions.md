@@ -76,7 +76,11 @@ double 10 #=> 20
 
 # These have no arguments and always return None. Useless.
 constant  = () -> None
-constant' = () -> ()
+constant1 = () -> ()
+# If either side of `->` is omitted, it is inferred to be `()`.
+constant2 = -> ()
+constant3 = () ->
+constant4 = ->
 
 # This one accepts any amount of arguments.
 doubleMany = (*: xs) -> map double xs

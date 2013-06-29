@@ -197,7 +197,11 @@ are similar to those when calling functions, but with a few quirks.</p><ul><li>o
 
 <span class="c1"># These have no arguments and always return None. Useless.</span>
 <span class="n">constant</span>  <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="bp">None</span>
-<span class="n">constant&#39;</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="p">()</span>
+<span class="n">constant1</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="p">()</span>
+<span class="c1"># If either side of `-&gt;` is omitted, it is inferred to be `()`.</span>
+<span class="n">constant2</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="p">()</span>
+<span class="n">constant3</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span>
+<span class="n">constant4</span> <span class="o">=</span> <span class="o">-&gt;</span>
 
 <span class="c1"># This one accepts any amount of arguments.</span>
 <span class="n">doubleMany</span> <span class="o">=</span> <span class="p">(</span><span class="o">*:</span> <span class="n">xs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">map</span> <span class="n">double</span> <span class="n">xs</span>
