@@ -4,7 +4,7 @@ cinit = parse.it '''
 # :param:`name`:: qualified name (utterly broken)
 # :param:`target`:: where to store everything
 target.update data
-target.update $ dict __module__: __name__ __qualname__: name
+target.update $ dict __module__: __name__ __qualname__: name __doc__: doc
 '''
 
 
@@ -14,14 +14,15 @@ target.update $ dict __module__: __name__ __qualname__: name
 # Create a class with current locals as its attributes.
 #
 PREFIX !! 'subclass' = (self f args) ->
-  code = CodeGenerator (self.child_name '<class>') True (list' 'data' 'name' 'target') cell: self
+  code = CodeGenerator (self.child_name '<class>') True (list' 'data' 'target' 'name' 'doc') cell: self
   code.loadop 'RETURN_VALUE' cinit delta: 0
 
+  doc = fst $ head self.consts.sorted
   self.loadop 'LOAD_BUILD_CLASS' delta: 1
   self.append 'LOAD_GLOBAL'  'bind'         delta:  1
-  self.make_function code tuple! dict!
+  if doc :: str => self.make_function code (self.qualname, doc) dict!
+     otherwise  => self.make_function code (self.qualname, '')  dict!
   self.append 'LOAD_GLOBAL'  'locals'       delta:  1
   self.append 'CALL_FUNCTION' 0             delta:  0
-  self.append 'LOAD_CONST'   self.qualname  delta:  1
-  self.append 'CALL_FUNCTION' 3             delta: -3
+  self.append 'CALL_FUNCTION' 2             delta: -2
   self.nativecall self.name args 2 False
