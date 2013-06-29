@@ -102,11 +102,11 @@ block = (start end separator) -> (tokens block) ->
 #
 # Apply syntax highlighting to a piece of code.
 #
-highlight = (lang code) -> text where except
-  e => text = pygments.highlight code
+highlight = (lang code) -> except
+  e => pygments.highlight code
     pygments.lexers.get_lexer_by_name lang
     pygments.formatters.HtmlFormatter!
-  e :: Exception => text = '<pre>{}</pre>'.format (escape code)
+  e :: Exception => '<pre>{}</pre>'.format (escape code)
 
 
 g_re = compile $ ''.join $ list'
