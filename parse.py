@@ -95,58 +95,58 @@ def error(description, at):
 has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
     # `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
     # is higher than right binding strength of `R`.
-    '.':     ( 0,   0),   # getattr
-    '!.':    ( 0,   0),   # call with no arguments, then getattr
-    '!':     ( 0,  -1),   # call with no arguments
-    ':':     ( 0,  -1),   # keyword argument
-    '':      (-2,  -2),   # call with an argument
-    '!!':    (-3,  -3),   # container subscription (i.e. `a[b]`)
-    '**':    (-3,  -4),   # exponentiation
-    '*':     (-5,  -5),   # multiplication
-    '/':     (-5,  -5),   # fp division
-    '//':    (-5,  -5),   # int division
-    '%':     (-5,  -5),   # modulus
-    '+':     (-6,  -6),   # addition
-    '-':     (-6,  -6),   # subtraction
-    # -7 is the default value for everything not on this list.
-    '<':     (-8,  -8),   # less than
-    '<=':    (-8,  -8),   # ^ or equal
-    '>':     (-8,  -8),   # greater than
-    '>=':    (-8,  -8),   # ^ or equal
-    '==':    (-8,  -8),   # equal
-    '!=':    (-8,  -8),   # not ^
-    'is':    (-8,  -8),   # occupies the same memory location as
-    'in':    (-8,  -8),   # is one of the elements of
-    '<<':    (-10, -10),  # *  2 **
-    '>>':    (-10, -10),  # // 2 **
-    '&':     (-11, -11),  # bitwise and
-    '^':     (-12, -12),  # bitwise xor
-    '|':     (-13, -13),  # bitwise or
-    'and':   (-14, -14),  # B if A else A
-    'or':    (-15, -15),  # A if A else B
-    '$':     (-15, -16),  # call with one argument and no f-ing parentheses
-    '->':    ( 1,  -18),  # a function
-    ',':     (-17, -17),  # a tuple
-    '=':     (-17, -18),  # assignment
-    '!!=':   (-17, -18),  # in-place versions of some of the other functions
-    '+=':    (-17, -18),
-    '-=':    (-17, -18),
-    '*=':    (-17, -18),
-    '**=':   (-17, -18),
-    '/=':    (-17, -18),
-    '//=':   (-17, -18),
-    '%=':    (-17, -18),
-    '&=':    (-17, -18),
-    '^=':    (-17, -18),
-    '|=':    (-17, -18),
-    '<<=':   (-17, -18),
-    '>>=':   (-17, -18),
-    'where': (-17, -18),  # with some stuff that is not visible outside of that expression
-    'for':   (-18, -19),  # evaluate stuff for each item in an iterable
-    'while': (-18, -19),  # evaluate stuff until condition becomes false
-    '=>':    (-22, -22),  # ???????
-    '\n':    (-23, -23),  # do A then B
-}.get: g(m, (-7, -7)))  # Default
+    '.':     ( 0,    0),   # getattr
+    '!.':    ( 0,    0),   # call with no arguments, then getattr
+    '!':     ( 0,   -10),   # call with no arguments
+    ':':     ( 0,   -10),   # keyword argument
+    '':      (-20,  -20),   # call with an argument
+    '!!':    (-30,  -30),   # container subscription (i.e. `a[b]`)
+    '**':    (-30,  -40),   # exponentiation
+    '*':     (-50,  -50),   # multiplication
+    '/':     (-50,  -50),   # fp division
+    '//':    (-50,  -50),   # int division
+    '%':     (-50,  -50),   # modulus
+    '+':     (-60,  -60),   # addition
+    '-':     (-60,  -60),   # subtraction
+    # -70 is the default value for everything not on this list.
+    '<':     (-80,  -80),   # less than
+    '<=':    (-80,  -80),   # ^ or equal
+    '>':     (-80,  -80),   # greater than
+    '>=':    (-80,  -80),   # ^ or equal
+    '==':    (-80,  -80),   # equal
+    '!=':    (-80,  -80),   # not ^
+    'is':    (-80,  -80),   # occupies the same memory location as
+    'in':    (-80,  -80),   # is one of the elements of
+    '<<':    (-100, -100),  # *  2 **
+    '>>':    (-100, -100),  # // 2 **
+    '&':     (-110, -110),  # bitwise and
+    '^':     (-120, -120),  # bitwise xor
+    '|':     (-130, -130),  # bitwise or
+    'and':   (-140, -140),  # B if A else A
+    'or':    (-150, -150),  # A if A else B
+    '$':     (-150, -160),  # call with one argument and no f-ing parentheses
+    '->':    ( 10,  -180),  # a function
+    ',':     (-170, -170),  # a tuple
+    '=':     (-170, -180),  # assignment
+    '!!=':   (-170, -180),  # in-place versions of some of the other functions
+    '+=':    (-170, -180),
+    '-=':    (-170, -180),
+    '*=':    (-170, -180),
+    '**=':   (-170, -180),
+    '/=':    (-170, -180),
+    '//=':   (-170, -180),
+    '%=':    (-170, -180),
+    '&=':    (-170, -180),
+    '^=':    (-170, -180),
+    '|=':    (-170, -180),
+    '<<=':   (-170, -180),
+    '>>=':   (-170, -180),
+    'where': (-170, -180),  # with some stuff that is not visible outside of that expression
+    'for':   (-180, -190),  # evaluate stuff for each item in an iterable
+    'while': (-180, -190),  # evaluate stuff until condition becomes false
+    '=>':    (-220, -220),  # ???????
+    '\n':    (-230, -230),  # do A then B
+}.get: g(m, (-70, -70)))  # Default
 
 
 # If `unassoc(R)` is true, `Expression`s starting with `R` are allowed
