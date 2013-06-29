@@ -67,8 +67,8 @@ PREFIX !! 'for' = (self f args) ->
   self.load None
 
 
-mke = (k v) -> parse.Expression $ list' (parse.Link '' True) k v
-mkn = v -> mke (parse.Link 'not' False) v
+mke = (k v) -> parse.Expression $ list' (parse.LinkI '') k v
+mkn = v -> mke (parse.Link 'not') v
 
 or'  = ((p, a) (q, b)) -> (p | q), (a + b)
 and' = ((p, a) (q, b)) -> (p | q), list

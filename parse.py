@@ -37,36 +37,42 @@ class Expression (list, Node):
     def __repr__(self):
 
         return ('({})' if self.closed else '{}').format(
-            ' '.join(map(repr, self[1:])) if self[0] == '' else
-            '{1}{0}{2}'  .format(*self) if len(self) == 3 and self[0] == '.' else
-            '{1} {0} {2}'.format(*self) if len(self) == 3 else
-            '{1} {0}'    .format(*self) if len(self) == 2 else
-            '({}) {}'.format(self[0], ' '.join(map(repr, self[1:])))
+            ('{!r}' if self[0] in '.\n' else ' {!r} ').format(self[0]).join(map(repr, self[1:]))
         )
 
 
-class ExpressionL (Expression): closed = True
-class ExpressionR (Expression): closed = False
+class ExpressionL (Expression):
+
+    closed = True
+
+    def __repr__(self):
+
+        return '({1!r} {0!r})'.format(*self)
+
+
+class ExpressionR (Expression):
+
+    def __repr__(self):
+
+        return ('({0!r} {1!r})' if self.closed else '{0!r} {1!r}').format(*self)
 
 
 class Link (str, Node):
 
-    def __new__(cls, data, infix=False):
-
-        obj = str.__new__(cls, data)
-        obj.infix = bool(infix)
-        return obj
-
     def __repr__(self):
 
-        return self
+        return ('({})' if self.closed else '{}').format(self)
+
+
+class LinkI (Link):
+
+    infix = True
 
 
 class Constant (Node):
 
     def __init__(self, value):
 
-        super().__init__()
         self.value = value
 
     def __repr__(self):
@@ -238,7 +244,7 @@ def indent(stream, token, pos):
     while indent != stream.indent[-1]:
 
         stream.indent.pop() < 0 and error('no matching indentation level', pos)
-        stream.appendleft(Link('\n', True).at(pos, stream))
+        stream.appendleft(LinkI('\n').at(pos, stream))
         stream.appendleft(Internal('').at(pos, stream))
 
 
@@ -250,7 +256,7 @@ def string(stream, token, pos):
 
 def link(stream, token, pos, infixn={'or', 'and', 'in', 'is', 'where'}):
     inf  = token.group(2) or token.group(3) or token.group(4)
-    name = Link(inf or token.group(), inf or (token.group() in infixn)).at(pos, stream)
+    name = (LinkI if token.group() in infixn or inf else Link)(inf or token.group()).at(pos, stream)
 
     if name in {'for', 'while'}:
 
@@ -262,7 +268,7 @@ def link(stream, token, pos, infixn={'or', 'and', 'in', 'is', 'where'}):
 
         if not isinstance(block, Constant) or block.value is not None:
 
-            return infix(stream, name, Link('', True).after(name), block)
+            return infix(stream, name, LinkI('').after(name), block)
 
     return name
 
@@ -284,7 +290,7 @@ def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == 
         elif can_join:
 
             # Two objects in a row should be joined with an empty infix link.
-            object = infix(stream, object, Link('', True).after(object), item)
+            object = infix(stream, object, LinkI('').after(object), item)
 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
