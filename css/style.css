@@ -17,6 +17,11 @@ p
     line-height: 1.5;
 }
 
+p *
+{
+    text-indent: 0;
+}
+
 #logo
 {
     padding-left: 48px;
