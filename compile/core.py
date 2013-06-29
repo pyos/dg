@@ -111,14 +111,19 @@ class CodeGenerator (codegen.MutableCode):
 
             return
 
-        # It may also be an attribute (object.attr) or a subitem (object !! item).
+        if isinstance(var, parse.ExpressionR) and var[0] == '@':
+
+            isinstance(var[1], parse.Link) or syntax.error('not an attribute', var[1])
+            return self.loadop('STORE_ATTR', parse.Link('self'), arg=var[1], delta=-1)
+
         var, attr = syntax.binary_op('.',  var, lambda x: (x, None))
-        var, item = syntax.binary_op('!!', var, lambda x: (x, None))
 
         if attr:
 
             isinstance(attr, parse.Link) or syntax.error('not an attribute', attr)
             return self.loadop('STORE_ATTR', var, arg=attr, delta=-1)
+
+        var, item = syntax.binary_op('!!', var, lambda x: (x, None))
 
         if item:
 
