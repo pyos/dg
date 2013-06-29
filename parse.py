@@ -190,8 +190,8 @@ def infix(self, lhs, op, rhs):
             # `(a R)`
             return infixin(op, lhs, self.appendleft(rhs))
 
-        if rhs.infix and not rhs.closed and has_priority(op, rhs):
-            # `a R Q b` <=> `(a R) Q b` if R has priority over Q.
+        if rhs.infix and not rhs.closed and not has_priority(rhs, op):
+            # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
             return infix(self, infixin(op, lhs), rhs, next(self))
 
         if br and not rhs.indented:
