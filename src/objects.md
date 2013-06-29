@@ -39,7 +39,7 @@ sam.gallop
 Now, it is not very easy to reset the namespace every time you need
 to create a class. That is why there is
 
-## Local name binding
+### Local name binding
 
 Also known among Python devs as ["given" clause](http://www.python.org/dev/peps/pep-3150/).
 
@@ -64,4 +64,25 @@ print a where
 #=> 3
 print a
 #=> OH GOD NAMEERROR
+```
+
+Also, for those who like Ruby syntax, there are
+
+### Fancy aliases
+
+`@attribute` is an alias for `self.attribute`.
+
+```dg
+Movable.move = (self distance) -> '{} moved {} meters.'.format @name distance
+Frog.leap = property $ self -> @move 20
+```
+
+`~>` is a method constructor. It works the same way as `->`, but inserts `self`
+into the argument list in addition to doing the generic function creation stuff.
+If there are no other arguments, the created method is automatically
+transformed into a property.
+
+```dg
+Movable.move = distance ~> '{} moved {} meters.'.format @name distance
+Frog.leap = ~> @move 20
 ```

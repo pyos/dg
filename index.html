@@ -420,7 +420,7 @@ will be evaluated regardless, but it will never silence the exception.</p><div c
 <span class="n">sam</span><span class="o">.</span><span class="n">gallop</span>
 </pre></div>
 <p>Now, it is not very easy to reset the namespace every time you need
-to create a class. That is why there is</p><h2>Local name binding</h2><p>Also known among Python devs as <a href="http://www.python.org/dev/peps/pep-3150/">"given" clause</a>.</p><p>In simplier terms, writing <code>a where b</code> evaluates <code>a</code> in a new local namespace
+to create a class. That is why there is</p><h3>Local name binding</h3><p>Also known among Python devs as <a href="http://www.python.org/dev/peps/pep-3150/">"given" clause</a>.</p><p>In simplier terms, writing <code>a where b</code> evaluates <code>a</code> in a new local namespace
 defined only by <code>b</code>.</p><div class="highlight"><pre><span class="kt">Frog</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="kt">Movable</span> <span class="kt">Animal</span> <span class="ow">where</span>
   <span class="c1"># None of the crap we defined above will make it into this class.</span>
   <span class="n">leap</span> <span class="o">=</span> <span class="nb">property</span> <span class="o">$</span> <span class="bp">self</span> <span class="o">-&gt;</span>
@@ -434,6 +434,15 @@ defined only by <code>b</code>.</p><div class="highlight"><pre><span class="kt">
 <span class="c1">#=&gt; 3</span>
 <span class="nb">print</span> <span class="n">a</span>
 <span class="c1">#=&gt; OH GOD NAMEERROR</span>
+</pre></div>
+<p>Also, for those who like Ruby syntax, there are</p><h3>Fancy aliases</h3><p><code>@attribute</code> is an alias for <code>self.attribute</code>.</p><div class="highlight"><pre><span class="kt">Movable</span><span class="o">.</span><span class="n">move</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="n">distance</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s">&#39;{} moved {} meters.&#39;</span><span class="o">.</span><span class="n">format</span> <span class="o">@</span><span class="n">name</span> <span class="n">distance</span>
+<span class="kt">Frog</span><span class="o">.</span><span class="n">leap</span> <span class="o">=</span> <span class="nb">property</span> <span class="o">$</span> <span class="bp">self</span> <span class="o">-&gt;</span> <span class="o">@</span><span class="n">move</span> <span class="mi">20</span>
+</pre></div>
+<p><code>~&gt;</code> is a method constructor. It works the same way as <code>-&gt;</code>, but inserts <code>self</code>
+into the argument list in addition to doing the generic function creation stuff.
+If there are no other arguments, the created method is automatically
+transformed into a property.</p><div class="highlight"><pre><span class="kt">Movable</span><span class="o">.</span><span class="n">move</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">~&gt;</span> <span class="s">&#39;{} moved {} meters.&#39;</span><span class="o">.</span><span class="n">format</span> <span class="o">@</span><span class="n">name</span> <span class="n">distance</span>
+<span class="kt">Frog</span><span class="o">.</span><span class="n">leap</span> <span class="o">=</span> <span class="o">~&gt;</span> <span class="o">@</span><span class="n">move</span> <span class="mi">20</span>
 </pre></div>
 </div>
         <div id="loops"        class="section"><h2>Imperative looping constructs</h2><p>If there is a good imperative-style code, nobody can object to the fact that
