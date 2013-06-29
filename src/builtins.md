@@ -72,17 +72,17 @@ count 5 #=> 5, 6, 7, 8, ...
 versions, but on all iterables (except for `init` and `last` — they only work
 on collections that support slicing.)
 
-```
-       tail
-    /--------\
-[0, 1, 2, 3, 4]
- ^-- head
+```py
+#       tail
+#    /--------\
+ [0, 1, 2, 3, 4]
+# ^-- head
 
-    init
- /--------\
-[5, 6, 7, 8, 9]
-             ^-- last
+#    init
+# /--------\
+ [5, 6, 7, 8, 9]
+#             ^-- last
 
-    ('a', 'b')
-fst --^    ^-- snd
+     ('a', 'b')
+#fst --^    ^-- snd
 ```
