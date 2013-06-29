@@ -20,5 +20,5 @@ INFIXL !! '->' = (self f args) ->
 INFIXR !! '->' = (self f body) ->
   args = (parse.Constant None).after f
   body = if len body == 1 => head body
-            otherwise     => (parse.Expression $ list' ((parse.Link '').after f) + body).after f
+            otherwise     => (parse.Expression $ tuple' ((parse.Link '').after f) + body).after f
   self.function args body

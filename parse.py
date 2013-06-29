@@ -1,6 +1,5 @@
 from re          import compile
 from ast         import literal_eval
-from functools   import reduce, partial
 from collections import Iterator, deque, namedtuple
 
 __all__ = ['Node', 'Expression', 'Link', 'Constant', 'Location', 'error', 'it', 'fd']
@@ -164,18 +163,11 @@ def infix(self, lhs, op, rhs):
             self.appendleft(rhs)
             return lhs
 
-        if br and rhs.indented and lhs.infix and not lhs.closed:
-            # R
-            #   a   should not be affected by the below rule.
-            #   b
-            return infixin(op, lhs, rhs)
-
         if br and rhs.indented:
-            # a b
-            #   c   <=>  a b c (d e)
-            #   d e
-            args = rhs[1:] if isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs]
-            return reduce(partial(infixin, op), args, lhs)
+            # a
+            #   b   <=>  a b (c d), but only if `a` is not infix.
+            #   c d
+            return infixin(op, lhs, rhs, True)
 
         if br:
             # `a\n`.
@@ -201,25 +193,25 @@ def infix(self, lhs, op, rhs):
     return infixin(op, lhs, rhs)
 
 
-def infixin(op, lhs, rhs=None):
+def infixin(op, lhs, rhs=None, indent=False):
 
     if isinstance(lhs, Expression) and not lhs.closed:
 
         if has_priority(op, lhs[0]):
             # `a R b Q c` <=> `a R (b Q c)` if Q has priority over R
-            lhs.append(infixin(op, lhs.pop(), rhs))
+            lhs.append(infixin(op, lhs.pop(), rhs, indent))
             return lhs
 
         elif op == lhs[0] and unassoc(op) and rhs is not None:
             # `a R b R c` <=> `R a b c`
-            lhs.append(rhs)
+            lhs.extend(rhs[1:] if indent and isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs])
             return lhs
 
     # `R`         <=> `Link R`
     # `R rhs`     <=> `Expression [ Link '', Link R, Link rhs ]`
     # `lhs R`     <=> `Expression [ Link R, Link lhs ]`
     # `lhs R rhs` <=> `Expression [ Link R, Link lhs, Link rhs ]`
-    e = Expression([op, lhs] if rhs is None else [op, lhs, rhs])
+    e = Expression([op, lhs] if rhs is None else [op, lhs] + (rhs[1:] if indent and isinstance(rhs, Expression) and rhs[0] == '\n' and (lhs.closed or not lhs.infix) else [rhs]))
     e.closed = rhs is None
     e.location = Location(
         lhs.location.start,
