@@ -14,3 +14,9 @@ INFIXL !! '->' = (self f args) ->
 INFIXR !! '->' = (self f body) ->
   args = (parse.Constant None).after f
   self.function args body
+
+PREFIX !! '@' = (self f _) -> syntax.error 'this operator is unary'  f
+INFIXL !! '@' = (self f _) -> syntax.error 'this operator is prefix' f
+INFIXR !! '@' = (self f q) ->
+  q :: parse.Link or syntax.error 'not an attribute' q
+  self.loadop 'LOAD_ATTR' ((parse.Link 'self').after f) arg: q delta: 1

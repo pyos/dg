@@ -95,8 +95,9 @@ def error(description, at):
 has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
     # `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
     # is higher than right binding strength of `R`.
-    '.':     ( 0,    0),   # getattr
-    '!.':    ( 0,    0),   # call with no arguments, then getattr
+    '@':     ( 5,    5),    # attribute of `self`
+    '.':     ( 0,    0),    # getattr
+    '!.':    ( 0,    0),    # call with no arguments, then getattr
     '!':     ( 0,   -10),   # call with no arguments
     ':':     ( 0,   -10),   # keyword argument
     '':      (-20,  -20),   # call with an argument
@@ -153,7 +154,7 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
 # to contain any number of arguments rather than only two.
 unassoc = {',', '..', '::', '', '\n'}.__contains__
 
-nolhs = set().__contains__
+nolhs = {'@'}.__contains__
 norhs = {'!'}.__contains__
 
 
