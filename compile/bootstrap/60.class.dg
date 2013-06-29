@@ -1,10 +1,7 @@
+getns = parse.it '''locals!'''
 cinit = parse.it '''
-# class NS initialization
-# :param:`data`:: locals
-# :param:`name`:: qualified name (utterly broken)
-# :param:`target`:: where to store everything
-target.update data
-target.update $ dict __module__: __name__ __qualname__: name __doc__: doc
+ns.update data
+ns.update $ dict __module__: __name__ __qualname__: name __doc__: doc
 '''
 
 
@@ -14,15 +11,11 @@ target.update $ dict __module__: __name__ __qualname__: name __doc__: doc
 # Create a class with current locals as its attributes.
 #
 PREFIX !! 'subclass' = (self f args) ->
-  code = CodeGenerator (self.child_name '<class>') True (list' 'data' 'target' 'name' 'doc') cell: self
+  code = CodeGenerator (self.child_name '<class>') True (list' 'ns' 'data' 'name' 'doc') cell: self
   code.loadop 'RETURN_VALUE' cinit delta: 0
+  self.loadop 'LOAD_BUILD_CLASS'   delta: 1
 
   doc = fst $ head self.consts.sorted
-  self.loadop 'LOAD_BUILD_CLASS' delta: 1
-  self.append 'LOAD_GLOBAL'  'bind'         delta:  1
-  if doc :: str => self.make_function code (self.qualname, doc) dict!
-     otherwise  => self.make_function code (self.qualname, '')  dict!
-  self.append 'LOAD_GLOBAL'  'locals'       delta:  1
-  self.append 'CALL_FUNCTION' 0             delta:  0
-  self.append 'CALL_FUNCTION' 2             delta: -2
+  if doc :: str => self.make_function code (getns, self.qualname, doc) dict!
+     otherwise  => self.make_function code (getns, self.qualname, '')  dict!
   self.nativecall self.name args 2 False
