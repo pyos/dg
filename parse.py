@@ -37,7 +37,7 @@ class Expression (list, Node):
     def __repr__(self):
 
         return ('({})' if self.closed else '{}').format(
-            ('{!r}' if self[0] in '.\n' else ' {!r} ').format(self[0]).join(map(repr, self[1:]))
+            ('{!r:>1}' if self[0] in '.\n' else ' {!r} ').format(self[0]).join(map(repr, self[1:]))
         )
 
 
@@ -153,14 +153,14 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
 # to contain any number of arguments rather than only two.
 unassoc = {',', '..', '::', '', '\n'}.__contains__
 
-# These operators have no right-hand statement part in any case.
-unary = {'!'}.__contains__
+nolhs = set().__contains__
+norhs = {'!'}.__contains__
 
 
 def infix(self, lhs, op, rhs):
     br = False
 
-    while rhs == '\n' and not unary(op):
+    while rhs == '\n' and not norhs(op):
         # There are some special cases for indented RHS,
         # so we'll have to ignore the line breaks for now.
         br, rhs = rhs, next(self)
@@ -175,12 +175,16 @@ def infix(self, lhs, op, rhs):
             # `a\n`.
             return infixin(br, lhs, rhs)
 
+        if rhs.infix and not rhs.closed and nolhs(rhs):
+            # `a (R b)`.
+            rhs = infix(self, rhs, op, next(self))
+
         if rhs.infix and not rhs.closed:
             # `a R b`. There's no empty operator at all.
             return infix(self, lhs, rhs, next(self))
 
     else:
-        if isinstance(rhs, Internal) or unary(op):
+        if isinstance(rhs, Internal) or norhs(op):
             # `(a R)`
             return infixin(op, lhs, self.appendleft(rhs))
 
