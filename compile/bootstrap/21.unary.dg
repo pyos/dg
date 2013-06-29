@@ -11,3 +11,14 @@ INFIXR !! '~' = (self _ args) ->
 INFIXR !! '-' = (self _ args) ->
   self.loadcall args
   self.loadop 'UNARY_NEGATIVE' delta: 0
+
+
+INFIXL !! '->' = (self f args) ->
+  body = (parse.Constant None).after f
+  self.function args body
+
+INFIXR !! '->' = (self f body) ->
+  args = (parse.Constant None).after f
+  body = if len body == 1 => head body
+            otherwise     => (parse.Expression $ list' ((parse.Link '').after f) + body).after f
+  self.function args body
