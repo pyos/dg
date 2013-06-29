@@ -198,9 +198,9 @@ def infixin(op, lhs, rhs=None):
             lhs.append(infixin(op, lhs.pop(), rhs))
             return lhs
 
-        elif op == lhs[0] and unassoc(op) and rhs is not None:
+        elif len(lhs) > 2 and op == lhs[0] and unassoc(op) and rhs is not None:
             # `a R b R c` <=> `R a b c`
-            lhs.extend(rhs[1:] if indent and isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs])
+            lhs.extend(rhs[1:] if op == '' and not rhs.closed and isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs])
             return lhs
 
     e = (
