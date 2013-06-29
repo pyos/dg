@@ -164,9 +164,15 @@ def infix(self, lhs, op, rhs):
             self.appendleft(rhs)
             return lhs
 
+        if br and rhs.indented and lhs.infix and not lhs.closed:
+            # R
+            #   a   should not be affected by the below rule.
+            #   b
+            return infixin(op, lhs, rhs)
+
         if br and rhs.indented:
             # a b
-            #   c         <=>  a b c (d e)
+            #   c   <=>  a b c (d e)
             #   d e
             args = rhs[1:] if isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs]
             return reduce(partial(infixin, op), args, lhs)
