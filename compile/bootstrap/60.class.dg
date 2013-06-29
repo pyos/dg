@@ -22,6 +22,6 @@ PREFIX !! 'subclass' = (self f args) ->
   self.make_function code tuple! dict!
   self.append 'LOAD_GLOBAL'  'locals'       delta:  1
   self.append 'CALL_FUNCTION' 0             delta:  0
-  self.append 'LOAD_CONST'   code.qualname  delta:  1
+  self.append 'LOAD_CONST'   self.qualname  delta:  1
   self.append 'CALL_FUNCTION' 3             delta: -3
-  self.nativecall code.name args 2 False
+  self.nativecall self.name args 2 False
