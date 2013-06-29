@@ -186,16 +186,16 @@ def infix(self, lhs, op, rhs):
             # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
             return infix(self, infixin(op, lhs), rhs, next(self))
 
-    return infixin(op, lhs, rhs, op == '' and rhs.indented)
+    return infixin(op, lhs, rhs)
 
 
-def infixin(op, lhs, rhs=None, indent=False):
+def infixin(op, lhs, rhs=None):
 
     if isinstance(lhs, Expression) and not lhs.closed:
 
         if has_priority(op, lhs[0]):
             # `a R b Q c` <=> `a R (b Q c)` if Q has priority over R
-            lhs.append(infixin(op, lhs.pop(), rhs, indent))
+            lhs.append(infixin(op, lhs.pop(), rhs))
             return lhs
 
         elif op == lhs[0] and unassoc(op) and rhs is not None:
@@ -205,13 +205,13 @@ def infixin(op, lhs, rhs=None, indent=False):
 
     e = (
         # `R rhs` => `ExpressionR [ Link R, Link rhs ]`
-        ExpressionR([lhs, rhs]) if lhs.infix and not lhs.closed and op == '' else
+        ExpressionR([lhs, rhs]) if op == '' and lhs.infix and not lhs.closed else
         # `lhs R` => `ExpressionL [ Link R, Link lhs ]`
         ExpressionL([op, lhs]) if rhs is None else
         # `lhs
         #    a  => Expression [ Link '', lhs, a, b ]
         #    b`
-        Expression([op, lhs] + rhs[1:]) if indent and isinstance(rhs, Expression) and rhs[0] == '\n' else
+        Expression([op, lhs] + rhs[1:]) if op == '' and not rhs.closed and isinstance(rhs, Expression) and rhs[0] == '\n' else
         # `lhs R rhs` => `Expression [ Link R, Link lhs, Link rhs ]`
         Expression([op, lhs, rhs])
     )
