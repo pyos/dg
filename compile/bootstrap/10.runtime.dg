@@ -50,6 +50,7 @@ builtins.(!!~) = operator.delitem
 builtins.(...)  = Ellipsis
 builtins.(..)   = range
 builtins.(::)   = (a *: xs) -> a `isinstance` xs
+builtins.(->)   = () -> ()
 
 # Functional stuff.
 builtins.(<-)   = (f g) -> (*: a **: k) -> f $ g *: a **: k
