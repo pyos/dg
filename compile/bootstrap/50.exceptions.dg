@@ -81,22 +81,25 @@ PREFIX !! 'except' = (self f cases) ->
 
   # The problem is, now we need to POP_EXCEPT, but only
   # if there was a handled exception.
-
   # First, jump over this whole part if the exception was not handled.
   unhandled_exception = self.loadop 'JUMP_FORWARD' delta: 0
 
-  # Second, check if the exception type is None, in which case
-  # there was no exception at all.
+  # Second, point all `if` actions here, and temporarily store the result.
   list $ map call jumps
-  self.loadop 'POP_TOP' delta: 0  # that was pushed by a handler
+  self.loadop 'STORE_FAST' arg: '<except-result>' delta: 0
+  # Third, if type is None, skip over POP_EXCEPT.
   self.loadop 'DUP_TOP' delta: 1
   self.loadop 'COMPARE_OP' None arg: 'is' delta: 0
-  # Then skip POP_EXCEPT if that is the case.
   no_exception = self.loadop 'POP_JUMP_IF_TRUE' delta: -1
-
   self.loadop 'POP_EXCEPT' delta: 0
-  unhandled_exception!
   no_exception!
+
+  # Finally, restore the result.
+  self.loadop 'LOAD_FAST' arg: '<except-result>' delta: 1
+  self.loadop 'ROT_TWO' delta:  0
+  self.loadop 'POP_TOP' delta: -1
+  self.loadop 'STORE_FAST' arg: '<except-result>' None delta: 0
+  unhandled_exception!
 
   has_finally =>
     # If the interpreter made it here, one of the `except` clauses matched.
