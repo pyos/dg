@@ -26,7 +26,7 @@
           <li><a href="#conditionals">Conditionals</a></li>
           <li><a href="#exceptions">Exceptions</a></li>
           <li><a href="#objects">Objects</a></li>
-          <li><a href="#loops">Looping constructs</a></li>
+          <li><a href="#imperative">Imperative</a></li>
           <li><a href="#builtins">New built-ins</a></li>
           <li class="divider"></li>
           <li><a href="#conclusion">Conclusion</a></li>
@@ -446,7 +446,7 @@ transformed into a property.</p><div class="highlight"><pre><span class="kt">Mov
 <span class="kt">Frog</span><span class="o">.</span><span class="n">leap</span> <span class="o">=</span> <span class="o">~&gt;</span> <span class="o">@</span><span class="n">move</span> <span class="mi">20</span>
 </pre></div>
 </div>
-        <div id="loops"        class="section"><h2>Imperative looping constructs</h2><p>If there is a good imperative-style code, nobody can object to the fact that
+        <div id="imperative"   class="section"><h2>Imperative constructs</h2><p>If there is a good imperative-style code, nobody can object to the fact that
 it would probably contain some loops. That's why there are two kinds of these
 in dg. Both are pretty simple, though.</p><p><code>while</code> loops while a condition is satisfied, and returns the value
 of its last iteration.</p><div class="highlight"><pre><span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
@@ -456,19 +456,33 @@ of its last iteration.</p><div class="highlight"><pre><span class="n">a</span> <
   <span class="n">a</span> <span class="o">+=</span> <span class="mi">1</span>
 <span class="c1">#=&gt; Prints out 0, 1, 2, 3, 4; returns 5.</span>
 </pre></div>
-<p><code>for</code>, given a boolean expression, attempts to determine all possible
-combinations of values that make that expression true, then evaluates
-the body of a loop one time per each combination.</p><div class="highlight"><pre><span class="kr">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="o">=&gt;</span>
+<p><code>for</code> <a href="http://en.wikipedia.org/wiki/Foreach_loop">iterates over a collection</a>.</p><div class="highlight"><pre><span class="kr">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="o">=&gt;</span>
   <span class="nb">print</span> <span class="n">a</span>
 
-<span class="kr">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">10</span> <span class="o">=&gt;</span>
-  <span class="c1"># Same as a `for b in range 10` inside `for a in range 5`.</span>
-  <span class="c1"># AKA a cartesian product of `range 5` and `range 10`.</span>
-  <span class="nb">print</span> <span class="n">a</span> <span class="n">b</span>
+<span class="c1"># Anything that can be assigned to is allowed in `for`.</span>
+<span class="kr">for</span> <span class="nb">locals</span><span class="o">!</span> <span class="o">!!</span> <span class="s">&#39;a&#39;</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="o">=&gt;</span>
+  <span class="nb">print</span> <span class="n">a</span>
 
-<span class="kr">for</span> <span class="n">a</span> <span class="ow">and</span> <span class="n">b</span> <span class="o">=&gt;</span>
-  <span class="c1"># Prints out a single line, `True True`.</span>
+<span class="kr">for</span> <span class="p">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span> <span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">6</span><span class="p">)</span> <span class="p">(</span><span class="mi">3</span><span class="o">..</span><span class="mi">8</span><span class="p">)</span> <span class="o">=&gt;</span>
+  <span class="c1"># 1 3</span>
+  <span class="c1"># ...</span>
+  <span class="c1"># 5 7</span>
   <span class="nb">print</span> <span class="n">a</span> <span class="n">b</span>
+</pre></div>
+<p><code>with</code> has the same syntax as the other two, and is used to
+enter <a href="http://www.python.org/dev/peps/pep-0343/">contexts</a>.</p><div class="highlight"><pre><span class="kr">with</span> <span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span> <span class="s">&#39;__init__.py&#39;</span> <span class="o">=&gt;</span>
+  <span class="nb">print</span> <span class="o">$</span> <span class="n">fd</span><span class="o">.</span><span class="n">read</span> <span class="mi">5</span>
+  <span class="c1">#=&gt; first 5 characters of __init__.py</span>
+
+<span class="n">fd</span><span class="o">.</span><span class="n">read</span> <span class="mi">5</span>
+<span class="c1">#=&gt; IOError: fd is closed</span>
+</pre></div>
+<p>Note that these names are not keywords; you can still name attributes <code>for</code>,
+<code>while</code>, and <code>with</code>:</p><div class="highlight"><pre><span class="n">A</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span>
+<span class="n">A</span><span class="o">.</span><span class="n">for</span> <span class="o">=</span> <span class="n">x</span> <span class="o">~&gt;</span> <span class="nb">print</span> <span class="bp">self</span> <span class="n">x</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">A</span><span class="o">!</span>
+<span class="n">a</span><span class="o">.</span><span class="n">for</span> <span class="mi">2</span>  <span class="c1">#=&gt; &lt;A object at ...&gt; 2</span>
 </pre></div>
 <p>Not actually a construct, but still pretty much imperative,
 <code>exhaust</code> is a function that takes an iterable, evaluates each of its items,
@@ -476,7 +490,7 @@ and returns an empty deque.</p><div class="highlight"><pre><span class="c1"># Do
 <span class="n">it</span> <span class="o">=</span> <span class="nb">map</span> <span class="nb">print</span> <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">5</span><span class="p">)</span>
 
 <span class="c1"># Prints out five lines.</span>
-<span class="n">exhaust</span> <span class="n">it</span>
+<span class="nb">exhaust</span> <span class="n">it</span>
 </pre></div>
 </div>
         <div id="builtins"     class="section"><h2>New built-ins</h2><p>Since dg is clearly more oriented towards functional programming,
