@@ -146,7 +146,7 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
     'where': (-170, -180),  # with some stuff that is not visible outside of that expression
     'for':   (-180, -190),  # evaluate stuff for each item in an iterable
     'while': (-180, -190),  # evaluate stuff until condition becomes false
-    '=>':    (-220, -220),  # ???????
+    '=>':    (-180, -190),  # implication
     '\n':    (-230, -230),  # do A then B
 }.get: g(m, (-70, -70)))  # Default
 
