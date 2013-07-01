@@ -158,7 +158,7 @@ unassoc = {',', '..', '::', '', '\n'}.__contains__
 nolhs = {'@'}.__contains__
 norhs = {'!'}.__contains__
 
-specl = {'for', 'while'}.__contains__
+specl = {'for', 'while', 'with'}.__contains__
 specm = {'if', 'except'}.__contains__
 
 

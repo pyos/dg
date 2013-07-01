@@ -1,28 +1,26 @@
+# with context => something
+# with it = context => something
 #
-# with context doSomething
-#
-# 1. Enter `context`
-# 2. `doSomething`
-# 3. Exit `context` even if step 2 raised an exception.
+# Equivalent to Python context manager construct.
 #
 PREFIX !! 'with' = (self f args) ->
-  context, *steps = ensure f args
-
+  context, body = ensure f args 2 2
   # [whatever-the-name-of-this-language-is-now].
-  # Cheating Python to return a value that was pushed
+  # Cheating Python into returning a value that was pushed
   # from inside of a block, since 2012.
   self.load None
 
-  end_ptr = self.loadop 'SETUP_WITH' context delta: 2  # wat.
-  # FIXME should store the context somewhere instead.
-  #   That's how `with ... as ...` works.
-  #   Lucky for us, most context managers return themselves, so `with (a = ...)`
-  #   works.
-  self.loadop 'POP_TOP'   delta: -1
-  if (steps => self.chain *: steps) (otherwise => self.load None)
-  self.loadop 'ROT_THREE' delta:  0
-  self.loadop 'ROT_TWO'   delta:  0
-  self.loadop 'POP_BLOCK' delta: -1
+  if
+    context :: parse.Expression and head context == '=' =>
+      end_ptr = self.loadop 'SETUP_WITH' (last context) delta: 2
+      self.store_top $ snd context
+    otherwise =>
+      end_ptr = self.loadop 'SETUP_WITH' context delta: 2
+      self.loadop 'POP_TOP' delta: -1
+
+  self.loadop 'ROT_THREE' body delta:  0
+  self.loadop 'ROT_TWO'        delta:  0
+  self.loadop 'POP_BLOCK'      delta: -1
   self.load None
   end_ptr!
   self.loadop 'WITH_CLEANUP' delta: 1
