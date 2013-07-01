@@ -8,49 +8,41 @@ import '/importlib/util' qualified
 import '../../compile'
 
 
-sys.meta_path.insert 0 $ subclass str where
+Loader = subclass object where
+  __init__ = (@pkg @path @ispkg) ~> None
+  get_filename = _ ~> @path
+  is_package   = _ ~> @ispkg
 
-  find_module = classmethod $ (cls mod path: None) ->
-    name = mod.rsplit '.' 1 !! -1
-    mods = itertools.chain.from_iterable $ map
-      dir ->
-        base = os.path.join dir name
-        os.path.join base '__init__.dg',  base + '.dg'
-      filter os.path.isdir $ map os.path.abspath (path or sys.path)
-
-    except
-      e => cls $ next $ filter os.path.isfile mods
-      e :: StopIteration => None
-
-  is_package = (self name) ->
-    name.rsplit '.' 1 !! -1 != (os.path.basename self).rsplit '.' 1 !! 0
-
-  get_code = (self name) ->
-    cache = imp.cache_from_source self
+  get_code = _ ~>
+    cache = imp.cache_from_source @path
     code  = except
-      e => (os.stat self).st_mtime <= (os.stat cache).st_mtime and marshal.load (open cache 'rb')
+      e => (os.stat @path).st_mtime <= (os.stat cache).st_mtime and marshal.load (open cache 'rb')
       e :: Exception => None
 
     code or
-      code = compile.fd $ open $ str self
-
+      code = compile.fd $ open @path
+      # not (os.environ.get PYTHONDONTWRITEBYTECODE '') =>
       os.makedirs (os.path.dirname cache) exist_ok: True
       marshal.dump code $ open cache 'wb'
       code
 
-  get_filename = (self name) -> self
+  find_module = classmethod $ (name path: None) ~> next $ call
+    (pkg, _, name) ->
+      for p in (path or sys.path) =>
+        for (n, f) in ((os.path.join p name '__init__.dg', True), (os.path.join p name + '.dg', False)) =>
+          if os.path.isfile n =>
+            yield $ self pkg n f
+      yield None
+    name.rpartition '.'
 
-  load_module = importlib.util.module_for_loader $ (self module) ->
-    init = (module.__name__.rpartition '.' !! 0) or None
-    code = self.get_code module.__name__
-
-    module.__file__    = self
+  load_module = importlib.util.module_for_loader $ module ~>
+    module.__file__    = @path
     module.__loader__  = self
-    module.__package__ = init
-
-    if self.is_package module.__name__ =>
-      module.__path__    = list' $ os.path.dirname self
+    module.__package__ = @pkg
+    @ispkg =>
+      module.__path__    = list' $ os.path.dirname @path
       module.__package__ = module.__name__
 
-    eval code module.__dict__
-    module
+    eval (@get_code None) module.__dict__
+
+sys.meta_path.insert 0 Loader
