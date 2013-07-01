@@ -3,7 +3,6 @@ import '/itertools/repeat'
 import '/itertools/product'
 
 
-#
 # while condition => body
 #
 # Evaluate the body while condition is true.
@@ -22,76 +21,23 @@ PREFIX !! 'while' = (self f args) ->
   to_body!
 
 
-# for condition => body
+# for variable in iterable => body
 #
-# Evaluate the body with all possible variable sets that make `condition` true.
-#
-# E.g. for a in b  => assert a in b
-#      for a and b => assert a and b
+# ???
 #
 PREFIX !! 'for' = (self f args) ->
   condition, body = ensure f args 2 2
-  vars, sets = for' condition
-
-  exhaust $ map (bind syntax.error 'all variables should be explicitly named') $ dropwhile (:: parse.Link) vars
-  exhaust $ map
-    (ranges, tests) ->
-      unbound = vars - set (map fst ranges)
-      block = self.loadop 'SETUP_LOOP' delta: 0
-      loops = list $ map
-        (k, v) ->
-          self.loadop 'GET_ITER' v delta: 1
-          loop = self.loadop 'JUMP_ABSOLUTE' delta: 0 arg: -1
-          end  = self.loadop 'FOR_ITER'      delta: 1
-          self.store_top k
-          loop, end
-        chain ranges $ zip unbound $ repeat (False, True) $ len unbound
-
-      fail = list $ map t -> (self.loadop 'POP_JUMP_IF_FALSE' t delta: 0) tests
-
-      self.load body
-      self.loadop 'POP_TOP' delta: -1
-      exhaust $ map call fail
-      exhaust $ map
-        (loop, end) ->
-          loop!
-          end!
-          self.depth -= 1
-        reversed loops
-      self.loadop 'POP_BLOCK' delta: 0
-      block!
-    sets
+  k, v = for' condition
 
   self.load None
+  self.loadop 'GET_ITER' v delta: 1
+  loop = self.loadop 'JUMP_ABSOLUTE' delta: 0 arg: -1
+  end  = self.loadop 'FOR_ITER'      delta: 1
+  self.store_top k
+  self.loadop 'POP_TOP' body delta: -1
+  loop!
+  end!
 
 
-or'  = ((p, a) (q, b)) -> (p | q), (a + b)
-and' = ((p, a) (q, b)) -> (p | q), list
-  map
-    ((r1, p1), (r2, p2)) -> (r, p) where
-      r = list r1
-      p = p1 + p2
-      q = set $ map fst r
-      exhaust $ map
-        (k, v) -> if k in q    => p.append $ parse.Expression $ list' (parse.LinkI 'in') k v
-                     otherwise => r.append (k, v)
-        r2
-    product a b
-
-mkn = v -> parse.Expression $ list' (parse.LinkI '')   (parse.Link 'not') k v
-
-not' = x -> if x :: parse.Constant => set!,         list' (list!, list' (mkn x))
-               x :: parse.Link     => set' x,       list' (list!, list' (mkn x))
-               fst x == 'in'       => set' (snd x), list' (list!, list' (mkn x))
-               fst x == 'or'       => and' (not' $ snd x) (not' $ last x)
-               fst x == 'and'      => or'  (not' $ snd x) (not' $ last x)
-               fst x == '' and snd x == 'not' => for' $ last x
-               otherwise => syntax.error 'not an allowed construct' x
-
-for' = x -> if x :: parse.Constant => set!,         list' (list!, list' x)
-               x :: parse.Link     => set' x,       list' (list!, list' x)
-               fst x == 'in'       => set' (snd x), list' (list' (tail x), list!)
-               fst x == 'or'       => or'  (for' $ snd x) (for' $ last x)
-               fst x == 'and'      => and' (for' $ snd x) (for' $ last x)
-               fst x == '' and snd x == 'not' => not' $ last x
+for' = x -> if x :: parse.Expression and fst x == 'in' => tail x
                otherwise => syntax.error 'not an allowed construct' x
