@@ -158,6 +158,28 @@ unassoc = {',', '..', '::', '', '\n'}.__contains__
 nolhs = {'@'}.__contains__
 norhs = {'!'}.__contains__
 
+specl = {'for', 'while'}.__contains__
+specm = {'if', 'except'}.__contains__
+
+
+def spech(self, it, ok):
+
+    ok &= isinstance(it, Link) and not it.indented and not it.closed
+
+    if ok and specl(it):
+
+        return infix(self, do(self, None, it.location, lambda x: x == '=>'), it, next(self))
+
+    if ok and specm(it):
+
+        block = do(self, None, it.location, lambda x: ((x == '\n' or isinstance(x, Internal)) and (self.appendleft(x) or True)))
+
+        if not isinstance(block, Constant) or block.value is not None:
+
+            return infix(self, it, LinkI('').after(it), block)
+
+    return it
+
 
 def infix(self, lhs, op, rhs):
     br = False
@@ -175,7 +197,7 @@ def infix(self, lhs, op, rhs):
 
         if br and not rhs.indented:
             # `a\n`.
-            return infixin(br, lhs, rhs)
+            return infix(self, lhs, br, rhs)
 
         if rhs.infix and not rhs.closed and nolhs(rhs):
             # `a (R b)`.
@@ -192,13 +214,13 @@ def infix(self, lhs, op, rhs):
 
         if br and not rhs.indented:
             # `a R\n`.
-            return infixin(br, infixin(op, lhs), rhs)
+            return infix(self, infixin(op, lhs), br, rhs)
 
         if rhs.infix and not rhs.closed and not has_priority(rhs, op):
             # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
             return infix(self, infixin(op, lhs), rhs, next(self))
 
-    return infixin(op, lhs, rhs)
+    return infixin(op, lhs, spech(self, rhs, has_priority('', op)))
 
 
 def infixin(op, lhs, rhs=None):
@@ -261,22 +283,8 @@ def string(stream, token, pos):
 
 
 def link(stream, token, pos, infixn={'or', 'and', 'in', 'is', 'where'}):
-    inf  = token.group(2) or token.group(3) or token.group(4)
-    name = (LinkI if token.group() in infixn or inf else Link)(inf or token.group()).at(pos, stream)
-
-    if name in {'for', 'while'}:
-
-        return infix(stream, do(stream, token, pos, end=lambda x: x == '=>'), name, next(stream))
-
-    if name in {'if', 'except'}:
-
-        block = do(stream, token, pos, end=lambda x: ((x == '\n' or isinstance(x, Internal)) and (stream.appendleft(x) or True)))
-
-        if not isinstance(block, Constant) or block.value is not None:
-
-            return infix(stream, name, LinkI('').after(name), block)
-
-    return name
+    inf = token.group(2) or token.group(3) or token.group(4)
+    return (LinkI if token.group() in infixn or inf else Link)(inf or token.group()).at(pos, stream)
 
 
 def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == ')', preserve_close_state=False):
@@ -289,7 +297,7 @@ def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == 
 
         if isinstance(item, Internal):
 
-            error('unexpected block end', item) if not token.group().strip() else \
+            error('unexpected block end', item) if token and not token.group().strip() else \
             error('unexpected EOF in a block', pos) if not item.value else \
             error('unmatched block start', pos)
 
@@ -301,7 +309,7 @@ def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
 
-            object, can_join = item, True
+            object, can_join = spech(stream, item, True), True
 
     object.closed |= not preserve_close_state
     return object
