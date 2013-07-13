@@ -304,6 +304,12 @@ def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == 
 
         if isinstance(item, Internal):
 
+            if token and not token.group().strip():
+                # An indented block can also be ended by a close-paren.
+                stream.indent.pop() < 0 and error('too many close-parens', item)
+                stream.appendleft(item)
+                break
+
             error('this block was not closed properly' if item.value
              else 'unexpected EOF in a block', pos)
 
