@@ -189,8 +189,8 @@ class CodeGenerator (codegen.MutableCode):
 
         '''
 
-        (a, _, _, kw, va, vkw) = (args, (), (), {}, (), ()) if infix \
-                            else syntax.argspec(args, definition=False)
+        (a, _, _, kw, va, vkw, _) = (args, (), (), {}, (), (), {}) if infix \
+                               else syntax.argspec(args, definition=False)
 
         self.load(f, *a)
 
@@ -248,24 +248,11 @@ class CodeGenerator (codegen.MutableCode):
 
         '''
 
-        a, kw, da, dkw, va, vkw = syntax.argspec(args, definition=True)
-        n = []
-        t = {}
+        a, kw, da, dkw, va, vkw, patterns = syntax.argspec(args, definition=True)
 
-        for index, arg in enumerate(a):
+        code = CodeGenerator(self.child_name('<lambda>'), True, a, kw, va, vkw, self)
 
-            if isinstance(arg, parse.Link) and arg not in n:
-
-                n.append(arg)
-
-            else:
-
-                n.append('pattern-' + str(index))
-                t['pattern-' + str(index)] = arg
-
-        code = CodeGenerator(self.child_name('<lambda>'), True, n, kw, va, vkw, self)
-
-        for name, pattern in t.items():
+        for name, pattern in patterns.items():
 
             code.loadop('LOAD_FAST', arg=name, delta=1)
             code.store_top(pattern)

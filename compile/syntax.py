@@ -1,3 +1,5 @@
+import itertools
+
 from .. import parse
 
 error = parse.error
@@ -23,6 +25,26 @@ def argspec(args, definition):
     varargs     = []  # `[]` or `[c.co_varnames[c.co_argc + c.co_kwonlyargc]]`
     varkwargs   = []  # `[]` or `[c.co_varnames[c.co_argc + c.co_kwonlyargc + 1]]`
 
+    # Python only supports local variables as arguments. We'll have to improvise.
+    patterns = {}
+    varnames = set()
+    patternc = itertools.count()
+
+    if definition:
+
+        def patternize(item):
+
+            if isinstance(item, parse.Link) and item not in varnames:
+
+                varnames.add(item)
+                return item
+
+            name = 'pattern-' + str(next(patternc))
+            patterns[name] = item
+            return name
+
+    else: patternize = lambda x: x
+
     # `Constant(None)` <=> `()` <=> "no arguments".
     if not isinstance(args, parse.Constant) or args.value is not None:
 
@@ -44,19 +66,19 @@ def argspec(args, definition):
                 # If there was a `*: _`, this is a keyword-only argument.
                 # Unless, of course, this is a function call, in which case
                 # it doesn't really matter.
-                (kwarguments if varargs and definition else arguments).append(value)
+                (kwarguments if varargs and definition else arguments).append(patternize(value))
 
             elif kw == '*':
 
                 # 3.1. `*: _` cannot be followed by another `*: _`.
                 varargs and error('can only have one *starred argument', kw)
-                varargs.append(value)
+                varargs.append(patternize(value))
 
             elif kw == '**':
 
                 # 4.1. Just in case. Should not be triggered.
                 varkwargs and error('can only have one **double-starred argument', kw)
-                varkwargs.append(value)
+                varkwargs.append(patternize(value))
 
             else:
 
@@ -68,15 +90,16 @@ def argspec(args, definition):
                     # 5.1. `_: _` is a keyword argument, and its left side is a link.
                     isinstance(kw, parse.Link) or error('keywords cannot be pattern-matched', kw)
 
+                    kw = patternize(kw)
                     kwarguments.append(kw)
                     kwdefaults[kw] = value
 
                 else:
 
-                    arguments.append(kw)
+                    arguments.append(patternize(kw))
                     defaults.append(value)
 
     len(arguments) > 255 and error('CPython cannot handle that many arguments', args)  # *sigh*
   # If this is a function call, not a definition:
-  #        posargs,   _,           _,        kwargs,     varargs, varkwargs
-    return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs
+  #        posargs,   _,           _,        kwargs,     varargs, varkwargs, _
+    return arguments, kwarguments, defaults, kwdefaults, varargs, varkwargs, patterns

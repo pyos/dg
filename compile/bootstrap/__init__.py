@@ -14,7 +14,7 @@ def unpack(f, args, g):
 
     try:
 
-        a, _, _, kw, va, vkw = syntax.argspec(args, definition=False)
+        a, _, _, kw, va, vkw, _ = syntax.argspec(args, definition=False)
         (va or vkw) and syntax.error("can't use varargs with macros", f)
         return g(*a, **kw)
 
