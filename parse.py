@@ -216,9 +216,12 @@ def infix(self, lhs, op, rhs):
             # `a R\n`.
             return infix(self, infixin(op, lhs), br, rhs)
 
-        if rhs.infix and not rhs.closed and not has_priority(rhs, op):
-            # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
-            return infix(self, infixin(op, lhs), rhs, next(self))
+        if rhs.infix and not rhs.closed:
+            if not has_priority(rhs, op):
+                # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
+                return infix(self, infixin(op, lhs), rhs, next(self))
+            # `a R (Q b)` otherwise.
+            rhs = infix(self, rhs, LinkI('').after(rhs), next(self))
 
     return infixin(op, lhs, spech(self, rhs, has_priority('', op)))
 
