@@ -92,7 +92,7 @@ def error(description, at):
 
 # In all comments below, `R` and `Q` are infix links, while lowercase letters
 # are arbitrary expressions.
-has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
+has_priority = lambda a, b, get={
     # `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
     # is higher than right binding strength of `R`.
     '@':     ( 5,    5),    # attribute of `self`
@@ -146,37 +146,41 @@ has_priority = (lambda f: lambda a, b: f(a)[0] > f(b)[1])(lambda m, g={
     'where': (-170, -180),  # with some stuff that is not visible outside of that expression
     'for':   (-180, -190),  # evaluate stuff for each item in an iterable
     'while': (-180, -190),  # evaluate stuff until condition becomes false
-    '=>':    (-180, -190),  # implication
+    '=>':    (-180, -190),  # if-then
     '\n':    (-230, -230),  # do A then B
-}.get: g(m, (-70, -70)))  # Default
+}.get, default=(-70, -70): get(a, default)[0] > get(b, default)[1]
 
 
-# If `unassoc(R)` is true, `Expression`s starting with `R` are allowed
-# to contain any number of arguments rather than only two.
-unassoc = {',', '..', '::', '', '\n'}.__contains__
+# If `R` is in `unassoc`, `a R b R c` is returned as `Expression [R, a, b, c]`.
+unassoc = {',', '..', '::', '', '\n'}
 
-nolhs = {'@'}.__contains__
-norhs = {'!'}.__contains__
+# If `R` is in `nolhs`, `a R b` is always parsed as `a (R b)`.
+# If `R` is in `norhs`, `a R b` is always parsed as `(a R) b`.
+nolhs = {'@'}
+norhs = {'!'}
 
-specl = {'for', 'while', 'with'}.__contains__
-specm = {'if', 'except'}.__contains__
+# If `a` is in `specl`, `a b => c` will be parsed into `Expression [a, b, c]`.
+# If `a` is in `specm`, everything after `a` until the end of the line
+# will be parsed as a single expression.
+specl = {'for', 'while', 'with'}
+specm = {'if', 'except'}
 
 
-def spech(self, it, ok):
+def spech(self, it):
 
-    ok &= isinstance(it, Link) and not it.indented and not it.closed
+    if isinstance(it, Link) and not it.indented and not it.closed:
 
-    if ok and specl(it):
+        if it in specl:
 
-        return infix(self, do(self, None, it.location, lambda x: x == '=>'), it, next(self))
+            return infix(self, do(self, None, it.location, lambda x: x == '=>'), it, next(self))
 
-    if ok and specm(it):
+        if it in specm:
 
-        block = do(self, None, it.location, lambda x: ((x == '\n' or isinstance(x, Internal)) and (self.appendleft(x) or True)))
+            block = do(self, None, it.location, lambda x: ((x == '\n' or isinstance(x, Internal)) and (self.appendleft(x) or True)))
 
-        if not isinstance(block, Constant) or block.value is not None:
+            if not isinstance(block, Constant) or block.value is not None:
 
-            return infix(self, it, LinkI('').after(it), block)
+                return infix(self, it, LinkI('').after(it), block)
 
     return it
 
@@ -184,7 +188,7 @@ def spech(self, it, ok):
 def infix(self, lhs, op, rhs):
     br = False
 
-    while rhs == '\n' and not norhs(op):
+    while rhs == '\n' and not op in norhs:
         # There are some special cases for indented RHS,
         # so we'll have to ignore the line breaks for now.
         br, rhs = rhs, next(self)
@@ -199,7 +203,7 @@ def infix(self, lhs, op, rhs):
             # `a\n`.
             return infix(self, lhs, br, rhs)
 
-        if rhs.infix and not rhs.closed and nolhs(rhs):
+        if rhs.infix and not rhs.closed and rhs in nolhs:
             # `a (R b)`.
             rhs = infix(self, rhs, op, next(self))
 
@@ -208,7 +212,7 @@ def infix(self, lhs, op, rhs):
             return infix(self, lhs, rhs, next(self))
 
     else:
-        if isinstance(rhs, Internal) or norhs(op):
+        if isinstance(rhs, Internal) or op in norhs:
             # `(a R)`
             return infixin(op, lhs, self.appendleft(rhs))
 
@@ -217,13 +221,13 @@ def infix(self, lhs, op, rhs):
             return infix(self, infixin(op, lhs), br, rhs)
 
         if rhs.infix and not rhs.closed:
-            if not has_priority(rhs, op):
+            if not has_priority(rhs, op) and rhs not in nolhs:
                 # `a R Q b` <=> `(a R) Q b` if Q does not have priority over R.
                 return infix(self, infixin(op, lhs), rhs, next(self))
             # `a R (Q b)` otherwise.
             rhs = infix(self, rhs, LinkI('').after(rhs), next(self))
 
-    return infixin(op, lhs, spech(self, rhs, has_priority('', op)))
+    return infixin(op, lhs, spech(self, rhs) if has_priority('', op) else rhs)
 
 
 def infixin(op, lhs, rhs=None):
@@ -235,7 +239,7 @@ def infixin(op, lhs, rhs=None):
             lhs.append(infixin(op, lhs.pop(), rhs))
             return lhs
 
-        elif len(lhs) > 2 and op == lhs[0] and unassoc(op) and rhs is not None:
+        elif len(lhs) > 2 and op == lhs[0] and op in unassoc and rhs is not None:
             # `a R b R c` <=> `R a b c`
             lhs.extend(rhs[1:] if op == '' and not rhs.closed and isinstance(rhs, Expression) and rhs[0] == '\n' else [rhs])
             return lhs
@@ -300,9 +304,8 @@ def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == 
 
         if isinstance(item, Internal):
 
-            error('unexpected block end', item) if token and not token.group().strip() else \
-            error('unexpected EOF in a block', pos) if not item.value else \
-            error('unmatched block start', pos)
+            error('this block was not closed properly' if item.value
+             else 'unexpected EOF in a block', pos)
 
         elif can_join:
 
@@ -312,7 +315,7 @@ def do(stream, token, pos, end=lambda x: isinstance(x, Internal) and x.value == 
         # Ignore line feeds directly following an opening parentheses.
         elif item != '\n':
 
-            object, can_join = spech(stream, item, True), True
+            object, can_join = spech(stream, item), True
 
     object.closed |= not preserve_close_state
     return object
