@@ -15,7 +15,7 @@ except
 #
 # Pop elements from the end of a sequence until `elem` is encountered.
 #
-etail = (seq elem) -> takewhile _ -> (seq.pop! != elem) $ reversed $ list seq
+etail = seq elem -> takewhile (_ -> seq.pop! != elem) $ reversed $ list seq
 
 # strip :: MatchObject -> str
 #
@@ -27,13 +27,13 @@ strip = m -> ''.join $ drop m.end! m.string
 #
 # Call a function with matched regex groups.
 #
-inline = f -> (match stack) -> f *: (filter (:: str) match.groups!)
+inline = f -> match stack -> f *: (filter (:: str) match.groups!)
 
 # wrapped :: (str, str) -> (MatchObject, deque str) -> str
 #
 # Open a tag on first call, close it (and everything inside) on second call.
 #
-wrapped = (start end) -> (match stack) -> if
+wrapped = start end -> match stack -> if
   end in stack => ''.join (etail stack end) + end
   otherwise    => stack.append end or start
 
@@ -81,7 +81,7 @@ i_subst = dict'
 #
 i_parse = line ->
   stack = deque!
-  i_re.sub m -> ((i_subst !! m.lastgroup) m stack) (escape line) + ''.join (reversed stack)
+  i_re.sub (m -> (i_subst !! m.lastgroup) m stack) (escape line) + ''.join (reversed stack)
 
 
 # block :: (str, str, Maybe str) -> (iter [str], iter [str]) -> str
@@ -92,7 +92,7 @@ i_parse = line ->
 # If separator is `None` rather than an empty string, the text is split into
 # blocks a second time.
 #
-block = (start end separator) -> (tokens block) ->
+block = start end separator -> tokens block ->
   text = map strip block
   html = map i_parse text
   start + (if (separator is None => parse text) (otherwise => separator.join html)) + end
@@ -102,7 +102,7 @@ block = (start end separator) -> (tokens block) ->
 #
 # Apply syntax highlighting to a piece of code.
 #
-highlight = (lang code) -> except
+highlight = lang code -> except
   e => pygments.highlight code
     pygments.lexers.get_lexer_by_name lang
     pygments.formatters.HtmlFormatter!
@@ -135,14 +135,14 @@ g_subst = dict'
   'ul',     block '<ul><li>'     '</li></ul>'    '</li><li>'
   'p',      block '<p>'          '</p>'          '\n'
 
-  'break',  (tokens block) -> ''
-  'rule',   (tokens block) -> '<hr />'
-  'code',   (tokens block) -> highlight '' $ '\n'.join $ map strip block
-  'fenced', (tokens block) -> highlight
+  'break',  tokens block -> ''
+  'rule',   tokens block -> '<hr />'
+  'code',   tokens block -> highlight '' $ '\n'.join $ map strip block
+  'fenced', tokens block -> highlight
     (strip $ next block).strip!
-    '\n'.join $ map (.'string') $ takewhile m -> (m.lastgroup != 'fenced') tokens
+    '\n'.join $ map (.'string') $ takewhile (m -> m.lastgroup != 'fenced') tokens
 
-  'h',      (tokens block) -> ''.join $ map
+  'h',      tokens block -> ''.join $ map
     match -> '<h{0}>{1}</h{0}>'.format
       len $ next $ drop 1 $ filter (:: str) match.groups!
       i_parse $ strip match
