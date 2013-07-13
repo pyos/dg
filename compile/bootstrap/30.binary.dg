@@ -1,14 +1,14 @@
-binary  = g -> (self f xs) -> g self f *: (ensure f xs 2 2)
-stacked = c -> binary (self _ a b) -> (self.loadop c a b delta: 1)
-inplace = c -> binary (self _ a b) ->
+binary  = g -> self f xs -> g self f *: (ensure f xs 2 2)
+stacked = c -> binary $ self _ a b -> self.loadop c a b delta: 1
+inplace = c -> binary $ self _ a b ->
   self.loadop c a b     delta: 1
   self.loadop 'DUP_TOP' delta: 1
   self.store_top a
 
 
 # NOTE ',' is unfixed
-PREFIX !! ',' = (self f xs) -> self.loadop 'BUILD_TUPLE' *: xs delta: 1
-PREFIX !! '$' = binary (self f a b) ->
+PREFIX !! ',' = self f xs -> self.loadop 'BUILD_TUPLE' *: xs delta: 1
+PREFIX !! '$' = binary $ self f a b ->
   if a :: parse.Expression and not a.closed and a !! 0 == '' => self.call *: (a + list' b)
      otherwise => self.call a b
 
@@ -40,17 +40,17 @@ PREFIX !! '|='  = inplace 'INPLACE_OR'
 PREFIX !! '<<=' = inplace 'INPLACE_LSHIFT'
 PREFIX !! '>>=' = inplace 'INPLACE_RSHIFT'
 
-PREFIX !! '!!~' = binary (self _ a b) -> (self.loadop 'DELETE_SUBSCR' None a b delta: 1)
-PREFIX !! '.~'  = binary (self _ a b) ->
+PREFIX !! '!!~' = binary $ self _ a b -> self.loadop 'DELETE_SUBSCR' None a b delta: 1
+PREFIX !! '.~'  = binary $ self _ a b ->
   b :: parse.Link or syntax.error 'not an attribute'
   self.loadop 'DELETE_ATTR' None a arg: b delta: 1
 
-PREFIX !! '!.'  = binary (self _ a b) ->
+PREFIX !! '!.'  = binary $ self _ a b ->
   b :: parse.Link or syntax.error 'not an attribute'
   self.call a
   self.loadop 'LOAD_ATTR' arg: b delta: 0
 
-PREFIX !! '~>' = (self f q) ->
+PREFIX !! '~>' = self f q ->
   args, body = ensure f q 2 2
   prop = args :: parse.Constant and args.value is None
   prop => self.loadop 'LOAD_GLOBAL' arg: 'property' delta: 1

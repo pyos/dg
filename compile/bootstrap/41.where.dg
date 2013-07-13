@@ -1,13 +1,12 @@
-#
-# doStuff where something
+# stuff where something
 #
 # Syntactic sugar for
 #
-#    call () ->
+#    call $ ->
 #      something
-#      doStuff
+#      stuff
 #
-PREFIX !! 'where' = (self f args) ->
+PREFIX !! 'where' = self f args ->
   end, start = ensure f args 2 2
 
   code = CodeGenerator (self.child_name '<lambda>') True cell: self

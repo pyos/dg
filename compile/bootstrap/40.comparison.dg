@@ -4,7 +4,7 @@
 #
 # (Yes, Python compiler generates the same bytecode.)
 #
-comparison = op -> (self f args chain: False) ->
+comparison = op -> self f args chain: False ->
   a, b = ensure f args 2 2
 
   double = a :: parse.Expression and not a.closed and

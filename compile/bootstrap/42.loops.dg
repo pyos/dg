@@ -7,7 +7,7 @@ import '/itertools/product'
 #
 # Evaluate the body while condition is true.
 #
-PREFIX !! 'while' = (self f args) ->
+PREFIX !! 'while' = self f args ->
   cond, *body = ensure f args
 
   self.load None  # This will be the value returned by the last iteration.
@@ -25,9 +25,10 @@ PREFIX !! 'while' = (self f args) ->
 #
 # ???
 #
-PREFIX !! 'for' = (self f args) ->
-  condition, body = ensure f args 2 2
-  k, v = for' condition
+PREFIX !! 'for' = self f args ->
+  x, body = ensure f args 2 2
+  k, v = if x :: parse.Expression and fst x == 'in' => tail x
+            otherwise => syntax.error 'not an allowed construct' x
 
   self.load None
   self.loadop 'GET_ITER' v delta: 1
@@ -37,7 +38,3 @@ PREFIX !! 'for' = (self f args) ->
   self.loadop 'POP_TOP' body delta: -1
   loop!
   end!
-
-
-for' = x -> if x :: parse.Expression and fst x == 'in' => tail x
-               otherwise => syntax.error 'not an allowed construct' x

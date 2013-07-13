@@ -29,7 +29,7 @@ ns.source.isatty! or
 command = code -> except
   e =>
     res  = parse.it code '<stdin>'
-    expr = next $ dropwhile e -> (e :: parse.Expression and not e.closed) $ iterate last res
+    expr = next $ dropwhile (e -> e :: parse.Expression and not e.closed) $ iterate last res
 
     # Tap `Return` twice to override any of these checks.
     (code.endswith '\n' or not
@@ -55,7 +55,7 @@ sys.ps2 = getattr sys 'ps2' '... '
 
 while True => except
   e => sys.displayhook $ eval
-    compile.ast $ next $ dropwhile not $ map command $ iterate x -> (x + '\n' + input sys.ps2) $ input sys.ps1
+    compile.ast $ next $ dropwhile not $ map command $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
     env
   e :: EOFError   => raise SystemExit
   e :: SystemExit => raise e

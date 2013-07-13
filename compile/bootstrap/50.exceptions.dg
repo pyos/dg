@@ -10,8 +10,8 @@ except_syntax = cases ->
 # Raise an exception with a given cause (or None).
 # (See Python documentation if you don't know what a cause is.)
 #
-PREFIX !! 'raise' = (self f args) ->
-  args = unpack f args (exception cause: None) ->
+PREFIX !! 'raise' = self f args ->
+  args = unpack f args $ exception cause: None ->
     if cause is None => tuple' exception
        otherwise     => exception, cause
   self.loadop 'RAISE_VARARGS' *: args delta: 0
@@ -33,7 +33,7 @@ PREFIX !! 'raise' = (self f args) ->
 #
 # Returns `expression` if it was successful, `None` otherwise.
 #
-PREFIX !! 'except' = (self f cases) ->
+PREFIX !! 'except' = self f cases ->
   # http://i2.kym-cdn.com/photos/images/original/000/234/765/b7e.jpg
   # That seems to work, though.
   ((name, try), *cases), (has_finally, finally) = except_syntax $ ensure f cases
@@ -68,7 +68,7 @@ PREFIX !! 'except' = (self f cases) ->
 
   # The `switch` statement.
   # XXX is that considered "code duplication"?
-  jumps = list $ map (cond, action) -> (
+  jumps = list $ map ((cond, action) ->
     next = self.loadop 'POP_JUMP_IF_FALSE' cond delta: 0
     end  = self.loadop 'JUMP_FORWARD'    action delta: 0
     next!

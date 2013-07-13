@@ -3,7 +3,7 @@
 #
 # Equivalent to Python context manager construct.
 #
-PREFIX !! 'with' = (self f args) ->
+PREFIX !! 'with' = self f args ->
   context, body = ensure f args 2 2
   # [whatever-the-name-of-this-language-is-now].
   # Cheating Python into returning a value that was pushed

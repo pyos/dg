@@ -1,15 +1,15 @@
-fjump = (jump self f args) ->
+fjump = jump self f args ->
   a, b = ensure f args 2 2
   jmp = self.loadop jump a delta: 0
   self.load b
   call jmp
 
 
-PREFIX !! 'not' = (self f args) -> self.loadop 'UNARY_NOT' (ensure f args 1 1 !! 0) delta: 1
+PREFIX !! 'not' = self f args -> self.loadop 'UNARY_NOT' (ensure f args 1 1 !! 0) delta: 1
 PREFIX !! 'and' = bind fjump 'JUMP_IF_FALSE_OR_POP'
 PREFIX !! '=>'  = bind fjump 'JUMP_IF_FALSE_OR_POP'
 PREFIX !! 'or'  = bind fjump 'JUMP_IF_TRUE_OR_POP'
-PREFIX !! 'if'  = (self f args) ->
+PREFIX !! 'if'  = self f args ->
   jumps = list
     map
       (cond, action) ->

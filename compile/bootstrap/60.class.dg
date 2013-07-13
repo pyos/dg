@@ -10,12 +10,12 @@ ns.update $ dict __module__: __name__ __qualname__: name __doc__: doc
 #
 # Create a class with current locals as its attributes.
 #
-PREFIX !! 'subclass' = (self f args) ->
+PREFIX !! 'subclass' = self f args ->
   code = CodeGenerator (self.child_name '<class>') True (list' 'ns' 'data' 'name' 'doc') cell: self
   code.loadop 'RETURN_VALUE' cinit delta: 0
   self.loadop 'LOAD_BUILD_CLASS'   delta: 1
 
   doc = if (self.consts => fst $ head self.consts.sorted)
-  if doc :: str => self.make_function code (getns, self.qualname, doc) dict!
-     otherwise  => self.make_function code (getns, self.qualname, '')  dict!
+  doc = if (doc :: str => doc) (otherwise => None)
+  self.make_function code (getns, self.qualname, doc) dict!
   self.nativecall self.name args 2 False

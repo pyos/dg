@@ -9,7 +9,7 @@ import '../../compile'
 
 
 Loader = subclass object where
-  __init__ = (@pkg @path @ispkg) ~> None
+  __init__ = @pkg @path @ispkg ~> None
   get_filename = _ ~> @path
   is_package   = _ ~> @ispkg
 
@@ -26,7 +26,7 @@ Loader = subclass object where
       marshal.dump code $ open cache 'wb'
       code
 
-  find_module = classmethod $ (name path: None) ~> next $ call
+  find_module = classmethod $ name path: None ~> next $ call
     (pkg, _, name) ->
       for p in (path or sys.path) =>
         for (n, f) in ((os.path.join p name '__init__.dg', True), (os.path.join p name + '.dg', False)) =>
