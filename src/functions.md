@@ -66,10 +66,6 @@ are similar to those when calling functions, but with a few quirks.
  * if a positional argument has a default value, all positional arguments that come after it must have them, too;
  * `**: a`, if defined, should be the last argument.
 
-And, most importantly,
-
- * you have to wrap argument specifications in parentheses, the only exception to this being functions with exactly one argument with no default value.
-
 ```dg
 double = x -> x * 2
 double 10 #=> 20
@@ -83,22 +79,22 @@ constant3 = () ->
 constant4 = ->
 
 # This one accepts any amount of arguments.
-doubleMany = (*: xs) -> map double xs
+doubleMany = *: xs -> map double xs
 doubleMany!      #=> empty `map` object
 doubleMany 1 2 3 #=> `map` object containing 2, 4, and 6
 
 # This one requires one argument and will accept more.
-mapOverArgs = (function *: xs) -> map function xs
+mapOverArgs = function *: xs -> map function xs
 mapOverArgs double       #=> empty `map` object
 mapOverArgs double 1 2 3 #=> `map` object containing 2, 4, and 6
 
 # This one has one argument with a default value.
-greet = (whom: 'World') -> print 'Hello' whom sep: ', ' end: '!\n'
+greet = whom: 'World' -> print 'Hello' whom sep: ', ' end: '!\n'
 greet!         #=> 'Hello, World!'
 greet 'Reader' #=> 'Hello, Reader!'
 
 # This one returns its keyword arguments.
-dict'' = (**: kwargs) -> kwargs
+dict'' = **: kwargs -> kwargs
 dict'' a: 1 == dict' ('a', 1)
 
 # And this one unpacks a tuple when called.
@@ -119,20 +115,11 @@ definitelyADoublingFunction = x ->
 definitelyADoublingFunction 10  #=> still 10 :-/
 ```
 
-The `->` operator always consumes exactly one object to the left, regardless
-of what actually comes before it in an expression
-
-```dg
-# It's. All. The. Same...thing.
-map x -> (int x 16) xs
-map (x -> int x 16) xs
-```
-
 Thanks to these awesome anonymous functions, there's little need for decorators
 anymore. Simply call a decorator with a function as its argument.
 
 ```dg
-wtf = staticmethod $ () ->
+wtf = staticmethod $ ->
   print "I know static methods don't make sense outside of a class,"
   print "but this was the most obvious decorator I could think of."
 ```

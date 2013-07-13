@@ -3,7 +3,7 @@
 `subclass` duplicates the current local namespace as a type.
 
 ```dg
-__init__ = (self name) ->
+__init__ = self name ->
   self.name = name
   # __init__ must always return None.
   None
@@ -15,7 +15,7 @@ It accepts any number of base classes, as well as keyword arguments.
 
 ```dg
 # Make sure to clean the local namespace before running this.
-move = (self distance) ->
+move = self distance ->
   # Inches? Feet? Miles? Nah.
   '{} moved {} meters.'.format self.name distance
 
@@ -73,7 +73,7 @@ Also, for those who like Ruby syntax, there are
 `@attribute` is an alias for `self.attribute`.
 
 ```dg
-Movable.move = (self distance) -> '{} moved {} meters.'.format @name distance
+Movable.move = self distance -> '{} moved {} meters.'.format @name distance
 Frog.leap = property $ self -> @move 20
 ```
 

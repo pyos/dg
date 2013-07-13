@@ -69,7 +69,7 @@ simply import <code>dg</code> somewhere in <code>__init__.py</code> of that pack
 a <code>__main__.dg</code>. Python's import machinery will do the rest.</p></div>
         <div id="introduction" class="section"><h2>Example-based documentation</h2><h3>Comments</h3><div class="highlight"><pre><span class="c1"># are sh-style.</span>
 </pre></div>
-<p>You can also describe functions with docstrings in the same way as in Python.</p><div class="highlight"><pre><span class="n">function</span> <span class="o">=</span> <span class="p">(</span><span class="n">argument</span><span class="p">)</span> <span class="o">-&gt;</span>
+<p>You can also describe functions with docstrings in the same way as in Python.</p><div class="highlight"><pre><span class="n">function</span> <span class="o">=</span> <span class="n">argument</span> <span class="o">-&gt;</span>
   <span class="s">&#39;&#39;&#39;Do something with an argument.</span>
 
 <span class="s">      :param argument: any value.</span>
@@ -193,7 +193,7 @@ arguments instead:</p><div class="highlight"><pre><span class="nb">print</span> 
 <span class="nb">print</span> <span class="o">*:</span> <span class="n">items</span> <span class="o">**:</span> <span class="n">options</span>
 </pre></div>
 <h3>...and creating some new ones.</h3><p>Functions are defined with the <code>-&gt;</code> operator. Argument specifications
-are similar to those when calling functions, but with a few quirks.</p><ul><li>only something that can be assigned to (i.e. a name, an attribute, a subitem, or a tuple) is accepted as an argument name;</li><li><code>a: b</code> defines an argument <code>a</code> with a default value <code>b</code>;</li><li><code>*: a</code> stores the <a href="http://en.wikipedia.org/wiki/Variadic_function">remainder of the positional arguments</a> in <code>a</code>;</li><li><code>**: a</code> does the same thing for keyword arguments;</li><li>if a positional argument has a default value, all positional arguments that come after it must have them, too;</li><li><code>**: a</code>, if defined, should be the last argument.</li></ul><p>And, most importantly,</p><ul><li>you have to wrap argument specifications in parentheses, the only exception to this being functions with exactly one argument with no default value.</li></ul><div class="highlight"><pre><span class="n">double</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>
+are similar to those when calling functions, but with a few quirks.</p><ul><li>only something that can be assigned to (i.e. a name, an attribute, a subitem, or a tuple) is accepted as an argument name;</li><li><code>a: b</code> defines an argument <code>a</code> with a default value <code>b</code>;</li><li><code>*: a</code> stores the <a href="http://en.wikipedia.org/wiki/Variadic_function">remainder of the positional arguments</a> in <code>a</code>;</li><li><code>**: a</code> does the same thing for keyword arguments;</li><li>if a positional argument has a default value, all positional arguments that come after it must have them, too;</li><li><code>**: a</code>, if defined, should be the last argument.</li></ul><div class="highlight"><pre><span class="n">double</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>
 <span class="n">double</span> <span class="mi">10</span> <span class="c1">#=&gt; 20</span>
 
 <span class="c1"># These have no arguments and always return None. Useless.</span>
@@ -205,22 +205,22 @@ are similar to those when calling functions, but with a few quirks.</p><ul><li>o
 <span class="n">constant4</span> <span class="o">=</span> <span class="o">-&gt;</span>
 
 <span class="c1"># This one accepts any amount of arguments.</span>
-<span class="n">doubleMany</span> <span class="o">=</span> <span class="p">(</span><span class="o">*:</span> <span class="n">xs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">map</span> <span class="n">double</span> <span class="n">xs</span>
+<span class="n">doubleMany</span> <span class="o">=</span> <span class="o">*:</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="nb">map</span> <span class="n">double</span> <span class="n">xs</span>
 <span class="n">doubleMany</span><span class="o">!</span>      <span class="c1">#=&gt; empty `map` object</span>
 <span class="n">doubleMany</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="c1">#=&gt; `map` object containing 2, 4, and 6</span>
 
 <span class="c1"># This one requires one argument and will accept more.</span>
-<span class="n">mapOverArgs</span> <span class="o">=</span> <span class="p">(</span><span class="n">function</span> <span class="o">*:</span> <span class="n">xs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">map</span> <span class="n">function</span> <span class="n">xs</span>
+<span class="n">mapOverArgs</span> <span class="o">=</span> <span class="n">function</span> <span class="o">*:</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="nb">map</span> <span class="n">function</span> <span class="n">xs</span>
 <span class="n">mapOverArgs</span> <span class="n">double</span>       <span class="c1">#=&gt; empty `map` object</span>
 <span class="n">mapOverArgs</span> <span class="n">double</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="c1">#=&gt; `map` object containing 2, 4, and 6</span>
 
 <span class="c1"># This one has one argument with a default value.</span>
-<span class="n">greet</span> <span class="o">=</span> <span class="p">(</span><span class="n">whom</span><span class="o">:</span> <span class="s">&#39;World&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&#39;Hello&#39;</span> <span class="n">whom</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;, &#39;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&#39;!</span><span class="se">\n</span><span class="s">&#39;</span>
+<span class="n">greet</span> <span class="o">=</span> <span class="n">whom</span><span class="o">:</span> <span class="s">&#39;World&#39;</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&#39;Hello&#39;</span> <span class="n">whom</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;, &#39;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&#39;!</span><span class="se">\n</span><span class="s">&#39;</span>
 <span class="n">greet</span><span class="o">!</span>         <span class="c1">#=&gt; &#39;Hello, World!&#39;</span>
 <span class="n">greet</span> <span class="s">&#39;Reader&#39;</span> <span class="c1">#=&gt; &#39;Hello, Reader!&#39;</span>
 
 <span class="c1"># This one returns its keyword arguments.</span>
-<span class="n">dict&#39;&#39;</span> <span class="o">=</span> <span class="p">(</span><span class="o">**:</span> <span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">kwargs</span>
+<span class="n">dict&#39;&#39;</span> <span class="o">=</span> <span class="o">**:</span> <span class="n">kwargs</span> <span class="o">-&gt;</span> <span class="n">kwargs</span>
 <span class="n">dict&#39;&#39;</span> <span class="n">a</span><span class="o">:</span> <span class="mi">1</span> <span class="o">==</span> <span class="nb">dict&#39;</span> <span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span>
 
 <span class="c1"># And this one unpacks a tuple when called.</span>
@@ -236,13 +236,8 @@ are similar to those when calling functions, but with a few quirks.</p><ul><li>o
 
 <span class="n">definitelyADoublingFunction</span> <span class="mi">10</span>  <span class="c1">#=&gt; still 10 :-/</span>
 </pre></div>
-<p>The <code>-&gt;</code> operator always consumes exactly one object to the left, regardless
-of what actually comes before it in an expression</p><div class="highlight"><pre><span class="c1"># It&#39;s. All. The. Same...thing.</span>
-<span class="nb">map</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nb">int</span> <span class="n">x</span> <span class="mi">16</span><span class="p">)</span> <span class="n">xs</span>
-<span class="nb">map</span> <span class="p">(</span><span class="n">x</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="n">x</span> <span class="mi">16</span><span class="p">)</span> <span class="n">xs</span>
-</pre></div>
 <p>Thanks to these awesome anonymous functions, there's little need for decorators
-anymore. Simply call a decorator with a function as its argument.</p><div class="highlight"><pre><span class="n">wtf</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="o">$</span> <span class="p">()</span> <span class="o">-&gt;</span>
+anymore. Simply call a decorator with a function as its argument.</p><div class="highlight"><pre><span class="n">wtf</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="o">$</span> <span class="o">-&gt;</span>
   <span class="nb">print</span> <span class="s">&quot;I know static methods don&#39;t make sense outside of a class,&quot;</span>
   <span class="nb">print</span> <span class="s">&quot;but this was the most obvious decorator I could think of.&quot;</span>
 </pre></div>
@@ -398,7 +393,7 @@ will be evaluated regardless, but it will never silence the exception.</p><div c
 <span class="c1">#   2 + 2 is evaluated, its value — ignored.</span>
 </pre></div>
 </div>
-        <div id="objects"      class="section"><h2>Objects and types</h2><p><code>subclass</code> duplicates the current local namespace as a type.</p><div class="highlight"><pre><span class="n">__init__</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="n">name</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <div id="objects"      class="section"><h2>Objects and types</h2><p><code>subclass</code> duplicates the current local namespace as a type.</p><div class="highlight"><pre><span class="n">__init__</span> <span class="o">=</span> <span class="bp">self</span> <span class="n">name</span> <span class="o">-&gt;</span>
   <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
   <span class="c1"># __init__ must always return None.</span>
   <span class="bp">None</span>
@@ -406,7 +401,7 @@ will be evaluated regardless, but it will never silence the exception.</p><div c
 <span class="kt">Animal</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span>
 </pre></div>
 <p>It accepts any number of base classes, as well as keyword arguments.</p><div class="highlight"><pre><span class="c1"># Make sure to clean the local namespace before running this.</span>
-<span class="n">move</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="n">distance</span><span class="p">)</span> <span class="o">-&gt;</span>
+<span class="n">move</span> <span class="o">=</span> <span class="bp">self</span> <span class="n">distance</span> <span class="o">-&gt;</span>
   <span class="c1"># Inches? Feet? Miles? Nah.</span>
   <span class="s">&#39;{} moved {} meters.&#39;</span><span class="o">.</span><span class="n">format</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="n">distance</span>
 
@@ -436,7 +431,7 @@ defined only by <code>b</code>.</p><div class="highlight"><pre><span class="kt">
 <span class="nb">print</span> <span class="n">a</span>
 <span class="c1">#=&gt; OH GOD NAMEERROR</span>
 </pre></div>
-<p>Also, for those who like Ruby syntax, there are</p><h3>Fancy aliases</h3><p><code>@attribute</code> is an alias for <code>self.attribute</code>.</p><div class="highlight"><pre><span class="kt">Movable</span><span class="o">.</span><span class="n">move</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span> <span class="n">distance</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s">&#39;{} moved {} meters.&#39;</span><span class="o">.</span><span class="n">format</span> <span class="o">@</span><span class="n">name</span> <span class="n">distance</span>
+<p>Also, for those who like Ruby syntax, there are</p><h3>Fancy aliases</h3><p><code>@attribute</code> is an alias for <code>self.attribute</code>.</p><div class="highlight"><pre><span class="kt">Movable</span><span class="o">.</span><span class="n">move</span> <span class="o">=</span> <span class="bp">self</span> <span class="n">distance</span> <span class="o">-&gt;</span> <span class="s">&#39;{} moved {} meters.&#39;</span><span class="o">.</span><span class="n">format</span> <span class="o">@</span><span class="n">name</span> <span class="n">distance</span>
 <span class="kt">Frog</span><span class="o">.</span><span class="n">leap</span> <span class="o">=</span> <span class="nb">property</span> <span class="o">$</span> <span class="bp">self</span> <span class="o">-&gt;</span> <span class="o">@</span><span class="n">move</span> <span class="mi">20</span>
 </pre></div>
 <p><code>~&gt;</code> is a method constructor. It works the same way as <code>-&gt;</code>, but inserts <code>self</code>

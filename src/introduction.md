@@ -9,7 +9,7 @@
 You can also describe functions with docstrings in the same way as in Python.
 
 ```dg
-function = (argument) ->
+function = argument ->
   '''Do something with an argument.
 
       :param argument: any value.
