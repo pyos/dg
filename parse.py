@@ -227,7 +227,7 @@ def infix(self, lhs, op, rhs):
             # `a R (Q b)` otherwise.
             rhs = infix(self, rhs, LinkI('').after(rhs), next(self))
 
-    return infixin(op, lhs, spech(self, rhs) if has_priority('', op) else rhs)
+    return infixin(op, lhs, spech(self, rhs) if has_priority('', lhs if op == '' and lhs.infix and not lhs.closed else op) else rhs)
 
 
 def infixin(op, lhs, rhs=None):
