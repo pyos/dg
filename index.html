@@ -275,13 +275,13 @@ in Python are:</p><div class="highlight"><pre><span class="c1"># op    #=&gt; `P
 as an operator; simply wrap its name in backticks, like in Haskell:</p><div class="highlight"><pre><span class="mi">1</span> <span class="o">`max`</span> <span class="mi">5</span> <span class="c1">#=&gt; 5</span>
 <span class="mi">10</span> <span class="o">`divmod`</span> <span class="mi">3</span> <span class="c1">#=&gt; (3, 1)</span>
 </pre></div>
-<p>Some operators (namely the <a href="http://en.wikipedia.org/wiki/Pure_function">pure ones</a>)
-are <a href="http://en.wikipedia.org/wiki/First-class_function">first-class</a>; most of these
-are imported from the <a href="http://docs.python.org/dev/library/operator.html">operator</a>
-module.</p><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span>
+<p>Some operators are <a href="http://en.wikipedia.org/wiki/First-class_function">first-class</a>.
+The list is too long to write it here, so either use common sense (if an operator
+doesn't have any fancy syntactic restrictions, then it's probably first-class)
+or read the <a href="https://github.com/pyos/dg/blob/master/compile/bootstrap/10.runtime.dg">source code</a>.</p><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span>
 <span class="n">f</span> <span class="mi">1</span> <span class="mi">2</span> <span class="c1">#=&gt; 3</span>
 </pre></div>
-<p>Any first-class infix operator can be <a href="http://docs.python.org/dev/library/functools.html#functools.partial">partially bound</a>
+<p>Any infix operator can be <a href="http://docs.python.org/dev/library/functools.html#functools.partial">partially bound</a>
 by omitting either of its sides. An exception to this is <code>-</code>, which behaves
 as an unary <code>-</code> if the left side is missing.</p><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span><span class="p">)</span>  <span class="c1">#=&gt; x -&gt; 2 * x</span>
 <span class="n">f</span> <span class="mi">10</span>       <span class="c1">#=&gt; 20</span>

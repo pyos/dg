@@ -41,17 +41,17 @@ as an operator; simply wrap its name in backticks, like in Haskell:
 10 `divmod` 3 #=> (3, 1)
 ```
 
-Some operators (namely the [pure ones](http://en.wikipedia.org/wiki/Pure_function))
-are [first-class](http://en.wikipedia.org/wiki/First-class_function); most of these
-are imported from the [operator](http://docs.python.org/dev/library/operator.html)
-module.
+Some operators are [first-class](http://en.wikipedia.org/wiki/First-class_function).
+The list is too long to write it here, so either use common sense (if an operator
+doesn't have any fancy syntactic restrictions, then it's probably first-class)
+or read the [source code](https://github.com/pyos/dg/blob/master/compile/bootstrap/10.runtime.dg).
 
 ```dg
 f = (+)
 f 1 2 #=> 3
 ```
 
-Any first-class infix operator can be [partially bound](http://docs.python.org/dev/library/functools.html#functools.partial)
+Any infix operator can be [partially bound](http://docs.python.org/dev/library/functools.html#functools.partial)
 by omitting either of its sides. An exception to this is `-`, which behaves
 as an unary `-` if the left side is missing.
 
