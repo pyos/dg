@@ -1,3 +1,4 @@
+import builtins
 import collections
 
 from .  import codegen, syntax
@@ -212,6 +213,10 @@ class CodeGenerator (codegen.MutableCode):
             (a R) <=> (x -> a R x)     #  when function is created
 
         '''
+
+        if f in PREFIX and f not in builtins.__dict__:
+
+            syntax.error('this operator is unbindable', f)
 
         code = CodeGenerator('<bound {}>'.format(f), True, (pos,), (kwd,), cell=self)
         code.call(f, parse.Link('<L>'), parse.Link('<R>'))

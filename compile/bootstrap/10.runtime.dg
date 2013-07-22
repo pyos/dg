@@ -35,15 +35,12 @@ builtins.(**) = operator.pow
 builtins.(/)  = operator.truediv
 builtins.(//) = operator.floordiv
 builtins.(%)  = operator.mod
-builtins.(.)  = getattr
 builtins.(!!) = operator.getitem
 builtins.(&)  = operator.and_
 builtins.(^)  = operator.xor
 builtins.(|)  = operator.or_
 builtins.(<<) = operator.lshift
 builtins.(>>) = operator.rshift
-
-builtins.(.~)  = delattr
 builtins.(!!~) = operator.delitem
 
 # Not-actually-operators.
