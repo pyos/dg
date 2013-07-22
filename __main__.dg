@@ -35,7 +35,7 @@ command = code -> except
     (code.endswith '\n' or not
       # There may be an indented block in the next line if
       #     1. the last operator has no right-hand side;
-      expr :: parse.Expression and len expr == 2 and not (head expr in parse.norhs) or
+      expr :: parse.ExpressionL and not (head expr in parse.norhs) or
         #   2. the last expression is accessing a built-in, which
         #      doesn't make sense (unlike a call to that built-in;)
         expr :: parse.Link and not expr.closed and expr in compile.core.PREFIX or
