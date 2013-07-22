@@ -156,7 +156,7 @@ unassoc = {',', '..', '::', '', '\n'}
 
 # If `R` is in `nolhs`, `a R b` is always parsed as `a (R b)`.
 # If `R` is in `norhs`, `a R b` is always parsed as `(a R) b`.
-nolhs = {'@'}
+nolhs = {'@', '~'}
 norhs = {'!'}
 
 # If `a` is in `specl`, `a b => c` will be parsed into `Expression [a, b, c]`.
