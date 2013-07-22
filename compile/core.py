@@ -205,21 +205,18 @@ class CodeGenerator (codegen.MutableCode):
             delta=-len(a) -   2 * len(kw) - preloaded
         )
 
-    def infixbind(self, isleft, f, arg):
+    def infixbind(self, kwd, pos, f, arg):
         '''Default implementation of an infix bind.
 
-            (R b) <=> (x -> x R b)
-            (a R) <=> (x -> a R x)
+            (R b) <=> (x -> x R b)     #  both a and b are evaluated
+            (a R) <=> (x -> a R x)     #  when function is created
 
         '''
 
-        n = ('<{1!r} {0!r}>' if isleft else '<{!r} {!r}>').format(f, arg)
-        lhs = parse.Link('<lhs>')
-        rhs = parse.Link('<rhs>')
-        code = CodeGenerator(n, True, (rhs, lhs) if isleft else (lhs, rhs), cell=self)
-        code.call(f, lhs, rhs)
+        code = CodeGenerator('<bound {}>'.format(f), True, (pos,), (kwd,), cell=self)
+        code.call(f, parse.Link('<L>'), parse.Link('<R>'))
         code.loadop('RETURN_VALUE', delta=-1)
-        self.make_function(code, (arg,), {})
+        self.make_function(code, (), {kwd: arg})
 
     def call(self, f, *args):
         '''Call a function or delegate to a macro.
@@ -280,5 +277,5 @@ class CodeGenerator (codegen.MutableCode):
             self.load(b)
 
 PREFIX = {'\n': lambda s, _, q: s.chain(*q), '': lambda s, _, q: s.call(*q)}
-INFIXL = collections.defaultdict(lambda: lambda s, f, a: s.infixbind(True,  f, a))
-INFIXR = collections.defaultdict(lambda: lambda s, f, a: s.infixbind(False, f, a))
+INFIXL = collections.defaultdict(lambda: lambda s, f, a: s.infixbind('<L>', '<R>', f, a))
+INFIXR = collections.defaultdict(lambda: lambda s, f, a: s.infixbind('<R>', '<L>', f, a))
