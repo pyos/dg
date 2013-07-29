@@ -1,21 +1,34 @@
-getns = parse.it '''locals!'''
-cinit = parse.it '''
-ns.update data
-ns.update $ dict __module__: __name__ __qualname__: name __doc__: doc
-'''
+import '/sys/hexversion'
 
-
-#
 # subclass A B metaclass: C where ...
 #
 # Create a class with current locals as its attributes.
 #
 PREFIX !! 'subclass' = self f args ->
-  code = CodeGenerator (self.child_name '<class>') True (list' 'ns' 'data' 'name' 'doc') cell: self
-  code.loadop 'RETURN_VALUE' cinit delta: 0
-  self.loadop 'LOAD_BUILD_CLASS'   delta: 1
-
   doc = if (self.consts => fst $ head self.consts.sorted)
   doc = if (doc :: str => doc) (otherwise => None)
-  self.make_function code (getns, self.qualname, doc) dict!
+  self.loadop 'LOAD_BUILD_CLASS'   delta: 1
+
+  # Someone decided that from 3.4 on, __build_class__ should automatically
+  # do `STORE_LOCALS` with the new namespace. Awesome. More hacks on the way!
+  code = CodeGenerator (self.child_name '<class>') False cell: self
+
+  if hexversion < 0x03040000 =>
+    code = CodeGenerator (self.child_name '<class>') True (list' 'ns') cell: self
+    code.loadop 'LOAD_FAST' arg: 'ns' delta:  1
+    code.loadop 'STORE_LOCALS'        delta: -1
+
+  for x in (self.varnames.keys! | self.cellvars.keys!) =>
+    code.loadop 'LOAD_DEREF' arg: x delta:  1
+    code.loadop 'STORE_NAME' arg: x delta: -1
+
+  code.loadop 'LOAD_CONST' arg: doc            delta:  1
+  code.loadop 'STORE_NAME' arg: '__doc__'      delta: -1
+  code.loadop 'LOAD_CONST' arg: self.qualname  delta:  1
+  code.loadop 'STORE_NAME' arg: '__qualname__' delta: -1
+  code.loadop 'LOAD_NAME'  arg: '__name__'     delta:  1
+  code.loadop 'STORE_NAME' arg: '__module__'   delta: -1
+  code.loadop 'RETURN_VALUE' None delta: 0
+  self.make_function code tuple! dict!
+
   self.nativecall self.name args 2 False
