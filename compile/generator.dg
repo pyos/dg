@@ -264,7 +264,7 @@ Generator = subclass object where
     '''
 
   frozen = ~>
-    '''An marshallabla code object with info from this generator.
+    '''A marshallable code object with info from this generator.
 
       frozen :: CodeType
 
