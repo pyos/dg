@@ -1,0 +1,283 @@
+import '/dis'
+import '/types'
+import '/itertools'
+import '/collections'
+
+
+CO_OPTIMIZED = 1   # does not use slow locals
+CO_NEWLOCALS = 2   # has a local namespace
+CO_VARARGS   = 4   # accepts any amount of positional arguments
+CO_VARKWARGS = 8   # accepts any amount of keyword arguments
+CO_NESTED    = 16  # uses free variables
+CO_GENERATOR = 32  # uses YIELD_VALUE/YIELD_FROM
+CO_NOFREE    = 64  # does not export free variables
+
+EXTENDED_ARG = dis.opmap.get 'EXTENDED_ARG'
+
+# Both LOAD_DEREF and STORE_DEREF are the same distance away
+# from LOAD_FAST and STORE_FAST, respectively.
+# Replacing the latter with the former is slightly faster
+# when we use that to our advantage.
+DEREF_OPCODE_DIFF = dis.opmap.get 'LOAD_DEREF' - dis.opmap.get 'LOAD_FAST'
+
+# XXX Not sure if calculating the hash is faster
+#     than iterating over a few integers.
+hasconst = set dis.hasconst
+hasfree  = set dis.hasfree
+hasname  = set dis.hasname
+hasjrel  = set dis.hasjrel
+hasjabs  = set dis.hasjabs
+haslocal = set dis.haslocal
+hascmp   = set dis.hascompare
+hasjump  = hasjrel | hasjabs
+
+
+opcode = op arg ->
+  '''Generate a sequence of bytes for an opcode with an argument.
+
+    opcode :: int int -> bytes
+
+  '''
+  if op < dis.HAVE_ARGUMENT => bytes $ list' op
+     arg >= 0x10000 => opcode EXTENDED_ARG (arg >> 16) + opcode op (arg % 0x10000)
+     otherwise      => bytes (op, arg % 0x100, arg >> 8)
+
+
+codelen = seq ->
+  '''Calculate the length of a bytecode sequence, in bytes.
+
+    codelen :: [(int, int)] -> int
+
+  '''
+  sum $ map
+    (c, v) -> if c < dis.HAVE_ARGUMENT => 1
+                 otherwise             => 3 * (1 + abs (int.bit_length (int v) - 1) // 16)
+    seq
+
+
+OrderedSet = subclass dict where
+  '''An ordered collection of unique non-removable elements.
+
+    type IndexedSet < dict
+
+  '''
+  __call__ = k ~>
+    self !! k = @get k (len self)
+
+  __iter__ = self ->
+    '''All items in this set, in insertion order.
+
+      contents :: [a]
+
+    '''
+    iter $ sorted self key: @__getitem__
+
+
+LazyInteger = __int__ ->
+  '''An object that can be converted into an integer on demand.
+
+    type LazyInteger { __int__ :: -> int }
+
+  '''
+  call $ subclass object
+
+
+JumpObject = subclass object where
+  '''An argument to a jump opcode.
+
+    type JumpObject {
+      code :: [(int, int)] -- bytecode to insert opcodes into
+      forward :: bool -- whether the jump lands after the opcode
+      absolute :: bool -- whether to start counting from the beginning of `code`
+      op :: int -- opcode to insert
+      start :: int -- bytecode offset this object was created at
+      value :: Maybe int -- argument to the opcode or None
+    }
+
+  '''
+  __int__  = self -> @value or 0
+  __init__ = @code @forward @absolute @op ~>
+    @start = len code
+    @value = None
+    @forward => @code.append (@op, self)
+    None
+
+
+  set = ~>
+    '''Set the target/insert the opcode.
+
+      set :: a
+
+    '''
+    @value is None =>
+      @value = 0
+      @absolute => @value += codelen $ take  start      @code
+      @forward  => @value += codelen $ drop (start + 1) @code
+
+      @absolute and not @forward =>
+        sz = 0x0
+        while @value >= sz =>
+          # This jump needs to account for itself.
+          @value += 3
+          sz <<= 16
+
+    not @forward => @code.append (@op, @value)
+
+
+Generator = subclass object where
+  '''A mutable version of `types.CodeType`.
+
+    type Generator {
+      cell     :: Maybe Generator -- a parent code object.
+      name     :: str -- co_name
+      qualname :: str -- __qualname__
+
+      argc   :: int -- co_argcount
+      kwargc :: int -- co_kwonlyargcount
+
+      names    :: OrderedSet -- co_names  (attributes, slow locals, globals & modules)
+      consts   :: OrderedSet -- co_consts ((type, value) pairs)
+      freevars :: OrderedSet -- co_freevars (non-local variables)
+      cellvars :: OrderedSet -- co_cellvars (local closure)
+      varnames :: OrderedSet -- co_varnames (locally visible fast variables only)
+      enclosed :: set -- names that may be added to `freevars`.
+
+      bytecode :: [(int, int)] -- co_code as an unpacked list.
+      depth    :: int -- current size of value stack.
+      m_depth  :: int -- maximum value of the above field.
+      f_locals :: {str: (int, int)} -- map of `*_FAST` opcode locations.
+
+      filename :: str -- co_filename
+      lineno   :: int -- co_firstlineno
+      lnotab   :: [(int, int)] -- co_lnotab, unpacked.
+      lineoff  :: int -- `lineno` last time `lnotab` was updated.
+      byteoff  :: int -- `len bytecode` last time ...
+    }
+
+  '''
+  __init__ = name isfunc a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: '' ~>
+    @name      = name
+    @qualname  = ''.join $ list'
+      cell => cell.qualname
+      cell => cell.qualname => '.'
+      cell => '<locals>.' * bool (cell.flags & CO_OPTIMIZED)
+      name * bool isfunc
+
+    @argc   = len a
+    @kwargc = len kw
+
+    @names    = OrderedSet!
+    @consts   = OrderedSet!
+    @freevars = OrderedSet!
+    @cellvars = OrderedSet!
+    @varnames = OrderedSet $ zip
+      itertools.chain a kw va vkw  # attributes are stored as fast locals implicitly
+      itertools.count 0
+
+    @cell     = cell or None
+    @enclosed = if
+      # dg only uses slow locals in global namespaces and classes,
+      # and the latter don't create new code objects.
+      cell => dict.keys cell.varnames & cell.enclosed
+      True => set!
+
+    @flags  = CO_VARARGS   * bool va
+    @flags |= CO_VARKWARGS * bool vkw
+    @flags |= (CO_OPTIMIZED | CO_NEWLOCALS) * bool isfunc
+
+    @bytecode = list!
+    # To move them into `cellvars` faster, `varnames` have all
+    # referencing opcodes put into this dict.
+    @f_locals = collections.defaultdict set
+
+    @depth   = 0
+    @m_depth = 0
+
+    # Set on first `lnomark`.
+    @filename = '<generated>'
+    @lineno   = 1
+    @lnotab   = list!
+    @lineoff  = 1
+    @byteoff  = 0
+
+  lnomark = x ~> if x.loc =>
+    '''Add a location of a `Node` to the lnotab.
+
+      lnomark :: Node -> a
+
+    '''
+    not @lnotab =>
+      @filename = x.loc !! 0
+      @lineno   = x.loc !! 1
+      @lineoff  = x.loc !! 1
+
+    lineoff = x.loc !! 1 - @lineoff
+    byteoff = codelen $ drop @byteoff @code
+
+    lineoff > 0 and byteoff > 0 =>
+      @lnotab += lineoff // 256 * list' 0 255
+      @lnotab += byteoff // 256 * list' 255 0
+      @lnotab += list' (byteoff % 256) (lineoff % 256)
+
+  cellified = name ~>
+    '''Replace all FAST references to a name with DEREF ones.
+
+      cellvar :: str -> str
+
+    '''
+    for (i, c) in @f_locals !! name =>
+      @bytecode !! i = c, @cellvars !! name
+    name
+
+  add_opcode = name value delta ~>
+    '''Append a new opcode to the sequence.
+
+      add_opcode :: str object int -> Maybe JumpObject
+
+    '''
+    name in ('YIELD_VALUE', 'YIELD_FROM') => @flags |= CO_GENERATOR
+    code = dis.opmap !! name
+
+    @depth   +=       delta
+    @m_depth += max 0 delta
+
+    '''
+        if code in hasjump:
+
+            return JumpObject(self.bytecode, value < 0, code in hasjabs, op=code)
+
+        if code in haslocal:
+
+            self.f_locals[value].add((len(self.bytecode), code + DEREF_OPCODE_DIFF))
+
+        self.bytecode.append((code,
+            dis.cmp_op.index(value)           if code in hascmp else
+            self.names   [value]              if code in hasname else
+            self.varnames[value]              if code in haslocal else
+            self.consts  [value, type(value)] if code in hasconst else
+            value                             if code not in hasfree else
+
+            # Free and cell variables use the same index space.
+            LazyInt(lambda _, i=self.freevars[value]: i + len(self.cellvars))
+            if value in self.enclosed and value not in self.varnames else self.cellvars[value]
+        ))
+    '''
+
+  frozen = ~>
+    '''An marshallabla code object with info from this generator.
+
+      frozen :: CodeType
+
+    '''
+    types.CodeType @argc @kwargc (len @varnames) @m_depth
+      @flags | CO_NESTED * bool @freevars | CO_NOFREE * not @cellvars
+      b''.join $ map ((a, b) -> opcode a (int b)) @bytecode
+      tuple $ map fst @consts
+      tuple @names
+      tuple @varnames
+      @filename
+      @name
+      @lineno
+      bytes @lnotab
+      tuple @freevars
+      tuple @cellvars
