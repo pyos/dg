@@ -233,7 +233,7 @@ Parser = subclass deque where
 
   __iter__ = self -> self
   __next__ = self ->
-    if self => @popleft!
+    if self => @pop!
        otherwise => except
          e =>
            m   = next @tokens
@@ -293,22 +293,22 @@ Parser = subclass deque where
 
            level > last @indent =>
              @indent.append level
-             @appendleft $ @block pos closed: False $ x ->
+             @append $ @block pos closed: False $ x ->
                x :: Ending => x is Dedent or
                  # Indented blocks can be ended with close-parens.
                  # We have to account for a decrease in indentation, though.
                  @indent.pop!
                  # This may not be the only indented block that've ended.
                  # A parenthesized one will take `x` off the stack.
-                 @appendleft x
+                 @append x
                x :: Ending
 
            # `level >  last @indent` => the indented block was ended by a close-paren.
            # `level == last @indent` => we're still parsing it.
            while level < last @indent =>
              @indent.pop!
-             @appendleft $ Name '\n' infix: True varary: True at: pos2
-             @appendleft $ Dedent
+             @append $ Name '\n' infix: True varary: True at: pos2
+             @append $ Dedent
              last @indent < level => @error 'no matching indentation level' pos
 
          Name (c or e or x) at: pos
@@ -374,7 +374,7 @@ Parser = subclass deque where
 
     if
       rhs :: Ending or op.norhs =>
-        @appendleft rhs
+        @append rhs
         op != '' => lhs = @infixin op lhs None
         lhs
 
@@ -453,7 +453,7 @@ Parser = subclass deque where
     x.spec_b =>
       arg = @block x.loc $ y ->
         end = y :: Ending or y == '\n'
-        end => @appendleft y
+        end => @append y
         end
 
       arg != Constant None =>
