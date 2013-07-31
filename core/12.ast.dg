@@ -1,0 +1,184 @@
+Node = subclass object where
+  '''Generic AST node. No direct instances are found in the parser output.
+
+    type Node {
+      loc :: (str, int, int, str) -- (filename, line, character, first line)
+      closed :: bool -- whether the node is parenthesized
+      indent :: bool -- whether the node is an indented block
+      infix  :: bool -- whether the node is infix between two other nodes
+      nolhs  :: bool -- (infix = True) whether the node is, in fact, postfix
+      norhs  :: bool -- (infix = True) same as `nolhs`, only prefix
+      varary :: bool -- (infix = True) whether `a R b R c` constructs only one `R`
+      spec_a :: bool -- whether this node is `R` in `R a => b` syntactic construct
+      spec_b :: bool -- whether this node consumes everything until the
+                     -- end of the line as the first funcall argument.
+    }
+
+  '''
+  __init__ = *: args **: kwargs ~>
+    @loc    = kwargs.pop 'at'     None
+    @closed = kwargs.pop 'closed' False
+    @indent = kwargs.pop 'indent' False
+    @infix  = kwargs.pop 'infix'  False
+    @nolhs  = kwargs.pop 'nolhs'  False
+    @norhs  = kwargs.pop 'norhs'  False
+    @varary = kwargs.pop 'varary' False
+    @spec_a = kwargs.pop 'spec_a' False
+    @spec_b = kwargs.pop 'spec_b' False
+    @init *: args **: kwargs
+    None
+
+  __repr__ = self -> if @closed   => '({})'.format @repr
+                        otherwise =>               @repr
+
+  init = ~> raise $ TypeError 'instantiating Node directly is pointless'
+  repr = ~> 'nil'
+
+
+Name = subclass Node where
+  '''An identifier.
+
+    The only kind of `Node` that can have anything
+    other than `closed` or `indent` set to `True`.
+
+    type Name < Node {
+      value :: str
+    }
+
+  '''
+  init   = @value ~>
+  repr   =        ~> @value
+  __eq__ =      x ~> @value == x
+
+  __gt__ = over strength: (dict'
+    '@',     ( 5,    5)    # attribute of `self`
+    '.',     ( 0,    0)    # getattr
+    '!.',    ( 0,    0)    # call with no arguments, then getattr
+    '!',     ( 0,   -10)   # call with no arguments
+    ':',     ( 0,   -10)   # keyword argument
+    '',      (-20,  -20)   # call with an argument
+    '!!',    (-30,  -30)   # container subscription (i.e. `a[b]`)
+    '**',    (-30,  -40)   # exponentiation
+    '*',     (-50,  -50)   # multiplication
+    '/',     (-50,  -50)   # fp division
+    '//',    (-50,  -50)   # int division
+    '%',     (-50,  -50)   # modulus
+    '+',     (-60,  -60)   # addition
+    '-',     (-60,  -60)   # subtraction
+    '<',     (-80,  -80)   # less than
+    '<=',    (-80,  -80)   # ^ or equal
+    '>',     (-80,  -80)   # greater than
+    '>=',    (-80,  -80)   # ^ or equal
+    '==',    (-80,  -80)   # equal
+    '!=',    (-80,  -80)   # not ^
+    'is',    (-80,  -80)   # occupies the same memory location as
+    'in',    (-80,  -80)   # is one of the elements of
+    '<<',    (-100, -100)  # *  2 **
+    '>>',    (-100, -100)  # // 2 **
+    '&',     (-110, -110)  # bitwise and
+    '^',     (-120, -120)  # bitwise xor
+    '|',     (-130, -130)  # bitwise or
+    'and',   (-140, -140)  # B if A else A
+    'or',    (-150, -150)  # A if A else B
+    '$',     (-150, -160)  # call with one argument and no f-ing parentheses
+    '->',    (-25,  -180)  # a function
+    '~>',    (-25,  -180)  # a method (i.e. a function with `self` as an argument)
+    ',',     (-170, -170)  # a tuple
+    '=',     (-170, -180)  # assignment
+    '!!=',   (-170, -180)  # in-place versions of some of the other functions
+    '+=',    (-170, -180)
+    '-=',    (-170, -180)
+    '*=',    (-170, -180)
+    '**=',   (-170, -180)
+    '/=',    (-170, -180)
+    '//=',   (-170, -180)
+    '%=',    (-170, -180)
+    '&=',    (-170, -180)
+    '^=',    (-170, -180)
+    '|=',    (-170, -180)
+    '<<=',   (-170, -180)
+    '>>=',   (-170, -180)
+    'where', (-170, -180)  # with some stuff that is not visible outside of that expression
+    'for',   (-180, -190)  # evaluate stuff for each item in an iterable
+    'while', (-180, -190)  # evaluate stuff until condition becomes false
+    '=>',    (-180, -190)  # if-then
+    '\n',    (-230, -230)  # do A then B
+  ).get default: (-70, -70) ~>
+    '''Whether this (infix) node has priority over the other one.
+
+      `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
+      is higher than right binding strength of `R`, `(a R b) Q c` otherwise.
+
+      Name > Name -> bool
+
+    '''
+    strength @value default !! 0 > strength over.value default !! 1
+
+
+Expression = subclass Node where
+  '''A single function call.
+
+    If the function in question is prefix, `op` will be `''`.
+
+    type Expression < Node {
+      op   :: Node   -- function
+      args :: [Node] -- arguments
+
+      op.infix is True
+      not op.varary => len args == 2
+          op.varary => len args >= 2
+    }
+
+  '''
+  init = @op *: args ~> (@args = list args)
+  repr =             ~> (' {!r} ' .format @op).join $ map repr @args
+
+
+Constant = subclass Node where
+  '''A marshallable compile-time constant.
+
+    type Constant < Node {
+      value :: Either int float complex str
+    }
+
+  '''
+  init   = @value ~>
+  repr   =        ~> repr @value
+  __eq__ =      x ~> x :: Constant and @value == x.value
+
+
+LeftBind = subclass Expression where
+  '''An infix expression missing its right part.
+
+    type LeftBind < Expression {
+      len args == 1
+    }
+
+  '''
+  repr = ~> '{[0]!r} {!r}'.format @args @op
+
+
+RightBind = subclass Expression where
+  '''An infix expression missing its left part.
+
+    type RightBind < Expression {
+      len args == 1
+    }
+
+  '''
+  repr = ~> '{!r} {[0]!r}'.format @op @args
+
+
+Ending = subclass Constant where
+  '''A signal for `Parser.block` to stop reading `Node`s.
+
+    The string `value` will be different depending on the type of
+    close-paren. Does not appear in parser output.
+
+    type Ending < Constant {
+      value :: str
+    }
+
+  '''
+
+Dedent = Ending ''
