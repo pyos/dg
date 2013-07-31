@@ -24,8 +24,10 @@ Generator.load = name ~>
 
   '''
   if name.value in @cellvars => @add_opcode +1 'LOAD_DEREF'  $ @cellvars name.value
-     @cell is None           => @add_opcode +1 'LOAD_GLOBAL' $ @names name.value
-     otherwise               => @add_opcode +1 'LOAD_DEREF'  $ @get_freevar name.value
+     name.value in @enclosed => @add_opcode +1 'LOAD_DEREF'  $ @get_freevar name.value
+     otherwise               =>
+       # XXX should somehow detect if that variable may not exist
+       @add_opcode +1 'LOAD_GLOBAL' $ @names name.value
 
 
 Generator.store = name ~>
@@ -35,8 +37,8 @@ Generator.store = name ~>
 
   '''
   if
-    name.value in @enclosed or name.value in @freevars =>
-      # Log.note name.loc $ '{.value} is a non-local variable'.format name
+    name.value in @enclosed =>
+      # XXX should print a warning about non-local assignment.
       @add_opcode -1 'STORE_DEREF' $ @get_freevar name.value
     otherwise =>
       @add_opcode -1 'STORE_DEREF' $ @cellvars name.value
