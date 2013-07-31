@@ -68,6 +68,10 @@ Generator = subclass object where
       varnames :: OrderedSet -- co_varnames (locally visible fast variables only)
       enclosed :: set -- names that may be added to `freevars`.
 
+      slowlocals :: bool -- whether to not use _FAST opcodes.
+      f_locals   :: {str: (int, int)} -- a cache to replace _FAST opcodes
+                                      -- with _DEREF ones fast.
+
       bytecode :: [(int, int)] -- co_code as an unpacked list.
       depth    :: int -- current size of value stack.
       m_depth  :: int -- maximum value of the above field.
@@ -98,6 +102,9 @@ Generator = subclass object where
       itertools.chain a kw va vkw  # attributes are stored as fast locals implicitly
       itertools.count 0
     @cellvars = OrderedSet @varnames
+
+    @slowlocals = not isfunc
+    @f_locals   = collections.defaultdict set
 
     @cell     = cell or None
     @enclosed = if

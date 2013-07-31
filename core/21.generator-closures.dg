@@ -42,12 +42,8 @@ Generator.make_function = code defaults kwdefaults ~>
   for (k, v) in kwdefaults.items! =>
     @load_const $ str k
     @load_ast     v
-  for d in defaults => @load_ast d
-
-  for v in const.co_freevars =>
-    @add_opcode +1 'LOAD_CLOSURE' $ if
-      v in @cellvars => @cellvars v
-      otherwise      => @get_freevar v
+  for d in defaults          => @load_ast     d
+  for v in const.co_freevars => @load_closure v
 
   @add_opcode (1 - len const.co_freevars) 'BUILD_TUPLE' (len const.co_freevars)
   @load_const const

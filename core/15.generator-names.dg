@@ -23,11 +23,15 @@ Generator.load = name ~>
     load :: Name -> a
 
   '''
-  if name.value in @cellvars => @add_opcode +1 'LOAD_DEREF'  $ @cellvars name.value
-     name.value in @enclosed => @add_opcode +1 'LOAD_DEREF'  $ @get_freevar name.value
-     otherwise               =>
-       # XXX should somehow detect if that variable may not exist
-       @add_opcode +1 'LOAD_GLOBAL' $ @names name.value
+  v = name.value
+
+  if v in @cellvars => @add_opcode +1 'LOAD_DEREF'  $ @cellvars v
+     v in @varnames =>
+       (@f_locals !! v).add (len @bytecode, dis.opmap !! 'LOAD_DEREF')
+       @add_opcode +1 'LOAD_FAST' $ @varnames v
+     v in @enclosed => @add_opcode +1 'LOAD_DEREF'  $ @get_freevar v
+     @slowlocals    => @add_opcode +1 'LOAD_NAME'   $ @names v
+     otherwise      => @add_opcode +1 'LOAD_GLOBAL' $ @names v
 
 
 Generator.store = name ~>
@@ -36,9 +40,25 @@ Generator.store = name ~>
     store :: Name -> a
 
   '''
-  if
-    name.value in @enclosed =>
-      # XXX should print a warning about non-local assignment.
-      @add_opcode -1 'STORE_DEREF' $ @get_freevar name.value
-    otherwise =>
-      @add_opcode -1 'STORE_DEREF' $ @cellvars name.value
+  v = name.value
+
+  if v in @cellvars => @add_opcode -1 'STORE_DEREF' $ @cellvars    v
+     v in @enclosed => @add_opcode -1 'STORE_DEREF' $ @get_freevar v
+     @slowlocals    => @add_opcode -1 'STORE_NAME'  $ @names v
+     otherwise      =>
+       (@f_locals !! v).add (len @bytecode, dis.opmap !! 'STORE_DEREF')
+       @add_opcode -1 'STORE_FAST' $ @varnames v
+
+
+Generator.load_closure = name ~>
+  '''Load a cell object referencing some variable.
+
+    load_closure :: Name -> a
+
+  '''
+  v = name.value
+
+  for (i, c) in @f_locals !! v =>
+    @bytecode !! i = c, @cellvars v
+
+  @add_opcode +1 'LOAD_CLOSURE' $ @cellvars.get v $ @get_freevar v

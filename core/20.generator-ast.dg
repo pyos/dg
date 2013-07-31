@@ -24,13 +24,6 @@ compileast = x ->
   '''
   gen = Generator '' True
   gen.load_ast x
-  gen.add_opcode -1 'POP_TOP' 0
-  # Since we're using cellvars/freevars for everything,
-  # we need to sync the local namespace before finishing.
-  gen.add_opcode +1 'LOAD_GLOBAL'   $ gen.names 'locals'
-  gen.add_opcode -1 'CALL_FUNCTION' 0
-  # Even modules got to return something.
-  gen.load_const None
   gen.add_opcode -1 'RETURN_VALUE' 0
   gen.frozen
 
