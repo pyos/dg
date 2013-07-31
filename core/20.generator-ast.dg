@@ -63,9 +63,12 @@ Generator.load_call = f *: args ~>
 
   '''
   if f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
+     f.infix and not f.closed =>
+       @load_ast f
+       @call_infix_ast args
      otherwise =>
        @load_ast f
-       @call_ast args 0 (f.infix and not f.closed)
+       @call_ast args 0
 
 
 Generator.store_ast = x ~>

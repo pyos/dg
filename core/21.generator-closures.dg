@@ -1,33 +1,142 @@
-Generator.call_ast = args on_stack infix ~>
+func_call_args = xs ->
+  '''Parse function call arguments.
+
+    argspec :: [Node] -> ([Node], {str: Node}, Maybe Node, Maybe Node)
+
+  '''
+  a   = list!
+  kw  = dict!
+  va  = None
+  vkw = None
+
+  for x in xs => if
+    x :: Expression and x.op == ':' => if
+      # *: x => take the rest of the positional arguments from x.
+      # FIXME should allow more than one (*: x) by joining x's with
+      #       `itertools.chain`. Probably.
+      fst x.args == '*' =>
+        va => Parser.error 'can only have one (*: x)' x.loc
+        va = snd x.args
+      # **: x => take the rest of the keyword arguments from x.
+      # FIXME same for (**: xs), but with `dict.update`.
+      fst x.args == '**' =>
+        vkw => Parser.error 'can only have one (**: x)' x.loc
+        vkw = snd x.args
+      # a: b => pass `b` as an argument named "a".
+      fst x.args :: Name => kw !! (fst x.args).value = snd x.args
+      # Pattern-match keyword names, maybe? By converting their
+      # ASTs to strings or something? But what if the argument
+      # is not unique?
+      otherwise => Parser.error 'keywords should be identifiers' x.loc
+    otherwise => a.append x
+
+  len a  > 255 => Parser.error 'too many arguments'         (fst xs).loc
+  len kw > 255 => Parser.error 'too many keyword arguments' (fst xs).loc
+  a, kw, va, vkw
+
+
+func_def_args = xs ->
+  '''Parse an argument specification.
+
+    argspec :: Maybe Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
+
+  '''
+  a    = list!  # positional
+  kw   = list!  # keyword-only
+  da   = list!  # default values
+  dkw  = dict!  # default values for keyword-only arguments
+  va   = list!  # varargs (a singleton)
+  vkw  = list!  # varkwargs (a singleton)
+  add  = dict!  # (name -> pattern) mapping
+  vars = set!
+
+  not $ xs is None =>
+    # Pass `None` if there are no arguments.
+    # (e.g. there is nothing before the `->`)
+    pattern = x -> if
+      x :: Name and not (x.value in vars) =>
+        # Python requires all argument names to be unique,
+        # so duplicate names are treated as patterns.
+        vars.add x.value
+        x.value
+      otherwise =>
+        name = '<{}>'.format $ len add
+        add !! name = x
+        name
+
+    data = if xs :: Expression and xs.op == '' => xs.args
+              otherwise                        => list' xs
+
+    for x in data => if
+      x :: Expression and x.op == ':' =>
+        k, x = x.args
+        if # Once again, (*: x) => the rest of positional arguments.
+           # This time there should only be one for sure.
+           k == '*' =>
+             va => Parser.error 'can only have one (*: x)' x.loc
+             va.append $ pattern x
+           # (**: x) => the rest of keyword arguments.
+           k == '**' =>
+             vkw => Parser.error 'can only have one (**: x)' x.loc
+             vkw.append $ pattern x
+           # If there was a (*: x) before this argument,
+           # it should only be accessible by a keyword.
+           var =>
+             k :: Name or Parser.error 'keywords cannot be pattern-matched' k.loc
+             kw.append k.value
+             dkw !! k.value = x
+           # If not, this is a positional keyword with a default value.
+           otherwise =>
+             a.append $ pattern k
+             da.append x
+      # Keyword-only arguments are not required to have a default value.
+      va => kw.append $ pattern x
+      # Positional ones that come after the first one with a default value set
+      # are, though.
+      da => Parser.error 'this argument must have a default value' x.loc
+      otherwise => a.append $ pattern x
+
+    len a  > 255 => Parser.error 'too many arguments'         xs.loc
+    len kw > 255 => Parser.error 'too many keyword arguments' xs.loc
+  a, kw, da, dkw, va, vkw, add
+
+
+Generator.load_key = (k, v) ~>
+  @load_const k
+  @load_ast   v
+
+
+Generator.call_infix_ast = args ~>
+  '''Call an infix function that is on top of the stack.
+
+    The difference from `call_ast` is that this method will not parse
+    the argument list.
+
+    call_infix_ast :: [Node] -> a
+
+  '''
+  exhaust $ map @load_ast args
+  @add_opcode 'CALL_FUNCTION' (-len args) (len args)
+
+
+Generator.call_ast = args on_stack ~>
   '''Call a function on top of the stack.
 
     on_stack -- how many arguments are already `@load`ed.
-    infix    -- whether to not parse keyword arguments.
 
     call_ast :: [Node] bool bool -> a
 
   '''
-  # TODO parse args
-  for a in args => @load_ast a
-  @add_opcode 'CALL_FUNCTION' (-len args - on_stack) (len args + on_stack)
+  a, kw, va, vkw = func_call_args args
+  exhaust $ map @load_ast a
+  exhaust $ map @load_key kw.items!
+  va  => @load_ast va
+  vkw => @load_ast vkw
 
-
-Generator.infixbind = kwd pos f arg ~>
-  '''Default infix bind implementation.
-
-    Partially applies the infix function to a value.
-    Equivalent to `bind (R) x` for `x R` and `bind (flip (R)) x` for `R x`.
-
-    infixbind :: str str Node Node -> a
-
-  '''
-  f.value in @prefix and not (f.value in builtins.__dict__) =>
-    Parser.error 'this operator is unbindable' f.loc
-
-  c = Generator ('<bound {.value}>'.format f) True (tuple' pos) (tuple' kwd) cell: self
-  c.load_call f (Name '<L>') (Name '<R>')
-  c.add_opcode 'RETURN_VALUE' -1 0
-  @make_function c tuple! $ dict' (kwd, arg)
+  @add_opcode
+    'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
+    0 - len a -   2 * len kw - on_stack
+    0 + len a + 256 * len kw + on_stack
 
 
 Generator.make_function = code defaults kwdefaults ~>
@@ -39,11 +148,9 @@ Generator.make_function = code defaults kwdefaults ~>
   const = code.frozen
   name  = code.qualname
 
-  for (k, v) in kwdefaults.items! =>
-    @load_const $ str k
-    @load_ast     v
-  for d in defaults          => @load_ast     d
-  for v in const.co_freevars => @load_closure v
+  exhaust $ map @load_key     kwdefaults.items!
+  exhaust $ map @load_ast     defaults
+  exhaust $ map @load_closure const.co_freevars
 
   @add_opcode 'BUILD_TUPLE' (1 - len const.co_freevars) (len const.co_freevars)
   @load_const const
@@ -53,7 +160,29 @@ Generator.make_function = code defaults kwdefaults ~>
     0 + len defaults + 256 * len kwdefaults
 
 
-Generator.prefix !! '->' = Generator.load_function = f args ~>
+Generator.infixbind = kwd pos f arg ~>
+  '''Default infix bind implementation.
+
+    `x R` <=> `y -> x R y`
+    `R x` <=> `y -> y R x`
+
+    infixbind :: str str Node Node -> a
+
+  '''
+  f.value in @prefix and not (f.value in builtins.__dict__) =>
+    # Note that partial binding of macros does not actually use
+    # runtime functions (as `load_call` will prefer compile-time ones.)
+    # Still, this is a pretty good method of checking if
+    # someone's attempting to partially bind assignment operators, etc.
+    Parser.error 'this operator is unbindable' f.loc
+
+  c = Generator ('<bound {.value}>'.format f) True (tuple' pos) (tuple' kwd) cell: self
+  c.load_call f (Name '<L>') (Name '<R>')
+  c.add_opcode 'RETURN_VALUE' -1 0
+  @make_function c tuple! $ dict' (kwd, arg)
+
+
+Generator.prefix !! '->' = Generator.load_function = f (args, body) ~>
   '''Create a function.
 
     x -> y
@@ -61,10 +190,13 @@ Generator.prefix !! '->' = Generator.load_function = f args ~>
     load_function :: a (Node, Node) -> a
 
   '''
-  argspec, body = args
-  # TODO parse the argspec.
-  a = list' argspec.value
-  g = Generator '<lambda>' True a cell: self
+  a, kw, da, dkw, va, vkw, patterns = func_def_args args
+  g = Generator '<lambda>' True a kw va vkw self
+
+  for (name, pattern) in patterns.items! =>
+    g.add_opcode 'LOAD_FAST' +1 $ g.varnames name
+    g.store_ast pattern
+
   g.load_ast body
   g.add_opcode 'RETURN_VALUE' -1 0
-  @make_function g tuple! dict!
+  @make_function g da dkw
