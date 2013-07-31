@@ -125,7 +125,7 @@ Generator = subclass object where
     @filename = '<generated>'
     @lineno   = 1
     @lnotab   = list!
-    @lineoff  = 1
+    @lineoff  = -1
     @byteoff  = 0
     None
 
@@ -135,7 +135,7 @@ Generator = subclass object where
       lnomark :: Node -> a
 
     '''
-    not @lnotab =>
+    @lineoff < 0 =>
       @filename = x.loc !! 0
       @lineno   = x.loc !! 1
       @lineoff  = x.loc !! 1
@@ -144,6 +144,7 @@ Generator = subclass object where
     byteoff = codelen $ drop @byteoff @bytecode
 
     lineoff > 0 and byteoff > 0 =>
+      @lineoff = x.loc !! 1
       @lnotab += lineoff // 256 * list' 0 255
       @lnotab += byteoff // 256 * list' 255 0
       @lnotab += list' (byteoff % 256) (lineoff % 256)
