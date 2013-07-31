@@ -1,0 +1,42 @@
+LazyInteger = __int__ ->
+  '''An object that can be converted into an integer on demand.
+
+    type LazyInteger { __int__ :: -> int }
+
+  '''
+  call $ subclass object
+
+
+Generator.get_freevar = name ~>
+  '''Fetch the index of a free variable.
+
+    `cellvars` and `freevars` share the index space, so
+    this needs to be deferred until compilation time.
+
+  '''
+  LazyInteger $ _ i: (@freevars name) -> len @cellvars + 1
+
+
+Generator.load = name ~>
+  '''Push the value assigned to some name onto the value stack.
+
+    load :: Name -> a
+
+  '''
+  if name.value in @cellvars => @add_opcode +1 'LOAD_DEREF'  $ @cellvars name.value
+     @cell is None           => @add_opcode +1 'LOAD_GLOBAL' $ @names name.value
+     otherwise               => @add_opcode +1 'LOAD_DEREF'  $ @get_freevar name.value
+
+
+Generator.store = name ~>
+  '''Store the value on top of the stack in a variable.
+
+    store :: Name -> a
+
+  '''
+  if
+    name.value in @enclosed or name.value in @freevars =>
+      # Log.note name.loc $ '{.value} is a non-local variable'.format name
+      @add_opcode -1 'STORE_DEREF' $ @get_freevar name.value
+    otherwise =>
+      @add_opcode -1 'STORE_DEREF' $ @cellvars name.value

@@ -1,0 +1,82 @@
+JumpObject = subclass object where
+  '''An argument to a jump opcode.
+
+    type JumpObject {
+      code :: [(int, int)] -- bytecode to insert opcodes into
+      forward :: bool -- whether the jump lands after the opcode
+      absolute :: bool -- whether to start counting from the beginning of `code`
+      op :: int -- opcode to insert
+      start :: int -- bytecode offset this object was created at
+      value :: Maybe int -- argument to the opcode or None
+    }
+
+  '''
+  __int__  = self -> @value or 0
+  __init__ = @code @forward @absolute @op ~>
+    @start = len code
+    @value = None
+    @forward => @code.append (@op, self)
+    None
+
+
+  set = ~>
+    '''Set the target/insert the opcode.
+
+      set :: a
+
+    '''
+    @value is None =>
+      @value = 0
+      @absolute => @value += codelen $ take  start      @code
+      @forward  => @value += codelen $ drop (start + 1) @code
+
+      @absolute and not @forward =>
+        sz = 0x0
+        while @value >= sz =>
+          # This jump needs to account for itself.
+          @value += 3
+          sz <<= 16
+
+    not @forward => @code.append (@op, @value)
+
+
+Generator.pop_jump_if = value reverse ~>
+  '''Insert a POP_JUMP_IF_ instruction.
+
+    pop_jump_if :: bool bool -> JumpObject
+
+  '''
+  JumpObject @bytecode (not reverse) True $ dis.opmap !! if
+    value     => 'POP_JUMP_IF_TRUE'
+    otherwise => 'POP_JUMP_IF_FALSE'
+
+
+Generator.jump_or_pop_if = value reverse ~>
+  '''Insert a JUMP_IF...OR_POP instruction.
+
+    jump_or_pop_if :: bool bool -> JumpObject
+
+  '''
+  JumpObject @bytecode (not reverse) True $ dis.opmap !! if
+    value     => 'JUMP_IF_TRUE_OR_POP'
+    otherwise => 'JUMP_IF_FALSE_OR_POP'
+
+
+Generator.jump = reverse ~>
+  '''Insert an unconditional jump.
+
+    jump :: bool -> JumpObject
+
+  '''
+  JumpObject @bytecode (not reverse) (bool reverse) $ dis.opmap !! if
+    reverse   => 'JUMP_ABSOLUTE'
+    otherwise => 'JUMP_FORWARD'
+
+
+Generator.setup = block ~>
+  '''Insert a SETUP_ instruction.
+
+    setup :: str -> JumpObject
+
+  '''
+  JumpObject @bytecode True False $ dis.opmap !! ('SETUP_' + str.upper block)
