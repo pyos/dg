@@ -33,7 +33,7 @@ Generator.infixbind = kwd pos f arg ~>
 Generator.make_function = code defaults kwdefaults ~>
   '''Freeze a `Generator` object and create a function out of it.
 
-    ext_make_function :: Generator [Node] {str: Node} -> a
+    make_function :: Generator [Node] {str: Node} -> a
 
   '''
   const = code.frozen
