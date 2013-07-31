@@ -168,3 +168,9 @@ Generator.prefix = dict'
     @var = x
     @add_opcode 'DUP_TOP' 1 0
     @store_ast name
+
+  '.',  f a ~>
+    x, y = ensure f a 2 2
+    y :: Name or Parser.error 'not an attribute' y.loc
+    @load_ast x
+    @add_opcode 'LOAD_ATTR' 0 $ @names y.value
