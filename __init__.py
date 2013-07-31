@@ -22,12 +22,21 @@ if tag is None:
     print('FATAL:', 'dg requires module caching to load itself.',      file=sys.stderr)
     exit(1)
 
+bundle = os.path.join(BUNDLE_DIR, tag + '.bundle')
 
-# This stuff is not self-sufficient yet.
-import dg
+if len(sys.argv) > 1 and '--build' in sys.argv:
+    if not os.path.isdir(SRC_DIR):
+        print('FATAL:', 'Cannot find the source code.',      file=sys.stderr)
+        print('      ', 'Your copy of the repo is corrupt.', file=sys.stderr)
+        exit(1)
 
+    try:
+        import dg
+    except ImportError:
+        print('NOTE: ', 'This crap is not self-sufficient yet.', file=sys.stderr)
+        print('FATAL:', '`master` branch of dg was not found.',  file=sys.stderr)
+        exit(1)
 
-def make_bundle(id):
     c = dg.compile.core.CodeGenerator('<module>')
 
     for f in sorted(os.listdir(SRC_DIR)):
@@ -35,20 +44,36 @@ def make_bundle(id):
             c.loadop('POP_TOP', dg.parse.fd(fd), delta=0)
 
     c.loadop('RETURN_VALUE', None, delta=0)
+    code = c.compiled
 
-    os.makedirs(BUNDLE_DIR, exist_ok=True)
-    with open(os.path.join(BUNDLE_DIR, id + '.bundle'), 'wb') as fd:
-        marshal.dump(c.compiled, fd)
+    try:
+        os.makedirs(BUNDLE_DIR, exist_ok=True)
+        with open(bundle, 'wb') as fd:
+            marshal.dump(code, fd)
+    except IOError as e:
+        print('DEBUG:', str(e),                                   file=sys.stderr)
+        print('WARN: ', 'Unable to store the compiled data.',     file=sys.stderr)
+        print('WARN: ', 'Bundle was not created. Running as is.', file=sys.stderr)
+
+else:
+    if not os.path.isfile(bundle):
+        print('FATAL:', 'No bundle found for your interpreter.', file=sys.stderr)
+        print('      ', "Try running this module with --build.", file=sys.stderr)
+        print('DEBUG:', 'Interpreter tag:', tag,                 file=sys.stderr)
+        exit(1)
+
+    with open(bundle, 'rb') as fd:
+        try:
+            code = marshal.load(fd)
+        except Exception as e:
+            print('FATAL:', 'Failed to load the precompiled bundle.', file=sys.stderr)
+            print('      ', "It's probably corrupt or something.",    file=sys.stderr)
+            print('DEBUG:', type(e).__name__ + ':', str(e),           file=sys.stderr)
+            exit(1)
 
 
-def load_bundle(id):
-    with open(os.path.join(BUNDLE_DIR, id + '.bundle'), 'rb') as fd:
-        code = marshal.load(fd)
-    mod = types.ModuleType('dgx')
-    eval(code, mod.__dict__, mod.__dict__)
-    return mod
-
-
-make_bundle(tag)
-mod = load_bundle(tag)
-eval(mod.compile('print ((x -> x + 2) (1 + 1))'))
+module = types.ModuleType('dgx')
+module.__file__ = bundle
+module.__path__ = __path__
+eval(code, module.__dict__)
+sys.modules['dgx'] = module
