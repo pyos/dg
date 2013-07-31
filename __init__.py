@@ -1,3 +1,4 @@
+import sys
 import types
 import marshal
 import os.path
@@ -7,6 +8,20 @@ import dg
 
 SRC_DIR    = os.path.join(__path__[0], 'core')
 BUNDLE_DIR = os.path.join(__path__[0], 'bundles')
+
+
+if not hasattr(sys, 'implementation'):
+    print('FATAL:', 'Your Python version is too old. 3.3 is required,', file=sys.stderr)
+    print('      ', 'as it supports a lot of cool new features.',       file=sys.stderr)
+    print('FATAL:', 'dg requires cool features to operate.',            file=sys.stderr)
+    exit(1)
+
+tag = sys.implementation.cache_tag
+
+if tag is None:
+    print('FATAL:', 'Module caching is disabled on iterpreter level.', file=sys.stderr)
+    print('FATAL:', 'dg requires module caching to load itself.',      file=sys.stderr)
+    exit(1)
 
 
 def make_bundle(id):
@@ -31,6 +46,6 @@ def load_bundle(id):
     return mod
 
 
-#make_bundle('cpython-33')
-mod = load_bundle('cpython-33')
-eval(mod.compile('print (1 + 1)'))
+make_bundle(tag)
+mod = load_bundle(tag)
+eval(mod.compile('print ((x -> x + 2) (1 + 1))'))
