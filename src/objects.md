@@ -37,7 +37,8 @@ sam.gallop
 ```
 
 Now, it is not very easy to reset the namespace every time you need
-to create a class. That is why there is
+to create a class. (Also, in case you haven't noticed, that only works
+in functions, not in global scopes and the REPL.) That is why there is
 
 ### Local name binding
 
