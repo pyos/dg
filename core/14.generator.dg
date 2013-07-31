@@ -94,10 +94,10 @@ Generator = subclass object where
     @names    = OrderedSet!
     @consts   = OrderedSet!
     @freevars = OrderedSet!
-    @cellvars = OrderedSet!
     @varnames = OrderedSet $ zip
       itertools.chain a kw va vkw  # attributes are stored as fast locals implicitly
       itertools.count 0
+    @cellvars = OrderedSet @varnames
 
     @cell     = cell or None
     @enclosed = if
