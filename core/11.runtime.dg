@@ -1,49 +1,44 @@
-# Shorthand type constructors (e.g. `set' a b`  <=> `set (a, b)`.)
-# These allow to use line continuation neatly.
 builtins.set'  = *: xs -> set  xs
 builtins.list' = *: xs -> list xs
 builtins.dict' = *: xs **: ys -> dict xs **: ys
 
-builtins.bind   = functools.partial
-builtins.flip   = f -> x y -> f y x
+builtins.bind = functools.partial
+builtins.flip = f -> x y -> f y x
 
 builtins.call = builtins.(!) = builtins.($) = f *: xs -> f *: xs
 builtins.(,)  = builtins.tuple' = *: xs -> xs
 
-builtins.(<)  = operator.lt
-builtins.(<=) = operator.le
-builtins.(==) = operator.eq
-builtins.(!=) = operator.ne
-builtins.(>)  = operator.gt
-builtins.(>=) = operator.ge
-builtins.(is) = operator.is_
-builtins.(in) = flip operator.contains
-
-builtins.not  = operator.not_
-builtins.(~)  = operator.invert
-builtins.(+)  = operator.add
-builtins.(-)  = operator.sub
-builtins.(*)  = operator.mul
-builtins.(**) = operator.pow
-builtins.(/)  = operator.truediv
-builtins.(//) = operator.floordiv
-builtins.(%)  = operator.mod
-builtins.(!!) = operator.getitem
-builtins.(&)  = operator.and_
-builtins.(^)  = operator.xor
-builtins.(|)  = operator.or_
-builtins.(<<) = operator.lshift
-builtins.(>>) = operator.rshift
+builtins.not   = operator.not_
+builtins.(in)  = a b -> a in b
+builtins.(is)  = operator.is_
+builtins.(<)   = operator.lt
+builtins.(<=)  = operator.le
+builtins.(==)  = operator.eq
+builtins.(!=)  = operator.ne
+builtins.(>)   = operator.gt
+builtins.(>=)  = operator.ge
+builtins.(~)   = operator.invert
+builtins.(+)   = operator.add
+builtins.(-)   = operator.sub
+builtins.(*)   = operator.mul
+builtins.(**)  = operator.pow
+builtins.(/)   = operator.truediv
+builtins.(//)  = operator.floordiv
+builtins.(%)   = operator.mod
+builtins.(!!)  = operator.getitem
+builtins.(&)   = operator.and_
+builtins.(^)   = operator.xor
+builtins.(|)   = operator.or_
+builtins.(<<)  = operator.lshift
+builtins.(>>)  = operator.rshift
 builtins.(!!~) = operator.delitem
 
-# Not-actually-operators.
-builtins.(...)  = Ellipsis
-builtins.(..)   = range
-builtins.(::)   = a *: xs -> a `isinstance` xs
-builtins.(->)   = -> None
-builtins.(~>)   = property self -> None
+builtins.(..)  = range
+builtins.(::)  = isinstance
+builtins.(->)  = -> None
+builtins.(~>)  = property $ self -> None
+builtins.(...) = Ellipsis
 
-# Functional stuff.
 builtins.(<-)   = f g -> *: a **: k -> f $ g *: a **: k
 builtins.foldl  = f st xs -> functools.reduce f xs st
 builtins.foldl1 = f xs    -> functools.reduce f xs
@@ -60,13 +55,12 @@ builtins.iterate   = f x -> while True =>
   yield x
   x = f x
 
-builtins.head = next <- iter
-builtins.tail = list <- bind drop 1
+builtins.head = xs -> next $ iter xs
+builtins.tail = xs -> list $ drop 1 xs
 builtins.fst  = head
-builtins.snd  = head <- bind drop 1
+builtins.snd  = xs -> head $ drop 1 xs
 builtins.init = (!! slice None -1)
 builtins.last = (!! -1)
 
-# An alias for neater `if`s and `except`s.
 builtins.otherwise = True
 builtins.finally   = Ellipsis  # not actually used
