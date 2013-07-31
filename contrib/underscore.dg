@@ -1,0 +1,62 @@
+import '/builtins'
+
+ArityError = subclass TypeError where
+  __str__ = self -> '{} expected {} argument(s), got {}'.format *: @args
+
+
+f = text g -> a b: None ->
+  new_repr = text.format a b
+  if a :: Fn and b :: Fn => Fn (*: x -> (f '' g) (a *: (take a.arity x)) (b *: (drop a.arity x))) new_repr (a.arity + b.arity)
+     a :: Fn => Fn (*: x -> (f '' g) (a *: x) b) new_repr a.arity
+     b :: Fn => Fn (*: x -> (f '' g) a (b *: x)) new_repr b.arity
+     b is None => g a
+     otherwise => g a b
+
+
+Fn = subclass object where
+  __init__  = @callback @format @arity ~> None
+  __repr__  = self -> @format
+
+  __call__ = *: args ~> if
+      len args == @arity => @callback *: args
+      otherwise => raise $ ArityError @format @arity (len args)
+
+  __divmod__    = f '(divmod {!r} {!r})'          divmod
+  __getattr__   = f '(getattr {!r} {!r})'         getattr
+  __getitem__   = f '({!r} !! {!r})'              (!!)
+  __add__       = f '({!r} + {!r})'               (+)
+  __mul__       = f '({!r} * {!r})'               (*)
+  __sub__       = f '({!r} - {!r})'               (-)
+  __pow__       = f '({!r} ** {!r})'              (**)
+  __truediv__   = f '({!r} / {!r})'               (/)
+  __floordiv__  = f '({!r} // {!r})'              (//)
+  __mod__       = f '({!r} % {!r})'               (%)
+  __and__       = f '({!r} & {!r})'               (&)
+  __or__        = f '({!r} | {!r})'               (|)
+  __xor__       = f '({!r} ^ {!r})'               (^)
+  __lshift__    = f '({!r} << {!r})'              (<<)
+  __rshift__    = f '({!r} >> {!r})'              (>>)
+  __invert__    = f '(~{!r})'                     (~)
+  __lt__        = f '({!r} < {!r})'               (<)
+  __le__        = f '({!r} <= {!r})'              (<=)
+  __gt__        = f '({!r} > {!r})'               (>)
+  __ge__        = f '({!r} >= {!r})'              (>=)
+  __eq__        = f '({!r} == {!r})'              (==)
+  __ne__        = f '({!r} != {!r})'              (!=)
+  __rdivmod__   = f '(divmod {1!r} {0!r})' $ flip divmod
+  __contains__  = f '({1!r} in {0!r})'     $ flip (in)
+  __radd__      = f '({1!r} + {0!r})'      $ flip (+)
+  __rmul__      = f '({1!r} * {0!r})'      $ flip (*)
+  __rsub__      = f '({1!r} - {0!r})'      $ flip (-)
+  __rpow__      = f '({1!r} ** {0!r})'     $ flip (**)
+  __rtruediv__  = f '({1!r} / {0!r})'      $ flip (/)
+  __rfloordiv__ = f '({1!r} // {0!r})'     $ flip (//)
+  __rmod__      = f '({1!r} % {0!r})'      $ flip (%)
+  __rand__      = f '({1!r} & {0!r})'      $ flip (&)
+  __ror__       = f '({1!r} | {0!r})'      $ flip (|)
+  __rxor__      = f '({1!r} ^ {0!r})'      $ flip (^)
+  __rlshift__   = f '({1!r} << {0!r})'     $ flip (<<)
+  __rrshift__   = f '({1!r} >> {0!r})'     $ flip (>>)
+
+
+builtins._ = Fn (x -> x) '_' 1
