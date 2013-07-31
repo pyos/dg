@@ -25,13 +25,13 @@ Generator.load = name ~>
   '''
   v = name.value
 
-  if v in @cellvars => @add_opcode +1 'LOAD_DEREF'  $ @cellvars v
+  if v in @cellvars => @add_opcode 'LOAD_DEREF'  +1 $ @cellvars v
      v in @varnames =>
        (@f_locals !! v).add (len @bytecode, dis.opmap !! 'LOAD_DEREF')
-       @add_opcode +1 'LOAD_FAST' $ @varnames v
-     v in @enclosed => @add_opcode +1 'LOAD_DEREF'  $ @get_freevar v
-     @slowlocals    => @add_opcode +1 'LOAD_NAME'   $ @names v
-     otherwise      => @add_opcode +1 'LOAD_GLOBAL' $ @names v
+       @add_opcode 'LOAD_FAST' +1 $ @varnames v
+     v in @enclosed => @add_opcode 'LOAD_DEREF'  +1 $ @get_freevar v
+     @slowlocals    => @add_opcode 'LOAD_NAME'   +1 $ @names v
+     otherwise      => @add_opcode 'LOAD_GLOBAL' +1 $ @names v
 
 
 Generator.store = name ~>
@@ -42,12 +42,12 @@ Generator.store = name ~>
   '''
   v = name.value
 
-  if v in @cellvars => @add_opcode -1 'STORE_DEREF' $ @cellvars    v
-     v in @enclosed => @add_opcode -1 'STORE_DEREF' $ @get_freevar v
-     @slowlocals    => @add_opcode -1 'STORE_NAME'  $ @names v
+  if v in @cellvars => @add_opcode 'STORE_DEREF' -1 $ @cellvars    v
+     v in @enclosed => @add_opcode 'STORE_DEREF' -1 $ @get_freevar v
+     @slowlocals    => @add_opcode 'STORE_NAME'  -1 $ @names v
      otherwise      =>
        (@f_locals !! v).add (len @bytecode, dis.opmap !! 'STORE_DEREF')
-       @add_opcode -1 'STORE_FAST' $ @varnames v
+       @add_opcode 'STORE_FAST' -1 $ @varnames v
 
 
 Generator.load_closure = name ~>
@@ -61,4 +61,4 @@ Generator.load_closure = name ~>
   for (i, c) in @f_locals !! v =>
     @bytecode !! i = c, @cellvars v
 
-  @add_opcode +1 'LOAD_CLOSURE' $ @cellvars.get v $ @get_freevar v
+  @add_opcode 'LOAD_CLOSURE' +1 $ @cellvars.get v $ @get_freevar v

@@ -148,7 +148,7 @@ Generator = subclass object where
       @lnotab += byteoff // 256 * list' 255 0
       @lnotab += list' (byteoff % 256) (lineoff % 256)
 
-  add_opcode = delta name value ~>
+  add_opcode = name delta value ~>
     '''Append a new opcode to the sequence.
 
       add_opcode :: str int int -> a

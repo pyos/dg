@@ -9,7 +9,7 @@ Generator.call_ast = args on_stack infix ~>
   '''
   # TODO parse args
   for a in args => @load_ast a
-  @add_opcode (-len args - on_stack) 'CALL_FUNCTION' (len args + on_stack)
+  @add_opcode 'CALL_FUNCTION' (-len args - on_stack) (len args + on_stack)
 
 
 Generator.infixbind = kwd pos f arg ~>
@@ -26,7 +26,7 @@ Generator.infixbind = kwd pos f arg ~>
 
   c = Generator ('<bound {.value}>'.format f) True (tuple' pos) (tuple' kwd) cell: self
   c.load_call f (Name '<L>') (Name '<R>')
-  c.add_opcode -1 'RETURN_VALUE' 0
+  c.add_opcode 'RETURN_VALUE' -1 0
   @make_function c tuple! $ dict' (kwd, arg)
 
 
@@ -45,12 +45,11 @@ Generator.make_function = code defaults kwdefaults ~>
   for d in defaults          => @load_ast     d
   for v in const.co_freevars => @load_closure v
 
-  @add_opcode (1 - len const.co_freevars) 'BUILD_TUPLE' (len const.co_freevars)
+  @add_opcode 'BUILD_TUPLE' (1 - len const.co_freevars) (len const.co_freevars)
   @load_const const
   @load_const name
-  @add_opcode
+  @add_opcode 'MAKE_CLOSURE'
     1 - len defaults -   2 * len kwdefaults
-    'MAKE_CLOSURE'
     0 + len defaults + 256 * len kwdefaults
 
 
@@ -67,5 +66,5 @@ Generator.prefix !! '->' = Generator.load_function = f args ~>
   a = list' argspec.value
   g = Generator '<lambda>' True a cell: self
   g.load_ast body
-  g.add_opcode -1 'RETURN_VALUE' 0
+  g.add_opcode 'RETURN_VALUE' -1 0
   @make_function g tuple! dict!

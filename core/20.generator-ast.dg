@@ -24,7 +24,7 @@ compileast = x ->
   '''
   gen = Generator '' True
   gen.load_ast x
-  gen.add_opcode -1 'RETURN_VALUE' 0
+  gen.add_opcode 'RETURN_VALUE' -1 0
   gen.frozen
 
 
@@ -37,7 +37,7 @@ Generator.load_const = x ~>
     load_const :: object -> a
 
   '''
-  @add_opcode +1 'LOAD_CONST' $ @consts (x, type x)
+  @add_opcode 'LOAD_CONST' +1 $ @consts (x, type x)
 
 
 Generator.load_ast = x ~>
