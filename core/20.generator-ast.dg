@@ -71,16 +71,73 @@ Generator.load_call = f *: args ~>
        @call_ast args 0
 
 
+Generator.chain = *: (*xs, x) ~>
+  '''Evaluate some expressions, return the result of the last one.
+
+    chain :: Node (Many Node) -> a
+
+  '''
+  for y in xs =>
+    @load_ast y
+    @add_opcode 'POP_TOP' -1 0
+  @load_ast x
+
+
 Generator.store_ast = x ~>
   '''Store the value on top of the stack in a place referenced by an AST.
 
     store_ast :: Node -> a
 
   '''
-  raise NotImplementedError
+  if
+    x :: Expression and x.op == ',' =>
+      # (a, b, c = x) => unpack `x` and call `store_ast` for each
+      # of `a`, `b`, and `c`. If exactly of the items is preceded by a star
+      # (e.g. `*c`), all items that didn't have place in other variables
+      # are stored there as a list.
+      star = -1
 
+      for (i, q) in enumerate x.args => q :: RightBind and q.op == '*' =>
+        star >= 0 => Parse.error 'only one starred item is allowed'    q.loc
+        i > 255   => Parse.error 'too many items before a starred one' q.loc
+        star = i
+        x.args !! i = head q.args
+
+      if star >= 0 => @add_opcode 'UNPACK_SEQUENCE' (len x.args - 1) (256 * len x.args - 255 * star - 256)
+         otherwise => @add_opcode 'UNPACK_EX'       (len x.args - 1) (len x.args)
+
+      exhaust $ map @store_ast x.args
+
+    x :: RightBind and x.op == '@' =>
+      # `@a` is equivalent to `self.a`.
+      head x.args :: Name or Parser.error 'not an attribute' (head x.args).loc
+      @load (Name 'self' at: x.op.loc)
+      @add_opcode 'STORE_ATTR' -1 $ @names (head x.args).value
+
+    x :: Expression and len x.args == 2 and x.op == '.' =>
+      # `a.b` => load `a`, store an attribute named `b`.
+      snd x.args :: Name or Parser.error 'not an attribute' (snd x.args).loc
+      @load_ast $ fst x.args
+      @add_opcode 'STORE_ATTR' -1 $ @names (snd x.args).value
+
+    x :: Expression and len x.args == 2 and x.op == '!!' =>
+      # `a !! b = x` <=> `a.__setitem__ b x`
+      @load_ast $ fst x.args
+      @load_ast $ snd x.args
+      @add_opcode 'STORE_SUBSCR' -1 0
+
+    x :: Name => @store x
+    otherwise => Parse.error 'not something one can assign to' x.loc
 
 # See `generator-closures` for default infix bind implementations.
-Generator.infixl = collections.defaultdict (-> s f a -> s.infixbind '<L>' '<R>' f a)
-Generator.infixr = collections.defaultdict (-> s f a -> s.infixbind '<R>' '<L>' f a)
-Generator.prefix = dict' ('', s f a -> s.load_call *: a)
+Generator.infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
+Generator.infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a)
+Generator.prefix = dict'
+  '',   f a ~> @load_call *: a
+  '\n', f a ~> @chain     *: a
+  '=',  f (name, value) ~>
+    @var, x = repr name, @var
+    @load_ast value
+    @var = x
+    @add_opcode 'DUP_TOP' 1 0
+    @store_ast name

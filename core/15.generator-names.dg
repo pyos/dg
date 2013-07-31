@@ -1,3 +1,8 @@
+# String representation of the variable on the left side of
+# the innermost assignment or None.
+Generator.var = None
+
+
 LazyInteger = __int__ ->
   '''An object that can be converted into an integer on demand.
 
@@ -64,3 +69,16 @@ Generator.load_closure = name ~>
   @add_opcode 'LOAD_CLOSURE' +1 $ if
     v in @varnames => @cellvars v
     otherwise      => @cellvars.get v $ @get_freevar v
+
+
+Generator.child_name = fallback ~>
+  '''Make a name for a child code object.
+
+    fallback -- the name to use if the code object is not assigned to anything.
+
+    child_name :: str -> str
+
+  '''
+  name = @var or fallback
+  if str.isidentifier name or (name.startswith '<' and name.endswith '>') => name
+     otherwise => '<' + name + '>'

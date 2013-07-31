@@ -191,7 +191,7 @@ Generator.prefix !! '->' = Generator.load_function = f (args, body) ~>
 
   '''
   a, kw, da, dkw, va, vkw, patterns = func_def_args args
-  g = Generator '<lambda>' True a kw va vkw self
+  g = Generator (@child_name '<lambda>') True a kw va vkw self
 
   for (name, pattern) in patterns.items! =>
     g.add_opcode 'LOAD_FAST' +1 $ g.varnames name
