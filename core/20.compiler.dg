@@ -82,6 +82,16 @@ Generator.load_ast = x ~>
      otherwise       => raise $ TypeError 'invalid node node' x (type x)
 
 
+Generator.load_key = (k, v) ~>
+  '''Push a string-object pair.
+
+    load_key :: (str, Node) -> a
+
+  '''
+  @load_const k
+  @load_ast   v
+
+
 Generator.load_call = f *: args ~>
   '''Push the result of calling `f` with `args` onto the value stack.
 
@@ -155,7 +165,7 @@ Generator.store_ast = x ~>
     x :: Name => @store x
     otherwise => Parser.error 'not something one can assign to' x.loc
 
-# See `generator-closures` for default infix bind implementations.
+
 Generator.infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
 Generator.infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a)
 Generator.prefix = dict'

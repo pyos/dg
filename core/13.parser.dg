@@ -17,7 +17,7 @@ parsefd = data filename: '<stream>' ->
     fd :: TextIOBase (Optional str) -> Node
  
   '''
-  it (data.read -1) (getattr data 'name' filename)
+  parse (data.read -1) (getattr data 'name' filename)
 
 
 Parser = subclass collections.deque where

@@ -1,0 +1,75 @@
+Generator.prefix !! 'import' = f args ~>
+  '''Import a module given a POSIX-style path.
+
+    import 'path/to/the/object' [qualified]
+
+    _ :: Name [Node] -> a
+
+  '''
+  name, qualified, *_ = ensure f args 1 2 + tuple' None
+
+  not $ name :: Constant  => Parser.error 'should be constant' name.loc
+  not $ name.value :: str => Parser.error 'should be a string' name.loc
+  not $ qualified in (None, 'qualified') => Parser.error 'invalid argument' qualified.loc
+
+  parent = 1
+  path   = (posixpath.normpath name.value).split posixpath.sep
+  while path and head path == ''           and not (path.pop 0) => parent  = 0
+  while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
+  while path and head path == posixpath.curdir and  path.pop 0  => ()
+  not path => Parser.error 'no module name' name.loc
+
+  if
+    qualified or len path == 1 =>
+      @load_const parent
+      @load_const None
+      @add_opcode 'IMPORT_NAME' -1 $ @names $ '.'.join path
+
+    otherwise =>
+      *dir, file = path
+      @load_const parent
+      @load_const $ tuple' file
+      @add_opcode 'IMPORT_NAME' -1 $ @names $ '.'.join dir
+      @add_opcode 'IMPORT_FROM' +1 $ @names file
+      @add_opcode 'ROT_TWO' +0 0
+      @add_opcode 'POP_TOP' -1 0
+
+  @add_opcode 'DUP_TOP' +1 0
+  @store_ast $ Name $ path !! (-not qualified)
+
+
+ModuleLoader = if
+  PY_VERSION >= 0x03040000 => subclass importlib.machinery.SourceFileLoader where
+    # Python 3.4+ includes a neat little method called "source_to_code"
+    # in its `SourceFileLoader` which we can use to replace `compile`
+    # with our own function and keep the rest of the machinery intact.
+    source_to_code = data filename ~> compile (data.decode 'utf-8') filename
+
+  otherwise => subclass importlib.machinery.SourceFileLoader where
+    # Python 3.3, unfortunately, does not have such a thing.
+    # However, we can use an (incredibly silly) trick to make
+    # `get_code` use what we want.
+    original = importlib.machinery.SourceFileLoader.get_code
+    get_code = types.FunctionType
+      original.__code__
+      dict original.__globals__
+        # Yeah, we'll create a duplicate global namespace,
+        # replace `compile` with our own, then make `get_code`
+        # use that namespace.
+        compile: (data filename _ dont_inherit -> compile (data.decode 'utf-8') filename)
+      original.__name__
+      original.__defaults__
+      original.__closure__
+
+
+sys.meta_path.insert 0 $ subclass object where
+  # Unfortunately, I've yet to find a way to make THIS better.
+  # Ugh.
+  find_module = classmethod $ fullname path: None ~> next $ call
+    (pkg, _, name) ->
+      for p in (path or sys.path) =>
+        for n in (os.path.join p name '__init__.dg', os.path.join p name + '.dg', False) =>
+          if os.path.isfile n =>
+            yield $ ModuleLoader fullname n
+      yield None
+    fullname.rpartition '.'

@@ -1,7 +1,9 @@
 # All of the files in this directory are compiled into a single bundle.
 # Imports go here.
+import '/os'
 import '/re'
 import '/dis'
+import '/sys'
 import '/types'
 import '/builtins'
 import '/operator'
@@ -9,6 +11,7 @@ import '/itertools'
 import '/functools'
 import '/posixpath'
 import '/collections'
+import '/importlib/machinery' qualified
 import '/ast/literal_eval'
 
 # Bytecode may change between versions, yet we somehow need
