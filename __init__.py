@@ -24,17 +24,17 @@ if tag is None:
 
 bundle = os.path.join(BUNDLE_DIR, tag + '.bundle')
 
+try:
+    import dg
+except ImportError:
+    print('NOTE: ', 'This crap is not self-sufficient yet.', file=sys.stderr)
+    print('FATAL:', '`master` branch of dg was not found.',  file=sys.stderr)
+    exit(1)
+
 if len(sys.argv) > 1 and '--build' in sys.argv:
     if not os.path.isdir(SRC_DIR):
         print('FATAL:', 'Cannot find the source code.',      file=sys.stderr)
         print('      ', 'Your copy of the repo is corrupt.', file=sys.stderr)
-        exit(1)
-
-    try:
-        import dg
-    except ImportError:
-        print('NOTE: ', 'This crap is not self-sufficient yet.', file=sys.stderr)
-        print('FATAL:', '`master` branch of dg was not found.',  file=sys.stderr)
         exit(1)
 
     c = dg.compile.core.CodeGenerator('<module>')
