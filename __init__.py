@@ -1,9 +1,8 @@
+from __future__ import print_function
 import sys
 import types
 import marshal
 import os.path
-# This stuff is not self-sufficient yet.
-import dg
 
 
 SRC_DIR    = os.path.join(__path__[0], 'core')
@@ -22,6 +21,10 @@ if tag is None:
     print('FATAL:', 'Module caching is disabled on iterpreter level.', file=sys.stderr)
     print('FATAL:', 'dg requires module caching to load itself.',      file=sys.stderr)
     exit(1)
+
+
+# This stuff is not self-sufficient yet.
+import dg
 
 
 def make_bundle(id):
