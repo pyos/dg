@@ -61,4 +61,6 @@ Generator.load_closure = name ~>
   for (i, c) in @f_locals !! v =>
     @bytecode !! i = c, @cellvars v
 
-  @add_opcode 'LOAD_CLOSURE' +1 $ @cellvars.get v $ @get_freevar v
+  @add_opcode 'LOAD_CLOSURE' +1 $ if
+    v in @varnames => @cellvars v
+    otherwise      => @cellvars.get v $ @get_freevar v

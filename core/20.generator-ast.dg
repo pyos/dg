@@ -22,7 +22,7 @@ compileast = x ->
     x :: Node -> CodeType
 
   '''
-  gen = Generator '' True
+  gen = Generator '' False
   gen.load_ast x
   gen.add_opcode 'RETURN_VALUE' -1 0
   gen.frozen
