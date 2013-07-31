@@ -124,8 +124,8 @@ Generator.store_ast = x ~>
       star = -1
 
       for (i, q) in enumerate x.args => q :: RightBind and q.op == '*' =>
-        star >= 0 => Parse.error 'only one starred item is allowed'    q.loc
-        i > 255   => Parse.error 'too many items before a starred one' q.loc
+        star >= 0 => Parser.error 'only one starred item is allowed'    q.loc
+        i > 255   => Parser.error 'too many items before a starred one' q.loc
         star = i
         x.args !! i = head q.args
 
@@ -153,7 +153,7 @@ Generator.store_ast = x ~>
       @add_opcode 'STORE_SUBSCR' -1 0
 
     x :: Name => @store x
-    otherwise => Parse.error 'not something one can assign to' x.loc
+    otherwise => Parser.error 'not something one can assign to' x.loc
 
 # See `generator-closures` for default infix bind implementations.
 Generator.infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
