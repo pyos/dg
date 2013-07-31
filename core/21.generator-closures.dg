@@ -1,3 +1,35 @@
+Generator.call_ast = args on_stack infix ~>
+  '''Call a function on top of the stack.
+
+    on_stack -- how many arguments are already `@load`ed.
+    infix    -- whether to not parse keyword arguments.
+
+    call_ast :: [Node] bool bool -> a
+
+  '''
+  # TODO parse args
+  for a in args => @load_ast a
+  @add_opcode (-len args - on_stack) 'CALL_FUNCTION' (len args + on_stack)
+
+
+Generator.infixbind = kwd pos f arg ~>
+  '''Default infix bind implementation.
+
+    Partially applies the infix function to a value.
+    Equivalent to `bind (R) x` for `x R` and `bind (flip (R)) x` for `R x`.
+
+    infixbind :: str str Node Node -> a
+
+  '''
+  f.value in @prefix and not (f.value in builtins.__dict__) =>
+    Parser.error 'this operator is unbindable' f.loc
+
+  c = Generator ('<bound {.value}>'.format f) True (tuple' pos) (tuple' kwd) cell: self
+  c.load_call f (Name '<L>') (Name '<R>')
+  c.add_opcode -1 'RETURN_VALUE' 0
+  @make_function c tuple! $ dict' (kwd, arg)
+
+
 Generator.make_function = code defaults kwdefaults ~>
   '''Freeze a `Generator` object and create a function out of it.
 
@@ -27,6 +59,13 @@ Generator.make_function = code defaults kwdefaults ~>
 
 
 Generator.prefix !! '->' = Generator.load_function = f args ~>
+  '''Create a function.
+
+    x -> y
+
+    load_function :: a (Node, Node) -> a
+
+  '''
   argspec, body = args
   # TODO parse the argspec.
   a = list' argspec.value
