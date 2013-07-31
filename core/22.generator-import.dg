@@ -1,0 +1,39 @@
+Generator.prefix !! 'import' = f args ~>
+  '''Import a module given a POSIX-style path.
+
+    import 'path/to/the/object' [qualified]
+
+    _ :: Name [Node] -> a
+
+  '''
+  name, qualified, *_ = ensure f args 1 2 + tuple' None
+
+  not $ name :: Constant  => Parser.error 'should be constant' name.loc
+  not $ name.value :: str => Parser.error 'should be a string' name.loc
+  not $ qualified in (None, 'qualified') => Parser.error 'invalid argument' qualified.loc
+
+  parent = 1
+  path   = (posixpath.normpath name.value).split posixpath.sep
+  while path and head path == ''           and not (path.pop 0) => parent  = 0
+  while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
+  while path and head path == posixpath.curdir and  path.pop 0  => ()
+  not path => Parser.error 'no module name' name.loc
+
+  if
+    qualified or len path == 1 =>
+      @load_const parent
+      @load_const None
+      @add_opcode 'IMPORT_NAME' -1 $ @names $ '.'.join path
+
+    otherwise =>
+      *dir, file = path
+      @load_const parent
+      @load_const $ tuple' file
+      @add_opcode 'IMPORT_NAME' -1 $ @names $ '.'.join dir
+      @add_opcode 'IMPORT_FROM' +1 $ @names file
+      @add_opcode 'ROT_TWO' +0 0
+      @add_opcode 'POP_TOP' -1 0
+
+  @add_opcode 'DUP_TOP' +1 0
+  @store_ast $ Name $ path !! (-not qualified)
+

@@ -7,6 +7,7 @@ import '/builtins'
 import '/operator'
 import '/itertools'
 import '/functools'
+import '/posixpath'
 import '/collections'
 import '/ast/literal_eval'
 
