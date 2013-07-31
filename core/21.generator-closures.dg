@@ -182,7 +182,7 @@ Generator.infixbind = kwd pos f arg ~>
   @make_function c tuple! $ dict' (kwd, arg)
 
 
-Generator.prefix !! '->' = Generator.load_function = f (args, body) ~>
+Generator.prefix !! '->' = Generator.load_function = f args ~>
   '''Create a function.
 
     x -> y
@@ -190,6 +190,7 @@ Generator.prefix !! '->' = Generator.load_function = f (args, body) ~>
     load_function :: a (Node, Node) -> a
 
   '''
+  args, body = ensure f args 2 2
   a, kw, da, dkw, va, vkw, patterns = func_def_args args
   g = Generator (@child_name '<lambda>') True a kw va vkw self
 

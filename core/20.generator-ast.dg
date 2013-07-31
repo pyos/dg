@@ -28,6 +28,32 @@ compileast = x ->
   gen.frozen
 
 
+ensure = f args min: 1 max: (float 'inf') ->
+  '''Raise appropriate exceptions if the number of arguments
+     is outside the specified range.
+
+    ensure :: Name [a] int int -> [a]
+
+  '''
+  len args < min => Parser.error ('not enough arguments (got {}, min. {})'.format (len args) min) f.loc
+  len args > max => Parser.error ('too many arguments (got {}, max. {})'  .format (len args) max) f.loc
+  args
+
+
+unpack = f args g ->
+  '''Unpack function arguments by using another function as a template.
+
+    unpack :: Name [Node] (T -> a) -> a
+
+  '''
+  except
+    e =>
+      a, kw, va, vkw = func_call_args args
+      va or vkw => Parser.error "can't use varargs with compile-time macros" (va or vkw).loc
+      g *: a **: kw
+    e :: TypeError => Parser.error (str e) f.loc
+
+
 Generator.load_const = x ~>
   '''Push `x` onto the value stack.
 
@@ -135,7 +161,8 @@ Generator.infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a
 Generator.prefix = dict'
   '',   f a ~> @load_call *: a
   '\n', f a ~> @chain     *: a
-  '=',  f (name, value) ~>
+  '=',  f a ~>
+    name, value = ensure f a 2 2
     @var, x = repr name, @var
     @load_ast value
     @var = x
