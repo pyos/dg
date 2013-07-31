@@ -1,0 +1,36 @@
+Generator.make_function = code defaults kwdefaults ~>
+  '''Freeze a `Generator` object and create a function out of it.
+
+    ext_make_function :: Generator [Node] {str: Node} -> a
+
+  '''
+  const = code.frozen
+  name  = code.qualname
+
+  for (k, v) in kwdefaults.items! =>
+    @load_const $ str k
+    @load_ast     v
+  for d in defaults => @load_ast d
+
+  for v in const.co_freevars =>
+    @add_opcode +1 'LOAD_CLOSURE' $ if
+      v in @cellvars => @cellvars v
+      otherwise      => @get_freevar v
+
+  @add_opcode (1 - len const.co_freevars) 'BUILD_TUPLE' (len const.co_freevars)
+  @load_const const
+  @load_const name
+  @add_opcode
+    1 - len defaults -   2 * len kwdefaults
+    'MAKE_CLOSURE'
+    0 + len defaults + 256 * len kwdefaults
+
+
+Generator.prefix !! '->' = Generator.load_function = f args ~>
+  argspec, body = args
+  # TODO parse the argspec.
+  a = list' argspec.value
+  g = Generator '<lambda>' True a cell: self
+  g.load_ast body
+  g.add_opcode -1 'RETURN_VALUE' 0
+  @make_function g tuple! dict!
