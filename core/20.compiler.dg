@@ -139,8 +139,8 @@ Generator.store_ast = x ~>
         star = i
         x.args !! i = head q.args
 
-      if star >= 0 => @add_opcode 'UNPACK_SEQUENCE' (len x.args - 1) (256 * len x.args - 255 * star - 256)
-         otherwise => @add_opcode 'UNPACK_EX'       (len x.args - 1) (len x.args)
+      if star >= 0 => @add_opcode 'UNPACK_EX'       (len x.args - 1) (256 * len x.args - 255 * star - 256)
+         otherwise => @add_opcode 'UNPACK_SEQUENCE' (len x.args - 1) (len x.args)
 
       exhaust $ map @store_ast x.args
 
