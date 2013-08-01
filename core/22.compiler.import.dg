@@ -20,12 +20,13 @@ Generator.prefix !! 'import' = f args ~>
   not path => Parser.error 'no module name' name.loc
 
   if
-    qualified or len path == 1 =>
+    parent == 0 and (qualified or len path == 1) =>
       @load_const parent
       @load_const None
       @add_opcode 'IMPORT_NAME' -1 $ @names $ '.'.join path
 
     otherwise =>
+      qualified => Parser.error 'relative imports are always unqualified' qualified.loc
       *dir, file = path
       @load_const parent
       @load_const $ tuple' file
