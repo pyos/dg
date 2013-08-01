@@ -44,7 +44,7 @@ as an operator; simply wrap its name in backticks, like in Haskell:
 Some operators are [first-class](http://en.wikipedia.org/wiki/First-class_function).
 The list is too long to write it here, so either use common sense (if an operator
 doesn't have any fancy syntactic restrictions, then it's probably first-class)
-or read the [source code](https://github.com/pyos/dg/blob/master/compile/bootstrap/10.runtime.dg).
+or read the [source code](https://github.com/pyos/dg/blob/master/core/11.runtime.dg).
 
 ```dg
 f = (+)
