@@ -145,6 +145,7 @@ Generator = subclass object where
 
     lineoff > 0 and byteoff > 0 =>
       @lineoff = x.loc !! 1
+      @byteoff = len @bytecode
       @lnotab += lineoff // 256 * list' 0 255
       @lnotab += byteoff // 256 * list' 255 0
       @lnotab += list' (byteoff % 256) (lineoff % 256)
