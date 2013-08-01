@@ -1,79 +1,100 @@
 import '/os'
 import '/sys'
-import '/types'
 import '/argparse'
 
 import 'bundlesupport'
 
+# Constants used by functions in `bundlesupport`.
+SOURCE_TREE = os.path.dirname __file__
+SOURCE_DIR  = os.path.join SOURCE_TREE 'core'
+BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundles'
 
-argp = argparse.ArgumentParser prog: 'dg' description: 'An infix LISP atop CPython.'
-argp.add_argument '--rebuild' action: 'store_true' dest: 'build'
-  help: 'rebuild a bundle for the target interpreter'
 
-argp.add_argument '--tag' metavar: 'NAME' dest: 'tag'
-  default: sys.implementation.cache_tag
-  help: 'tag name of the target interpreter (e.g. cpython-34)'
+msg = x ->
+  '''Log a diagnostic message.
 
-argp.add_argument '--version' metavar: '0xAABBCCDD' dest: 'hexversion'
-  default: sys.hexversion
-  help: 'version of the target intepreter (e.g. 0x03040000)'
-  type: (hexversion = x -> y where except
+    msg :: str -> a
+
+  '''
+  print x file: sys.stderr
+
+
+ver = x lowest: 0x03030000 highest: 0x0304FFFF ->
+  '''Parse a Python `hexversion` and make sure it is high enough.
+
+    ver :: str (Optional int) (Optional int) -> int
+
+  '''
+  y where except
     e =>
       y = int x 16
-      y < 0x03030000 => raise $ ValueError 'target version is too low'
+      y < lowest  => raise $ ValueError 'target version is too low'
+      y > highest => raise $ ValueError 'target version is too high'
     e :: ValueError =>
-      raise $ argparse.ArgumentTypeError (str e))
+      raise $ argparse.ArgumentTypeError (str e)
 
-argp.add_argument 'source'  metavar: 'file' nargs: '?'   help: 'file to execute' type: open default: sys.stdin
-argp.add_argument 'args'    metavar: '...'  nargs: '...' help: 'additional arguments (sys.argv[1:])'
-ns = argp.parse_args!
+
+getargs = name description *: xs ->
+  '''Parse arguments given a homogenous description.
+
+    Each row is a (option, metavar, nargs, type, action, dest, help, default) tuple.
+
+    getargs :: str str (Many+ (str, Maybe str, Maybe str, object, str, str, str, object)) -> Namespace
+
+  '''
+  p = argparse.ArgumentParser prog: name description: description
+  for (opt, var, na, t, a, dst, help, def) in xs =>
+    kws = dict metavar: var nargs: na type: t action: a dest: dst help: help default: def
+    kws = dict $ filter ((k, v) -> not $ v is None) kws.items!
+    p.add_argument opt **: kws
+  p.parse_args!
+
+
+ns = getargs 'dg' 'An infix LISP atop CPython.'
+  '--rebuild', None,         None,  None, 'store_true', 'build',      'rebuild a bundle for the target interpreter',          None
+  '--tag',     'NAME',       None,  None, None,         'tag',        'tag name of the target interpreter (e.g. cpython-34)', sys.implementation.cache_tag
+  '--version', '0xAABBCCDD', None,  ver,  None,         'hexversion', 'version of the target intepreter (e.g. 0x03040000)',   sys.hexversion
+  'source',    'file',       '?',   open, None,         None,         'file to execute',                                      sys.stdin
+  'args',      '...',        '...', None, None,         None,         'additional arguments (sys.argv[1:])',                  None
 
 
 if ns.build =>
-  ITER_COUNT  = 1 + 4 * (ns.tag == sys.implementation.cache_tag)
-  SOURCE_TREE = os.path.dirname __file__
-  SOURCE_DIR  = os.path.join SOURCE_TREE 'core'
-  BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundles'
+  # Ideally, three iterations should be enough:
+  #   1. Make a bundle with new features.
+  #   2. Recompile it to apply these features to the compiler itself.
+  #   3. Check that the compiler can still support itself.
+  iter_count = 1 + 2 * (ns.tag == sys.implementation.cache_tag)
 
-  print file: sys.stderr $ 'Rebuilding for: {0.tag} 0x{0.hexversion:X}'.format ns
-  print file: sys.stderr $ 'Running on:     {0.implementation.cache_tag} 0x{0.hexversion:X}'.format sys
-  print file: sys.stderr $ '-------------------------------'
-  print file: sys.stderr $ 'NOTE: differences on the first iteration are OK,'
-  print file: sys.stderr $ '      since they are mostly due to changes in the source code'
-  print file: sys.stderr $ '      or `hash()` using a different secret random key.'
-  print file: sys.stderr $ '-------------------------------'
-  print file: sys.stderr $ '1. Loading an up-to-date bundle for this interpreter.'
+  msg $ 'Rebuilding for: {0.tag} 0x{0.hexversion:X}'.format ns
+  msg $ 'Running on:     {0.implementation.cache_tag} 0x{0.hexversion:X}'.format sys
+  msg $ '-------------------------------'
+  msg $ 'NOTE: differences on the first iteration are OK,'
+  msg $ '      since they are mostly due to changes in the source code'
+  msg $ '      or `hash()` using a different secret random key.'
+  msg $ '-------------------------------'
   this = bundlesupport.load sys.implementation.cache_tag BUNDLE_DIR
   diff = False
 
-  for i in range 1 (1 + ITER_COUNT) =>
-    print file: sys.stderr $ '2. Commencing rebuild, iteration {}/{}.'.format i ITER_COUNT
-    that = list $ map
-      (fn, co) -> 
-        print file: sys.stderr $ '   Loading {}...'.format fn
-        co
-      bundlesupport.rebuild this ns.hexversion SOURCE_DIR
-
-    print file: sys.stderr $ '3. Checking for differences.'
-    this :: list => diff = any $ map
-      (a, b) ->
-        d = a != b
-        # FIXME should also account for the fact that files come and go.
-        d => print file: sys.stderr $ '   File {} differs.'.format a.co_filename
-        d
-      zip this that
+  for i in range 1 (1 + iter_count) =>
+    msg $ 'Rebuilding, iteration {}/{}.'.format i iter_count
+    that = list $ bundlesupport.rebuild this ns.hexversion SOURCE_DIR
+    diff = list $ bundlesupport.diff this that
+    for (f, st) in diff => if
+      st == -1  => msg $ '   {} differs.'.format f
+      st == -2  => msg $ '   {} created.'.format f
+      st == -3  => msg $ '   {} removed.'.format f
+      otherwise => msg $ '   {} moved to position {}.'.format f st
     this = that
 
   if
     ns.tag != sys.implementation.cache_tag =>
-      print file: sys.stderr $ 'WARNING: Targeting a different interpreter.'
-      print file: sys.stderr $ 'WARNING: Cannot run any more iterations.'
+      msg $ 'WARNING: Targeting a different interpreter.'
+      msg $ 'WARNING: Cannot run any more iterations.'
     diff =>
-      print file: sys.stderr $ 'FATAL: Differences found during the last iteration.'
-      print file: sys.stderr $ 'FATAL: A compiler error was detected. Aborting.'
+      msg $ 'FATAL: Differences found during the last iteration.'
+      msg $ 'FATAL: A compiler error was detected. Aborting.'
       exit 1
 
-  print file: sys.stderr $ '4. Saving the new bundle.'
   bundlesupport.save this ns.tag BUNDLE_DIR
   exit 0
 

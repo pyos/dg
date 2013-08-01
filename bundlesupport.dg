@@ -17,17 +17,14 @@ rebuild = old version dirname ->
     rebuild :: [CodeType] src -> [CodeType]
 
   '''
-  # First, extract `compilefd` from the old version of dg.
-  # We'll need it to build the new one.
   ns = dict __name__: 'dg'
   for c in old => eval c ns
   ns !! 'PY_VERSION' = version
   compilefd = ns !! 'compilefd'
-  # Second, recompile all files with it.
-  # We also yield the filename for logging purposes.
+
   for f in sorted (os.listdir dirname) =>
     with fd = open (os.path.join dirname f) 'r' =>
-      yield (f, compilefd fd)
+      yield $ compilefd fd
 
 
 load = tag dirname ->
@@ -39,8 +36,7 @@ load = tag dirname ->
     load :: str str -> [CodeType]
 
   '''
-  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'rb' =>
-    marshal.load fd
+  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'rb' => marshal.load fd
 
 
 save = code tag dirname ->
@@ -52,6 +48,21 @@ save = code tag dirname ->
     save :: [CodeType] str str -> a
 
   '''
+  data = marshal.dumps code
   os.makedirs dirname exist_ok: True
-  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'wb' =>
-    marshal.dump code fd
+  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'wb' => fd.write data
+
+
+diff = this that ->
+  '''Find differences between two bundles.
+
+    diff :: [CodeType] [CodeType] -> a
+
+  '''
+  fnl = dict $ map ((i, x) -> x.co_filename, (i, x)) $ enumerate this
+  fnr = dict $ map ((i, x) -> x.co_filename, (i, x)) $ enumerate that
+  for f in (fnr.keys! | fnl.keys!) => if
+    not $ f in fnl => yield (f, -2)  # added
+    not $ f in fnr => yield (f, -3)  # removed
+    snd (fnl !! f) != snd (fnr !! f) => yield (f, -1)  # changed
+    fst (fnl !! f) != fst (fnr !! f) => yield (f, fst (fnr !! f))  # moved
