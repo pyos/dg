@@ -1,0 +1,81 @@
+import '/os'
+import '/sys'
+import '/types'
+import '/argparse'
+
+import 'bundlesupport'
+
+
+argp = argparse.ArgumentParser prog: 'dg' description: 'An infix LISP atop CPython.'
+argp.add_argument '--rebuild' action: 'store_true' dest: 'build'
+  help: 'rebuild a bundle for the target interpreter'
+
+argp.add_argument '--tag' metavar: 'NAME' dest: 'tag'
+  default: sys.implementation.cache_tag
+  help: 'tag name of the target interpreter (e.g. cpython-34)'
+
+argp.add_argument '--version' metavar: '0xAABBCCDD' dest: 'hexversion'
+  default: sys.hexversion
+  help: 'version of the target intepreter (e.g. 0x03040000)'
+  type: (hexversion = x -> y where except
+    e =>
+      y = int x 16
+      y < 0x03030000 => raise $ ValueError 'target version is too low'
+    e :: ValueError =>
+      raise $ argparse.ArgumentTypeError (str e))
+
+argp.add_argument 'source'  metavar: 'file' nargs: '?'   help: 'file to execute' type: open default: sys.stdin
+argp.add_argument 'args'    metavar: '...'  nargs: '...' help: 'additional arguments (sys.argv[1:])'
+ns = argp.parse_args!
+
+
+if ns.build =>
+  ITER_COUNT  = 1 + 4 * (ns.tag == sys.implementation.cache_tag)
+  SOURCE_TREE = os.path.dirname __file__
+  SOURCE_DIR  = os.path.join SOURCE_TREE 'core'
+  BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundles'
+
+  print file: sys.stderr $ 'Rebuilding for: {0.tag} 0x{0.hexversion:X}'.format ns
+  print file: sys.stderr $ 'Running on:     {0.implementation.cache_tag} 0x{0.hexversion:X}'.format sys
+  print file: sys.stderr $ '-------------------------------'
+  print file: sys.stderr $ 'NOTE: differences on the first iteration are OK,'
+  print file: sys.stderr $ '      since they are mostly due to changes in the source code'
+  print file: sys.stderr $ '      or `hash()` using a different secret random key.'
+  print file: sys.stderr $ '-------------------------------'
+  print file: sys.stderr $ '1. Loading an up-to-date bundle for this interpreter.'
+  this = bundlesupport.load sys.implementation.cache_tag BUNDLE_DIR
+  diff = False
+
+  for i in range 1 (1 + ITER_COUNT) =>
+    print file: sys.stderr $ '2. Commencing rebuild, iteration {}/{}.'.format i ITER_COUNT
+    that = list $ map
+      (fn, co) -> 
+        print file: sys.stderr $ '   Loading {}...'.format fn
+        co
+      bundlesupport.rebuild this ns.hexversion SOURCE_DIR
+
+    print file: sys.stderr $ '3. Checking for differences.'
+    this :: list => diff = any $ map
+      (a, b) ->
+        d = a != b
+        # FIXME should also account for the fact that files come and go.
+        d => print file: sys.stderr $ '   File {} differs.'.format a.co_filename
+        d
+      zip this that
+    this = that
+
+  if
+    ns.tag != sys.implementation.cache_tag =>
+      print file: sys.stderr $ 'WARNING: Targeting a different interpreter.'
+      print file: sys.stderr $ 'WARNING: Cannot run any more iterations.'
+    diff =>
+      print file: sys.stderr $ 'FATAL: Differences found during the last iteration.'
+      print file: sys.stderr $ 'FATAL: A compiler error was detected. Aborting.'
+      exit 1
+
+  print file: sys.stderr $ '4. Saving the new bundle.'
+  bundlesupport.save this ns.tag BUNDLE_DIR
+  exit 0
+
+print file: sys.stderr $ 'FATAL: REPL/file loader is not implemented yet.'
+exit 1
