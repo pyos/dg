@@ -64,8 +64,8 @@ func_def_args = xs ->
         add !! name = x
         name
 
-    data = if xs :: Expression and xs.op == '' => xs.args
-              otherwise                        => list' xs
+    data = if xs :: Expression and not xs.closed and xs.op == '' => xs.args
+              otherwise                                          => list' xs
 
     for x in data => if
       x :: Expression and x.op == ':' =>
@@ -177,15 +177,12 @@ Generator.infixbind = kwd pos f arg ~>
   @make_function c tuple! $ dict' (kwd, arg)
 
 
-Generator.prefix !! '->' = Generator.load_function = f args ~>
+Generator.load_function = args body ~>
   '''Create a function.
 
-    x -> y
-
-    load_function :: a (Node, Node) -> a
+    load_function :: Node Node -> a
 
   '''
-  args, body = ensure f args 2 2
   a, kw, da, dkw, va, vkw, patterns = func_def_args args
   g = Generator (@child_name '<lambda>') True a kw va vkw self
 
@@ -196,3 +193,31 @@ Generator.prefix !! '->' = Generator.load_function = f args ~>
   g.load_ast body
   g.add_opcode 'RETURN_VALUE' -1 0
   @make_function g da dkw
+
+
+Generator.load_fnmethod = xs body ~>
+  '''Create a method (a function with an additional argument named "self".)
+
+    load_fnmethod :: Node Node -> a
+
+  '''
+  if
+    xs is None =>
+      @add_opcode 'LOAD_GLOBAL' +1 $ @names 'property'
+      @load_function (Name 'self') body
+      @add_opcode 'CALL_FUNCTION' -1 1
+
+    xs :: parse.Expression and not xs.closed and xs.op == '' =>
+      xs.args.insert 1 (Name 'self')
+      @load_function xs body
+
+    otherwise =>
+      @load_function (Expression (Name '') (Name 'self') xs) body
+
+
+Generator.prefix !! '->' = f q ~> @load_function *: (ensure f q 2 2)
+Generator.prefix !! '~>' = f q ~> @load_fnmethod *: (ensure f q 2 2)
+Generator.infixl !! '->' = f q ~> @load_function q (Constant None at: f.loc)
+Generator.infixl !! '~>' = f q ~> @load_fnmethod q (Constant None at: f.loc)
+Generator.infixr !! '->' = f q ~> @load_function None q
+Generator.infixr !! '~>' = f q ~> @load_fnmethod None q
