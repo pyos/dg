@@ -1,0 +1,97 @@
+except_syntax = cases ->
+  pairs = if_syntax cases
+  pairs, if len pairs > 1 and head (last pairs) == 'finally' => pairs.pop!
+            otherwise => None, None
+
+
+Generator.prefix !! 'raise' = f args ~>
+  args = unpack f args $ exception cause: None ->
+    if cause is None => tuple' exception
+       otherwise     => exception, cause
+  exhaust $ map @load_ast args
+  @add_opcode 'RAISE_VARARGS' (-len args) (len args)
+  @load_const None  # We've got to return something.
+
+
+Generator.prefix !! 'except' = f cases ~>
+  ((name, try), *cases), (has_finally, finally) = except_syntax $ ensure f cases
+  @load_const None
+
+  to_finally = has_finally and @setup 'finally'
+  to_except  = @setup 'except'
+  # Replace that None with the value returned by `try_`
+  # to fool the POP_BLOCK instruction.
+  @load_ast try
+  @add_opcode 'ROT_TWO'   +0 0
+  @add_opcode 'POP_BLOCK' -1 0
+  # Er, so there was no exception, let's store None instead.
+  # Since we've already POPped_BLOCK, exceptions occured
+  # during this assignment won't be caught.
+  @load_const None
+  @add_opcode 'DUP_TOP' +1 0
+  @store_ast  name
+
+  # Jump over that block if there was no exception.
+  # Finishing SETUP_EXCEPT with an exception pushes
+  # 3 items onto the stack. One is accounted for already.
+  to_else = @jump reverse: False
+  to_except.set
+  @depth += 2
+  @m_depth = max @depth @m_depth
+  @add_opcode 'ROT_TWO' +0 0
+  @add_opcode 'DUP_TOP' +1 0
+  @store_ast name
+  @add_opcode 'ROT_TWO' +0 0
+  to_else.set
+
+  jumps = list $ map
+    (cond, action) ->
+      @load_ast cond
+      next = @pop_jump_if False reverse: False
+      @depth -= 1
+      @load_ast action
+      end = @jump reverse: False
+      @depth -= 1
+      next.set
+      end
+    cases
+
+  # This will re-raise the exception if nothing matched
+  # (and there was an exception. And there is no `finally` clause.)
+  @add_opcode 'END_FINALLY' -3 0
+
+  # The problem is, now we need to POP_EXCEPT, but only
+  # if there was a handled exception.
+  # First, jump over this whole part if the exception was not handled.
+  unhandled_exception = @jump reverse: False
+  # Second, point all `if` actions here, and temporarily store the result.
+  for j in jumps => j.set
+  @add_opcode 'STORE_FAST' +0 $ @varnames '<except-result>'
+  @add_opcode 'DUP_TOP'    +1 0
+  @load_const None
+  @add_opcode 'COMPARE_OP' -1 $ dis.cmp_op.index 'is'
+  # Third, if type is None, skip over POP_EXCEPT.
+  no_exception = @pop_jump_if True reverse: False
+  @depth -= 1
+  @add_opcode 'POP_EXCEPT' 0 0
+  no_exception.set
+
+  # Finally, restore the result.
+  @add_opcode 'LOAD_FAST' +1 $ @varnames '<except-result>'
+  @add_opcode 'ROT_TWO'   +0 0
+  @add_opcode 'POP_TOP'   -1 0
+  @load_const None
+  @add_opcode 'STORE_FAST' -1 $ @varnames '<except-result>'
+  unhandled_exception.set
+
+  has_finally =>
+    # If the interpreter made it here, one of the `except` clauses matched.
+    @add_opcode 'POP_BLOCK' -1 0
+    @load_const None
+
+    to_finally.set
+    @load_ast finally
+    @add_opcode 'POP_TOP'     -1 0
+    @add_opcode 'END_FINALLY' +0 0
+
+  # We should be left with a return value by now.
