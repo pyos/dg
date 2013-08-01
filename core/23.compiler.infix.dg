@@ -23,6 +23,47 @@ jump = x -> f args ~>
   jmp.set
 
 
+comparison = op -> f args chain: False ~>
+  a, b = ensure f args 2 2
+
+  double = a :: Expression and not a.closed and a.op.value in @prefix and
+    f = @prefix !! a.op.value
+    getattr f '__code__' None is comparison.__code__.co_consts !! 0
+
+  # Now `double` is true iff `a` is another comparison.
+  # Also, `e`, `ex`, and `f` will be defined if that is the case.
+  jumps = if (double => f self a.op a.args chain: True) (otherwise => list!)
+
+  # If not, then `a` is a plain old boring expression.
+  not double => @load_ast a
+
+  if
+    chain => jumps.append $
+      @load_ast b
+      @add_opcode 'DUP_TOP'    +2 0  # [a, b]
+      @add_opcode 'ROT_THREE'  +0 0  # [b, a, b]
+      @add_opcode 'COMPARE_OP' -1 $ dis.cmp_op.index op  # [b, a R b]
+      @depth -= 1
+      @jump_or_pop_if False reverse: False
+
+    otherwise =>
+      @load_ast b
+      @add_opcode 'COMPARE_OP' -1 $ dis.cmp_op.index op  # [a R b]
+      # Now, what if one of the comparisons returned False?
+      # First, we jump here.
+      jumps =>
+        ontrue = @jump reverse: False
+        for j in jumps => j.set
+        # Then we remove the unneeded item, leaving `False` on the stack.
+        # (Stack size change was already accounted for by JUMP_IF_FALSE_OR_POP.)
+        @add_opcode 'ROT_TWO' 0 0  # [False, b]
+        @add_opcode 'POP_TOP' 0 0  # [False]
+        ontrue.set
+
+  # Return the list of unfinished jumps for the next operator to use.
+  jumps
+
+
 if_syntax = cases -> except
   e => list $ map
     x -> if
@@ -78,6 +119,14 @@ Generator.prefix.update $ dict'
   '|=',  f q ~> @infix_inplace 'INPLACE_OR'           f q
   '<<=', f q ~> @infix_inplace 'INPLACE_LSHIFT'       f q
   '>>=', f q ~> @infix_inplace 'INPLACE_RSHIFT'       f q
+  '<',  comparison '<'
+  '<=', comparison '<='
+  '==', comparison '=='
+  '!=', comparison '!='
+  '>',  comparison '>'
+  '>=', comparison '>='
+  'is', comparison 'is'
+  'in', comparison 'in'
 
   'if', f q ~>
     jumps = list $ map
