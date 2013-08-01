@@ -1,0 +1,82 @@
+Generator.prefix !! 'where' = f args ~>
+  end, start = ensure f args 2 2
+
+  code = Generator (@child_name '<lambda>') True cell: self
+  code.load_ast start
+  code.add_opcode 'POP_TOP' -1 0
+  code.load_ast end
+  code.add_opcode 'RETURN_VALUE' -1 0
+  @make_function code list! dict!
+  @add_opcode 'CALL_FUNCTION' 0 0
+
+
+Generator.prefix !! 'yield' = f args ~>
+  item, from = unpack f args $ item: None from: None -> (item, from)
+  if
+    from is None =>
+      @load_ast item
+      @add_opcode 'YIELD_VALUE' 0 0
+    otherwise =>
+      @load_ast from
+      @add_opcode 'GET_ITER' 0 0
+      if item is None => @load_const None
+         otherwise    => @load_ast item
+      @add_opcode 'YIELD_FROM' -1 0
+
+
+Generator.prefix !! 'with' = f args ~>
+  context, body = ensure f args 2 2
+  var = None
+  # POP_BLOCK will remove the returned value from the stack.
+  # By swapping it with this, we can still have it.
+  @load_const None
+
+  context :: Expression and len context.args == 2 and context.op == '=' =>
+    var, context = context.args
+
+  @load_ast context
+  end_ptr = @setup 'with'
+  @depth  += 1
+  @m_depth = max @depth @m_depth
+  if var  => @store_ast var
+     True => @add_opcode 'POP_TOP' -1 0
+
+  @load_ast body
+  @add_opcode 'ROT_THREE' +0 0
+  @add_opcode 'ROT_TWO'   +0 0
+  @add_opcode 'POP_BLOCK' -0 0
+  @load_const None
+  end_ptr.set
+  @add_opcode 'WITH_CLEANUP' +1 0
+  @add_opcode 'END_FINALLY'  -2 0
+
+
+Generator.prefix !! 'subclass' = f args ~>
+  doc = if (@consts => fst $ head @consts)
+  doc = if (doc :: str => doc) (otherwise => None)
+  @add_opcode 'LOAD_BUILD_CLASS' +1 0
+
+  # Someone decided that from 3.4 on, __build_class__ should automatically
+  # do `STORE_LOCALS` with the new namespace. Awesome. More hacks on the way!
+  code = Generator (@child_name '<class>') False cell: self
+
+  if PY_VERSION < 0x03040000 =>
+    code = Generator (@child_name '<class>') True (list' 'ns') cell: self
+    code.add_opcode 'LOAD_FAST'    +1 $ code.varnames 'ns'
+    code.add_opcode 'STORE_LOCALS' -1 0
+
+  for x in (@varnames.keys! | @cellvars.keys!) =>
+    code.add_opcode 'LOAD_DEREF' +1 $ code.freevars x
+    code.add_opcode 'STORE_NAME' -1 $ code.names x
+
+  code.load_const None
+  code.load_const @qualname
+  code.load_const doc
+  code.add_opcode 'LOAD_NAME'    +1 $ code.names '__name__'
+  code.add_opcode 'STORE_NAME'   -1 $ code.names '__module__'
+  code.add_opcode 'STORE_NAME'   -1 $ code.names '__doc__'
+  code.add_opcode 'STORE_NAME'   -1 $ code.names '__qualname__'
+  code.add_opcode 'RETURN_VALUE' -1 0
+  @make_function code tuple! dict!
+  @load_const @name
+  @call_ast args 2
