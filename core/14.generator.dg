@@ -158,8 +158,8 @@ Generator = subclass object where
     name in ('YIELD_VALUE', 'YIELD_FROM') => @flags |= CO_GENERATOR
     code = dis.opmap !! name
 
-    @depth   +=       delta
-    @m_depth += max 0 delta
+    @depth += delta
+    @m_depth = max @depth @m_depth
     @bytecode.append (code, value)
 
   frozen = ~>
