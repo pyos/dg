@@ -13,7 +13,7 @@ JumpObject = subclass object where
   '''
   __int__  = self -> @value or 0
   __init__ = @code @forward @absolute @op ~>
-    @start = len code
+    @start = len @code
     @value = None
     @forward => @code.append (@op, self)
     None
@@ -27,11 +27,11 @@ JumpObject = subclass object where
     '''
     @value is None =>
       @value = 0
-      @absolute => @value += codelen $ take  start      @code
-      @forward  => @value += codelen $ drop (start + 1) @code
+      @absolute => @value += codelen $ take  @start      @code
+      @forward  => @value += codelen $ drop (@start + 1) @code
 
-      @absolute and not @forward =>
-        sz = 0x0
+      @absolute and @forward =>
+        sz = 0x1
         while @value >= sz =>
           # This jump needs to account for itself.
           @value += 3
