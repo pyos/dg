@@ -100,7 +100,7 @@ is added as an argument to the preceding function call instead.</p><div class="h
   <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;;&#39;</span>
 </pre></div>
 <p>Unlike Python, an empty pair of parentheses (<code>()</code>, that is) evaluates to
-<code>None</code>, not an empty tuple, and may be used as a NOP (much like <code>pass</code> in Python.)</p><div class="highlight"><pre><span class="n">do_nothing_with_nothing</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="p">()</span>
+<code>None</code>, not an empty tuple, and may be used as a NOP (much like <code>pass</code> in Python.)</p><div class="highlight"><pre><span class="p">(()</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">)</span>
 </pre></div>
 <p>As you have probably noticed, arguments in function calls are separated
 by spaces (ML/sh style), not parentheses-and-commas (C/Python style.)</p><div class="highlight"><pre><span class="nb">print</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="s">&quot;equals to 2&quot;</span> <span class="c1"># Yeah.</span>
@@ -197,12 +197,9 @@ are similar to those when calling functions, but with a few quirks.</p><ul><li>o
 <span class="n">double</span> <span class="mi">10</span> <span class="c1">#=&gt; 20</span>
 
 <span class="c1"># These have no arguments and always return None. Useless.</span>
-<span class="n">constant</span>  <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="bp">None</span>
-<span class="n">constant1</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="p">()</span>
-<span class="c1"># If either side of `-&gt;` is omitted, it is inferred to be `()`.</span>
+<span class="n">constant1</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="bp">None</span>
 <span class="n">constant2</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="p">()</span>
-<span class="n">constant3</span> <span class="o">=</span> <span class="p">()</span> <span class="o">-&gt;</span>
-<span class="n">constant4</span> <span class="o">=</span> <span class="o">-&gt;</span>
+<span class="n">constant3</span> <span class="o">=</span> <span class="o">-&gt;</span>
 
 <span class="c1"># This one accepts any amount of arguments.</span>
 <span class="n">doubleMany</span> <span class="o">=</span> <span class="o">*:</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="nb">map</span> <span class="n">double</span> <span class="n">xs</span>

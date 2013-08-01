@@ -58,7 +58,7 @@ Unlike Python, an empty pair of parentheses (`()`, that is) evaluates to
 `None`, not an empty tuple, and may be used as a NOP (much like `pass` in Python.)
 
 ```dg
-do_nothing_with_nothing = () -> ()
+(() is None) is True
 ```
 
 As you have probably noticed, arguments in function calls are separated
