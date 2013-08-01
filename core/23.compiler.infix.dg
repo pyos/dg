@@ -168,7 +168,7 @@ Generator.prefix.update $ dict'
     @load_ast   a
     @add_opcode 'DELETE_ATTR' -1 $ @names b.value
 
-  '!.', f q ->
+  '!.', f q ~>
     a, b = ensure f q 2 2
     b :: Name or Parser.error 'not an attribute' b.loc
     @load_call  a
