@@ -16,6 +16,6 @@ import '/ast/literal_eval'
 
 # Bytecode may change between versions, yet we somehow need
 # to have the newest precompiled bundle on hand.
-# So instead of targeting `sys.heversion`, we'll target `PY_VERSION`.
+# So instead of targeting `sys.hexversion`, we'll target `PY_VERSION`.
 # This variable may be changed to generate a different bundle.
 PY_VERSION = import '/sys/hexversion'
