@@ -5,7 +5,9 @@ parse = data filename: '<string>' ->
 
   '''
   p = Parser data filename
-  p.block (filename, 1, 1, head p.lines) (Dedent is) closed: False
+  p.block (filename, 1, 1, head p.lines) closed: False $ x -> if
+    x is Dedent => True
+    x :: Ending => p.error 'unexpected close-paren' x.loc
 
 
 parsefd = data filename: '<stream>' ->
@@ -116,7 +118,7 @@ Parser = subclass collections.deque where
            # `level == last @indent` => we're still parsing it.
            while level < last @indent =>
              @indent.pop!
-             @append $ Name '\n' infix: True varary: True at: pos2
+             @append $ Name '\n' infix: True varary: True at: pos
              @append $ Dedent
              last @indent < level => @error 'no matching indentation level' pos
 
