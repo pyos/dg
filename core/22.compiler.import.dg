@@ -68,4 +68,4 @@ ModuleLoader = if
 sys.path_hooks.append $ importlib.machinery.FileFinder.path_hook
   ModuleLoader, list' '.dg'
   *: # Who knows, maybe someone did the same thing.
-     map ((x, y) -> y, list' x) (last (sys.path_hooks.pop -1).__closure__).cell_contents
+     (last (sys.path_hooks.pop -1).__closure__).cell_contents
