@@ -83,7 +83,7 @@ Generator.infixr.update $ dict'
   '!', f q ~> Parser.error 'this operator is postfix' f.loc
   '~', f q ~> @infix_unary 'UNARY_INVERT'   q
   '-', f q ~> @infix_unary 'UNARY_NEGATIVE' q
-  '@', f q ~> (Generator.prefix !! '.') self f (Link 'self' at: f.loc, q)
+  '@', f q ~> (Generator.prefix !! '.') self f (Name 'self' at: f.loc, q)
 
 Generator.prefix.update $ dict'
   'or',  jump True

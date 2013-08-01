@@ -19,7 +19,7 @@ Generator.get_freevar = name ~>
     this needs to be deferred until compilation time.
 
   '''
-  LazyInteger $ _ i: (@freevars name) -> len @cellvars + 1
+  LazyInteger $ _ i: (@freevars name) -> len @cellvars + i
 
 
 Generator.load = name ~>
@@ -55,14 +55,12 @@ Generator.store = name ~>
        @add_opcode 'STORE_FAST' -1 $ @varnames v
 
 
-Generator.load_closure = name ~>
+Generator.load_closure = v ~>
   '''Load a cell object referencing some variable.
 
-    load_closure :: Name -> a
+    load_closure :: str -> a
 
   '''
-  v = name.value
-
   for (i, c) in @f_locals !! v =>
     @bytecode !! i = c, @cellvars v
 

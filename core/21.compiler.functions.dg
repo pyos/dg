@@ -207,7 +207,7 @@ Generator.load_fnmethod = xs body ~>
       @load_function (Name 'self') body
       @add_opcode 'CALL_FUNCTION' -1 1
 
-    xs :: parse.Expression and not xs.closed and xs.op == '' =>
+    xs :: Expression and not xs.closed and xs.op == '' =>
       xs.args.insert 1 (Name 'self')
       @load_function xs body
 
