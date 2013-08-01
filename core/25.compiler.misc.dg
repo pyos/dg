@@ -80,3 +80,35 @@ Generator.prefix !! 'subclass' = f args ~>
   @make_function code tuple! dict!
   @load_const @name
   @call_ast args 2
+
+
+Generator.prefix !! 'while' = f args ~>
+  cond, *body = ensure f args
+  @load_const None
+
+  to_cond = @jump reverse: False
+  to_body = @pop_jump_if True reverse: True
+  @depth -= 1
+  if (body => @chain *: body) (otherwise => @load_const None)
+  @add_opcode 'ROT_TWO' +0 0
+  @add_opcode 'POP_TOP' -1 0
+  to_cond.set
+  @load_ast cond
+  to_body.set
+
+
+Generator.prefix !! 'for' = f args ~>
+  x, body = ensure f args 2 2
+  k, v = if x :: Expression and x.op == 'in' and len x.args == 2 => x.args
+            otherwise => Parser.error 'should be `a in b`' x.loc
+
+  @load_const None
+  @load_ast   v
+  @add_opcode 'GET_ITER' +1 0
+  loop = @jump reverse: True
+  end  = JumpObject @bytecode True False $ dis.opmap !! 'FOR_ITER'
+  @store_ast  k
+  @load_ast   body
+  @add_opcode 'POP_TOP' -1 0
+  loop.set
+  end.set
