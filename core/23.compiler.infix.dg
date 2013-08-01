@@ -11,7 +11,9 @@ Generator.infix_binary = op f args ~>
   x
 
 Generator.infix_inplace = op f args ~>
-  @store_ast $ @infix_binary op f args
+  q = @infix_binary op f args
+  @add_opcode 'DUP_TOP' +1 0
+  @store_ast q
 
 
 jump = x -> f args ~>
