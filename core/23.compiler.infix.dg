@@ -1,0 +1,124 @@
+Generator.infix_unary = op x ~>
+  @load_ast x
+  @add_opcode op 0 0
+
+
+Generator.infix_binary = op f args ~>
+  x, y = ensure f args 2 2
+  @load_ast x
+  @load_ast y
+  @add_opcode op -1 0
+  x
+
+Generator.infix_inplace = op f args ~>
+  @store_ast $ @infix_binary op f args
+
+
+jump = x -> f args ~>
+  a, b = ensure f args 2 2
+  @load_ast a
+  jmp = @jump_or_pop_if x reverse: False
+  @depth -= 1
+  @load_ast b
+  jmp.set
+
+
+if_syntax = cases -> except
+  e => list $ map
+    x -> if
+      x :: Expression and x.op == '=>' and len x.args == 2 => x.args
+      otherwise => Parser.error '`if` expected (condition => action) pairs' x.loc
+    cases
+  e :: SyntaxError and len cases == 1 and head cases :: Expression and (head cases).op == '' =>
+    if_syntax $ (head cases).args
+
+
+Generator.infixl.update $ dict'
+  '!', f q ~> @load_call q
+  '~', f q ~> Parser.error 'this operator is prefix' f.loc
+  '@', f q ~> Parser.error 'this operator is prefix' f.loc
+
+Generator.infixr.update $ dict'
+  '!', f q ~> Parser.error 'this operator is postfix' f.loc
+  '~', f q ~> @infix_unary 'UNARY_INVERT'   q
+  '-', f q ~> @infix_unary 'UNARY_NEGATIVE' q
+  '@', f q ~> (Generator.prefix !! '.') self f (Link 'self' at: f.loc, q)
+
+Generator.prefix.update $ dict'
+  'or',  jump True
+  '=>',  jump False
+  'and', jump False
+  'not', f q ~> @infix_unary 'UNARY_NOT' $ head $ ensure f q 1 1
+  '!',   f q ~> Parser.error 'this operator is unary' f.loc
+  '~',   f q ~> Parser.error 'this operator is unary' f.loc
+  '@',   f q ~> Parser.error 'this operator is unary' f.loc
+  '!!',  f q ~> @infix_binary  'BINARY_SUBSCR'        f q
+  '+',   f q ~> @infix_binary  'BINARY_ADD'           f q
+  '-',   f q ~> @infix_binary  'BINARY_SUBTRACT'      f q
+  '*',   f q ~> @infix_binary  'BINARY_MULTIPLY'      f q
+  '**',  f q ~> @infix_binary  'BINARY_POWER'         f q
+  '/',   f q ~> @infix_binary  'BINARY_TRUE_DIVIDE'   f q
+  '//',  f q ~> @infix_binary  'BINARY_FLOOR_DIVIDE'  f q
+  '%',   f q ~> @infix_binary  'BINARY_MODULO'        f q
+  '&',   f q ~> @infix_binary  'BINARY_AND'           f q
+  '^',   f q ~> @infix_binary  'BINARY_XOR'           f q
+  '|',   f q ~> @infix_binary  'BINARY_OR'            f q
+  '<<',  f q ~> @infix_binary  'BINARY_LSHIFT'        f q
+  '>>',  f q ~> @infix_binary  'BINARY_RSHIFT'        f q
+  '!!=', f q ~> @infix_inplace 'BINARY_SUBSCR'        f q
+  '+=',  f q ~> @infix_inplace 'INPLACE_ADD'          f q
+  '-=',  f q ~> @infix_inplace 'INPLACE_SUBTRACT'     f q
+  '*=',  f q ~> @infix_inplace 'INPLACE_MULTIPLY'     f q
+  '**=', f q ~> @infix_inplace 'INPLACE_POWER'        f q
+  '/=',  f q ~> @infix_inplace 'INPLACE_TRUE_DIVIDE'  f q
+  '//=', f q ~> @infix_inplace 'INPLACE_FLOOR_DIVIDE' f q
+  '%=',  f q ~> @infix_inplace 'INPLACE_MODULO'       f q
+  '&=',  f q ~> @infix_inplace 'INPLACE_AND'          f q
+  '^=',  f q ~> @infix_inplace 'INPLACE_XOR'          f q
+  '|=',  f q ~> @infix_inplace 'INPLACE_OR'           f q
+  '<<=', f q ~> @infix_inplace 'INPLACE_LSHIFT'       f q
+  '>>=', f q ~> @infix_inplace 'INPLACE_RSHIFT'       f q
+
+  'if', f q ~>
+    jumps = list $ map
+      (cond, action) ->
+        @load_ast cond
+        next = @pop_jump_if False reverse: False
+        @depth -= 1
+        @load_ast action
+        end = @jump reverse: False
+        @depth -= 1
+        next.set
+        end
+      if_syntax q
+
+    @load_const None
+    for x in jumps => x.set
+
+
+  ',', f xs ~>
+    exhaust $ map @load_ast xs
+    @add_opcode 'BUILD_TUPLE' +1 (len xs)
+
+  '$', f xs ~>
+    a, b = ensure f xs 2 2
+    if a :: Expression and not a.closed and a.op == '' => @load_call a.op *: (a.args + list' b)
+       otherwise => @load_call a b
+
+  '!!~', f x ~>
+    @infix_binary 'DELETE_SUBSCR' f x
+    @depth -= 1
+    @load_const None
+
+  '.~', f q ~>
+    a, b = ensure f q 2 2
+    b :: Name or Parser.error 'not an attribute' b.loc
+    @load_const None
+    @load_ast   a
+    @add_opcode 'DELETE_ATTR' -1 $ @names b.value
+
+  '!.', f q ->
+    a, b = ensure f q 2 2
+    b :: Name or Parser.error 'not an attribute' b.loc
+    @load_call  a
+    @add_opcode 'LOAD_ATTR' 0 $ @names b.value
