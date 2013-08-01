@@ -1,0 +1,57 @@
+import '/os'
+import '/sys'
+import '/marshal'
+
+
+rebuild = old version dirname ->
+  '''Recompile dg itself.
+
+    old     -- the current version of the bundle.
+    version -- `sys.hexversion` of the target.
+    dirname -- path to the directory with the source code.
+
+    Note: it's recommended to run this function multiple times
+          in order to make sure the new bundle is correct
+          before overwriting the new one.
+
+    rebuild :: [CodeType] src -> [CodeType]
+
+  '''
+  # First, extract `compilefd` from the old version of dg.
+  # We'll need it to build the new one.
+  ns = dict __name__: 'dg'
+  for c in old => eval c ns
+  ns !! 'PY_VERSION' = version
+  compilefd = ns !! 'compilefd'
+  # Second, recompile all files with it.
+  # We also yield the filename for logging purposes.
+  for f in sorted (os.listdir dirname) =>
+    with fd = open (os.path.join dirname f) 'r' =>
+      yield (f, compilefd fd)
+
+
+load = tag dirname ->
+  '''Load an existing bundle.
+
+    tag     -- `sys.implementation.cache_tag` of the target interpreter.
+    dirname -- path to the directory with bundles.
+
+    load :: str str -> [CodeType]
+
+  '''
+  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'rb' =>
+    marshal.load fd
+
+
+save = code tag dirname ->
+  '''Write the compiled code bundle as returned by `rebuild`.
+
+    tag     -- `sys.implementation.cache_tag` of the target interpreter.
+    dirname -- path to the directory with bundles.
+
+    save :: [CodeType] str str -> a
+
+  '''
+  os.makedirs dirname exist_ok: True
+  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'wb' =>
+    marshal.dump code fd
