@@ -62,14 +62,10 @@ ModuleLoader = if
       original.__closure__
 
 
-sys.meta_path.insert 0 $ subclass object where
-  # Unfortunately, I've yet to find a way to make THIS better.
-  # Ugh.
-  find_module = classmethod $ fullname path: None ~> next $ call
-    (pkg, _, name) ->
-      for p in (path or sys.path) =>
-        for n in (os.path.join p name '__init__.dg', os.path.join p name + '.dg', False) =>
-          if os.path.isfile n =>
-            yield $ ModuleLoader fullname n
-      yield None
-    fullname.rpartition '.'
+# As usual, Python has what we need, but is not willing to share it.
+# This time we want to add `.dg` to the list of extensions findable
+# by `FileFinder`. Too bad the path hook is not a class, but a closure.
+sys.path_hooks.append $ importlib.machinery.FileFinder.path_hook
+  ModuleLoader, list' '.dg'
+  *: # Who knows, maybe someone did the same thing.
+     map ((x, y) -> y, list' x) (last (sys.path_hooks.pop -1).__closure__).cell_contents
