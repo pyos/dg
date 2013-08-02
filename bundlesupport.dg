@@ -59,8 +59,8 @@ diff = this that ->
     diff :: [CodeType] [CodeType] -> a
 
   '''
-  fnl = dict $ map ((i, x) -> x.co_filename, (i, x)) $ enumerate this
-  fnr = dict $ map ((i, x) -> x.co_filename, (i, x)) $ enumerate that
+  fnl = dict $ map ((i, x) -> os.path.basename x.co_filename, (i, x)) $ enumerate this
+  fnr = dict $ map ((i, x) -> os.path.basename x.co_filename, (i, x)) $ enumerate that
   for f in (fnr.keys! | fnl.keys!) => if
     not $ f in fnl => yield (f, -2)  # added
     not $ f in fnr => yield (f, -3)  # removed
