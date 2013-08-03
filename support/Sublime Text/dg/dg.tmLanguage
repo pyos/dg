@@ -226,12 +226,12 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>punctuation.definition.entity.haskell</string>
+					<string>punctuation.definition.entity.dg</string>
 				</dict>
 				<key>2</key>
 				<dict>
 					<key>name</key>
-					<string>punctuation.definition.entity.haskell</string>
+					<string>punctuation.definition.entity.dg</string>
 				</dict>
 			</dict>
 			<key>match</key>
