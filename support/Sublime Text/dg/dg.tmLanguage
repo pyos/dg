@@ -299,7 +299,7 @@
 			<key>match</key>
 			<string>(?x)(?&lt;!\.)(self)(?!['\w])</string>
 			<key>name</key>
-			<string>variable.language.python</string>
+			<string>variable.language.dg</string>
 		</dict>
 		<dict>
 			<!-- Name.Exception -->
