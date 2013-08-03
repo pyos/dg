@@ -17,7 +17,7 @@ parsefd = data filename: '<stream>' ->
     has no `name` attribute itself.
 
     fd :: TextIOBase (Optional str) -> Node
- 
+
   '''
   parse (data.read -1) (getattr data 'name' filename)
 
