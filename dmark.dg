@@ -140,7 +140,7 @@ g_subst = dict'
   'code',   tokens block -> highlight '' $ '\n'.join $ map strip block
   'fenced', tokens block -> highlight
     (strip $ next block).strip!
-    '\n'.join $ map (.'string') $ takewhile (m -> m.lastgroup != 'fenced') tokens
+    '\n'.join $ map (`getattr` 'string') $ takewhile (m -> m.lastgroup != 'fenced') tokens
 
   'h',      tokens block -> ''.join $ map
     match -> '<h{0}>{1}</h{0}>'.format
@@ -157,7 +157,7 @@ parse = text ->
   types = map g_re.match $ if (text :: str => text.splitlines!) (otherwise => text)
   ''.join $ map
     (kind, block) -> (g_subst !! kind) types block
-    groupby types (.'lastgroup')
+    groupby types (`getattr` 'lastgroup')
 
 
 __name__ == '__main__' => print $ parse $ stdin.read -1
