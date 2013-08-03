@@ -70,3 +70,6 @@ sys.path_hooks.append $ importlib.machinery.FileFinder.path_hook
   ModuleLoader, list' '.dg'
   *: # Who knows, maybe someone did the same thing.
      (last (sys.path_hooks.pop -1).__closure__).cell_contents
+
+sys.path_importer_cache.clear!
+importlib.invalidate_caches!
