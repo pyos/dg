@@ -9,12 +9,13 @@ CO_NOFREE    = 64  # does not export free variables
 EXTENDED_ARG = dis.opmap.get 'EXTENDED_ARG'
 
 
-opcode = op arg ->
+opcode = (op, arg) ->
   '''Generate a sequence of bytes for an opcode with an argument.
 
     opcode :: int int -> bytes
 
   '''
+  arg = int arg
   if op < dis.HAVE_ARGUMENT => bytes $ list' op
      arg >= 0x10000 => opcode EXTENDED_ARG (arg >> 16) + opcode op (arg % 0x10000)
      otherwise      => bytes (op, arg % 0x100, arg >> 8)
@@ -73,8 +74,7 @@ Generator = subclass object where
                                       -- with _DEREF ones fast.
 
       bytecode :: [(int, int)] -- co_code as an unpacked list.
-      depth    :: int -- current size of value stack.
-      m_depth  :: int -- maximum value of the above field.
+      flags    :: int          -- co_flags (see the `CO_*` constants.)
 
       filename :: str -- co_filename
       lineno   :: int -- co_firstlineno
@@ -113,13 +113,10 @@ Generator = subclass object where
       cell => dict.keys cell.varnames | cell.enclosed
       True => set!
 
+    @bytecode = list!
     @flags  = CO_VARARGS   * bool va
     @flags |= CO_VARKWARGS * bool vkw
     @flags |= (CO_OPTIMIZED | CO_NEWLOCALS) * bool isfunc
-
-    @bytecode = list!
-    @depth    = 0
-    @m_depth  = 0
 
     # Set on first `lnomark`.
     @filename = '<generated>'
@@ -127,7 +124,21 @@ Generator = subclass object where
     @lnotab   = list!
     @lineoff  = -1
     @byteoff  = 0
+
+    @stacksize = 0
+    @currstack = 0
     None
+
+  stackperm = x ~>
+    '''Request a permanent increase in stack size.
+
+      stackperm :: int -> ()
+
+    '''
+    # Python calculates the stack depth by scanning bytecode.
+    # We'll opt for traversing the AST instead.
+    @currstack += x
+    @currstack > @stacksize => @stacksize = @currstack
 
   lnomark = x ~> if x.loc =>
     '''Add a location of a `Node` to the lnotab.
@@ -141,27 +152,22 @@ Generator = subclass object where
       @lineoff  = x.loc !! 1
 
     lineoff = x.loc !! 1 - @lineoff
-    byteoff = codelen $ drop @byteoff @bytecode
+    lineoff > 0 =>
+      byteoff = codelen $ drop @byteoff @bytecode
+      byteoff > 0 =>
+        @lineoff = x.loc !! 1
+        @byteoff = len @bytecode
+        @lnotab += lineoff // 256 * b'\x00\xff'
+        @lnotab += byteoff // 256 * b'\xff\x00'
+        @lnotab += bytes (byteoff % 256, lineoff % 256)
 
-    lineoff > 0 and byteoff > 0 =>
-      @lineoff = x.loc !! 1
-      @byteoff = len @bytecode
-      @lnotab += lineoff // 256 * list' 0 255
-      @lnotab += byteoff // 256 * list' 255 0
-      @lnotab += list' (byteoff % 256) (lineoff % 256)
-
-  add_opcode = name delta value ~>
+  add_opcode = name value: 0 ~>
     '''Append a new opcode to the sequence.
 
       add_opcode :: str int int -> a
 
     '''
-    name in ('YIELD_VALUE', 'YIELD_FROM') => @flags |= CO_GENERATOR
-    code = dis.opmap !! name
-
-    @depth += delta
-    @m_depth = max @depth @m_depth
-    @bytecode.append (code, value)
+    @bytecode.append (dis.opmap !! name, value)
 
   frozen = ~>
     '''A marshallable code object with info from this generator.
@@ -169,9 +175,9 @@ Generator = subclass object where
       frozen :: CodeType
 
     '''
-    types.CodeType @argc @kwargc (len @varnames) @m_depth
+    types.CodeType @argc @kwargc (len @varnames) @stacksize
       @flags | CO_NESTED * bool @freevars | CO_NOFREE * not @cellvars
-      b''.join $ map ((a, b) -> opcode a (int b)) @bytecode
+      b''.join $ map opcode @bytecode
       tuple $ map fst @consts
       tuple @names
       tuple @varnames

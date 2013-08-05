@@ -1,28 +1,29 @@
 Generator.infix_unary = op x ~>
   @load_ast x
-  @add_opcode op 0 0
+  @add_opcode op
 
 
 Generator.infix_binary = op f args ~>
   x, y = ensure f args 2 2
   @load_ast x
   @load_ast y
-  @add_opcode op -1 0
+  @add_opcode op
+  @currstack -= 1
   x
 
 Generator.infix_inplace = op f args ~>
   q = @infix_binary op f args
-  @add_opcode 'DUP_TOP' +1 0
+  @add_opcode 'DUP_TOP'
+  @stackperm +1
   @store_ast q
 
 
 jump = x -> f args ~>
   a, b = ensure f args 2 2
   @load_ast a
-  jmp = @jump_or_pop_if x reverse: False
-  @depth -= 1
-  @load_ast b
-  jmp.set
+  with @jump_or_pop_if x reverse: False =>
+    @currstack -= 1
+    @load_ast b
 
 
 comparison = op -> f args chain: False ~>
@@ -34,33 +35,33 @@ comparison = op -> f args chain: False ~>
 
   # Now `double` is true iff `a` is another comparison.
   # Also, `e`, `ex`, and `f` will be defined if that is the case.
-  jumps = if (double => f self a.op a.args chain: True) (otherwise => list!)
-
-  # If not, then `a` is a plain old boring expression.
-  not double => @load_ast a
+  jumps = if double    => f self a.op a.args chain: True
+             otherwise =>
+               @load_ast a
+               list!
 
   if
     chain => jumps.append $
       @load_ast b
-      @add_opcode 'DUP_TOP'    +2 0  # [a, b]
-      @add_opcode 'ROT_THREE'  +0 0  # [b, a, b]
-      @add_opcode 'COMPARE_OP' -1 $ dis.cmp_op.index op  # [b, a R b]
-      @depth -= 1
+      @stackperm +1
+      @add_opcode 'DUP_TOP'
+      @add_opcode 'ROT_THREE'
+      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index op  # [b, a R b]
       @jump_or_pop_if False reverse: False
+      @currstack -= 2
 
     otherwise =>
       @load_ast b
-      @add_opcode 'COMPARE_OP' -1 $ dis.cmp_op.index op  # [a R b]
+      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index op  # [a R b]
+      @currstack -= 1
       # Now, what if one of the comparisons returned False?
       # First, we jump here.
-      jumps =>
-        ontrue = @jump reverse: False
+      jumps => with @jump reverse: False =>
         for j in jumps => j.set
         # Then we remove the unneeded item, leaving `False` on the stack.
         # (Stack size change was already accounted for by JUMP_IF_FALSE_OR_POP.)
-        @add_opcode 'ROT_TWO' 0 0  # [False, b]
-        @add_opcode 'POP_TOP' 0 0  # [False]
-        ontrue.set
+        @add_opcode 'ROT_TWO'
+        @add_opcode 'POP_TOP'
 
   # Return the list of unfinished jumps for the next operator to use.
   jumps
@@ -134,13 +135,10 @@ Generator.prefix.update $ dict'
     jumps = list $ map
       (cond, action) ->
         @load_ast cond
-        next = @pop_jump_if False reverse: False
-        @depth -= 1
-        @load_ast action
-        end = @jump reverse: False
-        @depth -= 1
-        next.set
-        end
+        with @pop_jump_if False reverse: False =>
+          @load_ast action
+          @currstack -= 2
+          @jump reverse: False
       if_syntax q
 
     @load_const None
@@ -149,7 +147,8 @@ Generator.prefix.update $ dict'
 
   ',', f xs ~>
     exhaust $ map @load_ast xs
-    @add_opcode 'BUILD_TUPLE' +1 (len xs)
+    @add_opcode 'BUILD_TUPLE' (len xs)
+    @currstack -= len xs - 1
 
   '$', f xs ~>
     a, b = ensure f xs 2 2
@@ -158,7 +157,6 @@ Generator.prefix.update $ dict'
 
   '!!~', f x ~>
     @infix_binary 'DELETE_SUBSCR' f x
-    @depth -= 1
     @load_const None
 
   '.~', f q ~>
@@ -166,10 +164,11 @@ Generator.prefix.update $ dict'
     b :: Name or Parser.error 'not an attribute' b.loc
     @load_const None
     @load_ast   a
-    @add_opcode 'DELETE_ATTR' -1 $ @names b.value
+    @add_opcode 'DELETE_ATTR' $ @names b.value
+    @currstack -= 1
 
   '!.', f q ~>
     a, b = ensure f q 2 2
     b :: Name or Parser.error 'not an attribute' b.loc
     @load_call  a
-    @add_opcode 'LOAD_ATTR' 0 $ @names b.value
+    @add_opcode 'LOAD_ATTR' $ @names b.value

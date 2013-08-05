@@ -22,37 +22,37 @@ Generator.get_freevar = name ~>
   LazyInteger $ _ i: (@freevars name) -> len @cellvars + i
 
 
-Generator.load = name ~>
+Generator.load = v ~>
   '''Push the value assigned to some name onto the value stack.
 
-    load :: Name -> a
+    load :: str -> a
 
   '''
-  v = name.value
+  @stackperm +1
 
-  if v in @cellvars => @add_opcode 'LOAD_DEREF'  +1 $ @cellvars v
+  if v in @cellvars => @add_opcode 'LOAD_DEREF'  $ @cellvars v
      v in @varnames =>
        (@f_locals !! v).add (len @bytecode, dis.opmap !! 'LOAD_DEREF')
-       @add_opcode 'LOAD_FAST' +1 $ @varnames v
-     v in @enclosed => @add_opcode 'LOAD_DEREF'  +1 $ @get_freevar v
-     @slowlocals    => @add_opcode 'LOAD_NAME'   +1 $ @names v
-     otherwise      => @add_opcode 'LOAD_GLOBAL' +1 $ @names v
+       @add_opcode 'LOAD_FAST' $ @varnames v
+     v in @enclosed => @add_opcode 'LOAD_DEREF'  $ @get_freevar v
+     @slowlocals    => @add_opcode 'LOAD_NAME'   $ @names v
+     otherwise      => @add_opcode 'LOAD_GLOBAL' $ @names v
 
 
-Generator.store = name ~>
+Generator.store = v ~>
   '''Store the value on top of the stack in a variable.
 
-    store :: Name -> a
+    store :: str -> a
 
   '''
-  v = name.value
+  @currstack -= 1
 
-  if v in @cellvars => @add_opcode 'STORE_DEREF' -1 $ @cellvars    v
-     v in @enclosed => @add_opcode 'STORE_DEREF' -1 $ @get_freevar v
-     @slowlocals    => @add_opcode 'STORE_NAME'  -1 $ @names v
+  if v in @cellvars => @add_opcode 'STORE_DEREF' $ @cellvars    v
+     v in @enclosed => @add_opcode 'STORE_DEREF' $ @get_freevar v
+     @slowlocals    => @add_opcode 'STORE_NAME'  $ @names v
      otherwise      =>
        (@f_locals !! v).add (len @bytecode, dis.opmap !! 'STORE_DEREF')
-       @add_opcode 'STORE_FAST' -1 $ @varnames v
+       @add_opcode 'STORE_FAST' $ @varnames v
 
 
 Generator.load_closure = v ~>
@@ -64,7 +64,8 @@ Generator.load_closure = v ~>
   for (i, c) in @f_locals !! v =>
     @bytecode !! i = c, @cellvars v
 
-  @add_opcode 'LOAD_CLOSURE' +1 $ if
+  @stackperm +1
+  @add_opcode 'LOAD_CLOSURE' $ if
     v in @varnames => @cellvars v
     otherwise      => @cellvars.get v $ @get_freevar v
 

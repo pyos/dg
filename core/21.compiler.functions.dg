@@ -111,7 +111,8 @@ Generator.call_infix_ast = args ~>
 
   '''
   exhaust $ map @load_ast args
-  @add_opcode 'CALL_FUNCTION' (-len args) (len args)
+  @add_opcode 'CALL_FUNCTION' (len args)
+  @currstack -= len args
 
 
 Generator.call_ast = args on_stack ~>
@@ -130,8 +131,8 @@ Generator.call_ast = args on_stack ~>
 
   @add_opcode
     'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
-    0 - len a -   2 * len kw - on_stack
-    0 + len a + 256 * len kw + on_stack
+    len a + (len kw << 8) + on_stack
+  @currstack -= len a + 2 * len kw + bool va + bool vkw + on_stack
 
 
 Generator.make_function = code defaults kwdefaults ~>
@@ -147,12 +148,13 @@ Generator.make_function = code defaults kwdefaults ~>
   exhaust $ map @load_ast     defaults
   exhaust $ map @load_closure const.co_freevars
 
-  @add_opcode 'BUILD_TUPLE' (1 - len const.co_freevars) (len const.co_freevars)
+  @stackperm +1
+  @add_opcode 'BUILD_TUPLE' $ len const.co_freevars
+  @currstack -= len const.co_freevars
   @load_const const
   @load_const name
-  @add_opcode 'MAKE_CLOSURE'
-    1 - len defaults -   2 * len kwdefaults
-    0 + len defaults + 256 * len kwdefaults
+  @add_opcode 'MAKE_CLOSURE' $ 0 + len defaults + 256 * len kwdefaults
+  @currstack -= len defaults + 2 * len kwdefaults + 2
 
 
 Generator.infixbind = kwd pos f arg ~>
@@ -173,7 +175,7 @@ Generator.infixbind = kwd pos f arg ~>
 
   c = Generator ('<bound {.value}>'.format f) True (tuple' pos) (tuple' kwd) cell: self
   c.load_call f (Name '<L>') (Name '<R>')
-  c.add_opcode 'RETURN_VALUE' -1 0
+  c.add_opcode 'RETURN_VALUE'
   @make_function c tuple! $ dict' (kwd, arg)
 
 
@@ -187,11 +189,11 @@ Generator.load_function = args body ~>
   g = Generator (@child_name '<lambda>') True a kw va vkw self
 
   for (name, pattern) in patterns.items! =>
-    g.add_opcode 'LOAD_FAST' +1 $ g.varnames name
+    g.load name
     g.store_ast pattern
 
   g.load_ast body
-  g.add_opcode 'RETURN_VALUE' -1 0
+  g.add_opcode 'RETURN_VALUE'
   @make_function g da dkw
 
 
@@ -203,9 +205,9 @@ Generator.load_fnmethod = xs body ~>
   '''
   if
     xs is None =>
-      @add_opcode 'LOAD_GLOBAL' +1 $ @names 'property'
+      @add_opcode 'LOAD_GLOBAL' $ @names 'property'
       @load_function (Name 'self') body
-      @add_opcode 'CALL_FUNCTION' -1 1
+      @add_opcode 'CALL_FUNCTION' 1
 
     xs :: Expression and not xs.closed and xs.op == '' =>
       xs.args.insert 0 (Name 'self')
@@ -215,9 +217,10 @@ Generator.load_fnmethod = xs body ~>
       @load_function (Expression (Name '') (Name 'self') xs) body
 
 
+Generator.stackr !! '~>' = 1
 Generator.prefix !! '->' = f q ~> @load_function *: (ensure f q 2 2)
 Generator.prefix !! '~>' = f q ~> @load_fnmethod *: (ensure f q 2 2)
-Generator.infixl !! '->' = f q ~> @load_function q (Constant None at: f.loc)
-Generator.infixl !! '~>' = f q ~> @load_fnmethod q (Constant None at: f.loc)
-Generator.infixr !! '->' = f q ~> @load_function None q
-Generator.infixr !! '~>' = f q ~> @load_fnmethod None q
+Generator.infixl !! '->' = f q ~> @load_call f q (Constant None at: f.loc)
+Generator.infixl !! '~>' = f q ~> @load_call f q (Constant None at: f.loc)
+Generator.infixr !! '->' = f q ~> @load_call f None q
+Generator.infixr !! '~>' = f q ~> @load_call f None q

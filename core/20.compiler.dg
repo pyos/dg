@@ -24,7 +24,7 @@ compileast = x ->
   '''
   gen = Generator '' False
   gen.load_ast x
-  gen.add_opcode 'RETURN_VALUE' -1 0
+  gen.add_opcode 'RETURN_VALUE'
   gen.frozen
 
 
@@ -63,7 +63,8 @@ Generator.load_const = x ~>
     load_const :: object -> a
 
   '''
-  @add_opcode 'LOAD_CONST' +1 $ @consts (x, type x)
+  @stackperm +1
+  @add_opcode 'LOAD_CONST' $ @consts (x, type x)
 
 
 Generator.load_ast = x ~>
@@ -74,7 +75,7 @@ Generator.load_ast = x ~>
   '''
   @lnomark x
 
-  if x :: Name       => @load x
+  if x :: Name       => @load x.value
      x :: Constant   => @load_const x.value
      x :: LeftBind   => (@infixl !! x.op.value) self x.op *: x.args
      x :: RightBind  => (@infixr !! x.op.value) self x.op *: x.args
@@ -98,13 +99,17 @@ Generator.load_call = f *: args ~>
     load_call :: Name (Many Node) -> a
 
   '''
-  if f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
-     f.infix and not f.closed =>
-       @load_ast f
-       @call_infix_ast args
-     otherwise =>
-       @load_ast f
-       @call_ast args 0
+  if
+    f :: Name and f.value in @prefix =>
+      @stackperm $ @stackr.get f.value 0
+      (@prefix !! f.value) self f args
+      @currstack -= @stackr.get f.value 0
+    f.infix and not f.closed =>
+      @load_ast f
+      @call_infix_ast args
+    otherwise =>
+      @load_ast f
+      @call_ast args 0
 
 
 Generator.chain = *: (*xs, x) ~>
@@ -115,7 +120,8 @@ Generator.chain = *: (*xs, x) ~>
   '''
   for y in xs =>
     @load_ast y
-    @add_opcode 'POP_TOP' -1 0
+    @add_opcode 'POP_TOP'
+    @currstack -= 1
   @load_ast x
 
 
@@ -139,35 +145,40 @@ Generator.store_ast = x ~>
         star = i
         x.args !! i = head q.args
 
-      if star >= 0 => @add_opcode 'UNPACK_EX'       (len x.args - 1) (256 * len x.args - 255 * star - 256)
-         otherwise => @add_opcode 'UNPACK_SEQUENCE' (len x.args - 1) (len x.args)
+      @stackperm $ len x.args - 1
+      if star >= 0 => @add_opcode 'UNPACK_EX'       (256 * len x.args - 255 * star - 256)
+         otherwise => @add_opcode 'UNPACK_SEQUENCE' (len x.args)
 
       exhaust $ map @store_ast x.args
 
     x :: RightBind and x.op == '@' =>
       # `@a` is equivalent to `self.a`.
       head x.args :: Name or Parser.error 'not an attribute' (head x.args).loc
-      @load (Name 'self' at: x.op.loc)
-      @add_opcode 'STORE_ATTR' -1 $ @names (head x.args).value
+      @load 'self'
+      @add_opcode 'STORE_ATTR' $ @names (head x.args).value
+      @currstack -= 2
 
     x :: Expression and len x.args == 2 and x.op == '.' =>
       # `a.b` => load `a`, store an attribute named `b`.
       snd x.args :: Name or Parser.error 'not an attribute' (snd x.args).loc
       @load_ast $ fst x.args
-      @add_opcode 'STORE_ATTR' -1 $ @names (snd x.args).value
+      @add_opcode 'STORE_ATTR' $ @names (snd x.args).value
+      @currstack -= 2
 
     x :: Expression and len x.args == 2 and x.op == '!!' =>
       # `a !! b = x` <=> `a.__setitem__ b x`
       @load_ast $ fst x.args
       @load_ast $ snd x.args
-      @add_opcode 'STORE_SUBSCR' -1 0
+      @add_opcode 'STORE_SUBSCR'
+      @currstack -= 3
 
-    x :: Name => @store x
+    x :: Name => @store x.value
     otherwise => Parser.error 'not something one can assign to' x.loc
 
 
 Generator.infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
 Generator.infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a)
+Generator.stackr = dict!
 Generator.prefix = dict'
   '',   f a ~> @load_call *: a
   '\n', f a ~> @chain     *: a
@@ -176,11 +187,12 @@ Generator.prefix = dict'
     @var, x = repr name, @var
     @load_ast value
     @var = x
-    @add_opcode 'DUP_TOP' 1 0
+    @stackperm +1
+    @add_opcode 'DUP_TOP'
     @store_ast name
 
   '.',  f a ~>
     x, y = ensure f a 2 2
     y :: Name or Parser.error 'not an attribute' y.loc
     @load_ast x
-    @add_opcode 'LOAD_ATTR' 0 $ @names y.value
+    @add_opcode 'LOAD_ATTR' $ @names y.value

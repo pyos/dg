@@ -18,6 +18,10 @@ JumpObject = subclass object where
     @forward => @code.append (@op, self)
     None
 
+  __enter__ = self -> self
+  __exit__  = self t v tv ->
+    t is None => @set
+    False
 
   set = ~>
     '''Set the target/insert the opcode.
@@ -79,4 +83,5 @@ Generator.setup = block ~>
     setup :: str -> JumpObject
 
   '''
-  JumpObject @bytecode True False $ dis.opmap !! ('SETUP_' + str.upper block)
+  if str.lower block == 'for' => JumpObject @bytecode True False $ dis.opmap !! 'FOR_ITER'
+     otherwise => JumpObject @bytecode True False $ dis.opmap !! ('SETUP_' + str.upper block)

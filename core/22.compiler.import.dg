@@ -23,19 +23,19 @@ Generator.prefix !! 'import' = f args ~>
     parent == 0 and (qualified or len path == 1) =>
       @load_const parent
       @load_const None
-      @add_opcode 'IMPORT_NAME' -1 $ @names $ '.'.join path
+      @add_opcode 'IMPORT_NAME' $ @names $ '.'.join path
 
     otherwise =>
       qualified => Parser.error 'relative imports are always unqualified' qualified.loc
       *dir, file = path
       @load_const parent
       @load_const $ tuple' file
-      @add_opcode 'IMPORT_NAME' -1 $ @names $ '.'.join dir
-      @add_opcode 'IMPORT_FROM' +1 $ @names file
-      @add_opcode 'ROT_TWO' +0 0
-      @add_opcode 'POP_TOP' -1 0
+      @add_opcode 'IMPORT_NAME' $ @names $ '.'.join dir
+      @add_opcode 'IMPORT_FROM' $ @names file
+      @add_opcode 'ROT_TWO'
+      @add_opcode 'POP_TOP'
 
-  @add_opcode 'DUP_TOP' +1 0
+  @add_opcode 'DUP_TOP'
   @store_ast $ Name $ path !! (-not qualified)
 
 

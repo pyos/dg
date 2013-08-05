@@ -1,82 +1,85 @@
 Generator.prefix !! 'where' = f args ~>
   end, start = ensure f args 2 2
-
   code = Generator (@child_name '<lambda>') True cell: self
-  code.load_ast start
-  code.add_opcode 'POP_TOP' -1 0
-  code.load_ast end
-  code.add_opcode 'RETURN_VALUE' -1 0
+  code.chain start end
+  code.add_opcode 'RETURN_VALUE'
   @make_function code list! dict!
-  @add_opcode 'CALL_FUNCTION' 0 0
+  @add_opcode 'CALL_FUNCTION' 0
 
 
 Generator.prefix !! 'yield' = f args ~>
   item, from = unpack f args $ item: None from: None -> (item, from)
-  if
-    from is None =>
-      @load_ast item
-      @add_opcode 'YIELD_VALUE' 0 0
-    otherwise =>
-      @load_ast from
-      @add_opcode 'GET_ITER' 0 0
-      if item is None => @load_const None
-         otherwise    => @load_ast item
-      @add_opcode 'YIELD_FROM' -1 0
+  not $ from is None =>
+    @load_ast from
+    @add_opcode 'GET_ITER'
+  if item is None => @load_const None
+     otherwise    => @load_ast   item
+  if from is None => @add_opcode 'YIELD_VALUE'
+     otherwise    => @add_opcode 'YIELD_FROM'
+  @currstack -= not $ from is None
+  @flags |= CO_GENERATOR
 
 
+Generator.stackr !! 'with' = 3
 Generator.prefix !! 'with' = f args ~>
-  context, body = ensure f args 2 2
-  var = None
-  # POP_BLOCK will remove the returned value from the stack.
-  # By swapping it with this, we can still have it.
+  ctx, ast = ensure f args 2 2
+  var, ctx = if
+    ctx :: Expression and len ctx.args == 2 and ctx.op == '=' => ctx.args
+    otherwise => Name '_', ctx
+
   @load_const None
+  @load_ast   ctx
 
-  context :: Expression and len context.args == 2 and context.op == '=' =>
-    var, context = context.args
+  with @setup 'with' =>      #=> (None, __exit__, return value of __enter__)
+    @store_ast var           #=> (None, __exit__)
+    @load_ast  ast           #=> (None, __exit__, ast)
+    @add_opcode 'ROT_THREE'  #=> (ast, None, __exit__)
+    @add_opcode 'ROT_TWO'    #=> (ast, __exit__, None)
+    @add_opcode 'POP_TOP'    #=> (ast, __exit__)
+    @currstack -= 1
+    @add_opcode 'POP_BLOCK'
+    @load_const None
 
-  @load_ast context
-  end_ptr = @setup 'with'
-  @depth  += 1
-  @m_depth = max @depth @m_depth
-  if var  => @store_ast var
-     True => @add_opcode 'POP_TOP' -1 0
-
-  @load_ast body
-  @add_opcode 'ROT_THREE' +0 0
-  @add_opcode 'ROT_TWO'   +0 0
-  @add_opcode 'POP_BLOCK' -0 0
-  @load_const None
-  end_ptr.set
-  @add_opcode 'WITH_CLEANUP' +1 0
-  @add_opcode 'END_FINALLY'  -2 0
+  @add_opcode 'WITH_CLEANUP'
+  @add_opcode 'END_FINALLY'
+  @currstack -= 1
 
 
 Generator.prefix !! 'subclass' = f args ~>
-  doc = if (@consts => fst $ head @consts)
-  doc = if (doc :: str => doc) (otherwise => None)
-  @add_opcode 'LOAD_BUILD_CLASS' +1 0
+  # We'll take variables from this namespace,
+  # might as well take its docstring.
+  doc = if @consts and snd (head @consts) is str => fst $ head @consts
 
+  @add_opcode 'LOAD_BUILD_CLASS'
+  @stackperm +1
   # Someone decided that from 3.4 on, __build_class__ should automatically
   # do `STORE_LOCALS` with the new namespace. Awesome. More hacks on the way!
   code = Generator (@child_name '<class>') False cell: self
 
   if PY_VERSION < 0x03040000 =>
     code = Generator (@child_name '<class>') True (list' 'ns') cell: self
-    code.add_opcode 'LOAD_FAST'    +1 $ code.varnames 'ns'
-    code.add_opcode 'STORE_LOCALS' -1 0
+    code.slowlocals = True
+    code.add_opcode 'LOAD_FAST'    $ code.varnames 'ns'
+    code.add_opcode 'STORE_LOCALS'
 
   for x in (@varnames.keys! | @cellvars.keys!) =>
-    code.add_opcode 'LOAD_DEREF' +1 $ code.freevars x
-    code.add_opcode 'STORE_NAME' -1 $ code.names x
+    # Note that the order is pseudorandom, so the code object
+    # may be different from time to time without any reason whatsoever.
+    code.add_opcode 'LOAD_DEREF' $ code.freevars x
+    code.add_opcode 'STORE_NAME' $ code.names    x
 
+  # Sure, there is no to stockpile on constants instead of
+  # stuffing them in variables right away, but this code looks slightly
+  # better that way.
   code.load_const None
   code.load_const @qualname
   code.load_const doc
-  code.add_opcode 'LOAD_NAME'    +1 $ code.names '__name__'
-  code.add_opcode 'STORE_NAME'   -1 $ code.names '__module__'
-  code.add_opcode 'STORE_NAME'   -1 $ code.names '__doc__'
-  code.add_opcode 'STORE_NAME'   -1 $ code.names '__qualname__'
-  code.add_opcode 'RETURN_VALUE' -1 0
+  code.add_opcode 'LOAD_NAME'    $ code.names '__name__'
+  code.add_opcode 'STORE_NAME'   $ code.names '__module__'
+  code.add_opcode 'STORE_NAME'   $ code.names '__doc__'
+  code.add_opcode 'STORE_NAME'   $ code.names '__qualname__'
+  code.add_opcode 'RETURN_VALUE'
+  code.stacksize = 4
   @make_function code tuple! dict!
   @load_const @name
   @call_ast args 2
@@ -86,29 +89,33 @@ Generator.prefix !! 'while' = f args ~>
   cond, *body = ensure f args
   @load_const None
 
-  to_cond = @jump reverse: False
-  to_body = @pop_jump_if True reverse: True
-  @depth -= 1
-  if (body => @chain *: body) (otherwise => @load_const None)
-  @add_opcode 'ROT_TWO' +0 0
-  @add_opcode 'POP_TOP' -1 0
-  to_cond.set
+  restart = @jump reverse: True
   @load_ast cond
-  to_body.set
+  @currstack -= 1
+  with @pop_jump_if False reverse: False =>
+    @add_opcode 'POP_TOP'
+    @currstack -= 1
+    if body      => @chain *: body
+       otherwise => @load_const None
+    restart.set
 
 
+Generator.stackr !! 'for' = 1
 Generator.prefix !! 'for' = f args ~>
   x, body = ensure f args 2 2
-  k, v = if x :: Expression and x.op == 'in' and len x.args == 2 => x.args
-            otherwise => Parser.error 'should be `a in b`' x.loc
+  not $ x :: Expression and x.op == 'in' and len x.args == 2 =>
+    Parser.error 'only `a in b` is accepted (hint: check the parentheses)' x.loc
+  k, v = x.args
 
   @load_const None
   @load_ast   v
-  @add_opcode 'GET_ITER' +1 0
-  loop = @jump reverse: True
-  end  = JumpObject @bytecode True False $ dis.opmap !! 'FOR_ITER'
-  @store_ast  k
-  @load_ast   body
-  @add_opcode 'POP_TOP' -1 0
-  loop.set
-  end.set
+  @add_opcode 'GET_ITER'
+  restart = @jump reverse: True
+  with @setup 'for' =>
+    @store_ast  k
+    @load_ast   body
+    @add_opcode 'ROT_THREE'
+    @add_opcode 'ROT_TWO'
+    @add_opcode 'POP_TOP'
+    @currstack -= 1
+    restart.set
