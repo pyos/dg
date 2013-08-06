@@ -2,9 +2,9 @@ CO_OPTIMIZED = 1   # does not use slow locals
 CO_NEWLOCALS = 2   # has a local namespace
 CO_VARARGS   = 4   # accepts any amount of positional arguments
 CO_VARKWARGS = 8   # accepts any amount of keyword arguments
-CO_NESTED    = 16  # uses free variables
+CO_NESTED    = 16  # is a closure (unused, in fact)
 CO_GENERATOR = 32  # uses YIELD_VALUE/YIELD_FROM
-CO_NOFREE    = 64  # does not export free variables
+CO_NOFREE    = 64  # does not use cells
 
 EXTENDED_ARG = dis.opmap.get 'EXTENDED_ARG'
 
@@ -116,6 +116,7 @@ Generator = subclass object where
     @bytecode = list!
     @flags  = CO_VARARGS   * bool va
     @flags |= CO_VARKWARGS * bool vkw
+    @flags |= CO_NESTED    * (bool cell and not cell.slowlocals)
     @flags |= (CO_OPTIMIZED | CO_NEWLOCALS) * bool isfunc
 
     # Set on first `lnomark`.
@@ -176,7 +177,7 @@ Generator = subclass object where
 
     '''
     types.CodeType @argc @kwargc (len @varnames) @stacksize
-      @flags | CO_NESTED * bool @freevars | CO_NOFREE * not @cellvars
+      @flags | CO_NOFREE * not (@cellvars or @freevars)
       b''.join $ map opcode @bytecode
       tuple $ map fst @consts
       tuple @names
