@@ -180,7 +180,7 @@ Parser = subclass collections.deque where
 
     rhs.nolhs and not rhs.closed =>
       # Got to handle that first, as the empty operator may not have
-      # enough binding strenght for that later.
+      # enough binding strength for that later.
       rhs = @infix (Name '' infix: True varary: True at: rhs.loc) rhs $ next self
 
     if
