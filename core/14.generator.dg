@@ -9,18 +9,6 @@ CO_NOFREE    = 64  # does not use cells
 EXTENDED_ARG = dis.opmap.get 'EXTENDED_ARG'
 
 
-opcode = (op, arg) ->
-  '''Generate a sequence of bytes for an opcode with an argument.
-
-    opcode :: int int -> bytes
-
-  '''
-  arg = int arg
-  if op < dis.HAVE_ARGUMENT => bytes $ list' op
-     arg >= 0x10000 => opcode EXTENDED_ARG (arg >> 16) + opcode op (arg % 0x10000)
-     otherwise      => bytes (op, arg % 0x100, arg >> 8)
-
-
 codelen = seq ->
   '''Calculate the length of a bytecode sequence, in bytes.
 
@@ -39,9 +27,8 @@ OrderedSet = subclass dict where
     type IndexedSet < dict
 
   '''
-  __call__ = k ~>
-    self !! k = @get k (len self)
-
+  __init__ = @f *: q ~> dict.__init__ self *: q
+  __call__ = k ~> @f (self !! k = @get k $ len self)
   __iter__ = self ->
     '''All items in this set, in insertion order.
 
@@ -62,16 +49,12 @@ Generator = subclass object where
       argc   :: int -- co_argcount
       kwargc :: int -- co_kwonlyargcount
 
-      names    :: OrderedSet -- co_names  (attributes, slow locals, globals & modules)
-      consts   :: OrderedSet -- co_consts ((type, value) pairs)
-      freevars :: OrderedSet -- co_freevars (non-local variables)
-      cellvars :: OrderedSet -- co_cellvars (local closure)
-      varnames :: OrderedSet -- co_varnames (locally visible fast variables only)
-      enclosed :: set -- names that may be added to `freevars`.
-
-      slowlocals :: bool -- whether to not use _FAST opcodes.
-      f_locals   :: {str: (int, int)} -- a cache to replace _FAST opcodes
-                                      -- with _DEREF ones fast.
+      names      :: OrderedSet -- co_names  (attributes, slow locals, globals & modules)
+      consts     :: OrderedSet -- co_consts ((type, value) pairs)
+      freevars   :: OrderedSet -- co_freevars (non-local variables)
+      cellvars   :: OrderedSet -- co_cellvars (local closure)
+      enclosed   :: set -- names that may be added to `freevars`.
+      slowlocals :: bool -- whether to use _NAME opcodes.
 
       bytecode :: [(int, int)] -- co_code as an unpacked list.
       flags    :: int          -- co_flags (see the `CO_*` constants.)
@@ -95,13 +78,11 @@ Generator = subclass object where
     @argc   = len a
     @kwargc = len kw
 
-    @names    = OrderedSet!
-    @consts   = OrderedSet!
-    @freevars = OrderedSet!
-    @cellvars = OrderedSet!
-    @varnames = OrderedSet $ zip
-      itertools.chain a kw va vkw  # attributes are stored as fast locals implicitly
-      itertools.count 0
+    @_locals  = tuple $ itertools.chain a kw va vkw
+    @names    = OrderedSet (x -> x)
+    @consts   = OrderedSet (x -> x)
+    @freevars = OrderedSet (x -> -x - 1)
+    @cellvars = OrderedSet (x -> x) $ zip @_locals $ itertools.count 0
 
     @slowlocals = not isfunc
     @f_locals   = collections.defaultdict set
@@ -110,7 +91,7 @@ Generator = subclass object where
     @enclosed = if
       # dg only uses slow locals in global namespaces and classes,
       # and the latter don't create new code objects.
-      cell => dict.keys cell.varnames | cell.cellvars | cell.enclosed
+      cell => dict.keys cell.cellvars | cell.enclosed
       True => set!
 
     @bytecode = list!
@@ -176,15 +157,27 @@ Generator = subclass object where
       frozen :: CodeType
 
     '''
-    types.CodeType @argc @kwargc (len @varnames) @stacksize
-      @flags | CO_NOFREE * not (@cellvars or @freevars)
-      b''.join $ map opcode @bytecode
+    types.CodeType @argc @kwargc (len @_locals) @stacksize
+      @flags
+      b''.join $ map @opcode @bytecode
       tuple $ map fst @consts
       tuple @names
-      tuple @varnames
+      @_locals
       @filename
       @name
       @lineno
       bytes @lnotab
       tuple @freevars
       tuple @cellvars
+
+  opcode = (op, arg) ~>
+    '''Generate a sequence of bytes for an opcode with an argument.
+
+      opcode :: int int -> bytes
+
+    '''
+    arg < 0 => arg = len @cellvars - arg - 1
+
+    if op < dis.HAVE_ARGUMENT => bytes $ list' op
+       arg >= 0x10000 => @opcode EXTENDED_ARG (arg >> 16) + @opcode op (arg % 0x10000)
+       otherwise      => bytes (op, arg % 0x100, arg >> 8)

@@ -11,11 +11,10 @@ JumpObject = subclass object where
     }
 
   '''
-  __int__  = self -> @value or 0
   __init__ = @code @forward @absolute @op ~>
     @start = len @code
     @value = None
-    @forward => @code.append (@op, self)
+    @forward => @code.append (@op, 0)
     None
 
   __enter__ = self -> self
@@ -41,7 +40,8 @@ JumpObject = subclass object where
           @value += 3
           sz <<= 16
 
-    not @forward => @code.append (@op, @value)
+    if @forward  => @code !! @start = (@op, @value)
+       otherwise => @code.append      (@op, @value)
 
 
 Generator.pop_jump_if = value reverse ~>
