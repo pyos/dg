@@ -1,6 +1,5 @@
 # All of the files in this directory are compiled into a single bundle.
 # Imports go here.
-import '/os'
 import '/re'
 import '/dis'
 import '/sys'
