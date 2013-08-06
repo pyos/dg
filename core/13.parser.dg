@@ -120,7 +120,7 @@ Parser = subclass collections.deque where
              @indent.pop!
              @append $ Name '\n' infix: True varary: True at: pos
              @append $ Dedent
-             last @indent < level => @error 'no matching indentation level' pos
+             last @indent < level => @error 'no matching indentation level' pos2
 
          Name (sys.intern $ c or e or x) at: pos
            infix:  (bool $ a or b or c or e or x in infixn)
