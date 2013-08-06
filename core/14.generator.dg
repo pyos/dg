@@ -110,7 +110,7 @@ Generator = subclass object where
     @enclosed = if
       # dg only uses slow locals in global namespaces and classes,
       # and the latter don't create new code objects.
-      cell => dict.keys cell.varnames | cell.enclosed
+      cell => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       True => set!
 
     @bytecode = list!
