@@ -4,11 +4,6 @@ import '/argparse'
 
 import 'bundlesupport'
 
-# Constants used by functions in `bundlesupport`.
-SOURCE_TREE = os.path.dirname __file__
-SOURCE_DIR  = os.path.join SOURCE_TREE 'core'
-BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundles'
-
 
 msg = x ->
   '''Log a diagnostic message.
@@ -25,59 +20,42 @@ ver = x lowest: 0x03030000 highest: 0x0304FFFF ->
     ver :: str (Optional int) (Optional int) -> int
 
   '''
-  y where except
+  (q, y) where except
     e =>
-      y = int x 16
+      q, w = x.split ','
+      y = int w 16
       y < lowest  => raise $ ValueError 'target version is too low'
       y > highest => raise $ ValueError 'target version is too high'
     e :: ValueError =>
       raise $ argparse.ArgumentTypeError (str e)
 
 
-getargs = name description *: xs ->
-  '''Parse arguments given a homogenous description.
-
-    Each row is a (option, metavar, nargs, type, action, dest, help, default) tuple.
-
-    getargs :: str str (Many+ (str, Maybe str, Maybe str, object, str, str, str, object)) -> Namespace
-
-  '''
-  p = argparse.ArgumentParser prog: name description: description
-  for (opt, var, na, t, a, dst, help, def) in xs =>
-    kws = dict metavar: var nargs: na type: t action: a dest: dst help: help default: def
-    kws = dict $ filter ((k, v) -> not $ v is None) kws.items!
-    p.add_argument opt **: kws
-  p.parse_args!
-
-
-ns = getargs 'dg' 'An infix LISP atop CPython.'
-  '--rebuild', None,         None,  None, 'store_true', 'build',      'rebuild a bundle for the target interpreter',          None
-  '--tag',     'NAME',       None,  None, None,         'tag',        'tag name of the target interpreter (e.g. cpython-34)', sys.implementation.cache_tag
-  '--version', '0xAABBCCDD', None,  ver,  None,         'hexversion', 'version of the target intepreter (e.g. 0x03040000)',   sys.hexversion
-  'source',    'file',       '?',   open, None,         None,         'file to execute',                                      sys.stdin
-  'args',      '...',        '...', None, None,         None,         'additional arguments (sys.argv[1:])',                  None
+p = argparse.ArgumentParser prog: 'dg' description: 'An infix LISP atop CPython.'
+p.add_argument '-b' '--build' metavar: 'tag,version' nargs: '?'   type: ver  help: 'rebuild a bundle' const: (sys.implementation.cache_tag, sys.hexversion)
+p.add_argument 'source'       metavar: 'file'        nargs: '?'   type: open help: 'file to execute'  default: sys.stdin
+p.add_argument 'args'         metavar: '...'         nargs: '...'            help: 'additional arguments'
+ns = p.parse_args!
 
 
 if ns.build =>
+  SOURCE_TREE = os.path.dirname __file__
+  SOURCE_DIR  = os.path.join SOURCE_TREE 'core'
+  BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundles'
+
   # Ideally, three iterations should be enough:
   #   1. Make a bundle with new features.
   #   2. Recompile it to apply these features to the compiler itself.
   #   3. Check that the compiler can still support itself.
-  iter_count = 1 + 2 * (ns.tag == sys.implementation.cache_tag)
+  iter_count = 1 + 2 * (fst ns.build == sys.implementation.cache_tag)
 
-  msg $ 'Rebuilding for: {0.tag} 0x{0.hexversion:X}'.format ns
+  msg $ 'Rebuilding for: {0} 0x{1:X}'.format *: ns.build
   msg $ 'Running on:     {0.implementation.cache_tag} 0x{0.hexversion:X}'.format sys
-  msg $ '-------------------------------'
-  msg $ 'NOTE: differences on the first iteration are OK,'
-  msg $ '      since they are mostly due to changes in the source code'
-  msg $ '      or `hash()` using a different secret random key.'
-  msg $ '-------------------------------'
   this = bundlesupport.load sys.implementation.cache_tag BUNDLE_DIR
   diff = False
 
   for i in range 1 (1 + iter_count) =>
     msg $ 'Rebuilding, iteration {}/{}.'.format i iter_count
-    that = list $ bundlesupport.rebuild this ns.hexversion SOURCE_DIR
+    that = list $ bundlesupport.rebuild this (snd ns.build) SOURCE_DIR
     diff = list $ bundlesupport.diff this that
     for (f, st) in diff => if
       st == -1  => msg $ '   {} differs.'.format f
@@ -87,7 +65,7 @@ if ns.build =>
     this = that
 
   if
-    ns.tag != sys.implementation.cache_tag =>
+    fst ns.build != sys.implementation.cache_tag =>
       msg $ 'WARNING: Targeting a different interpreter.'
       msg $ 'WARNING: Cannot run any more iterations.'
     diff =>
@@ -95,7 +73,7 @@ if ns.build =>
       msg $ 'FATAL: A compiler error was detected. Aborting.'
       exit 1
 
-  bundlesupport.save this ns.tag BUNDLE_DIR
+  bundlesupport.save this (fst ns.build) BUNDLE_DIR
   exit 0
 
 import 'parse'
@@ -131,7 +109,7 @@ command = code -> except
         expr :: Name and not expr.closed and expr.value in Generator.prefix or
           # 3. the last line of the code is indented.
           (last $ code.rsplit '\n' 1).startswith ' '
-    ) => res
+    ) => compileast res
 
   # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
   e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None
@@ -145,7 +123,7 @@ sys.ps2 = getattr sys 'ps2' '... '
 
 while True => except
   e => sys.displayhook $ eval
-    compileast $ next $ dropwhile not $ map command $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
+    next $ dropwhile not $ map command $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
     env
   e :: EOFError   => raise SystemExit
   e :: SystemExit => raise e

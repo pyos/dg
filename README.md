@@ -30,7 +30,7 @@ python -m dg <<< stuff
 python -m package_name
 
 # Recompile the bundle for your interpreter
-python -m dg --rebuild
+python -m dg --build
 # Recompile the bundle for a specific target
 # (NOTE: it's not recommended to use new versions of Python to compile bundles
 #  for old ones. In particular, Python 3.4 has a new marshalling protocol that
@@ -38,7 +38,7 @@ python -m dg --rebuild
 #  using that version of Python afterwards to make sure the bundle
 #  is as optimized as it can be: bundles created with Python 3.4, for example,
 #  are about 30% smaller than ones created with Python 3.3.)
-python -m dg --rebuild --version 0x03040000 --tag cpython-34
+python -m dg --build cpython-34,0x03040000
 ```
 
 ### Hello, World!
