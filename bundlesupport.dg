@@ -3,23 +3,19 @@ import '/sys'
 import '/marshal'
 
 
-rebuild = old version dirname ->
+rebuild = old tag version dirname ->
   '''Recompile dg itself.
 
     old     -- the current version of the bundle.
+    tag     -- `sys.implementation.cache_tag` of the target.
     version -- `sys.hexversion` of the target.
     dirname -- path to the directory with the source code.
-
-    Note: it's recommended to run this function multiple times
-          in order to make sure the new bundle is correct
-          before overwriting the new one.
 
     rebuild :: [CodeType] src -> [CodeType]
 
   '''
-  ns = dict __name__: 'dg'
+  ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version
   for c in old => eval c ns
-  ns !! 'PY_VERSION' = version
   compilefd = ns !! 'compilefd'
 
   for f in sorted (os.listdir dirname) =>

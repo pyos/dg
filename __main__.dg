@@ -57,7 +57,7 @@ if ns.build =>
 
   for i in range 1 (1 + iter_count) =>
     msg $ 'Rebuilding, iteration {}/{}.'.format i iter_count
-    that = list $ bundlesupport.rebuild this (snd ns.build) SOURCE_DIR
+    that = list $ bundlesupport.rebuild this (fst ns.build) (snd ns.build) SOURCE_DIR
     diff = list $ bundlesupport.diff this that
     for (f, st) in diff => if
       st == -1  => msg $ '   {} differs.'.format f

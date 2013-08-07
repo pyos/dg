@@ -6,7 +6,8 @@ import os.path
 if not hasattr(sys, 'implementation'):
     raise ImportError('Python 3.3 or newer is required')
 
-PY_TAG = sys.implementation.cache_tag
+PY_TAG     = sys.implementation.cache_tag
+PY_VERSION = sys.hexversion
 
 if PY_TAG is None:
     # Never seen this to be true, but Python documentation
