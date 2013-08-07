@@ -1,3 +1,7 @@
+# These constants, unless redefined in a function, will
+# be loaded as constants
+CONSTANTS = dict True: True False: False None: None otherwise: True
+
 # String representation of the variable on the left side of
 # the innermost assignment or None.
 Generator.var = None
@@ -13,6 +17,7 @@ Generator.load = v ~>
 
   if v in @cellvars => @add_opcode 'LOAD_DEREF'  $ @cellvars v
      v in @enclosed => @add_opcode 'LOAD_DEREF'  $ @freevars v
+     v in CONSTANTS => @load_const $ CONSTANTS !! v
      @slowlocals    => @add_opcode 'LOAD_NAME'   $ @names    v
      otherwise      => @add_opcode 'LOAD_GLOBAL' $ @names    v
 
