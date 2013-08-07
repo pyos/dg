@@ -65,9 +65,9 @@ Generator.load_closure = v ~>
     @bytecode !! i = c, @cellvars v
 
   @stackperm +1
-  @add_opcode 'LOAD_CLOSURE' $ if
-    v in @varnames => @cellvars v
-    otherwise      => @cellvars.get v $ @get_freevar v
+  @add_opcode 'LOAD_CLOSURE' $ if v in @cellvars => @cellvars v
+                                  v in @varnames => @cellvars v
+                                  otherwise      => @get_freevar v
 
 
 Generator.child_name = fallback ~>

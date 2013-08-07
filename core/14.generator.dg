@@ -9,18 +9,6 @@ CO_NOFREE    = 64  # does not use cells
 EXTENDED_ARG = dis.opmap.get 'EXTENDED_ARG'
 
 
-opcode = (op, arg) ->
-  '''Generate a sequence of bytes for an opcode with an argument.
-
-    opcode :: int int -> bytes
-
-  '''
-  arg = int arg
-  if op < dis.HAVE_ARGUMENT => bytes $ list' op
-     arg >= 0x10000 => opcode EXTENDED_ARG (arg >> 16) + opcode op (arg % 0x10000)
-     otherwise      => bytes (op, arg % 0x100, arg >> 8)
-
-
 codelen = seq ->
   '''Calculate the length of a bytecode sequence, in bytes.
 
@@ -178,7 +166,7 @@ Generator = subclass object where
     '''
     types.CodeType @argc @kwargc (len @varnames) @stacksize
       @flags | CO_NOFREE * not (@cellvars or @freevars)
-      b''.join $ map opcode @bytecode
+      b''.join $ map @opcode @bytecode
       tuple $ map fst @consts
       tuple @names
       tuple @varnames
@@ -188,3 +176,14 @@ Generator = subclass object where
       bytes @lnotab
       tuple @freevars
       tuple @cellvars
+
+  opcode = (op, arg) ~>
+    '''Generate a sequence of bytes for an opcode with an argument.
+
+      opcode :: int int -> bytes
+
+    '''
+    arg = int arg
+    if op < dis.HAVE_ARGUMENT => bytes $ list' op
+       arg >= 0x10000 => @opcode EXTENDED_ARG (arg >> 16) + @opcode op (arg % 0x10000)
+       otherwise      => bytes (op, arg % 0x100, arg >> 8)
