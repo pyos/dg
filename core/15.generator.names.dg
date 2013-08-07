@@ -3,25 +3,6 @@
 Generator.var = None
 
 
-LazyInteger = __int__ ->
-  '''An object that can be converted into an integer on demand.
-
-    type LazyInteger { __int__ :: -> int }
-
-  '''
-  call $ subclass object
-
-
-Generator.get_freevar = name ~>
-  '''Fetch the index of a free variable.
-
-    `cellvars` and `freevars` share the index space, so
-    this needs to be deferred until compilation time.
-
-  '''
-  LazyInteger $ _ i: (@freevars name) -> len @cellvars + i
-
-
 Generator.load = v ~>
   '''Push the value assigned to some name onto the value stack.
 
@@ -34,9 +15,9 @@ Generator.load = v ~>
      v in @varnames =>
        (@f_locals !! v).add (len @bytecode, dis.opmap !! 'LOAD_DEREF')
        @add_opcode 'LOAD_FAST' $ @varnames v
-     v in @enclosed => @add_opcode 'LOAD_DEREF'  $ @get_freevar v
-     @slowlocals    => @add_opcode 'LOAD_NAME'   $ @names v
-     otherwise      => @add_opcode 'LOAD_GLOBAL' $ @names v
+     v in @enclosed => @add_opcode 'LOAD_DEREF'  $ @freevars v
+     @slowlocals    => @add_opcode 'LOAD_NAME'   $ @names    v
+     otherwise      => @add_opcode 'LOAD_GLOBAL' $ @names    v
 
 
 Generator.store = v ~>
@@ -47,9 +28,9 @@ Generator.store = v ~>
   '''
   @currstack -= 1
 
-  if v in @cellvars => @add_opcode 'STORE_DEREF' $ @cellvars    v
-     v in @enclosed => @add_opcode 'STORE_DEREF' $ @get_freevar v
-     @slowlocals    => @add_opcode 'STORE_NAME'  $ @names v
+  if v in @cellvars => @add_opcode 'STORE_DEREF' $ @cellvars v
+     v in @enclosed => @add_opcode 'STORE_DEREF' $ @freevars v
+     @slowlocals    => @add_opcode 'STORE_NAME'  $ @names    v
      otherwise      =>
        (@f_locals !! v).add (len @bytecode, dis.opmap !! 'STORE_DEREF')
        @add_opcode 'STORE_FAST' $ @varnames v
@@ -67,7 +48,7 @@ Generator.load_closure = v ~>
   @stackperm +1
   @add_opcode 'LOAD_CLOSURE' $ if v in @cellvars => @cellvars v
                                   v in @varnames => @cellvars v
-                                  otherwise      => @get_freevar v
+                                  otherwise      => @freevars v
 
 
 Generator.child_name = fallback ~>

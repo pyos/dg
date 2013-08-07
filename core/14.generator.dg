@@ -27,9 +27,8 @@ OrderedSet = subclass dict where
     type IndexedSet < dict
 
   '''
-  __call__ = k ~>
-    self !! k = @get k (len self)
-
+  __init__ = @f *: q ~> dict.__init__ self *: q
+  __call__ = k ~> @f (self !! k = @get k $ len self)
   __iter__ = self ->
     '''All items in this set, in insertion order.
 
@@ -50,14 +49,13 @@ Generator = subclass object where
       argc   :: int -- co_argcount
       kwargc :: int -- co_kwonlyargcount
 
-      names    :: OrderedSet -- co_names  (attributes, slow locals, globals & modules)
-      consts   :: OrderedSet -- co_consts ((type, value) pairs)
-      freevars :: OrderedSet -- co_freevars (non-local variables)
-      cellvars :: OrderedSet -- co_cellvars (local closure)
-      varnames :: OrderedSet -- co_varnames (locally visible fast variables only)
-      enclosed :: set -- names that may be added to `freevars`.
-
-      slowlocals :: bool -- whether to not use _FAST opcodes.
+      names      :: OrderedSet -- co_names  (attributes, slow locals, globals & modules)
+      consts     :: OrderedSet -- co_consts ((type, value) pairs)
+      freevars   :: OrderedSet -- co_freevars (non-local variables)
+      cellvars   :: OrderedSet -- co_cellvars (local closure)
+      varnames   :: OrderedSet -- co_varnames (locally visible fast variables only)
+      enclosed   :: set -- names that may be added to `freevars`.
+      slowlocals :: bool -- whether to use _NAME opcodes.
       f_locals   :: {str: (int, int)} -- a cache to replace _FAST opcodes
                                       -- with _DEREF ones fast.
 
@@ -83,11 +81,11 @@ Generator = subclass object where
     @argc   = len a
     @kwargc = len kw
 
-    @names    = OrderedSet!
-    @consts   = OrderedSet!
-    @freevars = OrderedSet!
-    @cellvars = OrderedSet!
-    @varnames = OrderedSet $ zip
+    @names    = OrderedSet (x -> x)
+    @consts   = OrderedSet (x -> x)
+    @freevars = OrderedSet (x -> -x - 1)
+    @cellvars = OrderedSet (x -> x)
+    @varnames = OrderedSet (x -> x) $ zip
       itertools.chain a kw va vkw  # attributes are stored as fast locals implicitly
       itertools.count 0
 
@@ -183,7 +181,8 @@ Generator = subclass object where
       opcode :: int int -> bytes
 
     '''
-    arg = int arg
+    arg < 0 => arg = len @cellvars - arg - 1
+
     if op < dis.HAVE_ARGUMENT => bytes $ list' op
        arg >= 0x10000 => @opcode EXTENDED_ARG (arg >> 16) + @opcode op (arg % 0x10000)
        otherwise      => bytes (op, arg % 0x100, arg >> 8)
