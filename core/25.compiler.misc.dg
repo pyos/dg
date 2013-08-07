@@ -57,9 +57,9 @@ Generator.prefix !! 'subclass' = f args ~>
   code = Generator (@child_name '<class>') False cell: self
 
   if PY_VERSION < 0x03040000 =>
-    code = Generator (@child_name '<class>') True (list' 'ns') cell: self
+    code = Generator (@child_name '<class>') True (list' '<ns>') cell: self
     code.slowlocals = True
-    code.add_opcode 'LOAD_FAST'    $ code.varnames 'ns'
+    code.add_opcode 'LOAD_FAST' $ code.varnames '<ns>'
     code.add_opcode 'STORE_LOCALS'
 
   for x in (@varnames.keys! | @cellvars.keys!) =>
