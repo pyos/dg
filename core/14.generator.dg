@@ -17,7 +17,7 @@ codelen = seq ->
   '''
   sum $ map
     (c, v) -> if c < dis.HAVE_ARGUMENT => 1
-                 otherwise             => 3 * (1 + abs (int.bit_length (int v) - 1) // 16)
+                 otherwise             => 3 * (1 + abs (v.bit_length! - 1) // 16)
     seq
 
 
@@ -27,15 +27,19 @@ OrderedSet = subclass dict where
     type IndexedSet < dict
 
   '''
-  __init__ = @f *: q ~> dict.__init__ self *: q
-  __call__ = k ~> @f (self !! k = @get k $ len self)
-  __iter__ = self ->
+  __call__ = self k -> (self !! k = @get k $ len self)
+  __iter__ = self   ->
     '''All items in this set, in insertion order.
 
       contents :: [a]
 
     '''
     iter $ sorted @keys! key: @__getitem__
+
+
+OrderedSetNegative = subclass OrderedSet where
+  '''An ordered set that returns negative indexes when called.'''
+  __call__ = self k -> -1 - OrderedSet.__call__ self k
 
 
 Generator = subclass object where
@@ -78,11 +82,11 @@ Generator = subclass object where
     @argc   = len a
     @kwargc = len kw
 
-    @_locals  = tuple $ itertools.chain a kw va vkw
-    @names    = OrderedSet (x -> x)
-    @consts   = OrderedSet (x -> x)
-    @freevars = OrderedSet (x -> -x - 1)
-    @cellvars = OrderedSet (x -> x) $ zip @_locals $ itertools.count 0
+    @_locals  = tuple $ map sys.intern $ itertools.chain a kw va vkw
+    @names    = OrderedSet!
+    @consts   = OrderedSet!
+    @freevars = OrderedSetNegative!
+    @cellvars = OrderedSet $ zip @_locals $ itertools.count 0
 
     @slowlocals = not isfunc
     @f_locals   = collections.defaultdict set
@@ -161,14 +165,14 @@ Generator = subclass object where
       @flags
       b''.join $ map @opcode @bytecode
       tuple $ map fst @consts
-      tuple @names
+      tuple $ map sys.intern @names
       @_locals
       @filename
       @name
       @lineno
       bytes @lnotab
-      tuple @freevars
-      tuple @cellvars
+      tuple $ map sys.intern @freevars
+      tuple $ map sys.intern @cellvars
 
   opcode = (op, arg) ~>
     '''Generate a sequence of bytes for an opcode with an argument.
