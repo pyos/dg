@@ -82,7 +82,7 @@ Generator.except_main = name try cases ~>
     # If a handler was triggered, there's now a return value
     # on top of the stack. It needs to be stored for safekeeping.
     for j in jumps => j.set
-    @add_opcode 'STORE_FAST' $ @varnames '<except-result>'
+    @add_opcode 'STORE_DEREF' $ @cellvars '<except-result>'
     # There's still either a `None` or a subclass of `Exception` on the stack.
     # It didn't stop existing or anything.
     @add_opcode 'DUP_TOP'
@@ -93,5 +93,5 @@ Generator.except_main = name try cases ~>
     with @pop_jump_if True reverse: False => @add_opcode 'POP_EXCEPT'
     # Now we can restore that value.
     @add_opcode 'POP_TOP'
-    @add_opcode 'LOAD_FAST'   $ @varnames '<except-result>'
-    @add_opcode 'DELETE_FAST' $ @varnames '<except-result>'
+    @add_opcode 'LOAD_DEREF'   $ @cellvars '<except-result>'
+    @add_opcode 'DELETE_DEREF' $ @cellvars '<except-result>'

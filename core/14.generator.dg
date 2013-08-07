@@ -53,11 +53,8 @@ Generator = subclass object where
       consts     :: OrderedSet -- co_consts ((type, value) pairs)
       freevars   :: OrderedSet -- co_freevars (non-local variables)
       cellvars   :: OrderedSet -- co_cellvars (local closure)
-      varnames   :: OrderedSet -- co_varnames (locally visible fast variables only)
       enclosed   :: set -- names that may be added to `freevars`.
       slowlocals :: bool -- whether to use _NAME opcodes.
-      f_locals   :: {str: (int, int)} -- a cache to replace _FAST opcodes
-                                      -- with _DEREF ones fast.
 
       bytecode :: [(int, int)] -- co_code as an unpacked list.
       flags    :: int          -- co_flags (see the `CO_*` constants.)
@@ -81,13 +78,11 @@ Generator = subclass object where
     @argc   = len a
     @kwargc = len kw
 
+    @_locals  = tuple $ itertools.chain a kw va vkw
     @names    = OrderedSet (x -> x)
     @consts   = OrderedSet (x -> x)
     @freevars = OrderedSet (x -> -x - 1)
-    @cellvars = OrderedSet (x -> x)
-    @varnames = OrderedSet (x -> x) $ zip
-      itertools.chain a kw va vkw  # attributes are stored as fast locals implicitly
-      itertools.count 0
+    @cellvars = OrderedSet (x -> x) $ zip @_locals $ itertools.count 0
 
     @slowlocals = not isfunc
     @f_locals   = collections.defaultdict set
@@ -96,7 +91,7 @@ Generator = subclass object where
     @enclosed = if
       # dg only uses slow locals in global namespaces and classes,
       # and the latter don't create new code objects.
-      cell => dict.keys cell.varnames | cell.cellvars | cell.enclosed
+      cell => dict.keys cell.cellvars | cell.enclosed
       True => set!
 
     @bytecode = list!
@@ -162,12 +157,12 @@ Generator = subclass object where
       frozen :: CodeType
 
     '''
-    types.CodeType @argc @kwargc (len @varnames) @stacksize
-      @flags | CO_NOFREE * not (@cellvars or @freevars)
+    types.CodeType @argc @kwargc (len @_locals) @stacksize
+      @flags
       b''.join $ map @opcode @bytecode
       tuple $ map fst @consts
       tuple @names
-      tuple @varnames
+      @_locals
       @filename
       @name
       @lineno

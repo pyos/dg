@@ -59,10 +59,10 @@ Generator.prefix !! 'subclass' = f args ~>
   if PY_VERSION < 0x03040000 =>
     code = Generator (@child_name '<class>') True (list' '<ns>') cell: self
     code.slowlocals = True
-    code.add_opcode 'LOAD_FAST' $ code.varnames '<ns>'
+    code.add_opcode 'LOAD_DEREF' $ code.cellvars '<ns>'
     code.add_opcode 'STORE_LOCALS'
 
-  for x in (@varnames.keys! | @cellvars.keys!) =>
+  for x in @cellvars.keys! =>
     # Note that the order is pseudorandom, so the code object
     # may be different from time to time without any reason whatsoever.
     code.add_opcode 'LOAD_DEREF' $ code.freevars x
