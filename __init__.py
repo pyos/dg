@@ -4,7 +4,7 @@ import os.path
 
 
 if not hasattr(sys, 'implementation'):
-    raise ImportError('Python 3.2 or newer is required.')
+    raise ImportError('Python 3.3 or newer is required.')
 
 tag = sys.implementation.cache_tag
 
