@@ -155,23 +155,51 @@ Generator = subclass object where
     '''
     @bytecode.append (dis.opmap !! name, value)
 
-  frozen = ~>
-    '''A marshallable code object with info from this generator.
+  frozen = if
+    PY_TAG.startswith 'cpython-' =>
+      # CPython-only optimization: call `PyCode_Optimize` before
+      # freezing the code object.
+      _optimize = (import '/ctypes/pythonapi').PyCode_Optimize
+      _optimize.restype = import '/ctypes/py_object'
+      _optimize.argtypes = list' py_object py_object py_object py_object
 
-      frozen :: CodeType
+      ~>
+        cd = _optimize (b''.join $ map @opcode @bytecode)
+          cn = list  $ map fst        @consts
+          nm = tuple $ map sys.intern @names
+          ln = bytes @lnotab
+        # Most of the functions are unaffected by the first run, but some
+        # may benefit from two. PyCode_Optimize is pretty fast, so why not?
+        cd = _optimize cd cn nm ln
 
-    '''
-    types.CodeType @argc @kwargc (len @_locals) @stacksize @flags
-      b''.join $ map @opcode @bytecode
-      tuple $ map fst @consts
-      tuple $ map sys.intern @names
-      @_locals
-      @filename
-      @name
-      @lineno
-      bytes @lnotab
-      tuple $ map sys.intern @freevars
-      tuple $ map sys.intern @cellvars
+        types.CodeType @argc @kwargc (len @_locals) @stacksize @flags cd
+          tuple cn
+          nm
+          @_locals
+          @filename
+          @name
+          @lineno
+          ln
+          tuple $ map sys.intern @freevars
+          tuple $ map sys.intern @cellvars
+
+    otherwise => ~>
+      '''A marshallable code object with info from this generator.
+
+        frozen :: CodeType
+
+      '''
+      types.CodeType @argc @kwargc (len @_locals) @stacksize @flags
+        b''.join $ map @opcode @bytecode
+        tuple $ map fst @consts
+        tuple $ map sys.intern @names
+        @_locals
+        @filename
+        @name
+        @lineno
+        bytes @lnotab
+        tuple $ map sys.intern @freevars
+        tuple $ map sys.intern @cellvars
 
   opcode = (op, arg) ~>
     '''Generate a sequence of bytes for an opcode with an argument.
@@ -184,31 +212,3 @@ Generator = subclass object where
     if op < dis.HAVE_ARGUMENT => bytes $ list' op
        arg >= 0x10000 => @opcode EXTENDED_ARG (arg >> 16) + @opcode op (arg % 0x10000)
        otherwise      => bytes (op, arg % 0x100, arg >> 8)
-
-
-if PY_TAG.startswith 'cpython-' =>
-  # CPython-only optimization: call `PyCode_Optimize` before
-  # freezing the code object.
-  Generator._optimize = (import '/ctypes/pythonapi').PyCode_Optimize
-  Generator._optimize.restype = import '/ctypes/py_object'
-  Generator._optimize.argtypes = list' py_object py_object py_object py_object
-
-  Generator.frozen = ~>
-    cd = @_optimize (b''.join $ map @opcode @bytecode)
-      cn = list  $ map fst        @consts
-      nm = tuple $ map sys.intern @names
-      ln = bytes @lnotab
-    # Most of the functions are unaffected by the first run, but some
-    # may benefit from two. PyCode_Optimize is pretty fast, so why not?
-    cd = @_optimize cd cn nm ln
-
-    types.CodeType @argc @kwargc (len @_locals) @stacksize @flags cd
-      tuple cn
-      nm
-      @_locals
-      @filename
-      @name
-      @lineno
-      ln
-      tuple $ map sys.intern @freevars
-      tuple $ map sys.intern @cellvars
