@@ -15,6 +15,8 @@ It accepts any number of base classes, as well as keyword arguments.
 
 ```dg
 # Make sure to clean the local namespace before running this.
+# Don't worry, you'll only have to do that once more
+# before you'll see a better way of defining attributes.
 move = self distance ->
   # Inches? Feet? Miles? Nah.
   '{} moved {} meters.'.format self.name distance
@@ -37,8 +39,7 @@ sam.gallop
 ```
 
 Now, it is not very easy to reset the namespace every time you need
-to create a class. (Also, in case you haven't noticed, that only works
-in functions, not in global scopes and the REPL.) That is why there is
+to create a class. That is why there is
 
 ### Local name binding
 

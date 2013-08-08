@@ -398,6 +398,8 @@ will be evaluated regardless, but it will never silence the exception.</p><div c
 <span class="kt">Animal</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span>
 </pre></div>
 <p>It accepts any number of base classes, as well as keyword arguments.</p><div class="highlight"><pre><span class="c1"># Make sure to clean the local namespace before running this.</span>
+<span class="c1"># Don&#39;t worry, you&#39;ll only have to do that once more</span>
+<span class="c1"># before you&#39;ll see a better way of defining attributes.</span>
 <span class="n">move</span> <span class="o">=</span> <span class="bp">self</span> <span class="n">distance</span> <span class="o">-&gt;</span>
   <span class="c1"># Inches? Feet? Miles? Nah.</span>
   <span class="s">&#39;{} moved {} meters.&#39;</span><span class="o">.</span><span class="n">format</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="n">distance</span>
@@ -413,8 +415,7 @@ will be evaluated regardless, but it will never silence the exception.</p><div c
 <span class="n">sam</span><span class="o">.</span><span class="n">gallop</span>
 </pre></div>
 <p>Now, it is not very easy to reset the namespace every time you need
-to create a class. (Also, in case you haven't noticed, that only works
-in functions, not in global scopes and the REPL.) That is why there is</p><h3>Local name binding</h3><p>Also known among Python devs as <a href="http://www.python.org/dev/peps/pep-3150/">"given" clause</a>.</p><p>In simplier terms, writing <code>a where b</code> evaluates <code>a</code> in a new local namespace
+to create a class. That is why there is</p><h3>Local name binding</h3><p>Also known among Python devs as <a href="http://www.python.org/dev/peps/pep-3150/">"given" clause</a>.</p><p>In simplier terms, writing <code>a where b</code> evaluates <code>a</code> in a new local namespace
 defined only by <code>b</code>.</p><div class="highlight"><pre><span class="kt">Frog</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="kt">Movable</span> <span class="kt">Animal</span> <span class="ow">where</span>
   <span class="c1"># None of the crap we defined above will make it into this class.</span>
   <span class="n">leap</span> <span class="o">=</span> <span class="nb">property</span> <span class="o">$</span> <span class="bp">self</span> <span class="o">-&gt;</span>
