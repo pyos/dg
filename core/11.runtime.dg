@@ -64,3 +64,21 @@ builtins.last = (!! -1)
 
 builtins.otherwise = True
 builtins.finally   = Ellipsis  # not actually used
+
+
+builtins.__dg_build_class__ = mod ns doc qualname name *: bases metaclass: type **: kwds ->
+  '''A version of __build_class__ that does not use functions.
+
+    __dg_build_class__ :: str {str: object} (Maybe str) str str (Many T) (type T) -> T
+
+  '''
+  for q in bases =>
+    w = type q
+    if issubclass metaclass w => None
+       issubclass w metaclass => metaclass = w
+       otherwise => raise $ TypeError 'metaclass conflict'
+
+  data = metaclass.__prepare__ name bases **: kwds
+  data.update ns
+  data.update $ dict __doc__: doc __qualname__: qualname __module__: mod
+  metaclass name bases data **: kwds
