@@ -139,6 +139,7 @@
           <keyword>dropwhile</keyword>
           <keyword>enumerate</keyword>
           <keyword>eval</keyword>
+          <keyword>exhaust</keyword>
           <keyword>filter</keyword>
           <keyword>flip</keyword>
           <keyword>foldl</keyword>
@@ -216,8 +217,8 @@
           <keyword>False</keyword>
         </context>
 
-        <context style-ref="constant"><match>[A-Z_']+\b</match></context>
-        <context style-ref="type">    <match>[A-Z][\w']*\b</match></context>
+        <context style-ref="constant"><match>[A-Z_]+'*(?!['\w])</match></context>
+        <context style-ref="type">    <match>[A-Z]\w*'*(?!['\w])</match></context>
         <context style-ref="link">    <match>\w+'*</match></context>
         <context>                     <match>[()]</match></context>
         <context>                     <match>\s+</match></context>
