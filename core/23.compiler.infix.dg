@@ -31,7 +31,7 @@ comparison = op -> f args chain: False ~>
 
   double = a :: Expression and not a.closed and a.op.value in @prefix and
     f = @prefix !! a.op.value
-    getattr f '__code__' None is comparison.__code__.co_consts !! 0
+    getattr f '__code__' None is comparison.__code__.co_consts !! 1
 
   # Now `double` is true iff `a` is another comparison.
   # Also, `e`, `ex`, and `f` will be defined if that is the case.
@@ -47,8 +47,8 @@ comparison = op -> f args chain: False ~>
       @add_opcode 'DUP_TOP'
       @add_opcode 'ROT_THREE'
       @add_opcode 'COMPARE_OP' $ dis.cmp_op.index op  # [b, a R b]
-      @jump_or_pop_if False reverse: False
       @currstack -= 2
+      @jump_or_pop_if False reverse: False
 
     otherwise =>
       @load_ast b
