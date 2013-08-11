@@ -101,6 +101,7 @@ Name = subclass Node where
     'where', (-170, -180)  # with some stuff that is not visible outside of that expression
     'for',   (-180, -190)  # evaluate stuff for each item in an iterable
     'while', (-180, -190)  # evaluate stuff until condition becomes false
+    'with',  (-180, -190)
     '=>',    (-180, -190)  # if-then
     '\n',    (-230, -230)  # do A then B
   ).get default: (-70, -70) ~>
