@@ -183,3 +183,4 @@ Ending = subclass Constant where
   __eq__ = x ~> x :: Ending and @value == x.value
 
 Dedent = Ending ''
+EOFTok = Ending '$'
