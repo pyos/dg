@@ -56,7 +56,7 @@ Generator = subclass object where
       names      :: OrderedSet -- co_names  (attributes, slow locals, globals & modules)
       consts     :: OrderedSet -- co_consts ((type, value) pairs)
       freevars   :: OrderedSet -- co_freevars (non-local variables)
-      cellvars   :: OrderedSet -- co_cellvars (local closure)
+      cellvars   :: OrderedSet -- co_cellvars (local variables)
       enclosed   :: set -- names that may be added to `freevars`.
       slowlocals :: bool -- whether to use _NAME opcodes.
 
@@ -65,7 +65,7 @@ Generator = subclass object where
 
       filename :: str -- co_filename
       lineno   :: int -- co_firstlineno
-      lnotab   :: [(int, int)] -- co_lnotab, unpacked.
+      lnotab   :: [int] -- mutable co_lnotab
       lineoff  :: int -- `lineno` last time `lnotab` was updated.
       byteoff  :: int -- `len bytecode` last time ...
     }
