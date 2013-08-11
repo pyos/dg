@@ -38,7 +38,7 @@ OrderedSet = subclass dict where
 
 
 OrderedSetNegative = subclass OrderedSet where
-  '''An ordered set that returns negative indexes when called.'''
+  '''An ordered set that returns negative indices when called.'''
   __call__ = self k -> -1 - OrderedSet.__call__ self k
 
 
