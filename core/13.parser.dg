@@ -150,9 +150,9 @@ Parser = subclass collections.deque where
     x      = next self
 
     while not $ end x =>
-      if x is Dedent => @error 'this indentation level is outside of a block' x.loc
-         x is EOFTok => @error 'unexpected EOF in a block'                    pos
-         x :: Ending => @error 'this block was not closed properly'           pos
+      if x is Dedent => @error 'broken indentation in this block'   pos
+         x is EOFTok => @error 'unexpected EOF in a block'          pos
+         x :: Ending => @error 'this block was not closed properly' pos
 
          isexpr    => result = @infix (Name '' infix: True varary: True at: x.loc) result x
          x != '\n' => result, isexpr = @special x, True
