@@ -32,10 +32,11 @@ ver = x lowest: 0x03030000 highest: 0x0304FFFF ->
       raise $ argparse.ArgumentTypeError (str e)
 
 
+f = fn -> open fn encoding: 'utf-8' errors: 'strict'
 p = argparse.ArgumentParser prog: 'dg' description: 'An infix LISP atop CPython.'
-p.add_argument '-b' '--build' metavar: 'tag,version' nargs: '?'   type: ver  help: 'rebuild a bundle' const: (PY_TAG, PY_VERSION)
-p.add_argument 'source'       metavar: 'file'        nargs: '?'   type: open help: 'file to execute'  default: sys.stdin
-p.add_argument 'args'         metavar: '...'         nargs: '...'            help: 'additional arguments'
+p.add_argument '-b' '--build' metavar: 'tag,version' nargs: '?'   type: ver help: 'rebuild a bundle' const: (PY_TAG, PY_VERSION)
+p.add_argument 'source'       metavar: 'file'        nargs: '?'   type: f   help: 'file to execute'  default: sys.stdin
+p.add_argument 'args'         metavar: '...'         nargs: '...'           help: 'additional arguments'
 ns = p.parse_args!
 
 
