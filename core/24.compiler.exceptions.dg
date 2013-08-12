@@ -14,12 +14,13 @@ Generator.prefix !! 'raise' = f args ~>
   @load_const None  # We've got to return something.
 
 
-Generator.stackr !! 'except' = 7  # a pessimistic estimate
 Generator.prefix !! 'except' = f cases ~>
   ((name, try), *cases), (has_finally, finally) = except_syntax $ ensure f cases
   @load_const None
+  @stackperm +7  # A very pessimistic estimate.
   if has_finally => @except_finally name try cases finally
      otherwise   => @except_main    name try cases
+  @currstack -= 7
 
 
 Generator.except_finally = name try cases finally ~>

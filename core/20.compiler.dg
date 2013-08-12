@@ -99,17 +99,13 @@ Generator.load_call = f *: args ~>
     load_call :: Name (Many Node) -> a
 
   '''
-  if
-    f :: Name and f.value in @prefix =>
-      @stackperm $ @stackr.get f.value 0
-      (@prefix !! f.value) self f args
-      @currstack -= @stackr.get f.value 0
-    f.infix and not f.closed =>
-      @load_ast f
-      @call_infix_ast args
-    otherwise =>
-      @load_ast f
-      @call_ast args 0
+  if f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
+     f.infix and not f.closed =>
+       @load_ast f
+       @call_infix_ast args
+     otherwise =>
+       @load_ast f
+       @call_ast args 0
 
 
 Generator.chain = *: (*xs, x) ~>
@@ -178,7 +174,6 @@ Generator.store_ast = x ~>
 
 Generator.infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
 Generator.infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a)
-Generator.stackr = dict!
 Generator.prefix = dict'
   '',   f a ~> @load_call *: a
   '\n', f a ~> @chain     *: a

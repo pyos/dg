@@ -205,9 +205,11 @@ Generator.load_fnmethod = xs body ~>
   '''
   if
     xs is None =>
+      @stackperm +1
       @add_opcode 'LOAD_GLOBAL' $ @names 'property'
       @load_function (Name 'self') body
       @add_opcode 'CALL_FUNCTION' 1
+      @currstack -= 1
 
     xs :: Expression and not xs.closed and xs.op == '' =>
       xs.args.insert 0 (Name 'self')
@@ -217,7 +219,6 @@ Generator.load_fnmethod = xs body ~>
       @load_function (Expression (Name '') (Name 'self') xs) body
 
 
-Generator.stackr !! '~>' = 1
 Generator.prefix !! '->' = f q ~> @load_function *: (ensure f q 2 2)
 Generator.prefix !! '~>' = f q ~> @load_fnmethod *: (ensure f q 2 2)
 Generator.infixl !! '->' = f q ~> @load_call f q (Constant None at: f.loc)

@@ -20,7 +20,6 @@ Generator.prefix !! 'yield' = f args ~>
   @flags |= CO_GENERATOR
 
 
-Generator.stackr !! 'with' = 3
 Generator.prefix !! 'with' = f args ~>
   ctx, ast = ensure f args 2 2
   var, ctx = if
@@ -29,6 +28,7 @@ Generator.prefix !! 'with' = f args ~>
 
   @load_const None
   @load_ast   ctx
+  @stackperm +3
 
   with @setup 'with' =>      #=> (None, __exit__, return value of __enter__)
     @store_ast var           #=> (None, __exit__)
@@ -42,7 +42,7 @@ Generator.prefix !! 'with' = f args ~>
 
   @add_opcode 'WITH_CLEANUP'
   @add_opcode 'END_FINALLY'
-  @currstack -= 1
+  @currstack -= 4
 
 
 Generator.prefix !! 'subclass' = f args ~>
@@ -73,7 +73,6 @@ Generator.prefix !! 'while' = f args ~>
     restart.set
 
 
-Generator.stackr !! 'for' = 1
 Generator.prefix !! 'for' = f args ~>
   x, body = ensure f args 2 2
   not $ x :: Expression and x.op == 'in' and len x.args == 2 =>
@@ -84,11 +83,12 @@ Generator.prefix !! 'for' = f args ~>
   @load_ast   v
   @add_opcode 'GET_ITER'
   restart = @jump reverse: True
+  @stackperm +1
   with @setup 'for' =>
     @store_ast  k
     @load_ast   body
     @add_opcode 'ROT_THREE'
     @add_opcode 'ROT_TWO'
     @add_opcode 'POP_TOP'
-    @currstack -= 1
+    @currstack -= 2
     restart.set
