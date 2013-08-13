@@ -59,7 +59,7 @@ Generator.prefix !! 'subclass' = f args ~>
 
 
 Generator.prefix !! 'while' = f args ~>
-  cond, *body = ensure f args
+  cond, body = ensure f args 2 2
   @load_const None
 
   restart = @jump reverse: True
@@ -68,8 +68,7 @@ Generator.prefix !! 'while' = f args ~>
   with @pop_jump_if False reverse: False =>
     @add_opcode 'POP_TOP'
     @currstack -= 1
-    if body      => @chain *: body
-       otherwise => @load_const None
+    @load_ast body
     restart.set
 
 
