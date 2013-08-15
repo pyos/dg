@@ -10,7 +10,7 @@ rebuild = old tag version dirname ->
     version -- `sys.hexversion` of the target.
     dirname -- path to the directory with the source code.
 
-    rebuild :: [CodeType] src -> [CodeType]
+    rebuild :: [CodeType] str int str -> [CodeType]
 
   '''
   ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version
@@ -45,6 +45,10 @@ save = code tag dirname ->
   '''
   data = marshal.dumps code
   os.makedirs dirname exist_ok: True
+  # Note that `marshal.dump` may raise an exception mid-file,
+  # leaving the bundle in a corrupted state. That generally means there
+  # is an error in the compiler, so opening the file before finishing the
+  # encoding process is undesirable.
   with fd = open (os.path.join dirname (tag + '.dgbundle')) 'wb' => fd.write data
 
 
