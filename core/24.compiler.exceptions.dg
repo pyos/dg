@@ -48,7 +48,7 @@ Generator.except_main = name try cases ~>
   # There was no exception, so we'll push two `None`s instead.
   # Why two? Because why the fuck not. (Ok, seriously,
   # one of them will be stored in `name`, while the second
-  # will be popped by END_FINALLY.
+  # will be popped by END_FINALLY.)
   @load_const None
   @load_const None
   else = @jump reverse: False
