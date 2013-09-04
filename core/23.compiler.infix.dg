@@ -1,44 +1,74 @@
-Generator.infix_unary = op x ~>
-  @load_ast x
-  @add_opcode op
+Generator.infix_insert = op xs ~>
+  '''Apply an opcode to some arguments.
+
+    infix_insert :: str [Node] -> a
+
+  '''
+  for x in xs => @load_ast x
+  @add_opcode op (len xs)
+  @currstack -= len xs - 1
+
+### Part 1. Inplace-able operations.
+###         (Non-inplace versions are available in the global namespace.)
+
+BINARY = dict'
+  '!!', ('BINARY_SUBSCR',       'BINARY_SUBSCR')
+  '+',  ('BINARY_ADD',          'INPLACE_ADD')
+  '-',  ('BINARY_SUBTRACT',     'INPLACE_SUBTRACT')
+  '*',  ('BINARY_MULTIPLY',     'INPLACE_MULTIPLY')
+  '**', ('BINARY_POWER',        'INPLACE_POWER')
+  '/',  ('BINARY_TRUE_DIVIDE',  'INPLACE_TRUE_DIVIDE')
+  '//', ('BINARY_FLOOR_DIVIDE', 'INPLACE_FLOOR_DIVIDE')
+  '%',  ('BINARY_MODULO',       'INPLACE_MODULO')
+  '&',  ('BINARY_AND',          'INPLACE_AND')
+  '^',  ('BINARY_XOR',          'INPLACE_XOR')
+  '|',  ('BINARY_OR',           'INPLACE_OR')
+  '<<', ('BINARY_LSHIFT',       'INPLACE_LSHIFT')
+  '>>', ('BINARY_RSHIFT',       'INPLACE_RSHIFT')
 
 
-Generator.infix_binary = op f args ~>
-  x, y = ensure f args 2 2
-  @load_ast x
-  @load_ast y
-  @add_opcode op
-  @currstack -= 1
-  x
-
-Generator.infix_inplace = op f args ~>
-  q = @infix_binary op f args
+BINARY_H  = f xs ~> @infix_insert (BINARY !! f.value !! 0) $ ensure f xs 2 2
+INPLACE_H = f xs ~>
+  @infix_insert (BINARY !! init f.value !! 1) $ ensure f xs 2 2
   @add_opcode 'DUP_TOP'
-  @stackperm +1
-  @store_ast q
+  @store_ast $ head xs
+  @currstack -= 1
+
+for k in BINARY =>
+  Generator.prefix !!  k        = BINARY_H
+  Generator.prefix !! (k + '=') = INPLACE_H
 
 
-jump = x -> f args ~>
-  a, b = ensure f args 2 2
+### Part 2. Boolean logic.
+
+JUMPS = dict'
+  'or',  True   # use A if it's true, B otherwise
+  'and', False  # use A if it's false, B otherwise
+  '=>',  False
+
+
+JUMP_H = f xs ~>
+  a, b = ensure f xs 2 2
   @load_ast a
-  with @jump_or_pop_if x reverse: False =>
+  with @jump_or_pop_if (JUMPS !! f.value) reverse: False =>
     @currstack -= 1
     @load_ast b
 
+for j in JUMPS => Generator.prefix !! j = JUMP_H
 
-comparison = op -> f args chain: False ~>
+
+### Part 3. Comparison.
+
+COMPARISON   = set' '<' '<=' '!=' '==' '>=' '>' 'is' 'in'
+COMPARISON_H = f args chain: False ~>
   a, b = ensure f args 2 2
-
-  double = a :: Expression and not a.closed and a.op.value in @prefix and
-    f = @prefix !! a.op.value
-    getattr f '__code__' None is comparison.__code__.co_consts !! 1
-
-  # Now `double` is true iff `a` is another comparison.
-  # Also, `e`, `ex`, and `f` will be defined if that is the case.
-  jumps = if double    => f self a.op a.args chain: True
-             otherwise =>
-               @load_ast a
-               list!
+  # `a R b Q c` <=> `a R b and b Q c` for any given comparison
+  # operators R and Q. (`b` is only evaluated once.)
+  double = a :: Expression and not a.closed and a.op.value in COMPARISON
+  jumps  = if double    => COMPARISON_H self a.op a.args chain: True
+              otherwise =>
+                @load_ast a
+                list!
 
   if
     chain => jumps.append $
@@ -46,13 +76,13 @@ comparison = op -> f args chain: False ~>
       @stackperm +1
       @add_opcode 'DUP_TOP'
       @add_opcode 'ROT_THREE'
-      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index op  # [b, a R b]
+      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index f.value  # [b, a R b]
       @currstack -= 2
       @jump_or_pop_if False reverse: False
 
     otherwise =>
       @load_ast b
-      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index op  # [a R b]
+      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index f.value  # [a R b]
       @currstack -= 1
       # Now, what if one of the comparisons returned False?
       # First, we jump here.
@@ -66,6 +96,23 @@ comparison = op -> f args chain: False ~>
   # Return the list of unfinished jumps for the next operator to use.
   jumps
 
+for c in COMPARISON => Generator.prefix !! c = COMPARISON_H
+
+
+### Part 4. Bytecode-level container creation.
+###         This part may be removed at the cost of runtime performance.
+
+CONTAINERS = dict'
+  ',',      'BUILD_TUPLE'
+  "set'",   'BUILD_SET'
+  "list'",  'BUILD_LIST'
+  "tuple'", 'BUILD_TUPLE'
+
+CONTAINER_H = f q ~> @infix_insert (CONTAINERS !! f.value) q
+
+for c in CONTAINERS => Generator.prefix !! c = CONTAINER_H
+
+### Part 5. Unsorted.
 
 if_syntax = cases -> except
   e => list $ map
@@ -84,52 +131,16 @@ Generator.infixl.update $ dict'
 
 Generator.infixr.update $ dict'
   '!', f q ~> Parser.error 'this operator is postfix' f.loc
-  '~', f q ~> @infix_unary 'UNARY_INVERT'   q
-  '-', f q ~> @infix_unary 'UNARY_NEGATIVE' q
+  '~', f q ~> @infix_insert 'UNARY_INVERT'   $ list' q
+  '-', f q ~> @infix_insert 'UNARY_NEGATIVE' $ list' q
   '@', f q ~> (Generator.prefix !! '.') self f (Name 'self' at: f.loc, q)
 
 Generator.prefix.update $ dict'
-  'or',  jump True
-  '=>',  jump False
-  'and', jump False
-  'not', f q ~> @infix_unary 'UNARY_NOT' $ head $ ensure f q 1 1
+  ':',   f q ~> Parser.error 'keyword argument to what?' f.loc
   '!',   f q ~> Parser.error 'this operator is unary' f.loc
   '~',   f q ~> Parser.error 'this operator is unary' f.loc
   '@',   f q ~> Parser.error 'this operator is unary' f.loc
-  '!!',  f q ~> @infix_binary  'BINARY_SUBSCR'        f q
-  '+',   f q ~> @infix_binary  'BINARY_ADD'           f q
-  '-',   f q ~> @infix_binary  'BINARY_SUBTRACT'      f q
-  '*',   f q ~> @infix_binary  'BINARY_MULTIPLY'      f q
-  '**',  f q ~> @infix_binary  'BINARY_POWER'         f q
-  '/',   f q ~> @infix_binary  'BINARY_TRUE_DIVIDE'   f q
-  '//',  f q ~> @infix_binary  'BINARY_FLOOR_DIVIDE'  f q
-  '%',   f q ~> @infix_binary  'BINARY_MODULO'        f q
-  '&',   f q ~> @infix_binary  'BINARY_AND'           f q
-  '^',   f q ~> @infix_binary  'BINARY_XOR'           f q
-  '|',   f q ~> @infix_binary  'BINARY_OR'            f q
-  '<<',  f q ~> @infix_binary  'BINARY_LSHIFT'        f q
-  '>>',  f q ~> @infix_binary  'BINARY_RSHIFT'        f q
-  '!!=', f q ~> @infix_inplace 'BINARY_SUBSCR'        f q
-  '+=',  f q ~> @infix_inplace 'INPLACE_ADD'          f q
-  '-=',  f q ~> @infix_inplace 'INPLACE_SUBTRACT'     f q
-  '*=',  f q ~> @infix_inplace 'INPLACE_MULTIPLY'     f q
-  '**=', f q ~> @infix_inplace 'INPLACE_POWER'        f q
-  '/=',  f q ~> @infix_inplace 'INPLACE_TRUE_DIVIDE'  f q
-  '//=', f q ~> @infix_inplace 'INPLACE_FLOOR_DIVIDE' f q
-  '%=',  f q ~> @infix_inplace 'INPLACE_MODULO'       f q
-  '&=',  f q ~> @infix_inplace 'INPLACE_AND'          f q
-  '^=',  f q ~> @infix_inplace 'INPLACE_XOR'          f q
-  '|=',  f q ~> @infix_inplace 'INPLACE_OR'           f q
-  '<<=', f q ~> @infix_inplace 'INPLACE_LSHIFT'       f q
-  '>>=', f q ~> @infix_inplace 'INPLACE_RSHIFT'       f q
-  '<',  comparison '<'
-  '<=', comparison '<='
-  '==', comparison '=='
-  '!=', comparison '!='
-  '>',  comparison '>'
-  '>=', comparison '>='
-  'is', comparison 'is'
-  'in', comparison 'in'
+  'not', f q ~> @infix_insert 'UNARY_NOT' $ ensure f q 1 1
 
   'if', f q ~>
     jumps = list $ map
@@ -145,27 +156,22 @@ Generator.prefix.update $ dict'
     for x in jumps => x.set
 
 
-  ',', f xs ~>
-    exhaust $ map @load_ast xs
-    @add_opcode 'BUILD_TUPLE' (len xs)
-    @currstack -= len xs - 1
-
   '$', f xs ~>
     a, b = ensure f xs 2 2
     if a :: Expression and not a.closed and a.op == '' => @load_call a.op *: (a.args + list' b)
        otherwise => @load_call a b
 
   '!!~', f x ~>
-    @infix_binary 'DELETE_SUBSCR' f x
+    @infix_insert 'DELETE_SUBSCR' f $ ensure f x 2 2
     @load_const None
 
   '.~', f q ~>
     a, b = ensure f q 2 2
     b :: Name or Parser.error 'not an attribute' b.loc
-    @load_const None
     @load_ast   a
     @add_opcode 'DELETE_ATTR' $ @names b.value
     @currstack -= 1
+    @load_const None
 
   '!.', f q ~>
     a, b = ensure f q 2 2
