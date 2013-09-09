@@ -4,14 +4,13 @@ except_syntax = cases ->
             otherwise => None, None
 
 
-Generator.prefix !! 'raise' = f args ~>
-  args = unpack f args $ exception cause: None ->
-    if cause is None => tuple' exception
-       otherwise     => exception, cause
-  exhaust $ map @load_ast args
-  @add_opcode 'RAISE_VARARGS' (len args)
-  @currstack -= len args
-  @load_const None  # We've got to return something.
+Generator.prefix !! 'raise' = f args ~> unpack f args $ exception cause: None ->
+  @load_ast exception
+  if cause is None => @add_opcode 'RAISE_VARARGS' 1
+     otherwise     =>
+       @load_ast cause
+       @add_opcode 'RAISE_VARARGS' 2
+       @currstack -= 1  # There's nothing on the stack, but noone will notice.
 
 
 Generator.prefix !! 'except' = f cases ~>

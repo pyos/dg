@@ -7,8 +7,7 @@ Generator.prefix !! 'where' = f args ~>
   @add_opcode 'CALL_FUNCTION' 0
 
 
-Generator.prefix !! 'yield' = f args ~>
-  item, from = unpack f args $ item: None from: None -> (item, from)
+Generator.prefix !! 'yield' = f args ~> unpack f args $ item: None from: None ->
   not $ from is None =>
     @load_ast from
     @add_opcode 'GET_ITER'
