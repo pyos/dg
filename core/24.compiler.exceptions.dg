@@ -38,61 +38,53 @@ Generator.except_finally = name try cases finally ~>
 
 Generator.except_main = name try cases ~>
   main = @setup 'except'
-  # Replace that None with the value returned by `try_`
-  # to fool the POP_BLOCK instruction.
   @load_ast try
   @add_opcode 'ROT_TWO'
-  @add_opcode 'POP_TOP'
   @add_opcode 'POP_BLOCK'
   @currstack -= 1
-  # There was no exception, so we'll push two `None`s instead.
-  # Why two? Because why the fuck not. (Ok, seriously,
-  # one of them will be stored in `name`, while the second
-  # will be popped by END_FINALLY.)
+  # There was no exception, we'll store None instead.
+  # The second one will be used to skip over POP_EXCEPT or
+  # consumed by END_FINALLY.
   @load_const None
   @load_const None
-  else = @jump reverse: False
-  # Finishing SETUP_EXCEPT with an exception pushes
-  # 3 items onto the stack: (traceback, value, type).
-  # (CPython sure is strange. Both traceback and type
-  # can be derived from value.)
-  main.set
-  @add_opcode 'ROT_TWO'   #=> (traceback, type, value)
-  @add_opcode 'DUP_TOP'   #=> (traceback, type, value, value)
-  @add_opcode 'ROT_THREE' #=> (traceback, value, type, value)
-  else.set
   @store_ast name
 
-  jumps = list $ map
-    (cond, action) ->
+  with @jump reverse: False =>
+    # Finishing SETUP_EXCEPT with an exception pushes
+    # 3 items onto the stack: traceback, value, type.
+    # Value needs to be stored in `name`.
+    main.set
+    @add_opcode 'ROT_TWO'
+    @add_opcode 'DUP_TOP'
+    @stackperm +1
+    @store_ast name
+    @add_opcode 'ROT_TWO'
+    # This will trigger POP_EXCEPT.
+    @load_const True
+
+  jumps = list
+    None where for (cond, action) in cases =>
       @load_ast cond
+      @currstack -= 1
       with @pop_jump_if False reverse: False =>
-        @currstack -= 1
         @load_ast action
         @currstack -= 1
-        @jump reverse: False
-    cases
+        yield $ @jump reverse: False
 
-  # This will re-raise the exception if nothing matched
-  # (and there was an exception. And there is no `finally` clause.)
+  # This will re-raise the exception if there was one.
+  # Otherwise, it will pop None off the stack.
+  with @jump_or_pop_if False reverse: False => None
   @add_opcode 'END_FINALLY'
   @currstack -= 1
-  # No point in doing anything else. Either the exception was re-raised,
-  # or there's no `except` handler to pop.
+
   with @jump reverse: False =>
     # If a handler was triggered, there's now a return value
     # on top of the stack. It needs to be stored for safekeeping.
     for j in jumps => j.set
     @add_opcode 'STORE_DEREF' $ @cellvars '<except-result>'
-    # There's still either a `None` or a subclass of `Exception` on the stack.
-    # It didn't stop existing or anything.
-    @add_opcode 'DUP_TOP'
-    @load_const None
-    # The point is, if there was an exception, we need to do POP_EXCEPT.
-    @add_opcode 'COMPARE_OP' $ dis.cmp_op.index 'is'
-    @currstack -= 1
-    with @pop_jump_if True reverse: False => @add_opcode 'POP_EXCEPT'
-    # Now we can restore that value.
-    @add_opcode 'POP_TOP'
+    # Traceback, value, and type may still be on stack.
+    # They didn't stop existing or anything.
+    with @pop_jump_if False reverse: False => @add_opcode 'POP_EXCEPT'
+    @add_opcode 'POP_TOP'  # There goes the result of the try clause.
     @add_opcode 'LOAD_DEREF'   $ @cellvars '<except-result>'
     @add_opcode 'DELETE_DEREF' $ @cellvars '<except-result>'
