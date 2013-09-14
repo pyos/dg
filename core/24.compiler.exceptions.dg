@@ -1,9 +1,3 @@
-except_syntax = cases ->
-  pairs = if_syntax cases
-  pairs, if len pairs > 1 and head (last pairs) == 'finally' => pairs.pop!
-            otherwise => None, None
-
-
 Generator.prefix !! 'raise' = f args ~> unpack f args $ exception cause: None ->
   @load_ast exception
   if cause is None => @add_opcode 'RAISE_VARARGS' 1
@@ -14,11 +8,11 @@ Generator.prefix !! 'raise' = f args ~> unpack f args $ exception cause: None ->
 
 
 Generator.prefix !! 'except' = f cases ~>
-  ((name, try), *cases), (has_finally, finally) = except_syntax $ ensure f cases
   @load_const None
   @stackperm +7  # A very pessimistic estimate.
-  if has_finally => @except_finally name try cases finally
-     otherwise   => @except_main    name try cases
+  (name, try), *xs = if_syntax $ ensure f cases
+  if xs and head (last xs) == 'finally' => @except_finally name try xs $ snd $ xs.pop -1
+     otherwise                          => @except_main    name try xs
   @currstack -= 7
 
 
