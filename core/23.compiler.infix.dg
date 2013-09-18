@@ -162,7 +162,7 @@ Generator.prefix.update $ dict'
        otherwise => @load_call a b
 
   '!!~', f x ~>
-    @infix_insert 'DELETE_SUBSCR' f $ ensure f x 2 2
+    @infix_insert 'DELETE_SUBSCR' $ ensure f x 2 2
     @load_const None
 
   '.~', f q ~>
