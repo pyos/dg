@@ -1,9 +1,10 @@
 # These constants, unless redefined in a function, will
-# be loaded as constants
+# be loaded with LOAD_CONST, not LOAD_GLOBAL.
+# FIXME what if one of them is redefined in a global namespace?
 CONSTANTS = dict True: True False: False None: None otherwise: True
 
 # String representation of the variable on the left side of
-# the innermost assignment or None.
+# the innermost assignment or None. (Used to calculate `name` and `qualname`.)
 Generator.var = None
 
 

@@ -1,7 +1,7 @@
 Node = subclass object where
   '''Generic AST node. No direct instances are found in the parser output.
 
-    type Node {
+    type Node where
       loc :: (str, int, int, str) -- (filename, line, character, first line)
       closed :: bool -- whether the node is parenthesized
       indent :: bool -- whether the node is an indented block
@@ -12,7 +12,6 @@ Node = subclass object where
       spec_a :: bool -- whether this node is `R` in `R a => b` syntactic construct
       spec_b :: bool -- whether this node consumes everything until the
                      -- end of the line as the first funcall argument.
-    }
 
   '''
   __init__ = *: args **: kwargs ~>
@@ -41,9 +40,8 @@ Name = subclass Node where
     The only kind of `Node` that can have anything
     other than `closed` or `indent` set to `True`.
 
-    type Name < Node {
+    type Name < Node where
       value :: str
-    }
 
   '''
   init   = @value ~>
@@ -121,14 +119,13 @@ Expression = subclass Node where
 
     If the function in question is prefix, `op` will be `''`.
 
-    type Expression < Node {
+    type Expression < Node where
       op   :: Node   -- function
       args :: [Node] -- arguments
 
       op.infix is True
       not op.varary => len args == 2
           op.varary => len args >= 2
-    }
 
   '''
   init = @op *: args ~> (@args = list args)
@@ -138,9 +135,8 @@ Expression = subclass Node where
 Constant = subclass Node where
   '''A marshallable compile-time constant.
 
-    type Constant < Node {
+    type Constant < Node where
       value :: Either int float complex str
-    }
 
   '''
   init   = @value ~>
@@ -151,9 +147,8 @@ Constant = subclass Node where
 LeftBind = subclass Expression where
   '''An infix expression missing its right part.
 
-    type LeftBind < Expression {
+    type LeftBind < Expression where
       len args == 1
-    }
 
   '''
   repr = ~> '{[0]!r} {!r}'.format @args @op
@@ -162,9 +157,8 @@ LeftBind = subclass Expression where
 RightBind = subclass Expression where
   '''An infix expression missing its left part.
 
-    type RightBind < Expression {
+    type RightBind < Expression where
       len args == 1
-    }
 
   '''
   repr = ~> '{!r} {[0]!r}'.format @op @args
@@ -176,9 +170,8 @@ Ending = subclass Constant where
     The string `value` will be different depending on the type of
     close-paren. Does not appear in parser output.
 
-    type Ending < Constant {
+    type Ending < Constant where
       value :: str
-    }
 
   '''
   __eq__ = x ~> x :: Ending and @value == x.value

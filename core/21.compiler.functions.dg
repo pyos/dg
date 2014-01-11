@@ -1,7 +1,7 @@
 func_call_args = xs ->
   '''Parse function call arguments.
 
-    argspec :: [Node] -> ([Node], {str: Node}, Maybe Node, Maybe Node)
+    func_call_args :: [Node] -> ([Node], {str: Node}, Maybe Node, Maybe Node)
 
   '''
   a   = list!
@@ -38,7 +38,7 @@ func_call_args = xs ->
 func_def_args = xs ->
   '''Parse an argument specification.
 
-    argspec :: Maybe Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
+    func_def_args :: Maybe Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
 
   '''
   a    = list!  # positional

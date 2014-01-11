@@ -16,22 +16,23 @@ codelen = seq ->
 
   '''
   sum $ map
-    (c, v) -> if c < dis.HAVE_ARGUMENT => 1
-                 otherwise             => 3 * (1 + abs (v.bit_length! - 1) // 16)
+    (c, v) -> if
+      c < dis.HAVE_ARGUMENT => 1
+      otherwise             => 3 * (1 + abs (v.bit_length! - 1) // 16)
     seq
 
 
 OrderedSet = subclass dict where
   '''An ordered collection of unique non-removable elements.
 
-    type IndexedSet < dict
+    type OrderedSet a < dict a int
 
   '''
   __call__ = self k -> (self !! k = @get k $ len self)
   __iter__ = self   ->
     '''All items in this set, in insertion order.
 
-      contents :: [a]
+      __iter__ :: iter a
 
     '''
     iter $ sorted @keys! key: @__getitem__
@@ -45,64 +46,61 @@ OrderedSetNegative = subclass OrderedSet where
 Generator = subclass object where
   '''A mutable version of `types.CodeType`.
 
-    type Generator {
+    type Generator where
       cell     :: Maybe Generator -- a parent code object.
-      name     :: str -- co_name
-      qualname :: str -- __qualname__
+      argc     :: int
+      kwargc   :: int
+      name     :: str
+      qualname :: str
 
-      argc   :: int -- co_argcount
-      kwargc :: int -- co_kwonlyargcount
+      varnames   :: tuple      -- a collection of (interned) argument names.
+      names      :: OrderedSet -- attributes, slow locals, globals & modules
+      consts     :: OrderedSet -- (type, value) pairs where value is constant
+      freevars   :: OrderedSet -- non-local variables
+      cellvars   :: OrderedSet -- local variables
+      slowlocals :: bool -- whether to use `NAME` opcodes instead of `FAST` ones.
+      enclosed   :: set  -- names that may be added to `freevars`.
 
-      names      :: OrderedSet -- co_names  (attributes, slow locals, globals & modules)
-      consts     :: OrderedSet -- co_consts ((type, value) pairs)
-      freevars   :: OrderedSet -- co_freevars (non-local variables)
-      cellvars   :: OrderedSet -- co_cellvars (local variables)
-      enclosed   :: set -- names that may be added to `freevars`.
-      slowlocals :: bool -- whether to use _NAME opcodes.
+      bytecode  :: [(int, int)] -- (opcode, argument) pairs.
+      flags     :: int -- see the `CO_*` constants.
+      stacksize :: int -- minimum stack depth required for evaluation.
+      currstack :: int -- approx. stack depth at this point.
 
-      bytecode :: [(int, int)] -- co_code as an unpacked list.
-      flags    :: int          -- co_flags (see the `CO_*` constants.)
-
-      filename :: str -- co_filename
-      lineno   :: int -- co_firstlineno
-      lnotab   :: [int] -- mutable co_lnotab
+      filename :: str
+      lineno   :: int
+      lnotab   :: [int]
       lineoff  :: int -- `lineno` last time `lnotab` was updated.
-      byteoff  :: int -- `len bytecode` last time ...
-    }
+      byteoff  :: int -- `len bytecode` at the same point.
 
   '''
   __init__ = name isfunc a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: '' ~>
-    @name      = name
-    @qualname  = ''.join $ list'
+    @cell     = cell or None
+    @argc     = len a
+    @kwargc   = len kw
+    @name     = name
+    @qualname = ''.join $ list'
       cell => cell.qualname
       cell => cell.qualname => '.'
       cell => '<locals>.' * bool (cell.flags & CO_OPTIMIZED)
       name * bool isfunc
 
-    @argc   = len a
-    @kwargc = len kw
-
-    @_locals  = tuple $ map sys.intern $ itertools.chain a kw va vkw
-    @names    = OrderedSet!
-    @consts   = OrderedSet!
-    @freevars = OrderedSetNegative!
-    @cellvars = OrderedSet $ zip @_locals $ itertools.count 0
-
+    @varnames   = tuple $ map sys.intern $ itertools.chain a kw va vkw
+    @names      = OrderedSet!
+    @consts     = OrderedSet!
+    @freevars   = OrderedSetNegative!
+    @cellvars   = OrderedSet $ zip @varnames $ itertools.count 0
     @slowlocals = not isfunc
-    @f_locals   = collections.defaultdict set
-
-    @cell     = cell or None
-    @enclosed = if
-      # dg only uses slow locals in global namespaces and classes,
-      # and the latter don't create new code objects.
-      cell => dict.keys cell.cellvars | cell.enclosed
-      True => set!
+    @enclosed   = if
+      cell      => dict.keys cell.cellvars | cell.enclosed
+      otherwise => set!
 
     @bytecode = list!
-    @flags  = CO_VARARGS   * bool va
-    @flags |= CO_VARKWARGS * bool vkw
-    @flags |= CO_NESTED    * (bool cell and not cell.slowlocals)
-    @flags |= (CO_OPTIMIZED | CO_NEWLOCALS) * bool isfunc
+    @flags    = foldl1 (|) $ list'
+      CO_VARARGS   *  bool va
+      CO_VARKWARGS *  bool vkw
+      CO_NESTED    * (bool cell and not cell.slowlocals)
+      CO_OPTIMIZED *  bool isfunc
+      CO_NEWLOCALS *  bool isfunc
 
     # Set on first `lnomark`.
     @filename = '<generated>'
@@ -161,11 +159,11 @@ Generator = subclass object where
       frozen :: CodeType
 
     '''
-    types.CodeType @argc @kwargc (len @_locals) @stacksize @flags
+    types.CodeType @argc @kwargc (len @varnames) @stacksize @flags
       b''.join $ map @opcode @bytecode
       tuple $ map fst @consts
       tuple $ map sys.intern @names
-      @_locals
+      @varnames
       @filename
       @name
       @lineno
@@ -202,10 +200,10 @@ if PY_TAG.startswith 'cpython-' =>
     # may benefit from two. PyCode_Optimize is pretty fast, so why not?
     cd = _optimize cd cn nm ln
 
-    types.CodeType @argc @kwargc (len @_locals) @stacksize @flags cd
+    types.CodeType @argc @kwargc (len @varnames) @stacksize @flags cd
       tuple cn
       nm
-      @_locals
+      @varnames
       @filename
       @name
       @lineno

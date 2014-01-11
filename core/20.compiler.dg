@@ -1,7 +1,7 @@
 compile = x filename: '<string>' ->
   '''Compile some source code.
 
-    x :: str (Optional str) -> CodeType
+    compile :: str (Optional str) -> CodeType
 
   '''
   compileast $ parse x filename
@@ -10,7 +10,7 @@ compile = x filename: '<string>' ->
 compilefd = x filename: '<stream>' ->
   '''Compile the contents of a file-like object.
 
-    x :: TextIOBase (Optional str) -> CodeType
+    compilefd :: TextIOBase (Optional str) -> CodeType
 
   '''
   compileast $ parsefd x filename
@@ -19,7 +19,7 @@ compilefd = x filename: '<stream>' ->
 compileast = x ->
   '''Compile a pre-parsed AST.
 
-    x :: Node -> CodeType
+    compileast :: Node -> CodeType
 
   '''
   gen = Generator '' False

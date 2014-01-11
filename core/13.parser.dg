@@ -1,7 +1,7 @@
 parse = data filename: '<string>' ->
   '''Parse an input string.
 
-    it :: str (Optional str) -> Node
+    parse :: str (Optional str) -> Node
 
   '''
   p = Parser data filename
@@ -16,7 +16,7 @@ parsefd = data filename: '<stream>' ->
     Note that the `filename` argument is only used if the file-like object
     has no `name` attribute itself.
 
-    fd :: TextIOBase (Optional str) -> Node
+    parsefd :: TextIOBase (Optional str) -> Node
 
   '''
   parse (data.read -1) (getattr data 'name' filename)
@@ -25,13 +25,12 @@ parsefd = data filename: '<stream>' ->
 Parser = subclass collections.deque where
   '''A recursive descent parser with a built-in regex-based tokenizer.
 
-    type Parser < deque {
+    type Parser < deque Node where
       tokens :: iter MatchObject -- see `regex`.
       indent :: deque int -- a stack of indentation levels, starting with 0.
       lineno :: int -- 1-based line number.
       charno :: int -- 1-based character number.
       lines  :: list str -- the input, split at line breaks.
-    }
 
   '''
   __init__ = @data @filename ~>
