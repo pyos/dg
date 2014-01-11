@@ -1,84 +1,89 @@
-builtins.set'  = *: xs -> set  xs
-builtins.list' = *: xs -> list xs
-builtins.dict' = *: xs **: ys -> dict xs **: ys
+builtins.__dict__.update locals! where
+  set'   = *: xs       -> set  xs
+  list'  = *: xs       -> list xs
+  dict'  = *: xs **: k -> dict xs **: k
+  tuple' = (,) = *: xs -> xs
 
-builtins.bind = functools.partial
-builtins.flip = f -> x y -> f y x
+  call  = (!) = ($) = f *: a **: k -> f *: a **: k
+  bind  = functools.partial
+  flip  = f -> x y -> f y x
+  (<-)  = f g -> *: a **: k -> f $ g *: a **: k
 
-builtins.call = builtins.(!) = builtins.($) = f *: xs -> f *: xs
-builtins.(,)  = builtins.tuple' = *: xs -> xs
+  (..)  = range
+  (...) = Ellipsis
+  (::)  = isinstance
+  (->)  = -> None
+  (~>)  = ~> None
+  (in)  = a b -> a in b
+  (is)  = operator.is_
+  (not) = operator.not_
+  (<)   = operator.lt
+  (<=)  = operator.le
+  (==)  = operator.eq
+  (!=)  = operator.ne
+  (>=)  = operator.ge
+  (>)   = operator.gt
+  (~)   = operator.invert
+  (+)   = operator.add
+  (-)   = operator.sub
+  (*)   = operator.mul
+  (**)  = operator.pow
+  (/)   = operator.truediv
+  (//)  = operator.floordiv
+  (%)   = operator.mod
+  (&)   = operator.and_
+  (^)   = operator.xor
+  (|)   = operator.or_
+  (<<)  = operator.lshift
+  (>>)  = operator.rshift
+  (!!)  = operator.getitem
+  (!!~) = operator.delitem
 
-builtins.not   = operator.not_
-builtins.(in)  = a b -> a in b
-builtins.(is)  = operator.is_
-builtins.(<)   = operator.lt
-builtins.(<=)  = operator.le
-builtins.(==)  = operator.eq
-builtins.(!=)  = operator.ne
-builtins.(>)   = operator.gt
-builtins.(>=)  = operator.ge
-builtins.(~)   = operator.invert
-builtins.(+)   = operator.add
-builtins.(-)   = operator.sub
-builtins.(*)   = operator.mul
-builtins.(**)  = operator.pow
-builtins.(/)   = operator.truediv
-builtins.(//)  = operator.floordiv
-builtins.(%)   = operator.mod
-builtins.(!!)  = operator.getitem
-builtins.(&)   = operator.and_
-builtins.(^)   = operator.xor
-builtins.(|)   = operator.or_
-builtins.(<<)  = operator.lshift
-builtins.(>>)  = operator.rshift
-builtins.(!!~) = operator.delitem
+  take      = n xs -> itertools.islice xs None n
+  drop      = n xs -> itertools.islice xs n None
+  takewhile = itertools.takewhile
+  dropwhile = itertools.dropwhile
+  exhaust   = x -> collections.deque x maxlen: 0
+  iterate   = f x -> while True =>
+    yield x
+    x = f x
 
-builtins.(..)  = range
-builtins.(::)  = isinstance
-builtins.(->)  = -> None
-builtins.(~>)  = property $ self -> None
-builtins.(...) = Ellipsis
+  (:)    = a b -> itertools.chain (list' a) b
+  foldl  = f st xs -> functools.reduce f xs st
+  foldl1 = f    xs -> functools.reduce f xs
+  scanl  = f st xs -> itertools.accumulate (st:xs) f
+  scanl1 = f    xs -> itertools.accumulate xs f
+  # FIXME should also define foldr(1) and scanr(1). Probably.
 
-builtins.(<-)   = f g -> *: a **: k -> f $ g *: a **: k
-builtins.foldl  = f st xs -> functools.reduce f xs st
-builtins.foldl1 = f xs    -> functools.reduce f xs
-builtins.scanl  = f st xs -> itertools.accumulate (itertools.chain (list' st) xs) f
-builtins.scanl1 = f xs    -> itertools.accumulate xs f
-# FIXME should also define foldr(1) and scanr(1). Probably.
+  head = xs -> next $ iter xs
+  fst  = xs -> next $ iter xs  # same as `head`, but with a different name
+  snd  = xs -> head $ drop 1 xs
+  tail = xs -> list $ drop 1 xs
+  init = !! slice None -1
+  last = !! -1
 
-builtins.exhaust   = bind collections.deque maxlen: 0
-builtins.takewhile = itertools.takewhile
-builtins.dropwhile = itertools.dropwhile
-builtins.take      = n xs -> itertools.islice xs None n
-builtins.drop      = n xs -> itertools.islice xs n None
-builtins.iterate   = f x -> while True =>
-  yield x
-  x = f x
+  otherwise = True
+  finally   = True  # not actually used
 
-builtins.head = xs -> next $ iter xs
-builtins.tail = xs -> list $ drop 1 xs
-builtins.fst  = head
-builtins.snd  = xs -> head $ drop 1 xs
-builtins.init = (!! slice None -1)
-builtins.last = (!! -1)
+  __dg_build_class__ = mod ns doc qualname name *: bases metaclass: type **: kwds ->
+    '''A version of __build_class__ that does not use functions.
 
-builtins.otherwise = True
-builtins.finally   = Ellipsis  # not actually used
+      mod       :: str             -- __module__
+      ns        :: dict str object -- __dict__
+      doc       :: Maybe str       -- __doc__
+      qualname  :: str             -- __qualname__
+      name      :: str             -- __name__
+      bases     :: tuple type      -- __bases__
+      metaclass :: type            -- __metaclass__
+      kwds      :: dict str object -- keyword arguments to __prepare__
 
+    '''
+    for q in bases => if
+      issubclass metaclass (type q) => None
+      issubclass (type q) metaclass => metaclass = type q
+      otherwise => raise $ TypeError 'metaclass conflict'
 
-builtins.__dg_build_class__ = mod ns doc qualname name *: bases metaclass: type **: kwds ->
-  '''A version of __build_class__ that does not use functions.
-
-    __dg_build_class__ :: str {str: object} (Maybe str) str str (Many T) (type T) -> T
-
-  '''
-  for q in bases =>
-    w = type q
-    if issubclass metaclass w => None
-       issubclass w metaclass => metaclass = w
-       otherwise => raise $ TypeError 'metaclass conflict'
-
-  data = metaclass.__prepare__ name bases **: kwds
-  data.update ns
-  data.update $ dict __doc__: doc __qualname__: qualname __module__: mod
-  metaclass name bases data **: kwds
+    data = metaclass.__prepare__ name bases **: kwds
+    data.update ns
+    data.update $ dict __doc__: doc __qualname__: qualname __module__: mod
+    metaclass name bases data **: kwds
