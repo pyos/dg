@@ -164,17 +164,19 @@ RightBind = subclass Expression where
   repr = ~> '{!r} {[0]!r}'.format @op @args
 
 
-Ending = subclass Constant where
+Ending = subclass Node where
   '''A signal for `Parser.block` to stop reading `Node`s.
 
     The string `value` will be different depending on the type of
     close-paren. Does not appear in parser output.
 
-    type Ending < Constant where
-      value :: str
+    type Ending < Node where
+      value :: object
 
   '''
-  __eq__ = x ~> x :: Ending and @value == x.value
+  init   = @value ~>
+  repr   =        ~> '<E: {!r}>'.format @value
+  __eq__ =      x ~> x :: Ending and @value == x.value
 
-Dedent = Ending ''
-EOFTok = Ending '$'
+Dedent = Ending '\n'
+EOFTok = Ending '\0'
