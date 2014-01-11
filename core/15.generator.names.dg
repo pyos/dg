@@ -8,6 +8,19 @@ CONSTANTS = dict True: True False: False None: None otherwise: True
 Generator.var = None
 
 
+Generator.load_const = x ~>
+  '''Push `x` onto the value stack.
+
+    Technically, `x` can be anything, but most types would make
+    the code object unmarshallable.
+
+    load_const :: object -> a
+
+  '''
+  @stackperm +1
+  @add_opcode 'LOAD_CONST' $ @consts (x, type x)
+
+
 Generator.load = v ~>
   '''Push the value assigned to some name onto the value stack.
 

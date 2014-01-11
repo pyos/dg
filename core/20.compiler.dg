@@ -54,19 +54,6 @@ unpack = f args g ->
     e :: TypeError => Parser.error (str e) f.loc
 
 
-Generator.load_const = x ~>
-  '''Push `x` onto the value stack.
-
-    Technically, `x` can be anything, but most types would make
-    the code object unmarshallable.
-
-    load_const :: object -> a
-
-  '''
-  @stackperm +1
-  @add_opcode 'LOAD_CONST' $ @consts (x, type x)
-
-
 Generator.load_ast = x ~>
   '''Push the result of evaluating `x` onto the value stack.
 
