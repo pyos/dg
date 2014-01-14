@@ -43,7 +43,7 @@ ns = p.parse_args!
 if ns.build =>
   SOURCE_TREE = os.path.dirname __file__
   SOURCE_DIR  = os.path.join SOURCE_TREE 'core'
-  BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundles'
+  BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundle'
 
   # Ideally, three iterations should be enough:
   #   1. Make a bundle with new features.

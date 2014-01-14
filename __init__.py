@@ -14,7 +14,7 @@ if PY_TAG is None:
     # mentions that it's possible.
     raise ImportError('cannot load the bundle since module caching is disabled')
 
-__file__ = os.path.join(__path__[0], 'bundles', PY_TAG + '.dgbundle')
+__file__ = os.path.join(__path__[0], 'bundle', PY_TAG + '.dgbundle')
 
 try:
     with open(__file__, 'rb') as _fd:
