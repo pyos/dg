@@ -1,0 +1,112 @@
+'''Multiprocessing and threading, dg style.
+
+  Employs multi-statement anonymous functions:
+
+    >>> fork.process $ ->
+    ...   sleep 3
+    ...   print '1'
+    ...
+    <Process(...)>
+    >>>
+
+    # 3 seconds later...
+    1
+
+  Does not use void (i.e. `-> NoneType`) methods:
+
+    >>> fork.thread.daemon $ ->
+    ...   sleep 3
+    ...   print '1'
+    ...
+    <Thread(...)>
+    >>>
+
+    # 3 seconds later...
+    1
+
+  Makes cyclic timers simple:
+
+    >>> thread, cancel = fork.repeat.thread 3 $ -> print '1'
+    >>>
+
+    # 3 seconds later...
+    1   # and 3 more seconds later...
+    1   # and again...
+    1
+
+    >>> cancel! # Stops printing ones.
+
+'''
+
+import '/itertools'
+import '/threading'
+import '/multiprocessing'
+
+
+process = fn *: args daemon: False **: kwargs ->
+  '''Fork off a process that calls a function.
+
+    process :: (* ** -> a) * (daemon :: Optional bool) ** -> Process
+
+  '''
+  pr = multiprocessing.Process None fn None args kwargs daemon: daemon
+  pr.start!
+  pr
+
+
+thread = fn *: args daemon: False **: kwargs ->
+  '''Fork off a thread that calls a function.
+
+    thread :: (* -> a) * (daemon :: Optional bool) ** -> Thread
+
+  '''
+  th = threading.Thread None fn None args kwargs daemon: daemon
+  th.daemon = daemon
+  th.start!
+  th
+
+
+itertimer = spawn interval iterable fn ->
+  '''
+    Create a timer that calls a function after a delay
+    while an iterable is not empty. The returned function cancels the timer.
+
+    itertimer :: ((-> b) -> c) float (iter a) (-> b) -> (c, -> d)
+
+  '''
+  stop = spawn.Event!
+  retv = spawn $ -> for _ in takewhile (_ -> not $ stop.wait interval) iterable => fn!
+  retv, stop.set
+
+timer = spawn interval fn ->
+  '''Create a timer that calls a function once.
+
+    timer :: ((-> a) -> b) float (-> a) -> (b, -> c)
+
+  '''
+  itertimer spawn interval (list' 0) fn
+
+
+repeat = spawn interval fn ->
+  '''Create a timer that calls a function after regular intervals until stopped.
+
+    repeat :: float ((-> a) -> b) (-> a) -> (b, -> c)
+
+  '''
+  itertimer spawn interval (itertools.repeat 0) fn
+
+
+for (fn, mod) in ((process, multiprocessing), (thread, threading)) =>
+  # Polymorphism, ho!
+  fn.daemon = bind fn daemon: True
+  fn.Lock      = fn.daemon.Lock      = mod.Lock
+  fn.RLock     = fn.daemon.RLock     = mod.RLock
+  fn.Event     = fn.daemon.Event     = mod.Event
+  fn.Semaphore = fn.daemon.Semaphore = mod.Semaphore
+
+for fn in (itertimer, timer, repeat) =>
+  # Ooh, shortcuts!
+  fn.thread         = bind fn thread
+  fn.thread.daemon  = bind fn thread.daemon
+  fn.process        = bind fn process
+  fn.process.daemon = bind fn process.daemon
