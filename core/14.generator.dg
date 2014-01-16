@@ -1,11 +1,3 @@
-CO_OPTIMIZED = 1   # does not use slow locals
-CO_NEWLOCALS = 2   # has a local namespace
-CO_VARARGS   = 4   # accepts any amount of positional arguments
-CO_VARKWARGS = 8   # accepts any amount of keyword arguments
-CO_NESTED    = 16  # is a closure (unused, in fact)
-CO_GENERATOR = 32  # uses YIELD_VALUE/YIELD_FROM
-CO_NOFREE    = 64  # does not use cells
-
 EXTENDED_ARG = dis.opmap.get 'EXTENDED_ARG'
 
 
@@ -47,73 +39,86 @@ Generator = subclass object where
   '''A mutable version of `types.CodeType`.
 
     type Generator where
-      cell     :: Maybe Generator -- a parent code object.
-      argc     :: int
-      kwargc   :: int
-      name     :: str
-      qualname :: str
+      cell      :: Maybe Generator -- a parent code object.
+      argc      :: int
+      kwargc    :: int
+      varargs   :: bool -- accepts more than `argc` arguments.
+      varkws    :: bool -- aceepts keyword arguments not in `varnames[argc:][:kwargc]`.
+      function  :: bool -- is a function, not a module.
+      generator :: bool -- is a function with `yield`.
+      name      :: str
+      qualname  :: str
 
       fastlocals :: dict set   -- maps names from `varnames` to opcode locations.
-      varnames   :: tuple      -- a collection of (interned) argument names.
-      names      :: OrderedSet -- attributes, slow locals, globals & modules
-      consts     :: OrderedSet -- (type, value) pairs where value is constant
-      freevars   :: OrderedSet -- non-local variables
-      cellvars   :: OrderedSet -- local variables
-      slowlocals :: bool -- whether to use `NAME` opcodes instead of `FAST` ones.
-      enclosed   :: set  -- names that may be added to `freevars`.
+      consts     :: OrderedSet (object, type)
+      varnames   :: OrderedSet str -- array-stored arguments.
+      names      :: OrderedSet str -- attributes, globals & module names.
+      cellvars   :: OrderedSet str -- local variables used by closures.
+      freevars   :: OrderedSet str -- non-local variables.
+      enclosed   :: set -- names that may be added to `freevars`.
 
       bytecode  :: [(int, int)] -- (opcode, argument) pairs.
-      flags     :: int -- see the `CO_*` constants.
       stacksize :: int -- minimum stack depth required for evaluation.
       currstack :: int -- approx. stack depth at this point.
 
       filename :: str
       lineno   :: int
-      lnotab   :: [int]
+      lnotab   :: bytes
       lineoff  :: int -- `lineno` last time `lnotab` was updated.
       byteoff  :: int -- `len bytecode` at the same point.
 
   '''
-  __init__ = name isfunc a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: '' ~>
-    @cell     = cell or None
-    @argc     = len a
-    @kwargc   = len kw
-    @name     = name
-    @qualname = ''.join $ list'
+  __init__ = name function a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: None ~>
+    @cell      = cell
+    @argc      = len a
+    @kwargc    = len kw
+    @varargs   = bool va
+    @varkws    = bool vkw
+    @function  = bool function
+    @generator = False  # only becomes known during generation
+    @name      = str name
+    @qualname  = ''.join $ filter (x -> x) $ list'
       cell => cell.qualname
       cell => cell.qualname => '.'
-      cell => '<locals>.' * bool (cell.flags & CO_OPTIMIZED)
-      name * bool isfunc
+      cell => cell.function => '<locals>.'
+      function => name
 
     @fastlocals = collections.defaultdict set
+    @consts     = OrderedSet!
     @varnames   = OrderedSet $ zip (itertools.chain a kw va vkw) $ itertools.count 0
     @names      = OrderedSet!
-    @consts     = OrderedSet!
     @cellvars   = OrderedSet!
     @freevars   = OrderedSetNegative!
-    @slowlocals = not isfunc
     @enclosed   = if
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       otherwise => set!
 
     @bytecode = list!
-    @flags    = foldl1 (|) $ list'
-      CO_VARARGS   *  bool va
-      CO_VARKWARGS *  bool vkw
-      CO_NESTED    * (bool cell and not cell.slowlocals)
-      CO_OPTIMIZED *  bool isfunc
-      CO_NEWLOCALS *  bool isfunc
+    @stacksize = 0
+    @currstack = 0
 
     # Set on first `lnomark`.
     @filename = '<generated>'
     @lineno   = 1
-    @lnotab   = list!
+    @lnotab   = b''
     @lineoff  = -1
     @byteoff  = 0
-
-    @stacksize = 0
-    @currstack = 0
     None
+
+  flags = ~>
+    '''Calculated value of CodeType.co_flags.
+
+      flags :: int
+
+    '''
+    foldl1 (|) $ filter (x -> x) $ list'
+      @function  => 0b000011  # globals != locals & the latter are stored in an array
+      @varargs   => 0b000100
+      @varkws    => 0b001000
+      @generator => 0b100000
+      # The values below are only ever used for optimization.
+      @cell         => @cell.function => 0b0010000
+      not @cellvars => not @freevars  => 0b1000000
 
   stackperm = x ~>
     '''Request a permanent increase in stack size.
@@ -161,16 +166,22 @@ Generator = subclass object where
       frozen :: CodeType
 
     '''
-    types.CodeType @argc @kwargc (len @varnames) @stacksize
-      @flags | (CO_NOFREE * not (@cellvars or @freevars))
-      b''.join $ map @opcode @bytecode
-      tuple $ map fst @consts
-      tuple $ map sys.intern @names
+    cd = b''.join $ map @opcode @bytecode
+    cn =         map fst        @consts
+    nm = tuple $ map sys.intern @names
+
+    if @optimize =>
+      cd = @optimize cd (cn = list cn) nm @lnotab
+      # Most of the functions are unaffected by the first run, but some
+      # may benefit from two.
+      cd = @optimize cd cn nm @lnotab
+
+    types.CodeType @argc @kwargc (len @varnames) @stacksize @flags cd (tuple cn) nm
       tuple $ map sys.intern @varnames
       @filename
       @name
       @lineno
-      bytes @lnotab
+      @lnotab
       tuple $ map sys.intern @freevars
       tuple $ map sys.intern @cellvars
 
@@ -186,30 +197,9 @@ Generator = subclass object where
        arg >= 0x10000 => @opcode EXTENDED_ARG (arg >> 16) + @opcode op (arg % 0x10000)
        otherwise      => bytes (op, arg % 0x100, arg >> 8)
 
-
-if PY_TAG.startswith 'cpython-' =>
-  # CPython-only optimization: call `PyCode_Optimize` before
-  # freezing the code object.
-  _optimize = (import '/ctypes/pythonapi').PyCode_Optimize
-  _optimize.restype = import '/ctypes/py_object'
-  _optimize.argtypes = list' py_object py_object py_object py_object
-
-  Generator.frozen = ~>
-    cd = _optimize (b''.join $ map @opcode @bytecode)
-      cn = list  $ map fst        @consts
-      nm = tuple $ map sys.intern @names
-      ln = bytes @lnotab
-    # Most of the functions are unaffected by the first run, but some
-    # may benefit from two. PyCode_Optimize is pretty fast, so why not?
-    cd = _optimize cd cn nm ln
-
-    types.CodeType @argc @kwargc (len @varnames) @stacksize @flags cd
-      tuple cn
-      nm
-      tuple $ map sys.intern @varnames
-      @filename
-      @name
-      @lineno
-      ln
-      tuple $ map sys.intern @freevars
-      tuple $ map sys.intern @cellvars
+  optimize = if PY_TAG.startswith 'cpython-' => fn where
+    import '/ctypes/pythonapi'
+    import '/ctypes/py_object'
+    fn = pythonapi.PyCode_Optimize
+    fn.restype  = py_object
+    fn.argtypes = py_object, py_object, py_object, py_object

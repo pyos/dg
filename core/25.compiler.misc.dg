@@ -16,7 +16,7 @@ Generator.prefix !! 'yield' = f args ~> unpack f args $ item: None from: None ->
   if from is None => @add_opcode 'YIELD_VALUE'
      otherwise    => @add_opcode 'YIELD_FROM'
   @currstack -= not $ from is None
-  @flags |= CO_GENERATOR
+  @generator  = True
 
 
 Generator.prefix !! 'with' = f args ~>

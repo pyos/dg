@@ -35,8 +35,8 @@ Generator.load = v ~>
        @add_opcode 'LOAD_FAST' $ @varnames v
      v in @enclosed => @add_opcode 'LOAD_DEREF'  $ @freevars v
      v in CONSTANTS => @load_const $ CONSTANTS !! v
-     @slowlocals    => @add_opcode 'LOAD_NAME'   $ @names    v
-     otherwise      => @add_opcode 'LOAD_GLOBAL' $ @names    v
+     @function      => @add_opcode 'LOAD_GLOBAL' $ @names    v
+     otherwise      => @add_opcode 'LOAD_NAME'   $ @names    v
 
 
 Generator.store = v ~>
@@ -49,10 +49,10 @@ Generator.store = v ~>
 
   if v in @cellvars => @add_opcode 'STORE_DEREF' $ @cellvars v
      v in @enclosed => @add_opcode 'STORE_DEREF' $ @freevars v
-     @slowlocals    => @add_opcode 'STORE_NAME'  $ @names    v
-     otherwise      =>
+     @function      =>
        (@fastlocals !! v).add (len @bytecode, dis.opmap !! 'STORE_DEREF')
        @add_opcode 'STORE_FAST' $ @varnames v
+     otherwise      => @add_opcode 'STORE_NAME'  $ @names    v
 
 
 Generator.load_closure = v ~>
