@@ -24,6 +24,9 @@ compileast = x ->
   '''
   gen = Generator '' False
   gen.load_ast x
+  if gen.consts and snd (head gen.consts) is str =>  # Has a docstring.
+    gen.add_opcode 'LOAD_CONST' 0
+    gen.add_opcode 'STORE_NAME' $ gen.names '__doc__'
   gen.add_opcode 'RETURN_VALUE'
   gen.frozen
 
