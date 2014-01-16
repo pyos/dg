@@ -53,6 +53,7 @@ Generator = subclass object where
       name     :: str
       qualname :: str
 
+      fastlocals :: dict set   -- maps names from `varnames` to opcode locations.
       varnames   :: tuple      -- a collection of (interned) argument names.
       names      :: OrderedSet -- attributes, slow locals, globals & modules
       consts     :: OrderedSet -- (type, value) pairs where value is constant
@@ -84,14 +85,15 @@ Generator = subclass object where
       cell => '<locals>.' * bool (cell.flags & CO_OPTIMIZED)
       name * bool isfunc
 
-    @varnames   = tuple $ map sys.intern $ itertools.chain a kw va vkw
+    @fastlocals = collections.defaultdict set
+    @varnames   = OrderedSet $ zip (itertools.chain a kw va vkw) $ itertools.count 0
     @names      = OrderedSet!
     @consts     = OrderedSet!
+    @cellvars   = OrderedSet!
     @freevars   = OrderedSetNegative!
-    @cellvars   = OrderedSet $ zip @varnames $ itertools.count 0
     @slowlocals = not isfunc
     @enclosed   = if
-      cell      => dict.keys cell.cellvars | cell.enclosed
+      cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       otherwise => set!
 
     @bytecode = list!
@@ -159,11 +161,12 @@ Generator = subclass object where
       frozen :: CodeType
 
     '''
-    types.CodeType @argc @kwargc (len @varnames) @stacksize @flags
+    types.CodeType @argc @kwargc (len @varnames) @stacksize
+      @flags | (CO_NOFREE * not (@cellvars or @freevars))
       b''.join $ map @opcode @bytecode
       tuple $ map fst @consts
       tuple $ map sys.intern @names
-      @varnames
+      tuple $ map sys.intern @varnames
       @filename
       @name
       @lineno
@@ -203,7 +206,7 @@ if PY_TAG.startswith 'cpython-' =>
     types.CodeType @argc @kwargc (len @varnames) @stacksize @flags cd
       tuple cn
       nm
-      @varnames
+      tuple $ map sys.intern @varnames
       @filename
       @name
       @lineno

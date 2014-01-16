@@ -74,10 +74,10 @@ Generator.except_main = name try cases ~>
     # If a handler was triggered, there's now a return value
     # on top of the stack. It needs to be stored for safekeeping.
     for j in jumps => j.set
-    @add_opcode 'STORE_DEREF' $ @cellvars '<except-result>'
+    @add_opcode 'STORE_FAST' $ @varnames '<except-result>'
     # Traceback, value, and type may still be on stack.
     # They didn't stop existing or anything.
     with @pop_jump_if False reverse: False => @add_opcode 'POP_EXCEPT'
     @add_opcode 'POP_TOP'  # There goes the result of the try clause.
-    @add_opcode 'LOAD_DEREF'   $ @cellvars '<except-result>'
-    @add_opcode 'DELETE_DEREF' $ @cellvars '<except-result>'
+    @add_opcode 'LOAD_FAST'   $ @varnames '<except-result>'
+    @add_opcode 'DELETE_FAST' $ @varnames '<except-result>'
