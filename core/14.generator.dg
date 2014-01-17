@@ -1,73 +1,113 @@
-EXTENDED_ARG = dis.opmap.get 'EXTENDED_ARG'
+import '/dis'
+import '/types'
+import '/struct'
+import '/collections'
+
+#: These constants, unless redefined in a function, will
+#: be loaded with LOAD_CONST, not LOAD_GLOBAL.
+#: FIXME what if one of them is redefined in a global namespace?
+CONSTANTS = dict True: True False: False None: None otherwise: True
 
 
-codelen = seq ->
-  '''Calculate the length of a bytecode sequence, in bytes.
-
-    codelen :: [(int, int)] -> int
-
-  '''
-  sum $ map
-    (c, v) -> if
-      c < dis.HAVE_ARGUMENT => 1
-      otherwise             => 3 * (1 + abs (v.bit_length! - 1) // 16)
-    seq
+#: Calculate the length of a bytecode sequence, in bytes.
+#:
+#: codelen :: [(int, int)] -> int
+#:
+codelen = seq -> sum $ map
+  (c, v) -> if
+    c < dis.HAVE_ARGUMENT => 1
+    otherwise             => 3 * (1 + abs (v.bit_length! - 1) // 16)
+  seq
 
 
-OrderedSet = subclass dict where
-  '''An ordered collection of unique non-removable elements.
+#: An argument to a jump opcode.
+#:
+#: type Jump where
+#:   code     :: CodeType  -- bytecode to insert a jump into.
+#:   start    :: int       -- offset at which the jump object was created.
+#:   op       :: str       -- instruction to insert.
+#:   relative :: bool      -- whether to start counting from `start`.
+#:   reverse  :: bool      -- ask questions first, insert later. Implies `absolute`.
+#:
+Jump = subclass object where
+  __init__ = @code @reverse @op delta ~>
+    @relative = @op == 'JUMP_RELATIVE' or @op == 'FOR_ITER' or @op.startswith 'SETUP'
+    @start    = len @code.bytecode
+    @value    = None
+    @code.depth delta
 
-    type OrderedSet a < dict a int
+    if @reverse  => @relative => raise $ SystemError 'cannot make reverse relative jumps'
+       otherwise => @code.append @op 0
 
-  '''
-  __call__ = self k -> (self !! k = @get k $ len self)
-  __iter__ = self   ->
-    '''All items in this set, in insertion order.
+    None
 
-      __iter__ :: iter a
+  # Context manager protocol: a `jump-set` statement pair may
+  # be replaced with a `with jump`.
+  __enter__ = self        -> self
+  __exit__  = self t v tv -> False where if t is None => @set
 
-    '''
-    iter $ sorted @keys! key: @__getitem__
+  #: Set the target of a forward jump. Insert the opcode of a reverse jump.
+  #:
+  #: set :: a
+  #:
+  set = ~>
+    @value is None =>
+      not @relative => @value += codelen $ take  @start      @code.bytecode
+      not @reverse  => @value += codelen $ drop (@start + 1) @code.bytecode
+      not @reverse and not @relative =>
+        # This jump needs to account for itself.
+        for i in itertools.count 0 16 => if @value >> i => @value += 3
+
+    if @reverse  => @code.append @op @value
+       otherwise => @code.bytecode !! @start = dis.opmap !! @op, @value
 
 
-OrderedSetNegative = subclass OrderedSet where
-  '''An ordered set that returns negative indices when called.'''
-  __call__ = self k -> -1 - OrderedSet.__call__ self k
+#: A mutable version of `types.CodeType`.
+#:
+#: type CodeType where
+#:   cell      :: Maybe Generator -- a parent code object.
+#:   argc      :: int
+#:   kwargc    :: int
+#:   varargs   :: bool -- accepts more than `argc` arguments.
+#:   varkws    :: bool -- aceepts keyword arguments not in `varnames[argc:][:kwargc]`.
+#:   function  :: bool -- is a function, not a module.
+#:   generator :: bool -- is a function with `yield`.
+#:   name      :: str
+#:   qualname  :: str
+#:
+#:   var        :: Maybe str -- a string representing the innermost assignment.
+#:   fastlocals :: dict (dict int int) -- maps names from `varnames` to opcode locations.
+#:   consts     :: dict (object, type) int
+#:   varnames   :: dict str int -- array-stored arguments.
+#:   names      :: dict str int -- attributes, globals & module names.
+#:   cellvars   :: dict str int -- local variables used by closures.
+#:   freevars   :: dict str int -- non-local variables.
+#:   enclosed   :: set -- names that may be added to `freevars`.
+#:
+#:   bytecode  :: [(int, int)] -- (opcode, argument) pairs.
+#:   stacksize :: int -- minimum stack depth required for evaluation.
+#:   currstack :: int -- approx. stack depth at this point.
+#:
+#:   filename :: str
+#:   lineno   :: int
+#:   lnotab   :: bytes
+#:   lineoff  :: int -- `lineno` last time `lnotab` was updated.
+#:   byteoff  :: int -- `len bytecode` at the same point.
+#:
+CodeType = subclass object where
+  #: Make the bytecode slightly faster.
+  #: The arguments are: bytecode, constants, names, lnotab.
+  #: Constants are passed as a list to allow further additions.
+  #:
+  #: optimize :: Maybe (bytes list tuple bytes -> bytes)
+  #:
+  optimize = if PY_TAG.startswith 'cpython-' => fn where
+    import '/ctypes/pythonapi'
+    import '/ctypes/py_object'
+    fn = pythonapi.PyCode_Optimize
+    fn.restype  = py_object
+    fn.argtypes = py_object, py_object, py_object, py_object
 
-
-Generator = subclass object where
-  '''A mutable version of `types.CodeType`.
-
-    type Generator where
-      cell      :: Maybe Generator -- a parent code object.
-      argc      :: int
-      kwargc    :: int
-      varargs   :: bool -- accepts more than `argc` arguments.
-      varkws    :: bool -- aceepts keyword arguments not in `varnames[argc:][:kwargc]`.
-      function  :: bool -- is a function, not a module.
-      generator :: bool -- is a function with `yield`.
-      name      :: str
-      qualname  :: str
-
-      fastlocals :: dict set   -- maps names from `varnames` to opcode locations.
-      consts     :: OrderedSet (object, type)
-      varnames   :: OrderedSet str -- array-stored arguments.
-      names      :: OrderedSet str -- attributes, globals & module names.
-      cellvars   :: OrderedSet str -- local variables used by closures.
-      freevars   :: OrderedSet str -- non-local variables.
-      enclosed   :: set -- names that may be added to `freevars`.
-
-      bytecode  :: [(int, int)] -- (opcode, argument) pairs.
-      stacksize :: int -- minimum stack depth required for evaluation.
-      currstack :: int -- approx. stack depth at this point.
-
-      filename :: str
-      lineno   :: int
-      lnotab   :: bytes
-      lineoff  :: int -- `lineno` last time `lnotab` was updated.
-      byteoff  :: int -- `len bytecode` at the same point.
-
-  '''
   __init__ = name function a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: None ~>
     @cell      = cell
     @argc      = len a
@@ -83,17 +123,20 @@ Generator = subclass object where
       cell => cell.function => '<locals>.'
       function => name
 
-    @fastlocals = collections.defaultdict set
-    @consts     = OrderedSet!
-    @varnames   = OrderedSet $ zip (itertools.chain a kw va vkw) $ itertools.count 0
-    @names      = OrderedSet!
-    @cellvars   = OrderedSet!
-    @freevars   = OrderedSetNegative!
+    @var        = None
+    @fastlocals = collections.defaultdict dict
+    @consts     = collections.defaultdict $ ->  len @consts
+    @varnames   = collections.defaultdict $ ->  len @varnames
+    @names      = collections.defaultdict $ ->  len @names
+    @cellvars   = collections.defaultdict $ ->  len @cellvars
+    @freevars   = collections.defaultdict $ -> -len @freevars - 1
     @enclosed   = if
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       otherwise => set!
 
-    @bytecode = list!
+    exhaust $ map (@varnames !!) $ itertools.chain a kw va vkw
+
+    @bytecode  = list!
     @stacksize = 0
     @currstack = 0
 
@@ -105,99 +148,135 @@ Generator = subclass object where
     @byteoff  = 0
     None
 
-  flags = ~>
-    '''Calculated value of CodeType.co_flags.
+  #: Calculated value of CodeType.co_flags.
+  #:
+  #: flags :: int
+  #:
+  flags = ~> foldl1 (|) $ filter (x -> x) $ list'
+    @function  => 0b000011  # globals != locals & the latter are stored in an array
+    @varargs   => 0b000100
+    @varkws    => 0b001000
+    @generator => 0b100000
+    not @cellvars => not @freevars => 0b1000000
 
-      flags :: int
+  #: Generate a sequence of bytes for an opcode with an argument.
+  #:
+  #: code :: (int, int) -> bytes
+  #:
+  code = (op, arg) ~> if
+    op  < dis.HAVE_ARGUMENT => struct.pack '<B'  op
+    arg < 0x10000           => struct.pack '<BH' op arg
+    otherwise               => @opcode (dis.opmap !! 'EXTENDED_ARG') (arg >> 16) +
+                               struct.pack '<BH' op (arg & 0xffff)
 
-    '''
-    foldl1 (|) $ filter (x -> x) $ list'
-      @function  => 0b000011  # globals != locals & the latter are stored in an array
-      @varargs   => 0b000100
-      @varkws    => 0b001000
-      @generator => 0b100000
-      not @cellvars => not @freevars => 0b1000000
+  #: A marshallable code object with info from this generator.
+  #:
+  #: frozen :: CodeType
+  #:
+  frozen = ~>
+    code     = b''.join $ map @opcode @bytecode
+    consts   = list  $ map fst $ sorted @consts key: (@consts !!)
+    names    = tuple $ sorted @names    key: (@names    !!)
+    varnames = tuple $ sorted @varnames key: (@varnames !!)
+    cellvars = tuple $ sorted @cellvars key: (@cellvars !!)
+    freevars = tuple $ sorted @freevars key: (@freevars !!) reverse: True
 
-  stackperm = x ~>
-    '''Request a permanent increase in stack size.
+    if @optimize =>
+      # Most of the functions are unaffected by the first run, but some
+      # may benefit from two.
+      code = @optimize code consts names @lnotab
+      code = @optimize code consts names @lnotab
 
-      stackperm :: int -> ()
+    types.CodeType @argc @kwargc (len varnames) @stacksize @flags code (tuple consts) names
+      varnames
+      @filename
+      @name
+      @lineno
+      @lnotab
+      freevars
+      cellvars
 
-    '''
+  #: Append a new opcode to the sequence.
+  #:
+  #: append :: str (Optional int) (Optional int) -> a
+  #:
+  append = name value: 0 delta: 0 ~>
+    @delta delta
+    # These indices are used to quickly change all references
+    # to an array slot into references to a cell.
+    if name == 'LOAD_FAST'  => @fastlocals !! v !! len @bytecode = dis.opmap !! 'LOAD_DEREF'
+    if name == 'STORE_FAST' => @fastlocals !! v !! len @bytecode = dis.opmap !! 'STORE_DEREF'
+    @bytecode.append (dis.opmap !! name, value)
+
+  #: Request a permanent change in stack size.
+  #:
+  #: depth :: int -> ()
+  #:
+  depth = x ~>
     # Python calculates the stack depth by scanning bytecode.
     # We'll opt for traversing the AST instead.
     @currstack += x
     @currstack > @stacksize => @stacksize = @currstack
 
-  lnomark = x ~> if x.loc =>
-    '''Add a location of a `Node` to the lnotab.
+  #: Push `x` onto the value stack.
+  #:
+  #: Technically, `x` can be anything, but most types would make
+  #: the code object unmarshallable.
+  #:
+  #: pushconst :: object -> a
+  #:
+  pushconst = x ~> @append 'LOAD_CONST' delta: +1 $ @consts !! (x, type x)
 
-      lnomark :: Node -> a
+  #: Push the value assigned to some name onto the value stack.
+  #:
+  #: pushname :: str -> a
+  #:
+  pushname = v ~> if
+    v in @cellvars => @append 'LOAD_DEREF'  delta: +1 $ @cellvars !! v
+    v in @varnames => @append 'LOAD_FAST'   delta: +1 $ @varnames !! v
+    v in @enclosed => @append 'LOAD_DEREF'  delta: +1 $ @freevars !! v
+    v in CONSTANTS => @pushconst $ CONSTANTS !! v
+    @function      => @append 'LOAD_GLOBAL' delta: +1 $ @names !! v
+    otherwise      => @append 'LOAD_NAME'   delta: +1 $ @names !! v
 
-    '''
-    @lineoff < 0 =>
-      @filename = x.loc !! 0
-      @lineno   = x.loc !! 1
-      @lineoff  = x.loc !! 1
+  #: Pop the value from the top of the stack, assign it to a name.
+  #:
+  #: popname :: str -> a
+  #:
+  popname = v ~> if
+    v in @cellvars => @append 'STORE_DEREF' delta: -1 $ @cellvars !! v
+    v in @enclosed => @append 'STORE_DEREF' delta: -1 $ @freevars !! v
+    @function      => @append 'STORE_FAST'  delta: -1 $ @varnames !! v
+    otherwise      => @append 'STORE_NAME'  delta: -1 $ @names    !! v
 
-    lineoff = x.loc !! 1 - @lineoff
-    lineoff > 0 =>
-      byteoff = codelen $ drop @byteoff @bytecode
-      byteoff > 0 =>
-        @lineoff = x.loc !! 1
-        @byteoff = len @bytecode
-        @lnotab += lineoff // 256 * b'\x00\xff'
-        @lnotab += byteoff // 256 * b'\xff\x00'
-        @lnotab += bytes (byteoff % 256, lineoff % 256)
+  #: Load a cell object referencing some name.
+  #:
+  #: Used to create closures.
+  #:
+  #: pushcell :: str -> a
+  #:
+  pushcell = v ~>
+    for i in @fastlocals !! v =>
+      # Note that this affects variables created after the closure in no way.
+      @bytecode !! i = @fastlocals !! v !! i, @cellvars !! v
 
-  add_opcode = name value: 0 ~>
-    '''Append a new opcode to the sequence.
+    @add_opcode 'LOAD_CLOSURE' delta: +1 $ if
+      v in @cellvars => @cellvars !! v
+      v in @varnames => @cellvars !! v
+      otherwise      => @freevars !! v
 
-      add_opcode :: str int int -> a
+  #: Insert a jump clause.
+  #:
+  #: jump :: str (Optional bool) (Optional int) -> Jump
+  #:
+  jump = opname reverse: False delta: 0 ~> Jump self reverse opname delta: 0
 
-    '''
-    @bytecode.append (dis.opmap !! name, value)
+  #: Make a child code object.
+  #:
+  #: spawn :: str * ** -> CodeType
+  #:
+  spawn = name *: other_args **: other_kwargs ~> CodeType *: other_args **: other_kwargs $ if
+    @var is None       => name
+    @var.isidentifier! => @var
+    otherwise          => '(' + @var + ')'
 
-  frozen = ~>
-    '''A marshallable code object with info from this generator.
-
-      frozen :: CodeType
-
-    '''
-    cd = b''.join $ map @opcode @bytecode
-    cn =         map fst        @consts
-    nm = tuple $ map sys.intern @names
-
-    if @optimize =>
-      cd = @optimize cd (cn = list cn) nm @lnotab
-      # Most of the functions are unaffected by the first run, but some
-      # may benefit from two.
-      cd = @optimize cd cn nm @lnotab
-
-    types.CodeType @argc @kwargc (len @varnames) @stacksize @flags cd (tuple cn) nm
-      tuple $ map sys.intern @varnames
-      @filename
-      @name
-      @lineno
-      @lnotab
-      tuple $ map sys.intern @freevars
-      tuple $ map sys.intern @cellvars
-
-  opcode = (op, arg) ~>
-    '''Generate a sequence of bytes for an opcode with an argument.
-
-      opcode :: int int -> bytes
-
-    '''
-    arg < 0 => arg = len @cellvars - arg - 1
-
-    if op < dis.HAVE_ARGUMENT => bytes $ list' op
-       arg >= 0x10000 => @opcode EXTENDED_ARG (arg >> 16) + @opcode op (arg % 0x10000)
-       otherwise      => bytes (op, arg % 0x100, arg >> 8)
-
-  optimize = if PY_TAG.startswith 'cpython-' => fn where
-    import '/ctypes/pythonapi'
-    import '/ctypes/py_object'
-    fn = pythonapi.PyCode_Optimize
-    fn.restype  = py_object
-    fn.argtypes = py_object, py_object, py_object, py_object

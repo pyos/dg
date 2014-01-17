@@ -63,7 +63,20 @@ Generator.load_ast = x ~>
     load_ast :: Node -> a
 
   '''
-  @lnomark x
+  @lineoff < 0 =>
+    @filename = x.loc !! 0
+    @lineno   = x.loc !! 1
+    @lineoff  = x.loc !! 1
+
+  lineoff = x.loc !! 1 - @lineoff
+  lineoff > 0 =>
+    byteoff = codelen $ drop @byteoff @bytecode
+    byteoff > 0 =>
+      @lineoff = x.loc !! 1
+      @byteoff = len @bytecode
+      @lnotab += lineoff // 256 * b'\x00\xff'
+      @lnotab += byteoff // 256 * b'\xff\x00'
+      @lnotab += bytes (byteoff % 256, lineoff % 256)
 
   if x :: Name       => @load x.value
      x :: Constant   => @load_const x.value
