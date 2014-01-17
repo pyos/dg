@@ -140,7 +140,6 @@ CodeType = subclass object where
     @stacksize = 0
     @currstack = 0
 
-    # Set on first `lnomark`.
     @filename = '<generated>'
     @lineno   = 1
     @lnotab   = b''
