@@ -1,3 +1,4 @@
+import re
 import os
 import glob
 
@@ -15,4 +16,4 @@ for f in glob.glob(os.path.join(__path__[0], '*.html')):
 
     src = open(f)
     tgt = open(os.path.join(os.path.dirname(f), os.pardir, os.path.basename(f)), 'w', newline='\n')
-    tgt.write(src.read().format(**data))
+    tgt.write(re.sub(r'@@(\w+)', lambda m: data[m.group(1)], src.read()))

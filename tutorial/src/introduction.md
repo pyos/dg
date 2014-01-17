@@ -1,4 +1,4 @@
-## Example-based documentation
+## The easy stuff
 
 ### Comments
 
@@ -6,23 +6,24 @@
 # are sh-style.
 ```
 
-You can also describe functions with docstrings in the same way as in Python.
+You probably know about docstrings. What you don't know is that they look
+nothing like Python docstrings. Sphinx users may recognise this, though.
 
 ```dg
-function = argument ->
-  '''Do something with an argument.
-
-      :param argument: any value.
-
-      :return: something absolutely different.
-
-  '''
-  something_absolutely_different
+#: Do something with an argument.
+#:
+#: Raises:
+#:     NameError: this function makes no sense.
+#:
+#: :param argument: any value.
+#: :return: something absolutely different.
+#:
+function = argument -> something_absolutely_different
 ```
 
 ### Parentheses
 
-are used to explicitly define the precedence of operators, obviously.
+They are used to explicitly define the precedence of operators. Duh.
 
 ```dg
 2 *  2 + 2  == 6
@@ -36,6 +37,7 @@ to evaluate multiple statements.
 ```dg
 2 *
   print "calculating 2 + 2"
+  # No, really, look:
   2 + 2
 # still returns 8, but also logs its activity
 ```
