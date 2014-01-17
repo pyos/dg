@@ -1,38 +1,35 @@
+#: Parse an input string.
+#:
+#: parse :: str (Optional str) -> Node
+#:
 parse = data filename: '<string>' ->
-  '''Parse an input string.
-
-    parse :: str (Optional str) -> Node
-
-  '''
   p = Parser data filename
   p.block (filename, 1, 1, head p.lines) closed: False $ x -> if
     x is EOFTok => True
     x :: Ending => p.error 'unexpected close-paren' x.loc
 
 
+#: Parse the contents of a file-like object opened in text mode.
+#:
+#: Note that the `filename` argument is only used if the file-like object
+#: has no `name` attribute itself.
+#:
+#: parsefd :: TextIOBase (Optional str) -> Node
+#:
 parsefd = data filename: '<stream>' ->
-  '''Parse the contents of a file-like object opened in text mode.
-
-    Note that the `filename` argument is only used if the file-like object
-    has no `name` attribute itself.
-
-    parsefd :: TextIOBase (Optional str) -> Node
-
-  '''
   parse (data.read -1) (getattr data 'name' filename)
 
 
+#: A recursive descent parser with a built-in regex-based tokenizer.
+#:
+#: type Parser < deque Node where
+#:   tokens :: iter MatchObject -- see `regex`.
+#:   indent :: deque int -- a stack of indentation levels, starting with 0.
+#:   lineno :: int -- 1-based line number.
+#:   charno :: int -- 1-based character number.
+#:   lines  :: list str -- the input, split at line breaks.
+#:
 Parser = subclass collections.deque where
-  '''A recursive descent parser with a built-in regex-based tokenizer.
-
-    type Parser < deque Node where
-      tokens :: iter MatchObject -- see `regex`.
-      indent :: deque int -- a stack of indentation levels, starting with 0.
-      lineno :: int -- 1-based line number.
-      charno :: int -- 1-based character number.
-      lines  :: list str -- the input, split at line breaks.
-
-  '''
   __init__ = @data @filename ~>
     @tokens  = @regex.finditer @data
     @indent  = collections.deque $ list' 0
@@ -57,11 +54,11 @@ Parser = subclass collections.deque where
 
          e :: StopIteration => EOFTok
 
-  # regex :: Re
-  #
-  # A big regex used to tokenize input text. Each top-level group
-  # must have a handling branch in `token`, else `SyntaxError` is raised.
-  #
+  #: A big regex used to tokenize input text. Each top-level group
+  #: must have a handling branch in `token`, else `SyntaxError` is raised.
+  #:
+  #: regex :: Re
+  #:
   regex = re.compile r'''(?isx)
     (?P<space>  [^\S\n]+|\s*\#[^\n]*)
    |(?P<const>  [+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|[0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?j?))
@@ -81,12 +78,11 @@ Parser = subclass collections.deque where
   norhs  = set' '!'
   infixn = set' 'and' 'in' 'is' 'or' 'where'
 
+  #: Handle a single regex match.
+  #:
+  #: token :: (str, int, int, str) str MatchObject -> Node
+  #:
   token = pos f m ~>
-    '''Handle a single regex match.
-
-      token :: (str, int, int, str) str MatchObject -> Node
-
-    '''
     if f == 'space' => next self
        f == 'const' => Constant at: pos $ literal_eval $ m.group 0
        f == 'str'   => Constant at: pos $ literal_eval $
@@ -134,16 +130,15 @@ Parser = subclass collections.deque where
        f == 'strerr' => @error 'unexpected EOF while reading a string literal' pos
        otherwise     => @error 'invalid character'                             pos
 
+  #: Read tokens until the end of the block.
+  #:
+  #: pos -- (filename, lineno, charno, first line) of this block.
+  #: end -- returns True if a `Node` is an acceptable block end.
+  #: closed -- whether the block is encased in hard parentheses.
+  #:
+  #: block :: (str, int, int, str) (Node -> bool) (Optional bool) -> Node
+  #:
   block = pos end closed: True ~>
-    '''Read tokens until the end of the block.
-
-      pos -- (filename, lineno, charno, first line) of this block.
-      end -- returns True if a `Node` is an acceptable block end.
-      closed -- whether the block is encased in hard parentheses.
-
-      block :: (str, int, int, str) (Node -> bool) (Optional bool) -> Node
-
-    '''
     result = Constant None at: pos
     isexpr = False
     x      = next self
@@ -161,16 +156,15 @@ Parser = subclass collections.deque where
     result.indent  = not closed
     result
 
+  #: Combine two parts of a tree with an infix `Name`.
+  #:
+  #: op  -- something to combine with.
+  #: lhs -- everything to the left.
+  #: rhs -- next `Node` to the right.
+  #:
+  #: infix :: Name Node Node -> Node
+  #:
   infix = op lhs rhs ~>
-    '''Combine two parts of a tree with an infix `Name`.
-
-      op  -- something to combine with.
-      lhs -- everything to the left.
-      rhs -- next `Node` to the right.
-
-      infix :: Name Node Node -> Node
-
-    '''
     br = False
 
     not op.norhs => while rhs == '\n' =>
@@ -199,65 +193,61 @@ Parser = subclass collections.deque where
 
       otherwise => @infixin op lhs rhs
 
-  infixin = op lhs rhs ~>
-    '''Recursively descend into `lhs` to apply infix precedence rules.
+  #: Recursively descend into `lhs` to apply infix precedence rules.
+  #:
+  #: `rhs` may be `None` if there is none.
+  #:
+  #: infixin :: Name Node (Maybe Node) -> Expression
+  #:
+  infixin = op lhs rhs ~> if
+    lhs :: Expression and not lhs.closed and op > lhs.op =>
+      lhs.args.append $ @infixin op (lhs.args.pop -1) rhs
+      lhs
 
-      `rhs` may be `None` if there is none.
+    rhs is None =>
+      LeftBind op lhs closed: True at: lhs.loc
 
-      infixin :: Name Node (Maybe Node) -> Expression
+    lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
+      lhs.args.extend $ tail (@make_call op lhs rhs).args
+      lhs
 
-    '''
-    if
-      lhs :: Expression and not lhs.closed and op > lhs.op =>
-        lhs.args.append $ @infixin op (lhs.args.pop -1) rhs
-        lhs
+    op == '' and lhs.infix and not lhs.closed =>
+      RightBind lhs at: lhs.loc $ if (Name '' > lhs => @special rhs) (otherwise => rhs)
 
-      rhs is None =>
-        LeftBind op lhs closed: True at: lhs.loc
+    otherwise => @make_call op lhs rhs
 
-      lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
-        lhs.args.extend $ tail (@make_call op lhs rhs).args
-        lhs
+  #: Create a simple function call. (Almost) no fancy rules.
+  #:
+  #: `rhs` can't be `None` once again. Handle that in some other way.
+  #:
+  #: make_call :: Name Node Node -> Expression
+  #:
+  make_call = op lhs rhs ~> if
+    op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' =>
+      # In an indented block after an empty name, each statement
+      # is a separate RHS.
+      Expression op lhs at: lhs.loc *: rhs.args
+    otherwise =>
+      Expression op lhs at: lhs.loc $ if
+        Name '' > op => @special rhs
+        otherwise    => rhs
 
-      op == '' and lhs.infix and not lhs.closed =>
-        RightBind lhs at: lhs.loc $ if (Name '' > lhs => @special rhs) (otherwise => rhs)
-
-      otherwise => @make_call op lhs rhs
-
-  make_call = op lhs rhs ~>
-    '''Create a simple function call. (Almost) no fancy rules.
-
-      `rhs` can't be `None` once again. Handle that in some other way.
-
-      make_call :: Name Node Node -> Expression
-
-    '''
-    if
-      op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' =>
-        # In an indented block after an empty name, each statement
-        # is a separate RHS.
-        Expression op lhs *: rhs.args at: lhs.loc
-
-      otherwise =>
-        Expression op lhs at: lhs.loc $ if (Name '' > op => @special rhs) (otherwise => rhs)
-
+  #: Handle a couple of fancy syntactic constructs.
+  #:
+  #: Suppose we have `x == Name "yoba"`. Then:
+  #:   condition  | syntax        | result
+  #:   -----------+---------------+------------------------------------
+  #:   x.spec_a   | yoba a => b   | Expression (Name 'yoba') a b
+  #:   -----------+---------------+------------------------------------
+  #:   x.spec_b   | yoba a => b   | Expression (Name '') (Name 'yoba')
+  #:              |      c => d   |    Expression (Name '=>') a b
+  #:              |      e => f   |    Expression (Name '=>') c d
+  #:              |               |    Expression (Name '=>') e f
+  #:              | (here, `a => b` may be omitted.)
+  #:
+  #: special :: Node -> Node
+  #:
   special = x ~>
-    '''Handle a couple of fancy syntactic constructs.
-
-      Suppose we have `x == Name "yoba"`. Then:
-        condition  | syntax        | result
-        -----------+---------------+------------------------------------
-        x.spec_a   | yoba a => b   | Expression (Name 'yoba') a b
-        -----------+---------------+------------------------------------
-        x.spec_b   | yoba a => b   | Expression (Name '') (Name 'yoba')
-                   |      c => d   |    Expression (Name '=>') a b
-                   |      e => f   |    Expression (Name '=>') c d
-                   |               |    Expression (Name '=>') e f
-                   | (here, `a => b` may be omitted.)
-
-      special :: Node -> Node
-
-    '''
     x.spec_a =>
       x = @infix x (@block x.loc ('=>' ==)) (next self)
 
@@ -272,4 +262,10 @@ Parser = subclass collections.deque where
 
     x
 
+  #: Handle a parse error.
+  #:
+  #: THAT's what we have to thank for these (str, int, int, str)-type locations.
+  #:
+  #: error :: str (str, int, int, str) -> _|_
+  #:
   error = staticmethod $ description at -> raise $ SyntaxError description at

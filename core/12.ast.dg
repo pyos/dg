@@ -1,19 +1,17 @@
+#: Generic AST node. No direct instances are found in the parser output.
+#:
+#: type Node where
+#:   loc :: (str, int, int, str) -- (filename, line, character, first line)
+#:   closed :: bool -- whether the node is parenthesized
+#:   indent :: bool -- whether the node is an indented block
+#:   infix  :: bool -- whether the node is infix between two other nodes
+#:   nolhs  :: bool -- (infix = True) whether the node is, in fact, postfix
+#:   norhs  :: bool -- (infix = True) same as `nolhs`, only prefix
+#:   varary :: bool -- (infix = True) whether `a R b R c` constructs only one `R`
+#:   spec_a :: bool -- why don't you see the parser for that
+#:   spec_b :: bool
+#:
 Node = subclass object where
-  '''Generic AST node. No direct instances are found in the parser output.
-
-    type Node where
-      loc :: (str, int, int, str) -- (filename, line, character, first line)
-      closed :: bool -- whether the node is parenthesized
-      indent :: bool -- whether the node is an indented block
-      infix  :: bool -- whether the node is infix between two other nodes
-      nolhs  :: bool -- (infix = True) whether the node is, in fact, postfix
-      norhs  :: bool -- (infix = True) same as `nolhs`, only prefix
-      varary :: bool -- (infix = True) whether `a R b R c` constructs only one `R`
-      spec_a :: bool -- whether this node is `R` in `R a => b` syntactic construct
-      spec_b :: bool -- whether this node consumes everything until the
-                     -- end of the line as the first funcall argument.
-
-  '''
   __init__ = *: args **: kwargs ~>
     @loc    = kwargs.pop 'at'     None
     @closed = kwargs.pop 'closed' False
@@ -34,20 +32,26 @@ Node = subclass object where
   repr = ~> 'nil'
 
 
+#: An identifier.
+#:
+#: The only kind of `Node` that can have anything
+#: other than `closed` or `indent` set to `True`.
+#:
+#: type Name < Node where
+#:   value :: str
+#:
 Name = subclass Node where
-  '''An identifier.
-
-    The only kind of `Node` that can have anything
-    other than `closed` or `indent` set to `True`.
-
-    type Name < Node where
-      value :: str
-
-  '''
   init   = @value ~>
   repr   =        ~> @value
   __eq__ =      x ~> @value == x
 
+  #: Whether this (infix) node has priority over the other one.
+  #:
+  #: `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
+  #: is higher than right binding strength of `R`, `(a R b) Q c` otherwise.
+  #:
+  #: __gt__ :: Name -> bool
+  #:
   __gt__ = over strength: (dict'
     '@',     ( 5,    5)    # attribute of `self`
     '.',     ( 0,    0)    # getattr
@@ -102,78 +106,58 @@ Name = subclass Node where
     'with',  (-180, -190)
     '=>',    (-180, -190)  # if-then
     '\n',    (-230, -230)  # do A then B
-  ).get default: (-70, -70) ~>
-    '''Whether this (infix) node has priority over the other one.
-
-      `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
-      is higher than right binding strength of `R`, `(a R b) Q c` otherwise.
-
-      Name > Name -> bool
-
-    '''
-    strength @value default !! 0 > strength over.value default !! 1
+  ).get default: (-70, -70) ~> strength @value default !! 0 > strength over.value default !! 1
 
 
+#: A single function call.
+#:
+#: If the function in question is prefix, `op` will be `''`.
+#:
+#: type Expression < Node where
+#:   op   :: Node   -- function
+#:   args :: [Node] -- arguments
+#:
 Expression = subclass Node where
-  '''A single function call.
-
-    If the function in question is prefix, `op` will be `''`.
-
-    type Expression < Node where
-      op   :: Node   -- function
-      args :: [Node] -- arguments
-
-      op.infix is True
-      not op.varary => len args == 2
-          op.varary => len args >= 2
-
-  '''
   init = @op *: args ~> (@args = list args)
   repr =             ~> (' {!r} ' .format @op).join $ map repr @args
 
 
+#: A marshallable compile-time constant.
+#:
+#: type Constant < Node where
+#:   value :: Either int float complex str
+#:
 Constant = subclass Node where
-  '''A marshallable compile-time constant.
-
-    type Constant < Node where
-      value :: Either int float complex str
-
-  '''
   init   = @value ~>
   repr   =        ~> repr @value
   __eq__ =      x ~> x :: Constant and @value == x.value
 
 
+#: An infix expression missing its right part.
+#:
+#: -- no signature
+#:
 LeftBind = subclass Expression where
-  '''An infix expression missing its right part.
-
-    type LeftBind < Expression where
-      len args == 1
-
-  '''
   repr = ~> '{[0]!r} {!r}'.format @args @op
 
 
+#: An infix expression missing its left part.
+#:
+#: -- no signature
+#:
 RightBind = subclass Expression where
-  '''An infix expression missing its left part.
-
-    type RightBind < Expression where
-      len args == 1
-
-  '''
   repr = ~> '{!r} {[0]!r}'.format @op @args
 
 
+#: A signal for `Parser.block` to stop reading `Node`s.
+#:
+#: The string `value` will be different depending on the type of
+#: close-paren. Does not appear in parser output.
+#:
+#: type Ending < Node where
+#:   value :: object
+#:
 Ending = subclass Node where
-  '''A signal for `Parser.block` to stop reading `Node`s.
-
-    The string `value` will be different depending on the type of
-    close-paren. Does not appear in parser output.
-
-    type Ending < Node where
-      value :: object
-
-  '''
   init   = @value ~>
   repr   =        ~> '<E: {!r}>'.format @value
   __eq__ =      x ~> x :: Ending and @value == x.value

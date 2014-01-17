@@ -1,3 +1,9 @@
+import '/builtins'
+import '/operator'
+import '/functools'
+import '/itertools'
+import '/collections'
+
 builtins.__dict__.update locals! where
   set'   = *: xs       -> set  xs
   list'  = *: xs       -> list xs
@@ -14,6 +20,7 @@ builtins.__dict__.update locals! where
   (::)  = isinstance
   (->)  = -> None
   (~>)  = ~> None
+  (:)   = a b -> itertools.chain (list' a) b
   (in)  = a b -> a in b
   (is)  = operator.is_
   (not) = operator.not_
@@ -48,7 +55,6 @@ builtins.__dict__.update locals! where
     yield x
     x = f x
 
-  (:)    = a b -> itertools.chain (list' a) b
   foldl  = f st xs -> functools.reduce f xs st
   foldl1 = f    xs -> functools.reduce f xs
   scanl  = f st xs -> itertools.accumulate (st:xs) f
@@ -65,25 +71,19 @@ builtins.__dict__.update locals! where
   otherwise = True
   finally   = True  # not actually used
 
-  __dg_build_class__ = mod ns doc qualname name *: bases metaclass: type **: kwds ->
-    '''A version of __build_class__ that does not use functions.
-
-      mod       :: str             -- __module__
-      ns        :: dict str object -- __dict__
-      doc       :: Maybe str       -- __doc__
-      qualname  :: str             -- __qualname__
-      name      :: str             -- __name__
-      bases     :: tuple type      -- __bases__
-      metaclass :: type            -- __metaclass__
-      kwds      :: dict str object -- keyword arguments to __prepare__
-
-    '''
+  #: A version of __build_class__ that does not use functions.
+  #:
+  #: I bet you didn't even know __build_class__ existed.
+  #:
+  #: _ :: str (dict str object) (Maybe str: str str *type type **(dict str object) -> type
+  #:
+  __dg_build_class__ = module attrs doc qualname name *: bases metaclass: type **: kwds ->
     for q in bases => if
       issubclass metaclass (type q) => None
       issubclass (type q) metaclass => metaclass = type q
       otherwise => raise $ TypeError 'metaclass conflict'
 
     data = metaclass.__prepare__ name bases **: kwds
-    data.update ns
-    data.update $ dict __doc__: doc __qualname__: qualname __module__: mod
+    data.update   attrs
+    data.update $ dict __doc__: doc __qualname__: qualname __module__: module
     metaclass name bases data **: kwds
