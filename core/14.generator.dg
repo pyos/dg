@@ -171,7 +171,7 @@ CodeType = subclass object where
 
   #: A marshallable code object with info from this generator.
   #:
-  #: frozen :: CodeType
+  #: frozen :: types.CodeType
   #:
   frozen = ~>
     code     = b''.join $ map @opcode @bytecode
@@ -279,4 +279,3 @@ CodeType = subclass object where
     @var is None       => name
     @var.isidentifier! => @var
     otherwise          => '(' + @var + ')'
-

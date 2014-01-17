@@ -1,136 +1,171 @@
-compile = x filename: '<string>' ->
-  '''Compile some source code.
+#: Something bigger than anything you can come up with.
+#: Something...more, than a number.
+ANY = float 'inf'
 
-    compile :: str (Optional str) -> CodeType
-
-  '''
-  compileast $ parse x filename
-
-
-compilefd = x filename: '<stream>' ->
-  '''Compile the contents of a file-like object.
-
-    compilefd :: TextIOBase (Optional str) -> CodeType
-
-  '''
-  compileast $ parsefd x filename
+#: Raise a SyntaxError.
+#:
+#: ERROR :: (Either Node (str, int, int, str)) str -> _|_
+#:
+ERROR = at description -> if
+  at :: Node => raise $ SyntaxError description at.loc
+  otherwise  => raise $ SyntaxError description at
 
 
+#: Enforce arbitrary argument count limits on a compile-time function.
+#:
+#: `ANY` for `min` means "accept any amount of arguments".
+#: `ANY` for `max` means "the function is variadic".
+#: Unless specified, `max` is assumed to be the same as `min`.
+#:
+#: ARGCOUNT :: int int (Node [Node] -> a) -> (Node [Node] -> a)
+#:
+ARGCOUNT = min fn max: None -> if
+  min is ANY => fn
+  otherwise  => self f args -> if
+    len args <  min         => ERROR f $ 'got {1} arguments, min. {0}'.format min $ len args
+    len args > (max or min) => ERROR f $ 'got {1} arguments, max. {0}'.format max $ len args
+    otherwise               => fn self f args
+
+
+#: Compile some source code.
+#:
+#: compile :: str (Optional str) -> types.CodeType
+#:
+compile = x filename: '<string>' -> compileast $ parse x filename
+
+
+#: Compile the contents of a file-like object.
+#:
+#: compilefd :: TextIOBase (Optional str) -> types.CodeType
+#:
+compilefd = x filename: '<stream>' -> compileast $ parsefd x filename
+
+
+#: Compile a pre-parsed AST.
+#:
+#: compileast :: Node -> types.CodeType
+#:
 compileast = x ->
-  '''Compile a pre-parsed AST.
-
-    compileast :: Node -> CodeType
-
-  '''
-  gen = Generator '' False
-  gen.load_ast x
-  if gen.consts and snd (head gen.consts) is str =>  # Has a docstring.
-    gen.add_opcode 'LOAD_CONST' 0
-    gen.add_opcode 'STORE_NAME' $ gen.names '__doc__'
-  gen.add_opcode 'RETURN_VALUE'
-  gen.frozen
+  self = Compiler '' False
+  # TODO: store the docstring in __name__.
+  #   Should look into `x` and see if it's either a string
+  #   or a sequence of commands starting with a string.
+  #   If it is, it or its first argument is a docstring.
+  @setfile x
+  @pushast x
+  @append 'RETURN_VALUE' delta: -1
+  @frozen
 
 
-ensure = f args min: 1 max: (float 'inf') ->
-  '''Raise appropriate exceptions if the number of arguments
-     is outside the specified range.
-
-    ensure :: Name [a] int int -> [a]
-
-  '''
-  len args < min => Parser.error ('not enough arguments (got {}, min. {})'.format (len args) min) f.loc
-  len args > max => Parser.error ('too many arguments (got {}, max. {})'  .format (len args) max) f.loc
-  args
-
-
-unpack = f args g ->
-  '''Unpack function arguments by using another function as a template.
-
-    unpack :: Name [Node] (T -> a) -> a
-
-  '''
-  except
-    e =>
-      a, kw, va, vkw = func_call_args args
-      va or vkw => Parser.error "can't use varargs with compile-time macros" (va or vkw).loc
-      g *: a **: kw
-    e :: TypeError => Parser.error (str e) f.loc
+#unpack = f args g ->
+#  '''Unpack function arguments by using another function as a template.
+#
+#    unpack :: Name [Node] (T -> a) -> a
+#
+#  '''
+#  except
+#    e =>
+#      a, kw, va, vkw = func_call_args args
+#      va or vkw => Parser.error "can't use varargs with compile-time macros" (va or vkw).loc
+#      g *: a **: kw
+#    e :: TypeError => Parser.error (str e) f.loc
 
 
-Generator.load_ast = x ~>
-  '''Push the result of evaluating `x` onto the value stack.
-
-    load_ast :: Node -> a
-
-  '''
-  @lineoff < 0 =>
+Compiler = subclass CodeType where
+  #: Note where this code object starts in the source code.
+  #:
+  #: setfile :: Node -> a
+  #:
+  setfile = x ~>
     @filename = x.loc !! 0
     @lineno   = x.loc !! 1
     @lineoff  = x.loc !! 1
 
-  lineoff = x.loc !! 1 - @lineoff
-  lineoff > 0 =>
-    byteoff = codelen $ drop @byteoff @bytecode
-    byteoff > 0 =>
-      @lineoff = x.loc !! 1
-      @byteoff = len @bytecode
-      @lnotab += lineoff // 256 * b'\x00\xff'
-      @lnotab += byteoff // 256 * b'\xff\x00'
-      @lnotab += bytes (byteoff % 256, lineoff % 256)
+  #: Push the result of evaluating `x` onto the stack.
+  #:
+  #: pushast :: Node -> a
+  #:
+  pushast = x ~>
+    @lineoff >= 0 =>
+      # A good time to map bytecode to source code lines.
+      lineoff = x.loc !! 1 - @lineoff
+      lineoff > 0 =>
+        byteoff = codelen $ drop @byteoff @bytecode
+        byteoff > 0 =>
+          @lineoff = x.loc !! 1
+          @byteoff = len @bytecode
+          @lnotab += lineoff // 256 * b'\x00\xff'
+          @lnotab += byteoff // 256 * b'\xff\x00'
+          @lnotab += bytes (byteoff % 256, lineoff % 256)
 
-  if x :: Name       => @load x.value
-     x :: Constant   => @load_const x.value
-     x :: LeftBind   => (@infixl !! x.op.value) self x.op *: x.args
-     x :: RightBind  => (@infixr !! x.op.value) self x.op *: x.args
-     x :: Expression => @load_call x.op *: x.args
-     otherwise       => raise $ TypeError 'invalid node node' x (type x)
+    if x :: Name       => @pushname  x.value
+       x :: Constant   => @pushconst x.value
+       x :: LeftBind   => (@infixl !! x.op.value) self x.op *: x.args
+       x :: RightBind  => (@infixr !! x.op.value) self x.op *: x.args
+       x :: Expression => @pushcall x.op *: x.args
+       otherwise       => raise $ TypeError 'invalid node' $ type x
 
+  #: Push multiple items in one go.
+  #:
+  #: pushlist :: [Node] -> a
+  #:
+  pushlist = xs ~> for x in xs => @pushast x
 
-Generator.load_key = (k, v) ~>
-  '''Push a string-object pair.
+  #: Push some string-object pairs.
+  #:
+  #: Used by keyword arguments and annotations.
+  #:
+  pushkeys = xs ~> for (k, v) in xs =>
+    @pushconst k
+    @pushast   v
 
-    load_key :: (str, Node) -> a
+  #: Push the result of calling `f` with `args` onto the value stack.
+  #:
+  #: pushcall :: Node *Node -> a
+  #:
+  pushcall = f *: args ~> if
+    f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
+    f.infix and not f.closed =>
+      # Infix functions don't get fancy syntax.
+      @pushast  f
+      @pushlist args
+      @append 'CALL_FUNCTION' (len args) (-len args)
+    otherwise => @pushcall_prefix args 0 where @pushast f
 
-  '''
-  @load_const k
-  @load_ast   v
+  #: Push the result of calling someting from the stack, again.
+  #:
+  #: This time, the result is a guaranteed Python function call.
+  #:
+  #: pushcall_prefix :: [Node] int -> a
+  #:
+  pushcall_prefix = args from_stack ~>
+    #a, kw, va, vkw = func_call_args args
+    a, kw, va, vkw = args, dict!, None, None
+    @pushlist a
+    @pushkeys kw.items!
+    va  => @pushast va
+    vkw => @pushast vkw
 
+    @append
+      'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
+      0 + len a + 256 * len kw                      + on_stack
+      0 - len a - 2   * len kw - bool va - bool vkw - on_stack
 
-Generator.load_call = f *: args ~>
-  '''Push the result of calling `f` with `args` onto the value stack.
+  #: Evaluate multiple expressions, discarding all results but the last.
+  #:
+  #: pushlast :: *Node -> a
+  #:
+  pushlast = *: (*xs, y) ->
+    for x in xs =>
+      @pushast x
+      @append 'POP_TOP' delta: -1
+    @pushast x
 
-    load_call :: Name (Many Node) -> a
-
-  '''
-  if f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
-     f.infix and not f.closed =>
-       @load_ast f
-       @call_infix_ast args
-     otherwise =>
-       @load_ast f
-       @call_ast args 0
-
-
-Generator.chain = *: (*xs, x) ~>
-  '''Evaluate some expressions, return the result of the last one.
-
-    chain :: Node (Many Node) -> a
-
-  '''
-  for y in xs =>
-    @load_ast y
-    @add_opcode 'POP_TOP'
-    @currstack -= 1
-  @load_ast x
-
-
-Generator.store_ast = x ~>
-  '''Store the value on top of the stack in a place referenced by an AST.
-
-    store_ast :: Node -> a
-
-  '''
-  if
+  #: Pop a value off the stack and store it somewhere.
+  #:
+  #: popast :: Node -> a
+  #:
+  popast = x ~> if
     x :: Expression and x.op == ',' =>
       # (a, b, c = x) => unpack `x` and call `store_ast` for each
       # of `a`, `b`, and `c`. If exactly of the items is preceded by a star
@@ -139,58 +174,53 @@ Generator.store_ast = x ~>
       star = -1
 
       for (i, q) in enumerate x.args => q :: RightBind and q.op == '*' =>
-        star >= 0 => Parser.error 'only one starred item is allowed'    q.loc
-        i > 255   => Parser.error 'too many items before a starred one' q.loc
+        star >= 0 => ERROR q 'only one starred item is allowed'
+        i > 255   => ERROR q 'too many items before a starred one'
         star = i
         x.args !! i = head q.args
 
-      @stackperm $ len x.args - 1
-      if star >= 0 => @add_opcode 'UNPACK_EX'       (256 * len x.args - 255 * star - 256)
-         otherwise => @add_opcode 'UNPACK_SEQUENCE' (len x.args)
+      if star >= 0 => @append 'UNPACK_EX'       (256 * (len x.args - star - 1) + star) $ len x.args - 1
+         otherwise => @append 'UNPACK_SEQUENCE' (len x.args) $ len x.args - 1
 
-      exhaust $ map @store_ast x.args
+      exhaust $ map @popast x.args
 
     x :: RightBind and x.op == '@' =>
       # `@a` is equivalent to `self.a`.
-      head x.args :: Name or Parser.error 'not an attribute' (head x.args).loc
-      @load 'self'
-      @add_opcode 'STORE_ATTR' $ @names (head x.args).value
-      @currstack -= 2
+      attr, = x.args
+      attr :: Name or ERROR attr 'not an attribute'
+      @pushname 'self'
+      @append   'STORE_ATTR' delta: -2 $ @names !! attr.value
 
     x :: Expression and len x.args == 2 and x.op == '.' =>
       # `a.b` => load `a`, store an attribute named `b`.
-      snd x.args :: Name or Parser.error 'not an attribute' (snd x.args).loc
-      @load_ast $ fst x.args
-      @add_opcode 'STORE_ATTR' $ @names (snd x.args).value
-      @currstack -= 2
+      item, attr = x.args
+      attr :: Name or ERROR attr 'not an attribute'
+      @pushast item
+      @append  'STORE_ATTR' delta: -2 $ @names !! attr.value
 
     x :: Expression and len x.args == 2 and x.op == '!!' =>
       # `a !! b = x` <=> `a.__setitem__ b x`
-      @load_ast $ fst x.args
-      @load_ast $ snd x.args
-      @add_opcode 'STORE_SUBSCR'
-      @currstack -= 3
+      @pushlist x.args
+      @append   'STORE_SUBSCR' delta: -3
 
-    x :: Name => @store x.value
-    otherwise => Parser.error 'not something one can assign to' x.loc
+    x :: Name => @popname x.value
+    otherwise => ERROR x 'not something one can assign to'
 
 
-Generator.infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
-Generator.infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a)
-Generator.prefix = dict'
-  '',   f a ~> @load_call *: a
-  '\n', f a ~> @chain     *: a
-  '=',  f a ~>
-    name, value = ensure f a 2 2
-    @var, x = repr name, @var
-    @load_ast value
-    @var = x
-    @stackperm +1
-    @add_opcode 'DUP_TOP'
-    @store_ast name
+  infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
+  infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a)
+  prefix = dict'
+    '',   ARGCOUNT ANY $ f a ~> @pushcall *: a
+    '\n', ARGCOUNT ANY $ f a ~> @pushlast *: a
+    '=',  ARGCOUNT   2 $ f (name, value) ~>
+      @var, x = repr name, @var
+      @pushast value
+      @var = x
+      @append 'DUP_TOP' delta: +1
+      @popast name
 
-  '.',  f a ~>
-    x, y = ensure f a 2 2
-    y :: Name or Parser.error 'not an attribute' y.loc
-    @load_ast x
-    @add_opcode 'LOAD_ATTR' $ @names y.value
+    '.',  ARGCOUNT   2 $ f (x, y) ~>
+      y :: Name or ERROR y 'not an attribute'
+      @pushast x
+      @append  'LOAD_ATTR' $ @names !! y.value
+

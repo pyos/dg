@@ -101,40 +101,6 @@ func_def_args = xs ->
   a, kw, da, dkw, va, vkw, add
 
 
-Generator.call_infix_ast = args ~>
-  '''Call an infix function that is on top of the stack.
-
-    The difference from `call_ast` is that this method will not parse
-    the argument list.
-
-    call_infix_ast :: [Node] -> a
-
-  '''
-  exhaust $ map @load_ast args
-  @add_opcode 'CALL_FUNCTION' (len args)
-  @currstack -= len args
-
-
-Generator.call_ast = args on_stack ~>
-  '''Call a function on top of the stack.
-
-    on_stack -- how many arguments are already `@load`ed.
-
-    call_ast :: [Node] bool bool -> a
-
-  '''
-  a, kw, va, vkw = func_call_args args
-  exhaust $ map @load_ast a
-  exhaust $ map @load_key kw.items!
-  va  => @load_ast va
-  vkw => @load_ast vkw
-
-  @add_opcode
-    'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
-    len a + (len kw << 8) + on_stack
-  @currstack -= len a + 2 * len kw + bool va + bool vkw + on_stack
-
-
 Generator.make_function = code defaults kwdefaults ~>
   '''Freeze a `Generator` object and create a function out of it.
 
