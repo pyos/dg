@@ -116,9 +116,7 @@ Generator = subclass object where
       @varargs   => 0b000100
       @varkws    => 0b001000
       @generator => 0b100000
-      # The values below are only ever used for optimization.
-      @cell         => @cell.function => 0b0010000
-      not @cellvars => not @freevars  => 0b1000000
+      not @cellvars => not @freevars => 0b1000000
 
   stackperm = x ~>
     '''Request a permanent increase in stack size.
