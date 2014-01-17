@@ -69,7 +69,7 @@ Jump = subclass object where
 #:   argc      :: int
 #:   kwargc    :: int
 #:   varargs   :: bool -- accepts more than `argc` arguments.
-#:   varkws    :: bool -- aceepts keyword arguments not in `varnames[argc:][:kwargc]`.
+#:   varkws    :: bool -- accepts keyword arguments not in `varnames[argc:][:kwargc]`.
 #:   function  :: bool -- is a function, not a module.
 #:   generator :: bool -- is a function with `yield`.
 #:   name      :: str
