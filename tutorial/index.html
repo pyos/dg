@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta charset="utf-8" />
     <title>dg — kind of a tutorial.</title>
     <link href="../css/bootstrap.css" rel="stylesheet" />
     <link href="../css/bootstrap-theme.css" rel="stylesheet" />
@@ -25,7 +26,7 @@
       }
 
       .serious-dawg {
-        background: url(/images/seriousdawg.jpg) no-repeat top center #0058a2;
+        background: url(images/seriousdawg.jpg) no-repeat top center #0058a2;
         color: white;
         font-family: "URW Bookman L", "Times New Roman", sans-serif;
         font-size: 54px;
@@ -59,7 +60,7 @@
 
       <div class="row">
         <div class="col-sm-10 col-sm-offset-1">
-          <div id="installation" class="section"><h2>Installation</h2><p>Freaking easy:</p><ol><li>download the compiler (why don't you look at the <a href="/">index page</a> for that?);</li><li>put the "dg" directory somewhere in <code>$PYTHONPATH</code>, or <code>/usr/lib/python3.*/site-packages/</code>, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.</li></ol><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre>python3 -m dg  <span class="c"># REPL!</span>
+          <div id="installation" class="section"><h2>Installation</h2><p>Freaking easy:</p><ol><li>download the compiler (why don't you look at the <a href="..">index page</a> for that?);</li><li>put the "dg" directory somewhere in <code>$PYTHONPATH</code>, or <code>/usr/lib/python3.*/site-packages/</code>, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.</li></ol><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre>python3 -m dg  <span class="c"># REPL!</span>
 python3 -m dg file.dg --do-something-useful-this-time  <span class="c"># Script!</span>
 </pre></div>
 <h5>Q: How to run some code from a shell?</h5><p>A: Use your shell's herestring/heredoc.</p><div class="highlight"><pre>python3 -m dg <span class="o">&lt;&lt;&lt;</span> <span class="s2">&quot;some code&quot;</span>
