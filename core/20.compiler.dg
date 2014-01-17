@@ -138,7 +138,7 @@ Compiler = subclass CodeType where
   #:
   #: pushcall_prefix :: [Node] int -> a
   #:
-  pushcall_prefix = args from_stack ~>
+  pushcall_prefix = args on_stack ~>
     #a, kw, va, vkw = func_call_args args
     a, kw, va, vkw = args, dict!, None, None
     @pushlist a
@@ -155,11 +155,11 @@ Compiler = subclass CodeType where
   #:
   #: pushlast :: *Node -> a
   #:
-  pushlast = *: (*xs, y) ->
+  pushlast = *: (*xs, y) ~>
     for x in xs =>
       @pushast x
       @append 'POP_TOP' delta: -1
-    @pushast x
+    @pushast y
 
   #: Pop a value off the stack and store it somewhere.
   #:

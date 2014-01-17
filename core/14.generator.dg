@@ -125,11 +125,11 @@ CodeType = subclass object where
 
     @var        = None
     @fastlocals = collections.defaultdict dict
-    @consts     = collections.defaultdict $ ->  len @consts
-    @varnames   = collections.defaultdict $ ->  len @varnames
-    @names      = collections.defaultdict $ ->  len @names
-    @cellvars   = collections.defaultdict $ ->  len @cellvars
-    @freevars   = collections.defaultdict $ -> -len @freevars - 1
+    @consts     = collections.defaultdict $ -> len @consts
+    @varnames   = collections.defaultdict $ -> len @varnames
+    @names      = collections.defaultdict $ -> len @names
+    @cellvars   = collections.defaultdict $ -> len @cellvars
+    @freevars   = collections.defaultdict $ -> -1 - len @freevars
     @enclosed   = if
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       otherwise => set!
@@ -166,7 +166,7 @@ CodeType = subclass object where
   code = (op, arg) ~> if
     op  < dis.HAVE_ARGUMENT => struct.pack '<B'  op
     arg < 0x10000           => struct.pack '<BH' op arg
-    otherwise               => @opcode (dis.opmap !! 'EXTENDED_ARG') (arg >> 16) +
+    otherwise               => @code (dis.opmap !! 'EXTENDED_ARG') (arg >> 16) +
                                struct.pack '<BH' op (arg & 0xffff)
 
   #: A marshallable code object with info from this generator.
@@ -174,7 +174,7 @@ CodeType = subclass object where
   #: frozen :: types.CodeType
   #:
   frozen = ~>
-    code     = b''.join $ map @opcode @bytecode
+    code     = b''.join $ map @code @bytecode
     consts   = list  $ map fst $ sorted @consts key: (@consts !!)
     names    = tuple $ sorted @names    key: (@names    !!)
     varnames = tuple $ sorted @varnames key: (@varnames !!)
@@ -201,7 +201,7 @@ CodeType = subclass object where
   #: append :: str (Optional int) (Optional int) -> a
   #:
   append = name value: 0 delta: 0 ~>
-    @delta delta
+    @depth delta
     # These indices are used to quickly change all references
     # to an array slot into references to a cell.
     if name == 'LOAD_FAST'  => @fastlocals !! v !! len @bytecode = dis.opmap !! 'LOAD_DEREF'
