@@ -52,11 +52,12 @@ Jump = subclass object where
   #:
   set = ~>
     @value is None =>
+      @value = i = 0
       not @relative => @value += codelen $ take  @start      @code.bytecode
       not @reverse  => @value += codelen $ drop (@start + 1) @code.bytecode
       not @reverse and not @relative =>
         # This jump needs to account for itself.
-        for i in itertools.count 0 16 => if @value >> i => @value += 3
+        while @value >> i => @value, i = @value + 3, i + 16
 
     if @reverse  => @code.append @op @value
        otherwise => @code.bytecode !! @start = dis.opmap !! @op, @value
