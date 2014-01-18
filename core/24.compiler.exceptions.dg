@@ -1,4 +1,4 @@
-Compiler.prefix !! 'raise' = f args ~> ARGCOUNT 1 $ f (exc,) ~>
+Compiler.prefix !! 'raise' = ARGCOUNT 1 $ f (exc,) ~>
   @pushast exc
   @append  'RAISE_VARARGS' 1 delta: -1 # There's nothing on the stack, but nobody will notice.
 
