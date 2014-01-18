@@ -267,7 +267,7 @@ Compiler = subclass CodeType where
       # runtime functions (as `pushcall` will prefer compile-time ones.)
       # Still, this is a pretty good method of checking if
       # someone's attempting to partially bind assignment operators, etc.
-      Parser.error 'this operator requires both arguments' f.loc
+      ERROR f 'this operator requires both arguments'
     otherwise =>
       c = if right     => @spawn f.value (tuple' '<L>') (tuple' '<R>')
              otherwise => @spawn f.value (tuple' '<R>') (tuple' '<L>')
@@ -508,7 +508,7 @@ Compiler = subclass CodeType where
 
       @pushconst None  # reserve space for a return value
       @pushast   ctx
-      with @jump 'SETUP_WITH' delta: +3 =>  #=> None, __exit__, return value of __enter__
+      with @jump 'SETUP_WITH' delta: +4 =>  #=> None, __exit__, return value of __enter__
         @popast    var                      #=> None, __exit__
         @pushast   body                     #=> None, __exit__, return value
         @append    'ROT_THREE' delta: +0
@@ -516,7 +516,7 @@ Compiler = subclass CodeType where
         @append    'POP_BLOCK' delta: -1     #=> return value, __exit__
         @pushconst None                      # this is for END_FINALLY
       @append 'WITH_CLEANUP' delta: -1
-      @append 'END_FINALLY'  delta: -3
+      @append 'END_FINALLY'  delta: -4
 
     #: Repeat while a condition is true.
     #:

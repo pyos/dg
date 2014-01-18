@@ -1,6 +1,6 @@
 Compiler.prefix !! 'raise' = ARGCOUNT 1 $ f (exc,) ~>
   @pushast exc
-  @append  'RAISE_VARARGS' 1 delta: -1 # There's nothing on the stack, but nobody will notice.
+  @append  'RAISE_VARARGS' 1 # There's nothing on the stack, but nobody will notice.
 
 
 Compiler.prefix !! 'except' = ARGCOUNT 1 max: ANY $ f cases ~>
@@ -15,17 +15,17 @@ Compiler.prefix !! 'except' = ARGCOUNT 1 max: ANY $ f cases ~>
 Compiler.except_finally = name try cases finally ~>
   # Blindly copied from Python by `diff`ing
   # disassembly of code with `finally` and without one.
-  with @jump 'SETUP_FINALLY' =>
+  with @jump 'SETUP_FINALLY' delta: +3 =>
     @except_main name try cases
     @append 'POP_BLOCK'
     @pushconst None
   @pushast finally
   @append 'POP_TOP'     delta: -1
-  @append 'END_FINALLY' delta: -1
+  @append 'END_FINALLY' delta: -4
 
 
 Compiler.except_main = name try cases ~>
-  main = @jump 'SETUP_EXCEPT'
+  main = @jump 'SETUP_EXCEPT' delta: +3
   @pushast try
   @append 'ROT_TWO'   delta: +0
   @append 'POP_BLOCK' delta: -1
@@ -59,7 +59,7 @@ Compiler.except_main = name try cases ~>
   with @jump 'JUMP_IF_FALSE_OR_POP' delta: -1 => None
   # This will re-raise the exception if there was one.
   # Otherwise, it will pop None off the stack.
-  @append 'END_FINALLY' delta: -1
+  @append 'END_FINALLY' delta: -4
 
   with @jump 'JUMP_FORWARD' =>
     # If a handler was triggered, there's now a return value
