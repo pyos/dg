@@ -46,7 +46,7 @@ if_syntax = cases -> except
 
 Compiler.prefix !! 'if' = f xs ~>
   jumps = list
-    None where for (cond, action) in if_syntax xs =>
+    where for (cond, action) in if_syntax xs =>
       @pushast cond
       with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
         @pushast action

@@ -24,8 +24,8 @@ builtins.__dict__.update locals! where
   ::  = isinstance
   ->  = -> None
   ~>  = ~> None
-  :+  = a b -> itertools.chain (list' a) b
-  +:  = a b -> itertools.chain a (list' b)
+  :+  = a b -> itertools.chain (a,) b
+  +:  = a b -> itertools.chain a (b,)
   in  = a b -> a in b
   is  = operator.is_
   not = operator.not_
