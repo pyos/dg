@@ -248,13 +248,13 @@ CodeType = subclass object where
     @function      => @append 'STORE_FAST'  delta: -1 $ @varnames !! v
     otherwise      => @append 'STORE_NAME'  delta: -1 $ @names    !! v
 
-  #: Load a cell object referencing some name.
+  #: Load cell objects referencing some names.
   #:
   #: Used to create closures.
   #:
-  #: pushcell :: str -> a
+  #: pushcells :: [str] -> a
   #:
-  pushcell = v ~>
+  pushcells = vs ~> for v in vs =>
     if v in @varnames => for i in @fastlocals !! (@varnames !! v) =>
       # Note that this affects variables created after the closure in no way.
       @bytecode !! i = @fastlocals !! v !! i, @cellvars !! v
