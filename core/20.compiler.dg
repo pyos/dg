@@ -45,6 +45,14 @@ ARGCOUNT = min fn max: None -> if
     otherwise               => fn self f args
 
 
+# Common prefix functions. See `Generator.prefix`.
+INVALID     = x -> f _  ~> ERROR f x
+COLLECTION  = x -> f xs ~> (@pushlist xs, @append x (len xs) $ 1 - len xs)
+BINARY      = x -> ARGCOUNT 2 $ f xs ~> (@pushlist xs, @append x 0 -1)
+INPLACE     = x -> ARGCOUNT 2 $ f xs ~> (@pushlist xs, @append x 0 -1, @append 'DUP_TOP' 0 +1, @popast $ head xs)
+BINARY_JUMP = x -> ARGCOUNT 2 $ f (a, b) ~> (@pushast a, with @jump x delta: -1 => @pushast b)
+
+
 #: Parse function call arguments.
 #:
 #: positional1 positional2 keyword: value *: varargs **: varkwargs
@@ -103,6 +111,8 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
 
   for x in data => if
     x :: Expression and x.op == ':' => if
+      x :: LeftBind  => ERROR x "where's the value?"
+      x :: RightBind => ERROR x "where's the keyword?"
       fst x.args == '*' =>
         va => ERROR x 'can only have one `*: x`'
         va.append $ pattern $ snd x.args
@@ -278,7 +288,6 @@ Compiler = subclass CodeType where
       g.popast   pattern
     g.setfile args
     g.pushast body
-    g.append  'RETURN_VALUE' delta: -1
     @pushclosure g da dkw
 
   #: Create a method.
@@ -348,21 +357,81 @@ Compiler = subclass CodeType where
     otherwise => ERROR x 'not something one can assign to'
 
   prefix = dict'
-    '',   ARGCOUNT ANY $ f xs ~> @pushcall *: xs
-    '\n', ARGCOUNT ANY $ f xs ~> @pushlast *: xs
-    '->', ARGCOUNT   2 $ f (args, body)  ~> @pushfunction args body
-    '~>', ARGCOUNT   2 $ f (args, body)  ~> @pushmethod   args body
-    '=',  ARGCOUNT   2 $ f (name, value) ~>
+    '',    f xs ~> @pushcall *: xs
+    '\n',  f xs ~> @pushlast *: xs
+    'not', ARGCOUNT 1 $ f (item,)      ~> (@pushast item, @append 'UNARY_NOT')
+    '->',  ARGCOUNT 2 $ f (args, body) ~>  @pushfunction args body
+    '~>',  ARGCOUNT 2 $ f (args, body) ~>  @pushmethod   args body
+    '!!~', ARGCOUNT 2 $ f (coll, item) ~>
+      @pushconst None
+      @pushast   coll
+      @pushast   item
+      @append    'DELETE_SUBSCR' delta: -2
+
+    ':',      INVALID     'keyword argument to what?'
+    '!',      INVALID     'this operator is postfix'
+    '~',      INVALID     'this operator is prefix'
+    '@',      INVALID     'this operator is prefix'
+    ',',      COLLECTION  'BUILD_TUPLE'
+    "set'",   COLLECTION  'BUILD_SET'
+    "list'",  COLLECTION  'BUILD_LIST'
+    "tuple'", COLLECTION  'BUILD_TUPLE'
+    '!!',     BINARY      'BINARY_SUBSCR'
+    '+',      BINARY      'BINARY_ADD'
+    '-',      BINARY      'BINARY_SUBTRACT'
+    '*',      BINARY      'BINARY_MULTIPLY'
+    '**',     BINARY      'BINARY_POWER'
+    '/',      BINARY      'BINARY_TRUE_DIVIDE'
+    '//',     BINARY      'BINARY_FLOOR_DIVIDE'
+    '%',      BINARY      'BINARY_MODULO'
+    '&',      BINARY      'BINARY_AND'
+    '^',      BINARY      'BINARY_XOR'
+    '|',      BINARY      'BINARY_OR'
+    '<<',     BINARY      'BINARY_LSHIFT'
+    '>>',     BINARY      'BINARY_RSHIFT'
+    '!!=',    INPLACE     'BINARY_SUBSCR'
+    '+=',     INPLACE     'INPLACE_ADD'
+    '-=',     INPLACE     'INPLACE_SUBTRACT'
+    '*=',     INPLACE     'INPLACE_MULTIPLY'
+    '**=',    INPLACE     'INPLACE_POWER'
+    '/=',     INPLACE     'INPLACE_TRUE_DIVIDE'
+    '//=',    INPLACE     'INPLACE_FLOOR_DIVIDE'
+    '%=',     INPLACE     'INPLACE_MODULO'
+    '&=',     INPLACE     'INPLACE_AND'
+    '^=',     INPLACE     'INPLACE_XOR'
+    '|=',     INPLACE     'INPLACE_OR'
+    '<<=',    INPLACE     'INPLACE_LSHIFT'
+    '>>=',    INPLACE     'INPLACE_RSHIFT'
+    'or',     BINARY_JUMP 'JUMP_IF_TRUE_OR_POP'
+    '=>',     BINARY_JUMP 'JUMP_IF_FALSE_OR_POP'
+    'and',    BINARY_JUMP 'JUMP_IF_FALSE_OR_POP'
+
+    '=', ARGCOUNT 2 $ f (name, value) ~>
       @var, x = repr name, @var
       @pushast value
       @var = x
       @append 'DUP_TOP' delta: +1
       @popast name
 
-    '.',  ARGCOUNT   2 $ f (x, y) ~>
+    '.', ARGCOUNT 2 $ f (x, y) ~>
       y :: Name or ERROR y 'not an attribute'
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
+
+    '!.', ARGCOUNT 2 $ f (x, y) ~>
+      y :: Name or ERROR y 'not an attribute'
+      @pushcall x
+      @append   'LOAD_ATTR' $ @names !! y.value
+
+    '.~',  ARGCOUNT 2 $ f (x, y) ~>
+      y :: Name or ERROR y 'not an attribute'
+      @pushconst None
+      @pushast   x
+      @append    'DELETE_ATTR' delta: -1 $ @names !! y.value
+
+    '$', ARGCOUNT 2 $ f (g, x) ~> if
+      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+      otherwise => @pushcall g x
 
     #: Import a module given a POSIX-style path.
     #:
@@ -497,12 +566,24 @@ Compiler = subclass CodeType where
       @append  'YIELD_VALUE'
 
   infixl = dict'
-    # Bodyless functions. These are useless.
-    '->',    f args ~> @pushfunction args $ Constant None at: f.loc
-    '~>',    f args ~> @pushmethod   args $ Constant None at: f.loc
-    'where', f expr ~> @pushast      expr  # Nothing to bind.
+    ':', INVALID 'keyword argument to what?'
+    '~', INVALID 'this operator is prefix'
+    '@', INVALID 'this operator is prefix'
+
+    ',',     f item ~> (@pushast item, @append 'BUILD_TUPLE' 1)
+    '!',     f func ~> (@pushast func, @append 'CALL_FUNCTION')
+    '->',    f args ~>  @pushfunction args $ Constant None at: f.loc
+    '~>',    f args ~>  @pushmethod   args $ Constant None at: f.loc
+    'where', f expr ~>  @pushast      expr  # Nothing to bind.
 
   infixr = dict'
+    ':', INVALID 'keyword argument to what?'
+    '!', INVALID 'this operator is postfix'
+    ',', INVALID 'this operator is unbindable'
+
+    '~', f x ~> (@pushast x, @append 'UNARY_INVERT')
+    '-', f x ~> (@pushast x, @append 'UNARY_NEGATIVE')
+
     #: Local attribute lookup.
     #:
     #: Equivalent to `self.name`.
@@ -540,6 +621,7 @@ Compiler = subclass CodeType where
     #:
     'where', f env ~>
       g = @spawn '<lambda>'
+      g.setfile env
       g.pushast env
       @pushclosure g tuple! dict!
       @append 'CALL_FUNCTION' 0

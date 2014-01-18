@@ -1,62 +1,3 @@
-Generator.infix_insert = op xs ~>
-  '''Apply an opcode to some arguments.
-
-    infix_insert :: str [Node] -> a
-
-  '''
-  for x in xs => @load_ast x
-  @add_opcode op (len xs)
-  @currstack -= len xs - 1
-
-### Part 1. Inplace-able operations.
-###         (Non-inplace versions are available in the global namespace.)
-
-BINARY = dict'
-  '!!', ('BINARY_SUBSCR',       'BINARY_SUBSCR')
-  '+',  ('BINARY_ADD',          'INPLACE_ADD')
-  '-',  ('BINARY_SUBTRACT',     'INPLACE_SUBTRACT')
-  '*',  ('BINARY_MULTIPLY',     'INPLACE_MULTIPLY')
-  '**', ('BINARY_POWER',        'INPLACE_POWER')
-  '/',  ('BINARY_TRUE_DIVIDE',  'INPLACE_TRUE_DIVIDE')
-  '//', ('BINARY_FLOOR_DIVIDE', 'INPLACE_FLOOR_DIVIDE')
-  '%',  ('BINARY_MODULO',       'INPLACE_MODULO')
-  '&',  ('BINARY_AND',          'INPLACE_AND')
-  '^',  ('BINARY_XOR',          'INPLACE_XOR')
-  '|',  ('BINARY_OR',           'INPLACE_OR')
-  '<<', ('BINARY_LSHIFT',       'INPLACE_LSHIFT')
-  '>>', ('BINARY_RSHIFT',       'INPLACE_RSHIFT')
-
-
-BINARY_H  = f xs ~> @infix_insert (BINARY !! f.value !! 0) $ ensure f xs 2 2
-INPLACE_H = f xs ~>
-  @infix_insert (BINARY !! init f.value !! 1) $ ensure f xs 2 2
-  @add_opcode 'DUP_TOP'
-  @store_ast $ head xs
-  @currstack -= 1
-
-for k in BINARY =>
-  Generator.prefix !!  k        = BINARY_H
-  Generator.prefix !! (k + '=') = INPLACE_H
-
-
-### Part 2. Boolean logic.
-
-JUMPS = dict'
-  'or',  True   # use A if it's true, B otherwise
-  'and', False  # use A if it's false, B otherwise
-  '=>',  False
-
-
-JUMP_H = f xs ~>
-  a, b = ensure f xs 2 2
-  @load_ast a
-  with @jump_or_pop_if (JUMPS !! f.value) reverse: False =>
-    @currstack -= 1
-    @load_ast b
-
-for j in JUMPS => Generator.prefix !! j = JUMP_H
-
-
 ### Part 3. Comparison.
 
 COMPARISON   = set' '<' '<=' '!=' '==' '>=' '>' 'is' 'in'
@@ -99,19 +40,6 @@ COMPARISON_H = f args chain: False ~>
 for c in COMPARISON => Generator.prefix !! c = COMPARISON_H
 
 
-### Part 4. Bytecode-level container creation.
-###         This part may be removed at the cost of runtime performance.
-
-CONTAINERS = dict'
-  ',',      'BUILD_TUPLE'
-  "set'",   'BUILD_SET'
-  "list'",  'BUILD_LIST'
-  "tuple'", 'BUILD_TUPLE'
-
-CONTAINER_H = f q ~> @infix_insert (CONTAINERS !! f.value) q
-
-for c in CONTAINERS => Generator.prefix !! c = CONTAINER_H
-
 ### Part 5. Unsorted.
 
 if_syntax = cases -> except
@@ -124,24 +52,7 @@ if_syntax = cases -> except
     if_syntax $ (head cases).args
 
 
-Generator.infixl.update $ dict'
-  '!', f q ~> @load_call q
-  '~', f q ~> Parser.error 'this operator is prefix' f.loc
-  '@', f q ~> Parser.error 'this operator is prefix' f.loc
-
-Generator.infixr.update $ dict'
-  '!', f q ~> Parser.error 'this operator is postfix' f.loc
-  '~', f q ~> @infix_insert 'UNARY_INVERT'   $ list' q
-  '-', f q ~> @infix_insert 'UNARY_NEGATIVE' $ list' q
-  '@', f q ~> (Generator.prefix !! '.') self f (Name 'self' at: f.loc, q)
-
 Generator.prefix.update $ dict'
-  ':',   f q ~> Parser.error 'keyword argument to what?' f.loc
-  '!',   f q ~> Parser.error 'this operator is unary' f.loc
-  '~',   f q ~> Parser.error 'this operator is unary' f.loc
-  '@',   f q ~> Parser.error 'this operator is unary' f.loc
-  'not', f q ~> @infix_insert 'UNARY_NOT' $ ensure f q 1 1
-
   'if', f q ~>
     jumps = list $ map
       (cond, action) ->
@@ -154,27 +65,3 @@ Generator.prefix.update $ dict'
 
     @load_const None
     for x in jumps => x.set
-
-
-  '$', f xs ~>
-    a, b = ensure f xs 2 2
-    if a :: Expression and not a.closed and a.op == '' => @load_call a.op *: (a.args + list' b)
-       otherwise => @load_call a b
-
-  '!!~', f x ~>
-    @infix_insert 'DELETE_SUBSCR' $ ensure f x 2 2
-    @load_const None
-
-  '.~', f q ~>
-    a, b = ensure f q 2 2
-    b :: Name or Parser.error 'not an attribute' b.loc
-    @load_ast   a
-    @add_opcode 'DELETE_ATTR' $ @names b.value
-    @currstack -= 1
-    @load_const None
-
-  '!.', f q ~>
-    a, b = ensure f q 2 2
-    b :: Name or Parser.error 'not an attribute' b.loc
-    @load_call  a
-    @add_opcode 'LOAD_ATTR' $ @names b.value
