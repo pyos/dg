@@ -31,7 +31,7 @@ codelen = seq -> sum $ map
 #:
 Jump = subclass object where
   __init__ = @code @reverse @op delta ~>
-    @relative = @op == 'JUMP_RELATIVE' or @op == 'FOR_ITER' or @op.startswith 'SETUP'
+    @relative = @op == 'JUMP_FORWARD' or @op == 'FOR_ITER' or @op.startswith 'SETUP'
     @start    = len @code.bytecode
     @value    = None
     @code.depth delta
@@ -138,8 +138,8 @@ CodeType = subclass object where
     exhaust $ map (@varnames !!) $ itertools.chain a kw va vkw
 
     @bytecode  = list!
-    @stacksize = 0
-    @currstack = 0
+    @stacksize = 64
+    @currstack = 64
 
     @filename = '<generated>'
     @lineno   = 1
