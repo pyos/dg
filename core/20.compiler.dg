@@ -46,11 +46,11 @@ ARGCOUNT = min fn max: None -> if
 
 
 # Common prefix functions. See `Generator.prefix`.
-INVALID     = x -> f _  ~> ERROR f x
-COLLECTION  = x -> f xs ~> (@pushlist xs, @append x (len xs) $ 1 - len xs)
-BINARY      = x -> ARGCOUNT 2 $ f xs ~> (@pushlist xs, @append x 0 -1)
-INPLACE     = x -> ARGCOUNT 2 $ f xs ~> (@pushlist xs, @append x 0 -1, @append 'DUP_TOP' 0 +1, @popast $ head xs)
-BINARY_JUMP = x -> ARGCOUNT 2 $ f (a, b) ~> (@pushast a, with @jump x delta: -1 => @pushast b)
+INVALID    = x -> f _  ~> ERROR f x
+COLLECTION = x -> f xs ~> (@pushlist xs, @append x (len xs) $ 1 - len xs)
+BINARY     = x -> ARGCOUNT 2 $ f xs ~> (@pushlist xs, @append x 0 -1)
+INPLACE    = x -> ARGCOUNT 2 $ f xs ~> (@pushlist xs, @append x 0 -1, @append 'DUP_TOP' 0 +1, @popast $ head xs)
+JUMP       = x -> ARGCOUNT 2 $ f (a, b) ~> (@pushast a, with @jump x delta: -1 => @pushast b)
 
 
 #: Parse function call arguments.
@@ -368,43 +368,43 @@ Compiler = subclass CodeType where
       @pushast   item
       @append    'DELETE_SUBSCR' delta: -2
 
-    ':',      INVALID     'keyword argument to what?'
-    '!',      INVALID     'this operator is postfix'
-    '~',      INVALID     'this operator is prefix'
-    '@',      INVALID     'this operator is prefix'
-    ',',      COLLECTION  'BUILD_TUPLE'
-    "set'",   COLLECTION  'BUILD_SET'
-    "list'",  COLLECTION  'BUILD_LIST'
-    "tuple'", COLLECTION  'BUILD_TUPLE'
-    '!!',     BINARY      'BINARY_SUBSCR'
-    '+',      BINARY      'BINARY_ADD'
-    '-',      BINARY      'BINARY_SUBTRACT'
-    '*',      BINARY      'BINARY_MULTIPLY'
-    '**',     BINARY      'BINARY_POWER'
-    '/',      BINARY      'BINARY_TRUE_DIVIDE'
-    '//',     BINARY      'BINARY_FLOOR_DIVIDE'
-    '%',      BINARY      'BINARY_MODULO'
-    '&',      BINARY      'BINARY_AND'
-    '^',      BINARY      'BINARY_XOR'
-    '|',      BINARY      'BINARY_OR'
-    '<<',     BINARY      'BINARY_LSHIFT'
-    '>>',     BINARY      'BINARY_RSHIFT'
-    '!!=',    INPLACE     'BINARY_SUBSCR'
-    '+=',     INPLACE     'INPLACE_ADD'
-    '-=',     INPLACE     'INPLACE_SUBTRACT'
-    '*=',     INPLACE     'INPLACE_MULTIPLY'
-    '**=',    INPLACE     'INPLACE_POWER'
-    '/=',     INPLACE     'INPLACE_TRUE_DIVIDE'
-    '//=',    INPLACE     'INPLACE_FLOOR_DIVIDE'
-    '%=',     INPLACE     'INPLACE_MODULO'
-    '&=',     INPLACE     'INPLACE_AND'
-    '^=',     INPLACE     'INPLACE_XOR'
-    '|=',     INPLACE     'INPLACE_OR'
-    '<<=',    INPLACE     'INPLACE_LSHIFT'
-    '>>=',    INPLACE     'INPLACE_RSHIFT'
-    'or',     BINARY_JUMP 'JUMP_IF_TRUE_OR_POP'
-    '=>',     BINARY_JUMP 'JUMP_IF_FALSE_OR_POP'
-    'and',    BINARY_JUMP 'JUMP_IF_FALSE_OR_POP'
+    ':',      INVALID    'keyword argument to what?'
+    '!',      INVALID    'this operator is postfix'
+    '~',      INVALID    'this operator is prefix'
+    '@',      INVALID    'this operator is prefix'
+    ',',      COLLECTION 'BUILD_TUPLE'
+    "set'",   COLLECTION 'BUILD_SET'
+    "list'",  COLLECTION 'BUILD_LIST'
+    "tuple'", COLLECTION 'BUILD_TUPLE'
+    '!!',     BINARY     'BINARY_SUBSCR'
+    '+',      BINARY     'BINARY_ADD'
+    '-',      BINARY     'BINARY_SUBTRACT'
+    '*',      BINARY     'BINARY_MULTIPLY'
+    '**',     BINARY     'BINARY_POWER'
+    '/',      BINARY     'BINARY_TRUE_DIVIDE'
+    '//',     BINARY     'BINARY_FLOOR_DIVIDE'
+    '%',      BINARY     'BINARY_MODULO'
+    '&',      BINARY     'BINARY_AND'
+    '^',      BINARY     'BINARY_XOR'
+    '|',      BINARY     'BINARY_OR'
+    '<<',     BINARY     'BINARY_LSHIFT'
+    '>>',     BINARY     'BINARY_RSHIFT'
+    '!!=',    INPLACE    'BINARY_SUBSCR'
+    '+=',     INPLACE    'INPLACE_ADD'
+    '-=',     INPLACE    'INPLACE_SUBTRACT'
+    '*=',     INPLACE    'INPLACE_MULTIPLY'
+    '**=',    INPLACE    'INPLACE_POWER'
+    '/=',     INPLACE    'INPLACE_TRUE_DIVIDE'
+    '//=',    INPLACE    'INPLACE_FLOOR_DIVIDE'
+    '%=',     INPLACE    'INPLACE_MODULO'
+    '&=',     INPLACE    'INPLACE_AND'
+    '^=',     INPLACE    'INPLACE_XOR'
+    '|=',     INPLACE    'INPLACE_OR'
+    '<<=',    INPLACE    'INPLACE_LSHIFT'
+    '>>=',    INPLACE    'INPLACE_RSHIFT'
+    'or',     JUMP       'JUMP_IF_TRUE_OR_POP'
+    '=>',     JUMP       'JUMP_IF_FALSE_OR_POP'
+    'and',    JUMP       'JUMP_IF_FALSE_OR_POP'
 
     '=', ARGCOUNT 2 $ f (name, value) ~>
       @var, x = repr name, @var
