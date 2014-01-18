@@ -13,7 +13,7 @@ rebuild = old tag version dirname ->
     rebuild :: [CodeType] str int str -> [CodeType]
 
   '''
-  ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version PY_INIT: False
+  ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version
   for c in old => eval c ns
   compilefd = ns !! 'compilefd'
 

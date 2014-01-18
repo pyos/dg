@@ -115,9 +115,8 @@ ModuleLoader = subclass machinery.SourceFileLoader where if
       original.__defaults__
       original.__closure__
 
-if PY_INIT =>
-  others = (last (sys.path_hooks.pop -1).__closure__).cell_contents
-  # This time we want to add `.dg` to the list of extensions findable
-  # by `FileFinder`. Too bad the path hook is not a class, but a closure.
-  sys.path_importer_cache.clear!
-  sys.path_hooks.append $ machinery.FileFinder.path_hook (ModuleLoader, list' '.dg') *: others
+# This time we want to add `.dg` to the list of extensions findable
+# by `FileFinder`. Too bad the path hook is not a class, but a closure.
+sys.path_importer_cache.clear!
+sys.path_hooks.append $ machinery.FileFinder.path_hook (ModuleLoader, list' '.dg') *:
+  (last (sys.path_hooks.pop -1).__closure__).cell_contents
