@@ -269,12 +269,12 @@ Compiler = subclass CodeType where
       # someone's attempting to partially bind assignment operators, etc.
       Parser.error 'this operator requires both arguments' f.loc
     otherwise =>
-      c = if right     => @spawn f.value (tuple' '<R>') (tuple' '<L>')
-             otherwise => @spawn f.value (tuple' '<L>') (tuple' '<R>')
+      c = if right     => @spawn f.value (tuple' '<L>') (tuple' '<R>')
+             otherwise => @spawn f.value (tuple' '<R>') (tuple' '<L>')
       c.setfile  f
       c.pushcall f (Name '<L>') (Name '<R>')
-      @pushclosure c tuple! $ dict' $ if right     => '<L>', arg
-                                         otherwise => '<R>', arg
+      @pushclosure c tuple! $ dict' $ if right     => '<R>', arg
+                                         otherwise => '<L>', arg
 
   #: Create a function.
   #:
