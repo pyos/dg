@@ -1,33 +1,25 @@
-### Part 3. Comparison.
-
 COMPARISON   = set' '<' '<=' '!=' '==' '>=' '>' 'is' 'in'
-COMPARISON_H = f args chain: False ~>
-  a, b = ensure f args 2 2
+COMPARISON_H = f (a, b) chain: False ~>
   # `a R b Q c` <=> `a R b and b Q c` for any given comparison
   # operators R and Q. (`b` is only evaluated once.)
   double = a :: Expression and not a.closed and a.op.value in COMPARISON
-  jumps  = if double    => COMPARISON_H self a.op a.args chain: True
-              otherwise =>
-                @load_ast a
-                list!
+  jumps  = if double    => (ARGCOUNT 2 $ bind COMPARISON_H chain: True) self a.op a.args
+              otherwise => list! where @pushast a
 
   if
     chain => jumps.append $
-      @load_ast b
-      @stackperm +1
-      @add_opcode 'DUP_TOP'
-      @add_opcode 'ROT_THREE'
-      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index f.value  # [b, a R b]
-      @currstack -= 2
-      @jump_or_pop_if False reverse: False
+      @pushast b
+      @append  'DUP_TOP'    delta: +1 #=> a, b, b
+      @append  'ROT_THREE'  delta: +0 #=> b, a, b
+      @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index f.value
+      @jump    'JUMP_OR_POP_IF_FALSE' delta: -1 #=> b if OK; b, False otherwise.
 
     otherwise =>
-      @load_ast b
-      @add_opcode 'COMPARE_OP' $ dis.cmp_op.index f.value  # [a R b]
-      @currstack -= 1
+      @pushast b #=> a, b
+      @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index f.value
       # Now, what if one of the comparisons returned False?
       # First, we jump here.
-      jumps => with @jump reverse: False =>
+      jumps => with @jump 'JUMP_FORWARD' =>
         for j in jumps => j.set
         # Then we remove the unneeded item, leaving `False` on the stack.
         # (Stack size change was already accounted for by JUMP_IF_FALSE_OR_POP.)
@@ -37,7 +29,7 @@ COMPARISON_H = f args chain: False ~>
   # Return the list of unfinished jumps for the next operator to use.
   jumps
 
-for c in COMPARISON => Generator.prefix !! c = COMPARISON_H
+for c in COMPARISON => Compiler.prefix !! c = ARGCOUNT 2 COMPARISON_H
 
 
 ### Part 5. Unsorted.
@@ -46,22 +38,18 @@ if_syntax = cases -> except
   e => list $ map
     x -> if
       x :: Expression and x.op == '=>' and len x.args == 2 => x.args
-      otherwise => Parser.error '`if` expected (condition => action) pairs' x.loc
+      otherwise => ERROR x '`if` expected (condition => action) pairs'
     cases
   e :: SyntaxError and len cases == 1 and head cases :: Expression and (head cases).op == '' =>
     if_syntax $ (head cases).args
 
 
-Generator.prefix.update $ dict'
-  'if', f q ~>
-    jumps = list $ map
-      (cond, action) ->
-        @load_ast cond
-        with @pop_jump_if False reverse: False =>
-          @load_ast action
-          @currstack -= 2
-          @jump reverse: False
-      if_syntax q
-
-    @load_const None
-    for x in jumps => x.set
+Compiler.prefix !! 'if' = f xs ~>
+  jumps = list
+    None where for (cond, action) in if_syntax xs =>
+      @pushast cond
+      with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+        @pushast action
+        yield $ @jump 'JUMP_FORWARD' delta: -1
+  @pushconst None
+  for x in jumps => x.set

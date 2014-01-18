@@ -1,83 +1,74 @@
-Generator.prefix !! 'raise' = f args ~> unpack f args $ exception cause: None ->
-  @load_ast exception
-  if cause is None => @add_opcode 'RAISE_VARARGS' 1
-     otherwise     =>
-       @load_ast cause
-       @add_opcode 'RAISE_VARARGS' 2
-       @currstack -= 1  # There's nothing on the stack, but noone will notice.
+Compiler.prefix !! 'raise' = f args ~> ARGCOUNT 1 $ f (exc,) ~>
+  @pushast exc
+  @append  'RAISE_VARARGS' 1 delta: -1 # There's nothing on the stack, but nobody will notice.
 
 
-Generator.prefix !! 'except' = f cases ~>
-  @load_const None
-  @stackperm +7  # A very pessimistic estimate.
-  (name, try), *xs = if_syntax $ ensure f cases
+Compiler.prefix !! 'except' = ARGCOUNT 1 max: ANY $ f cases ~>
+  (name, try), *xs = if_syntax cases
+  @pushconst None
+  @depth +7  # A very pessimistic estimate.
   if xs and head (last xs) == 'finally' => @except_finally name try xs $ snd $ xs.pop -1
      otherwise                          => @except_main    name try xs
-  @currstack -= 7
+  @depth -7
 
 
-Generator.except_finally = name try cases finally ~>
+Compiler.except_finally = name try cases finally ~>
   # Blindly copied from Python by `diff`ing
   # disassembly of code with `finally` and without one.
-  with @setup 'finally' =>
+  with @jump 'SETUP_FINALLY' =>
     @except_main name try cases
-    @add_opcode 'POP_BLOCK'
-    @load_const None
-  @load_ast finally
-  @add_opcode 'POP_TOP'
-  @add_opcode 'END_FINALLY'
-  @currstack -= 1
+    @append 'POP_BLOCK'
+    @pushconst None
+  @pushast finally
+  @append 'POP_TOP'     delta: -1
+  @append 'END_FINALLY' delta: -1
 
 
-Generator.except_main = name try cases ~>
-  main = @setup 'except'
-  @load_ast try
-  @add_opcode 'ROT_TWO'
-  @add_opcode 'POP_BLOCK'
-  @currstack -= 1
+Compiler.except_main = name try cases ~>
+  main = @jump 'SETUP_EXCEPT'
+  @pushast try
+  @append 'ROT_TWO'   delta: +0
+  @append 'POP_BLOCK' delta: -1
   # There was no exception, we'll store None instead.
   # The second one will be used to skip over POP_EXCEPT or
   # consumed by END_FINALLY.
-  @load_const None
-  @load_const None
-  @store_ast name
+  @pushconst None
+  @pushconst None
+  @popast name
 
-  with @jump reverse: False =>
+  with @jump 'JUMP_FORWARD' =>
     # Finishing SETUP_EXCEPT with an exception pushes
     # 3 items onto the stack: traceback, value, type.
     # Value needs to be stored in `name`.
     main.set
-    @add_opcode 'ROT_TWO'
-    @add_opcode 'DUP_TOP'
-    @stackperm +1
-    @store_ast name
-    @add_opcode 'ROT_TWO'
-    # This will trigger POP_EXCEPT.
-    @load_const True
+    @append 'ROT_TWO' delta: +0
+    @append 'DUP_TOP' delta: +1
+    @popast name
+    @append 'ROT_TWO' delta: +0
+    @pushconst True  # This will trigger POP_EXCEPT.  
 
   jumps = list
     None where for (cond, action) in cases =>
-      @load_ast cond
-      @currstack -= 1
-      with @pop_jump_if False reverse: False =>
-        @load_ast action
-        @currstack -= 1
-        yield $ @jump reverse: False
+      @pushast cond
+      with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+        @pushast action
+        yield $ @jump 'JUMP_FORWARD' delta: -1
 
+  # Disable POP_EXCEPT by popping True off the stack.
+  # Only happens if there was an exception.
+  with @jump 'JUMP_IF_FALSE_OR_POP' delta: -1 => None
   # This will re-raise the exception if there was one.
   # Otherwise, it will pop None off the stack.
-  with @jump_or_pop_if False reverse: False => None
-  @add_opcode 'END_FINALLY'
-  @currstack -= 1
+  @append 'END_FINALLY' delta: -1
 
-  with @jump reverse: False =>
+  with @jump 'JUMP_FORWARD' =>
     # If a handler was triggered, there's now a return value
     # on top of the stack. It needs to be stored for safekeeping.
     for j in jumps => j.set
-    @add_opcode 'STORE_FAST' $ @varnames '<except-result>'
+    @append 'STORE_FAST' $ @varnames !! '<except-result>'
     # Traceback, value, and type may still be on stack.
     # They didn't stop existing or anything.
-    with @pop_jump_if False reverse: False => @add_opcode 'POP_EXCEPT'
-    @add_opcode 'POP_TOP'  # There goes the result of the try clause.
-    @add_opcode 'LOAD_FAST'   $ @varnames '<except-result>'
-    @add_opcode 'DELETE_FAST' $ @varnames '<except-result>'
+    with @jump 'POP_JUMP_IF_FALSE' => @append 'POP_EXCEPT'
+    @append 'POP_TOP'  # There goes the result of the try clause.
+    @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
+    @append 'DELETE_FAST' $ @varnames !! '<except-result>'
