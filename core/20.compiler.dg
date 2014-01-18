@@ -269,8 +269,8 @@ Compiler = subclass CodeType where
       # someone's attempting to partially bind assignment operators, etc.
       ERROR f 'this operator requires both arguments'
     otherwise =>
-      c = if right     => @spawn f.value (tuple' '<L>') (tuple' '<R>')
-             otherwise => @spawn f.value (tuple' '<R>') (tuple' '<L>')
+      c = if right     => @spawn f.value ('<L>',) ('<R>',)
+             otherwise => @spawn f.value ('<R>',) ('<L>',)
       c.setfile  f
       c.pushcall f (Name '<L>') (Name '<R>')
       @pushclosure c tuple! $ dict' $ if right     => '<R>', arg
@@ -299,6 +299,81 @@ Compiler = subclass CodeType where
   pushmethod = xs body ~> @pushfunction xs body where if
     xs :: Expression and not xs.closed and xs.op == '' => xs.args.insert 0 (Name 'self')
     otherwise => xs = Expression (Name '') (Name 'self') xs at: xs.loc
+
+  #: Push a result of try-except-finally onto the stack.
+  #:
+  #: Returns the same value as `pushexcept`. `finally` is evaluated in the end,
+  #: but the value it returns is ignored.
+  #:
+  #: pushfinally :: Node Node [(Node, Node)] Node -> a
+  #:
+  pushfinally = name try cases finally ~>
+    # Blindly copied from Python by `diff`ing
+    # disassembly of code with `finally` and without one.
+    with @jump 'SETUP_FINALLY' delta: +3 =>
+      @except_main name try cases
+      @append 'POP_BLOCK'
+      @pushconst None
+    @pushast finally
+    @append 'POP_TOP'     delta: -1
+    @append 'END_FINALLY' delta: -4
+
+  #: Push a result of try-except onto the stack.
+  #:
+  #: If any condition matched, the assigned action is evaluated and its value
+  #: returned. If not, but no exception was raised, the value of `try` is
+  #: returned instead. (`name` is where the exception [or None] is stored.)
+  #:
+  #: pushexcept :: Node Node [(Node, Node)] -> a
+  #:
+  pushexcept = name try cases ~>
+    main = @jump 'SETUP_EXCEPT' delta: +3
+    @pushast try
+    @append 'ROT_TWO'   delta: +0
+    @append 'POP_BLOCK' delta: -1
+    # There was no exception, we'll store None instead.
+    # The second one will be used to skip over POP_EXCEPT or
+    # consumed by END_FINALLY.
+    @pushconst None
+    @pushconst None
+    @popast name
+
+    with @jump 'JUMP_FORWARD' =>
+      # Finishing SETUP_EXCEPT with an exception pushes
+      # 3 items onto the stack: traceback, value, type.
+      # Value needs to be stored in `name`.
+      main.set
+      @append 'ROT_TWO' delta: +0
+      @append 'DUP_TOP' delta: +1
+      @popast name
+      @append 'ROT_TWO' delta: +0
+      @pushconst True  # This will trigger POP_EXCEPT.
+
+    jumps = list
+      where for (cond, action) in cases =>
+        @pushast cond
+        with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+          @pushast action
+          yield $ @jump 'JUMP_FORWARD' delta: -1
+
+    # Disable POP_EXCEPT by popping True off the stack.
+    # Only happens if there was an exception.
+    with @jump 'JUMP_IF_FALSE_OR_POP' delta: -1 => None
+    # This will re-raise the exception if there was one.
+    # Otherwise, it will pop None off the stack.
+    @append 'END_FINALLY' delta: -4
+
+    with @jump 'JUMP_FORWARD' =>
+      # If a handler was triggered, there's now a return value
+      # on top of the stack. It needs to be stored for safekeeping.
+      for j in jumps => j.set
+      @append 'STORE_FAST' $ @varnames !! '<except-result>'
+      # Traceback, value, and type may still be on stack.
+      # They didn't stop existing or anything.
+      with @jump 'POP_JUMP_IF_FALSE' => @append 'POP_EXCEPT'
+      @append 'POP_TOP'  # There goes the result of the try clause.
+      @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
+      @append 'DELETE_FAST' $ @varnames !! '<except-result>'
 
   #: Pop a value off the stack and store it somewhere.
   #:
@@ -342,7 +417,7 @@ Compiler = subclass CodeType where
       #
       x.op == ',' =>
         sz = len x.args
-        qs = list (None where for (i, q) in enumerate x.args =>
+        qs = list (where for (i, q) in enumerate x.args =>
           if q :: RightBind and q.op == '*' => yield i)
 
         if len qs > 1 => ERROR (snd $ stars !! 1) 'cannot unpack into more than 1 list'
@@ -441,7 +516,7 @@ Compiler = subclass CodeType where
     #: import 'markup'               imports 'markup' from the current package
     #:
     'import', ARGCOUNT 1 max: 2 $ f (name, *qual) ~>
-      qual, = qual or tuple' None
+      qual, = qual or (None,)
       name       :: Constant or ERROR name 'module names should be known at compile time'
       name.value :: str      or ERROR name 'module names are strings'
       qual in (None, 'qualified') or ERROR qual 'what is this?'
@@ -463,7 +538,7 @@ Compiler = subclass CodeType where
           qual => ERROR qual 'relative imports cannot be qualified'
           *dir, file = path
           @pushconst parent
-          @pushconst $ tuple' file
+          @pushconst (file,)
           @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join dir
           @append    'IMPORT_FROM' delta:  1 $ @names !! file
           @append    'ROT_TWO'     delta:  0
@@ -566,6 +641,19 @@ Compiler = subclass CodeType where
       @pushast it
       @append  'YIELD_VALUE'
 
+    'raise', ARGCOUNT 1 $ f (exc,) ~>
+      # TODO __cause__
+      @pushast exc
+      @append  'RAISE_VARARGS' 1 # There's nothing on the stack, but nobody will notice.
+
+    'except', ARGCOUNT 1 max: ANY $ f cases ~>
+      (name, try), *xs = if_syntax cases
+      @pushconst None
+      @depth +7  # A very pessimistic estimate.
+      if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
+         otherwise                          => @pushexcept  name try xs
+      @depth -7
+
   infixl = dict'
     ':', INVALID 'keyword argument to what?'
     '~', INVALID 'this operator is prefix'
@@ -610,7 +698,7 @@ Compiler = subclass CodeType where
     #:
     '~>', f body ~>
       @pushname 'property'
-      g = @spawn '<lambda>' $ tuple' 'self'
+      g = @spawn '<lambda>' ('self',)
       g.setfile f
       g.pushast body
       @pushclosure g tuple! dict!
