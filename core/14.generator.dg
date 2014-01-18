@@ -138,8 +138,8 @@ CodeType = subclass object where
     exhaust $ map (@varnames !!) $ itertools.chain a kw va vkw
 
     @bytecode  = list!
-    @stacksize = 64
-    @currstack = 64
+    @stacksize = 0
+    @currstack = 0
 
     @filename = '<generated>'
     @lineno   = 1
@@ -270,7 +270,7 @@ CodeType = subclass object where
   #:
   #: jump :: str (Optional bool) (Optional int) -> Jump
   #:
-  jump = opname reverse: False delta: 0 ~> Jump self reverse opname delta: 0
+  jump = opname reverse: False delta: 0 ~> Jump self reverse opname delta
 
   #: Make a child code object.
   #:
