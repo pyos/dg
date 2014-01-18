@@ -1,3 +1,6 @@
+import '/itertools'
+import '/posixpath'
+
 #: Something bigger than anything you can come up with.
 #: Something...more, than a number.
 ANY = float 'inf'
@@ -178,7 +181,7 @@ Compiler = subclass CodeType where
   #: pushlist :: [Node] -> a
   #:
   pushlist = xs ~> for x in xs => @pushast x
- 
+
   #: Evaluate multiple expressions, discarding all results but the last.
   #:
   #: pushlast :: *Node -> a
@@ -219,16 +222,25 @@ Compiler = subclass CodeType where
       @pushlist args
       @append 'CALL_FUNCTION' (len args) (-len args)
     otherwise =>
-      a, kw, va, vkw = CALLARGS args
-      @pushast  f
-      @pushlist a
-      @pushkeys kw.items!
-      va  => @pushast va
-      vkw => @pushast vkw
-      @append
-        'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
-        0 + len a + 256 * len kw
-        0 - len a - 2   * len kw - bool va - bool vkw
+      @pushast f
+      @pushcalltop 0 args
+
+  #: Push the result of calling a function from the top of the stack.
+  #:
+  #: Additional arguments may be taken from there, too.
+  #:
+  #: pushcalltop :: int [Node] -> a
+  #:
+  pushcalltop = argc argv ~>
+    a, kw, va, vkw = CALLARGS argv
+    @pushlist a
+    @pushkeys kw.items!
+    va  => @pushast va
+    vkw => @pushast vkw
+    @append
+      'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
+      0 + argc + len a + 256 * len kw
+      0 - argc - len a - 2   * len kw - bool va - bool vkw
 
   #: Default infix bind implementation.
   #:
@@ -352,6 +364,138 @@ Compiler = subclass CodeType where
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
+    #: Import a module given a POSIX-style path.
+    #:
+    #: import '/sys'                 imports a module named 'sys'
+    #: import '/os/path' qualified   imports a module named 'os' with a submodule 'path'
+    #: import '/dg/addon/fork'       imports 'fork' from package 'dg.addon'
+    #: import 'markup'               imports 'markup' from the current package
+    #:
+    'import', ARGCOUNT 1 max: 2 $ f (name, *qual) ~>
+      qual, = qual or tuple' None
+      name       :: Constant or ERROR name 'module names should be known at compile time'
+      name.value :: str      or ERROR name 'module names are strings'
+      qual in (None, 'qualified') or ERROR qual 'what is this?'
+
+      parent = 1
+      path   = (posixpath.normpath name.value).split posixpath.sep
+      while path and head path == ''           and not (path.pop 0) => parent  = 0
+      while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
+      while path and head path == posixpath.curdir and  path.pop 0  => ()
+      path or ERROR name 'this resolves to an empty name'
+
+      if
+        parent == 0 and (qual or len path == 1) =>
+          @pushconst parent
+          @pushconst None
+          @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join path
+
+        otherwise =>
+          qual => ERROR qual 'relative imports cannot be qualified'
+          *dir, file = path
+          @pushconst parent
+          @pushconst $ tuple' file
+          @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join dir
+          @append    'IMPORT_FROM' delta:  1 $ @names !! file
+          @append    'ROT_TWO'     delta:  0
+          @append    'POP_TOP'     delta: -1
+
+      @append 'DUP_TOP' delta: +1
+      @popast $ Name $ path !! (qual != None)
+
+    #: Local binding.
+    #:
+    #: I.e. `a where b` makes stuff from `b` only visible in `a`.
+    #:
+    'where', ARGCOUNT 2 $ f (ret, env) ~>
+      g = @spawn '<lambda>'
+      g.pushlast env ret
+      @pushclosure g tuple! dict!
+      @append 'CALL_FUNCTION' 0
+
+    #: Type creation.
+    #:
+    #: Duplicate the local namespace and turn it into a type. `where` is useful here.
+    #:
+    'subclass', ARGCOUNT ANY $ f args ~>
+      @pushname  '__dg_build_class__'  # Note: these may have been redefined
+      @pushname  '__name__'            # in this namespace. Watch the syntax highlighting.
+      @pushname  'locals'              # (And don't name methods __dg_build_class__.)
+      @append    'CALL_FUNCTION' 0
+      @pushconst None  # TODO docstring (the first constant in this code object)-
+      @pushconst @qualname
+      @pushconst @name
+      @pushcalltop 5 args
+
+    #: Automatic context managing.
+    #:
+    #: I think it's called IDisposable or something.
+    #:
+    'with', ARGCOUNT 2 $ f (ctx, body) ~>
+      var, ctx = if
+        ctx :: Expression and len ctx.args == 2 and ctx.op == '=' => ctx.args
+        otherwise => Name '_', ctx
+
+      @pushconst None  # reserve space for a return value
+      @pushast   ctx
+      with @jump 'SETUP_WITH' delta: +3 =>  #=> None, __exit__, return value of __enter__
+        @popast    var                      #=> None, __exit__
+        @pushast   body                     #=> None, __exit__, return value
+        @append    'ROT_THREE' delta: +0
+        @append    'ROT_TWO'   delta: +0
+        @append    'POP_BLOCK' delta: -1     #=> return value, __exit__
+        @pushconst None                      # this is for END_FINALLY
+      @append 'WITH_CLEANUP' delta: -1
+      @append 'END_FINALLY'  delta: -3
+
+    #: Repeat while a condition is true.
+    #:
+    #: I wonder if there's a nicer way to write interlinked jumps.
+    #:
+    'while', ARGCOUNT 2 $ f (cond, body) ~>
+      @pushconst None
+      restart = @jump 'JUMP_ABSOLUTE' True
+      @pushast cond
+      with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+        @append  'POP_TOP' delta: -1
+        @pushast body
+        restart.set
+
+    #: Iterate over a...iterator, duh.
+    #:
+    #: Note that `var` may be any valid assignment target, not only a local variable.
+    #:
+    'for', ARGCOUNT 2 $ f (var, body) ~>
+      not $ var :: Expression and var.op == 'in' and len var.args == 2 => ERROR var $ if
+        # In Python, `in` has a higher precedence than `,`. That is,
+        # if you simply write `a, b in c` you get `a, (b in c)`. `for a, b in c:`
+        # is merely a special case in the parser; dg has no such thing.
+        var :: Expression and var.op == ',' and not var.closed => 'forgot the parentheses?'
+        otherwise => 'should be `a in b`'
+
+      @pushconst None
+      @pushast $ snd var.args
+      @append    'GET_ITER'
+      restart = @jump 'JUMP_ABSOLUTE' True
+      with @jump 'FOR_ITER' delta: +1 =>
+        @popast $ fst var.args
+        @pushast  body
+        @append   'ROT_THREE' delta: +0
+        @append   'ROT_TWO'   delta: +0
+        @append   'POP_TOP'   delta: -1
+        restart.set
+      @depth -1  # FOR_ITER automatically pops the iterable off the stack.
+
+    #: Yield control to the caller.
+    #:
+    #: Did you know that generators have a `send` method? Look it up.
+    #:
+    'yield', ARGCOUNT 1 $ f (it,) ~>
+      # TODO: yield from. `pushast iter`, `pushast it`, `YIELD_FROM`, delta: -1.
+      @generator = True
+      @pushast it
+      @append  'YIELD_VALUE'
+
   infixl = dict'
     # Bodyless functions. These are useless.
     '->',    f args ~> @pushfunction args $ Constant None at: f.loc
@@ -389,3 +533,13 @@ Compiler = subclass CodeType where
       g.pushast body
       @pushclosure g tuple! dict!
       @append 'CALL_FUNCTION' 1 delta: -1
+
+    #: Return value-less binding.
+    #:
+    #: Mostly useful for generators: `list (where for ... => yield ...)`
+    #:
+    'where', f env ~>
+      g = @spawn '<lambda>'
+      g.pushast env
+      @pushclosure g tuple! dict!
+      @append 'CALL_FUNCTION' 0

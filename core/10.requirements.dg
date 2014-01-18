@@ -1,8 +1,0 @@
-# All of the files in this directory are compiled into a single bundle.
-import '/sys'
-import '/posixpath'
-import '/importlib/machinery' qualified
-
-# Two constants are guaranteed to be defined.
-#   1. PY_VERSION is the hexversion of a target interpreter.
-#   2. PY_TAG is its cache tag (e.g. cpython-33 or pypy-32.)
