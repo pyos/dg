@@ -1,3 +1,7 @@
+import '/re'
+import '/collections'
+import '/ast/literal_eval'
+
 #: Parse an input string.
 #:
 #: parse :: str (Optional str) -> Node

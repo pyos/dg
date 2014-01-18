@@ -1,17 +1,7 @@
 # All of the files in this directory are compiled into a single bundle.
-# Imports go here.
-import '/re'
-import '/dis'
 import '/sys'
-import '/types'
-import '/builtins'
-import '/operator'
-import '/itertools'
-import '/functools'
 import '/posixpath'
-import '/collections'
 import '/importlib/machinery' qualified
-import '/ast/literal_eval'
 
 # Two constants are guaranteed to be defined.
 #   1. PY_VERSION is the hexversion of a target interpreter.
