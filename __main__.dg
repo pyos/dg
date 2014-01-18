@@ -79,13 +79,12 @@ if ns.build =>
   bundlesupport.save this (fst ns.build) BUNDLE_DIR
   exit 0
 
-import 'parse'
 import 'compilefd'
-import 'compileast'
+import 'Compiler'
 
+import 'parse'
 import 'Name'
 import 'LeftBind'
-import 'Generator'
 import 'Expression'
 
 env = dict __name__: '__main__' __builtins__: __builtins__
@@ -109,10 +108,10 @@ command = code -> except
       expr :: LeftBind and not expr.op.norhs or
         #   2. the last expression is accessing a built-in, which
         #      doesn't make sense (unlike a call to that built-in;)
-        expr :: Name and not expr.closed and expr.value in Generator.prefix or
+        expr :: Name and not expr.closed and expr.value in Compiler.prefix or
           # 3. the last line of the code is indented.
           (last $ code.rsplit '\n' 1).startswith ' '
-    ) => compileast res
+    ) => (Compiler '').work res
 
   # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
   e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None
