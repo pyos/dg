@@ -31,30 +31,14 @@ ARGCOUNT = min fn max: None -> if
 #:
 #: compile :: str (Optional str) -> types.CodeType
 #:
-compile = x filename: '<string>' -> compileast $ parse x filename
+compile = data filename: '<string>' -> (Compiler '').work $ parse data filename
 
 
 #: Compile the contents of a file-like object.
 #:
 #: compilefd :: TextIOBase (Optional str) -> types.CodeType
 #:
-compilefd = x filename: '<stream>' -> compileast $ parsefd x filename
-
-
-#: Compile a pre-parsed AST.
-#:
-#: compileast :: Node -> types.CodeType
-#:
-compileast = x ->
-  self = Compiler '' False
-  # TODO: store the docstring in __name__.
-  #   Should look into `x` and see if it's either a string
-  #   or a sequence of commands starting with a string.
-  #   If it is, it or its first argument is a docstring.
-  @setfile x
-  @pushast x
-  @append 'RETURN_VALUE' delta: -1
-  @frozen
+compilefd = fd filename: '<stream>' -> (Compiler '').work $ parsefd fd filename
 
 
 #unpack = f args g ->
@@ -72,6 +56,16 @@ compileast = x ->
 
 
 Compiler = subclass CodeType where
+  #: Compile an AST into Python bytecode.
+  #:
+  #: work :: Node -> types.CodeType
+  #:
+  work = x ~>
+    @setfile x
+    @pushast x
+    @append  'RETURN_VALUE' delta: -1
+    @frozen
+
   #: Note where this code object starts in the source code.
   #:
   #: setfile :: Node -> a
@@ -86,7 +80,7 @@ Compiler = subclass CodeType where
   #: pushast :: Node -> a
   #:
   pushast = x ~>
-    @lineoff >= 0 =>
+    x.loc and @lineoff >= 0 =>
       # A good time to map bytecode to source code lines.
       lineoff = x.loc !! 1 - @lineoff
       lineoff > 0 =>
@@ -100,16 +94,10 @@ Compiler = subclass CodeType where
 
     if x :: Name       => @pushname  x.value
        x :: Constant   => @pushconst x.value
-       x :: LeftBind   => (@infixl !! x.op.value) self x.op *: x.args
-       x :: RightBind  => (@infixr !! x.op.value) self x.op *: x.args
-       x :: Expression => @pushcall x.op *: x.args
+       x :: LeftBind   => @pushbind  False x.op *: x.args
+       x :: RightBind  => @pushbind  True  x.op *: x.args
+       x :: Expression => @pushcall  x.op *: x.args
        otherwise       => raise $ TypeError 'invalid node' $ type x
-
-  #: Push multiple items in one go.
-  #:
-  #: pushlist :: [Node] -> a
-  #:
-  pushlist = xs ~> for x in xs => @pushast x
 
   #: Push some string-object pairs.
   #:
@@ -119,38 +107,12 @@ Compiler = subclass CodeType where
     @pushconst k
     @pushast   v
 
-  #: Push the result of calling `f` with `args` onto the value stack.
+  #: Push multiple items in one go.
   #:
-  #: pushcall :: Node *Node -> a
+  #: pushlist :: [Node] -> a
   #:
-  pushcall = f *: args ~> if
-    f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
-    f.infix and not f.closed =>
-      # Infix functions don't get fancy syntax.
-      @pushast  f
-      @pushlist args
-      @append 'CALL_FUNCTION' (len args) (-len args)
-    otherwise => @pushcall_prefix args 0 where @pushast f
-
-  #: Push the result of calling someting from the stack, again.
-  #:
-  #: This time, the result is a guaranteed Python function call.
-  #:
-  #: pushcall_prefix :: [Node] int -> a
-  #:
-  pushcall_prefix = args on_stack ~>
-    #a, kw, va, vkw = func_call_args args
-    a, kw, va, vkw = args, dict!, None, None
-    @pushlist a
-    @pushkeys kw.items!
-    va  => @pushast va
-    vkw => @pushast vkw
-
-    @append
-      'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
-      0 + len a + 256 * len kw                      + on_stack
-      0 - len a - 2   * len kw - bool va - bool vkw - on_stack
-
+  pushlist = xs ~> for x in xs => @pushast x
+ 
   #: Evaluate multiple expressions, discarding all results but the last.
   #:
   #: pushlast :: *Node -> a
@@ -161,57 +123,163 @@ Compiler = subclass CodeType where
       @append 'POP_TOP' delta: -1
     @pushast y
 
+  #: Create a function out of a code object.
+  #:
+  #: pushclosure :: CodeType [Node] (dict str Node) -> a
+  #:
+  pushclosure = code defaults kwdefaults ~>
+    code.append 'RETURN_VALUE' delta: -1
+    const = code.frozen
+    @pushkeys  kwdefaults.items!
+    @pushlist  defaults
+    @pushcells const.co_freevars
+    @append    'BUILD_TUPLE' (len const.co_freevars) $ 1 - len const.co_freevars
+    @pushconst const
+    @pushconst code.qualname
+    @append    'MAKE_CLOSURE'
+      0 + len defaults + 256 * len kwdefaults
+      0 - len defaults - 2   * len kwdefaults - 2
+
+  #: Push the result of calling `f` with `args` onto the value stack.
+  #:
+  #: pushcall :: Node *Node -> a
+  #:
+  pushcall = f *: args ~> if
+    f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
+    # Infix functions don't get fancy syntax.
+    # When using infix operators, varargs and keyword arguments are disabled.
+    f.infix and not f.closed =>
+      @pushast  f
+      @pushlist args
+      @append 'CALL_FUNCTION' (len args) (-len args)
+    otherwise =>
+      #a, kw, va, vkw = func_call_args args
+      a, kw, va, vkw = args, dict!, None, None
+      @pushast  f
+      @pushlist a
+      @pushkeys kw.items!
+      va  => @pushast va
+      vkw => @pushast vkw
+      @append
+        'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
+        0 + len a + 256 * len kw
+        0 - len a - 2   * len kw - bool va - bool vkw
+
+  #: Default infix bind implementation.
+  #:
+  #: `x R` <=> `y -> x R y`
+  #: `R x` <=> `y -> y R x`
+  #:
+  #: pushbind :: bool Node Node -> a
+  #:
+  pushbind = right f arg ~> if
+    f.value in @infixl and not right => (@infixl !! f.value) self f arg
+    f.value in @infixr and     right => (@infixr !! f.value) self f arg
+    f.value in @prefix and not (f.value in builtins.__dict__) =>
+      # Note that partial binding of macros does not actually use
+      # runtime functions (as `pushcall` will prefer compile-time ones.)
+      # Still, this is a pretty good method of checking if
+      # someone's attempting to partially bind assignment operators, etc.
+      Parser.error 'this operator requires both arguments' f.loc
+    otherwise =>
+      c = if right     => @spawn f.value (tuple' '<R>') (tuple' '<L>')
+             otherwise => @spawn f.value (tuple' '<L>') (tuple' '<R>')
+      c.setfile  f
+      c.pushcall f (Name '<L>') (Name '<R>')
+      @pushclosure c tuple! $ dict' $ if right     => '<L>', arg
+                                         otherwise => '<R>', arg
+
+  #: Create a function.
+  #:
+  #: pushfunction :: (Maybe Node) Node -> a
+  #:
+  pushfunction = args body ~>
+    #a, kw, da, dkw, va, vkw, patterns = func_def_args args
+    a = if args :: Expression => tuple $ map (x -> x.value) args.args
+           args is None => tuple!
+           otherwise    => tuple' args.value
+    kw, da, dkw, va, vkw, patterns = tuple!, tuple!, dict!, tuple!, tuple!, dict!
+
+    g = @spawn '<lambda>' a kw va vkw
+    for (name, pattern) in patterns.items! =>
+      g.pushname name
+      g.popast   pattern
+    g.setfile args
+    g.pushast body
+    g.append  'RETURN_VALUE' delta: -1
+    @pushclosure g da dkw
+
+  #: Create a method.
+  #:
+  #: Which is basically a function with an additional argument named "self".
+  #:
+  #: pushmethod :: (Maybe Node) Node -> a
+  #:
+  pushmethod = xs body ~> @pushfunction xs body where if
+    xs :: Expression and not xs.closed and xs.op == '' => xs.args.insert 0 (Name 'self')
+    otherwise => xs = Expression (Name '') (Name 'self') xs at: xs.loc
+
   #: Pop a value off the stack and store it somewhere.
   #:
   #: popast :: Node -> a
   #:
   popast = x ~> if
-    x :: Expression and x.op == ',' =>
-      # (a, b, c = x) => unpack `x` and call `store_ast` for each
-      # of `a`, `b`, and `c`. If exactly of the items is preceded by a star
-      # (e.g. `*c`), all items that didn't have place in other variables
-      # are stored there as a list.
-      star = -1
+    x :: RightBind => if
+      # A single item prefixed with an at sign is a shorthand
+      # for attribute assignment. That is, `self.attribute = ...`.
+      x.op == '@' =>
+        attr, = x.args
+        attr :: Name or ERROR attr 'not an attribute'
+        @pushname 'self'
+        @append   'STORE_ATTR' delta: -2 $ @names !! attr.value
 
-      for (i, q) in enumerate x.args => q :: RightBind and q.op == '*' =>
-        star >= 0 => ERROR q 'only one starred item is allowed'
-        i > 255   => ERROR q 'too many items before a starred one'
-        star = i
-        x.args !! i = head q.args
+      # A single item prefixed with a star.
+      #
+      # In a comma-separated list, that is an instruction to put excess
+      # items in this variable as a list. When there are no other elements,
+      # however, the star does nothing.
+      #
+      x.op == '*' => @popast $ head x.args
+      otherwise   => ERROR x 'not something one can assign to'
 
-      if star >= 0 => @append 'UNPACK_EX'       (256 * (len x.args - star - 1) + star) $ len x.args - 1
-         otherwise => @append 'UNPACK_SEQUENCE' (len x.args) $ len x.args - 1
+    x :: Expression => if
+      len x.args == 2 and x.op == '.' =>
+        item, attr = x.args
+        attr :: Name or ERROR attr 'not an attribute'
+        @pushast item
+        @append  'STORE_ATTR' delta: -2 $ @names !! attr.value
 
-      exhaust $ map @popast x.args
+      len x.args == 2 and x.op == '!!' =>
+        @pushlist x.args
+        @append   'STORE_SUBSCR' delta: -3
 
-    x :: RightBind and x.op == '@' =>
-      # `@a` is equivalent to `self.a`.
-      attr, = x.args
-      attr :: Name or ERROR attr 'not an attribute'
-      @pushname 'self'
-      @append   'STORE_ATTR' delta: -2 $ @names !! attr.value
+      # A comma-separated list of assignment targets.
+      #
+      # 1. Assume the value on top of the stack is an iterable.
+      # 2. Split it into separate items.
+      # 3. Store each of them in an assignment target from this list.
+      #
+      x.op == ',' =>
+        sz = len x.args
+        qs = list (None where for (i, q) in enumerate x.args =>
+          if q :: RightBind and q.op == '*' => yield i)
 
-    x :: Expression and len x.args == 2 and x.op == '.' =>
-      # `a.b` => load `a`, store an attribute named `b`.
-      item, attr = x.args
-      attr :: Name or ERROR attr 'not an attribute'
-      @pushast item
-      @append  'STORE_ATTR' delta: -2 $ @names !! attr.value
+        if len qs > 1 => ERROR (snd $ stars !! 1) 'cannot unpack into more than 1 list'
+           len qs < 1 => @append delta: (sz - 1) 'UNPACK_SEQUENCE' sz
+           otherwise  => @append delta: (sz - 1) 'UNPACK_EX' $ i + 256 * (sz - i - 1) where
+             i = head qs
+        for a in x.args => @popast a
 
-    x :: Expression and len x.args == 2 and x.op == '!!' =>
-      # `a !! b = x` <=> `a.__setitem__ b x`
-      @pushlist x.args
-      @append   'STORE_SUBSCR' delta: -3
+      otherwise => ERROR x 'not something one can assign to'
 
     x :: Name => @popname x.value
     otherwise => ERROR x 'not something one can assign to'
 
-
-  infixl = collections.defaultdict (-> f a ~> @infixbind '<L>' '<R>' f a)
-  infixr = collections.defaultdict (-> f a ~> @infixbind '<R>' '<L>' f a)
   prefix = dict'
-    '',   ARGCOUNT ANY $ f a ~> @pushcall *: a
-    '\n', ARGCOUNT ANY $ f a ~> @pushlast *: a
+    '',   ARGCOUNT ANY $ f xs ~> @pushcall *: xs
+    '\n', ARGCOUNT ANY $ f xs ~> @pushlast *: xs
+    '->', ARGCOUNT   2 $ f (args, body)  ~> @pushfunction args body
+    '~>', ARGCOUNT   2 $ f (args, body)  ~> @pushmethod   args body
     '=',  ARGCOUNT   2 $ f (name, value) ~>
       @var, x = repr name, @var
       @pushast value
@@ -224,3 +292,40 @@ Compiler = subclass CodeType where
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
+  infixl = dict'
+    # Bodyless functions. These are useless.
+    '->',    f args ~> @pushfunction args $ Constant None at: f.loc
+    '~>',    f args ~> @pushmethod   args $ Constant None at: f.loc
+    'where', f expr ~> @pushast      expr  # Nothing to bind.
+
+  infixr = dict'
+    #: Local attribute lookup.
+    #:
+    #: Equivalent to `self.name`.
+    #:
+    '@', f name ~>
+      name :: Name or ERROR name 'not an attribute'
+      @pushname 'self'
+      @append   'LOAD_ATTR' $ @names !! name.value
+
+    #: Argumentless function.
+    #:
+    #: Not generally recommended, but whatever.
+    #:
+    '->', f body ~>
+      g = @spawn '<lambda>'
+      g.setfile f
+      g.pushast body
+      @pushclosure g tuple! dict!
+
+    #: Object property.
+    #:
+    #: Equivalent to `property $ self -> body`.
+    #:
+    '~>', f body ~>
+      @pushname 'property'
+      g = @spawn '<lambda>' $ tuple' 'self'
+      g.setfile f
+      g.pushast body
+      @pushclosure g tuple! dict!
+      @append 'CALL_FUNCTION' 1 delta: -1
