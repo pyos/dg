@@ -17,38 +17,39 @@ builtins.__dict__.update locals! where
   call  = (!) = ($) = f *: a **: k -> f *: a **: k
   bind  = functools.partial
   flip  = f -> x y -> f y x
-  (<-)  = f g -> *: a **: k -> f $ g *: a **: k
+  <-    = f g -> *: a **: k -> f $ g *: a **: k
 
-  (..)  = range
-  (...) = Ellipsis
-  (::)  = isinstance
-  (->)  = -> None
-  (~>)  = ~> None
-  (:)   = a b -> itertools.chain (list' a) b
-  (in)  = a b -> a in b
-  (is)  = operator.is_
-  (not) = operator.not_
-  (<)   = operator.lt
-  (<=)  = operator.le
-  (==)  = operator.eq
-  (!=)  = operator.ne
-  (>=)  = operator.ge
-  (>)   = operator.gt
-  (~)   = operator.invert
-  (+)   = operator.add
-  (-)   = operator.sub
-  (*)   = operator.mul
-  (**)  = operator.pow
-  (/)   = operator.truediv
-  (//)  = operator.floordiv
-  (%)   = operator.mod
-  (&)   = operator.and_
-  (^)   = operator.xor
-  (|)   = operator.or_
-  (<<)  = operator.lshift
-  (>>)  = operator.rshift
-  (!!)  = operator.getitem
-  (!!~) = operator.delitem
+  ..  = range
+  ... = Ellipsis
+  ::  = isinstance
+  ->  = -> None
+  ~>  = ~> None
+  :+  = a b -> itertools.chain (list' a) b
+  +:  = a b -> itertools.chain a (list' b)
+  in  = a b -> a in b
+  is  = operator.is_
+  not = operator.not_
+  <   = operator.lt
+  <=  = operator.le
+  ==  = operator.eq
+  !=  = operator.ne
+  >=  = operator.ge
+  >   = operator.gt
+  ~   = operator.invert
+  +   = operator.add
+  -   = operator.sub
+  *   = operator.mul
+  **  = operator.pow
+  /   = operator.truediv
+  //  = operator.floordiv
+  %   = operator.mod
+  &   = operator.and_
+  ^   = operator.xor
+  |   = operator.or_
+  <<  = operator.lshift
+  >>  = operator.rshift
+  !!  = operator.getitem
+  !!~ = operator.delitem
 
   take      = n xs -> itertools.islice xs None n
   drop      = n xs -> itertools.islice xs n None
@@ -61,7 +62,7 @@ builtins.__dict__.update locals! where
 
   foldl  = f st xs -> functools.reduce f xs st
   foldl1 = f    xs -> functools.reduce f xs
-  scanl  = f st xs -> itertools.accumulate (st:xs) f
+  scanl  = f st xs -> itertools.accumulate (st:+xs) f
   scanl1 = f    xs -> itertools.accumulate xs f
   # FIXME should also define foldr(1) and scanr(1). Probably.
 
