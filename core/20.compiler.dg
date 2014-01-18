@@ -2,6 +2,21 @@
 #: Something...more, than a number.
 ANY = float 'inf'
 
+
+#: Compile some source code.
+#:
+#: compile :: str (Optional str) -> types.CodeType
+#:
+compile = data filename: '<string>' -> (Compiler '').work $ parse data filename
+
+
+#: Compile the contents of a file-like object.
+#:
+#: compilefd :: TextIOBase (Optional str) -> types.CodeType
+#:
+compilefd = fd filename: '<stream>' -> (Compiler '').work $ parsefd fd filename
+
+
 #: Raise a SyntaxError.
 #:
 #: ERROR :: (Either Node (str, int, int, str)) str -> _|_
@@ -27,32 +42,83 @@ ARGCOUNT = min fn max: None -> if
     otherwise               => fn self f args
 
 
-#: Compile some source code.
+#: Parse function call arguments.
 #:
-#: compile :: str (Optional str) -> types.CodeType
+#: positional1 positional2 keyword: value *: varargs **: varkwargs
 #:
-compile = data filename: '<string>' -> (Compiler '').work $ parse data filename
+#: CALLARGS :: [Node] -> ([Node], dict str Node, Maybe Node, Maybe Node)
+#:
+CALLARGS = xs -> a, kw, va, vkw where
+  a   = list!
+  kw  = dict!
+  va  = None
+  vkw = None
+
+  for x in xs => if
+    x :: Expression and x.op == ':' => if
+      fst x.args == '*'  =>
+        va => ERROR x 'can only have one `*: x`'
+        va = snd x.args
+      fst x.args == '**' =>
+        vkw => ERROR x 'can only have one `**: x`'
+        vkw = snd x.args
+      fst x.args :: Name => kw !! (fst x.args).value = snd x.args
+      otherwise => ERROR x 'keywords should be identifiers'
+    otherwise => a.append x
+
+  len a  > 255 => ERROR (fst xs) 'too many arguments'
+  len kw > 255 => ERROR (fst xs) 'too many keyword arguments'
 
 
-#: Compile the contents of a file-like object.
+#: Parse function definition arguments.
 #:
-#: compilefd :: TextIOBase (Optional str) -> types.CodeType
+#: Unlike `CALLARGS`, this function enforces a strict order and supports patterns.
 #:
-compilefd = fd filename: '<stream>' -> (Compiler '').work $ parsefd fd filename
+#: positional1 (positional2, iterable): default_value *: varargs keyword_only *: varkwargs
+#:
+#: DEFNARGS :: Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
+#:
+DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
+  a    = list!  # positional
+  kw   = list!  # keyword-only
+  da   = list!  # default values
+  dkw  = dict!  # default values for keyword-only arguments
+  va   = list!  # varargs (a singleton)
+  vkw  = list!  # varkwargs (a singleton)
+  add  = dict!  # (name -> pattern) mapping
+  cnt  = itertools.count 0
 
+  pattern = x -> if
+    x :: Name => if
+      x in a + kw + va => ERROR x 'duplicate argument name'
+      x == '_'         => 'ignore:{}'.format $ next cnt
+      otherwise        => x.value
+    otherwise => name where add !! (name = 'pattern:{}'.format $ next cnt) = x
 
-#unpack = f args g ->
-#  '''Unpack function arguments by using another function as a template.
-#
-#    unpack :: Name [Node] (T -> a) -> a
-#
-#  '''
-#  except
-#    e =>
-#      a, kw, va, vkw = func_call_args args
-#      va or vkw => Parser.error "can't use varargs with compile-time macros" (va or vkw).loc
-#      g *: a **: kw
-#    e :: TypeError => Parser.error (str e) f.loc
+  data = if xs :: Expression and not xs.closed and xs.op == '' => xs.args
+            otherwise                                          => list' xs
+
+  for x in data => if
+    x :: Expression and x.op == ':' => if
+      fst x.args == '*' =>
+        va => ERROR x 'can only have one `*: x`'
+        va.append $ pattern $ snd x.args
+      fst x.args == '**' =>
+        vkw => ERROR x 'can only have one `**: x`'
+        vkw.append $ pattern $ snd x.args
+      va =>
+        k, v = x.args
+        k :: Name or ERROR k 'keywords should be identifiers'
+        kw.append name where dkw !! (name = pattern k) = v
+      otherwise =>
+        a.append $ pattern $ fst x.args
+        da.append $ snd x.args
+    va => kw.append $ pattern x
+    da => ERROR x 'this argument must have a default value'
+    otherwise => a.append $ pattern x
+
+  len a  > 255 => ERROR xs 'too many arguments'
+  len kw > 255 => ERROR xs 'too many keyword arguments'
 
 
 Compiler = subclass CodeType where
@@ -153,8 +219,7 @@ Compiler = subclass CodeType where
       @pushlist args
       @append 'CALL_FUNCTION' (len args) (-len args)
     otherwise =>
-      #a, kw, va, vkw = func_call_args args
-      a, kw, va, vkw = args, dict!, None, None
+      a, kw, va, vkw = CALLARGS args
       @pushast  f
       @pushlist a
       @pushkeys kw.items!
@@ -191,15 +256,10 @@ Compiler = subclass CodeType where
 
   #: Create a function.
   #:
-  #: pushfunction :: (Maybe Node) Node -> a
+  #: pushfunction :: (Either Node [Node]) Node -> a
   #:
   pushfunction = args body ~>
-    #a, kw, da, dkw, va, vkw, patterns = func_def_args args
-    a = if args :: Expression => tuple $ map (x -> x.value) args.args
-           args is None => tuple!
-           otherwise    => tuple' args.value
-    kw, da, dkw, va, vkw, patterns = tuple!, tuple!, dict!, tuple!, tuple!, dict!
-
+    a, kw, da, dkw, va, vkw, patterns = DEFNARGS args
     g = @spawn '<lambda>' a kw va vkw
     for (name, pattern) in patterns.items! =>
       g.pushname name
@@ -213,7 +273,7 @@ Compiler = subclass CodeType where
   #:
   #: Which is basically a function with an additional argument named "self".
   #:
-  #: pushmethod :: (Maybe Node) Node -> a
+  #: pushmethod :: Node Node -> a
   #:
   pushmethod = xs body ~> @pushfunction xs body where if
     xs :: Expression and not xs.closed and xs.op == '' => xs.args.insert 0 (Name 'self')
