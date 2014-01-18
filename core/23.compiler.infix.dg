@@ -23,8 +23,8 @@ COMPARISON_H = f (a, b) chain: False ~>
         for j in jumps => j.set
         # Then we remove the unneeded item, leaving `False` on the stack.
         # (Stack size change was already accounted for by JUMP_IF_FALSE_OR_POP.)
-        @add_opcode 'ROT_TWO'
-        @add_opcode 'POP_TOP'
+        @append 'ROT_TWO'
+        @append 'POP_TOP'
 
   # Return the list of unfinished jumps for the next operator to use.
   jumps
