@@ -108,7 +108,7 @@ CodeType = subclass object where
     fn.restype  = py_object
     fn.argtypes = py_object, py_object, py_object, py_object
 
-  __init__ = name function a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: None ~>
+  __init__ = name a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: None function: False ~>
     @cell      = cell
     @argc      = len a
     @kwargc    = len kw
@@ -199,13 +199,13 @@ CodeType = subclass object where
   #:
   #: append :: str (Optional int) (Optional int) -> a
   #:
-  append = name value: 0 delta: 0 ~>
+  append = name arg: 0 delta: 0 ~>
     @depth delta
     # These indices are used to quickly change all references
     # to an array slot into references to a cell.
-    if name == 'LOAD_FAST'  => @fastlocals !! v !! len @bytecode = dis.opmap !! 'LOAD_DEREF'
-    if name == 'STORE_FAST' => @fastlocals !! v !! len @bytecode = dis.opmap !! 'STORE_DEREF'
-    @bytecode.append (dis.opmap !! name, value)
+    if name == 'LOAD_FAST'  => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'LOAD_DEREF'
+    if name == 'STORE_FAST' => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'STORE_DEREF'
+    @bytecode.append (dis.opmap !! name, arg)
 
   #: Request a permanent change in stack size.
   #:
@@ -255,7 +255,7 @@ CodeType = subclass object where
   #: pushcell :: str -> a
   #:
   pushcell = v ~>
-    for i in @fastlocals !! v =>
+    if v in @varnames => for i in @fastlocals !! (@varnames !! v) =>
       # Note that this affects variables created after the closure in no way.
       @bytecode !! i = @fastlocals !! v !! i, @cellvars !! v
 
@@ -274,7 +274,7 @@ CodeType = subclass object where
   #:
   #: spawn :: str * ** -> CodeType
   #:
-  spawn = name *: other_args **: other_kwargs ~> CodeType *: other_args **: other_kwargs $ if
+  spawn = name *: args **: kwargs ~> @__class__ cell: self function: True *: args **: kwargs $ if
     @var is None       => name
     @var.isidentifier! => @var
     otherwise          => '(' + @var + ')'
