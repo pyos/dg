@@ -165,8 +165,9 @@ CodeType = subclass object where
   #:
   code = (op, arg) ~> if
     op  < dis.HAVE_ARGUMENT => struct.pack '<B'  op
+    arg < 0                 => @code (op, len @cellvars - arg - 1)
     arg < 0x10000           => struct.pack '<BH' op arg
-    otherwise               => @code (dis.opmap !! 'EXTENDED_ARG') (arg >> 16) +
+    otherwise               => @code (dis.opmap !! 'EXTENDED_ARG', arg >> 16) +
                                struct.pack '<BH' op (arg & 0xffff)
 
   #: A marshallable code object with info from this generator.
@@ -258,9 +259,9 @@ CodeType = subclass object where
   pushcells = vs ~> for v in vs =>
     if v in @varnames => for i in @fastlocals !! (@varnames !! v) =>
       # Note that this affects variables created after the closure in no way.
-      @bytecode !! i = @fastlocals !! v !! i, @cellvars !! v
+      @bytecode !! i = @fastlocals !! (@varnames !! v) !! i, @cellvars !! v
 
-    @add_opcode 'LOAD_CLOSURE' delta: +1 $ if
+    @append 'LOAD_CLOSURE' delta: +1 $ if
       v in @cellvars => @cellvars !! v
       v in @varnames => @cellvars !! v
       otherwise      => @freevars !! v
