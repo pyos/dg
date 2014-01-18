@@ -470,7 +470,7 @@ Compiler = subclass CodeType where
           @append    'POP_TOP'     delta: -1
 
       @append 'DUP_TOP' delta: +1
-      @popast $ Name $ path !! (qual != None)
+      @popast $ Name $ path !! (-not qual)
 
     #: Local binding.
     #:
