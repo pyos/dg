@@ -478,6 +478,7 @@ Compiler = subclass CodeType where
     #:
     'where', ARGCOUNT 2 $ f (ret, env) ~>
       g = @spawn '<lambda>'
+      g.setfile  ret
       g.pushlast env ret
       @pushclosure g tuple! dict!
       @append 'CALL_FUNCTION' 0
