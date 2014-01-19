@@ -16,6 +16,10 @@
     <![endif]-->
 
     <style type="text/css">
+      h3 {
+        margin-top: 40px;
+      }
+
       h5 {
         font-weight: bold;
       }
@@ -42,8 +46,13 @@
         color: #0058a2;
       }
 
-      @media screen and (max-width: 425px)
-      {
+      @media screen and (min-width: 768px) {
+        h3 {
+          margin-left: -15px;
+        }
+      }
+
+      @media screen and (max-width: 425px) {
         .serious-dawg, .serious-dawg-lead {
           display: none;
         }
@@ -59,18 +68,8 @@
       </div>
 
       <div class="row">
-        <div class="col-sm-10 col-sm-offset-1">
-          <div id="installation" class="section">@@installation</div>
-          <div id="introduction" class="section">@@introduction</div>
-          <div id="literals"     class="section">@@literals</div>
-          <div id="functions"    class="section">@@functions</div>
-          <div id="operators"    class="section">@@operators</div>
-          <div id="modules"      class="section">@@modules</div>
-          <div id="conditionals" class="section">@@conditionals</div>
-          <div id="exceptions"   class="section">@@exceptions</div>
-          <div id="objects"      class="section">@@objects</div>
-          <div id="imperative"   class="section">@@imperative</div>
-          <div id="builtins"     class="section">@@builtins</div>
+        <div class="col-sm-12 col-md-10 col-md-offset-1">
+          @@index
         </div>
       </div>
 
