@@ -7,18 +7,6 @@ A (technically) simple language that compiles to CPython bytecode.
 CPython 3.3 or 3.4 or any other Python VM with equivalent bytecode
 (i.e. PyPy, although it does not implement Python 3.3 yet.)
 
-#### Why not Python 3.2?
-
-dg can be modified to support 3.2, but what's the point? If there was
-a JIT-enabled PyPy 3.2 that could be a possibility, though.
-
-Anyway, a list of differences:
-
-  * 3.2's `runpy` cannot use module loaders to import __main__. Therefore, a __main__.py is needed; it should remove `dg.__main__` from `sys.modules`, then reimport it.
-  * 3.2 does not have a `FileFinder` in its importlib; a simple meta path finder is required. Also, `importlib.machinery.SourceFileLoader` is `importlib._bootstrap._SourceFileLoader`.
-  * `__qualname__` wasn't introduced until 3.3. In 3.2, `MAKE_CLOSURE` takes one less item from the stack.
-  * `sys.implementation.cache_tag` did not exist, either. `platform.python_implementation().lower() + '-32'` may be used for something similar.
-
 ### Installation
 
 ```sh
