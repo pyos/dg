@@ -311,7 +311,7 @@ Compiler = subclass CodeType where
     # Blindly copied from Python by `diff`ing
     # disassembly of code with `finally` and without one.
     with @jump 'SETUP_FINALLY' delta: +3 =>
-      @except_main name try cases
+      @pushexcept name try cases
       @append 'POP_BLOCK'
       @pushconst None
     @pushast finally
