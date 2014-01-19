@@ -66,11 +66,11 @@ Parser = subclass collections.deque where
   regex = re.compile r'''(?isx)
     (?P<space>  [^\S\n]+|\s*\#[^\n]*)
    |(?P<const>  [+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|[0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?j?))
-   |(?P<str>    (?P<flags>br|r?b?)(?P<quote>['"]{3}|['"])(?P<content>(?:\\?.)*?)\5)
+   |(?P<str>    (?P<flags>br|r?b?)(?P<quote>['"]{3}|['"])(?P<content>(?:\\.|[^\\])*?)\5)
+   |(?P<strerr> (?:br|r?b?)['"])
    |(?P<name>   \w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+)|(,+)|\s*(\n)(\ *)|`(\w+'*)`)
    |(?P<block>  \()
    |(?P<end>    \))
-   |(?P<strerr> ['"])
    |.
   '''
 
@@ -94,7 +94,7 @@ Parser = subclass collections.deque where
          m.group 'flags' + x + m.group 'content' + x
 
        f == 'name' =>
-         x, a, b, c, d, e = m.group 7 8 9 10 11 12
+         x, a, b, c, d, e = m.group 8 9 10 11 12 13
 
          c =>
            # Handling indentation here is more efficient.
@@ -143,7 +143,7 @@ Parser = subclass collections.deque where
   #: block :: (str, int, int, str) (Node -> bool) (Optional bool) -> Node
   #:
   block = pos end closed: True ~>
-    result = Constant tuple! at: pos
+    result = Constant at: pos $ if (closed => tuple!) (otherwise => None)
     isexpr = False
     x      = next self
 
@@ -256,12 +256,12 @@ Parser = subclass collections.deque where
       x = @infix x (@block x.loc ('=>' ==)) (next self)
 
     x.spec_b =>
-      arg = @block x.loc $ y ->
+      arg = @block x.loc closed: False $ y ->
         end = y :: Ending or y == '\n'
         end => @append y
         end
 
-      arg != Constant tuple! =>
+      arg != Constant None =>
          x = @infix (Name '' infix: True varary: True at: arg.loc) x arg
 
     x
