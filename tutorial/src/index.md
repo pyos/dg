@@ -584,6 +584,12 @@ dot_product = sum <- bind map (*)  #=> xs -> sum $ map (*) xs
 dot_product (1, 3, 5) (2, 4, 6)    #=> 44
 ```
 
+`::` is short for `isisinstance`:
+
+```dg
+(1, 2, 3) :: tuple
+```
+
 `takewhile` and `dropwhile` are imported from `itertools`:
 
 ```dg
