@@ -525,7 +525,7 @@ Compiler = subclass CodeType where
       path   = (posixpath.normpath name.value).split posixpath.sep
       while path and head path == ''           and not (path.pop 0) => parent  = 0
       while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
-      while path and head path == posixpath.curdir and  path.pop 0  => ()
+      while path and head path == posixpath.curdir and  path.pop 0  =>
       path or ERROR name 'this resolves to an empty name'
 
       if
@@ -664,6 +664,8 @@ Compiler = subclass CodeType where
     '->',    f args ~>  @pushfunction args $ Constant None at: f.loc
     '~>',    f args ~>  @pushmethod   args $ Constant None at: f.loc
     'where', f expr ~>  @pushast      expr  # Nothing to bind.
+    'while', f cond ~>  @pushcall f cond $ Constant None at: f.loc
+    'for',   f cond ~>  @pushcall f cond $ Constant None at: f.loc
 
   infixr = dict'
     ':', INVALID 'keyword argument to what?'
