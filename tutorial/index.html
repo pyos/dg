@@ -182,9 +182,6 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
 </pre></div>
 <p>If the value on the right side is a collection, it can be pattern-matched.</p><div class="highlight"><pre><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
 </pre></div>
-<p>Same thing for attributes of objects.</p><div class="highlight"><pre><span class="n">sys</span><span class="o">.</span><span class="n">ps1</span> <span class="o">=</span> <span class="s">&#39;doge wants &gt;&gt;&gt; &#39;</span>
-<span class="n">sys</span><span class="o">.</span><span class="n">ps2</span> <span class="o">=</span> <span class="s">&#39;much lines ... &#39;</span>
-</pre></div>
 <p>Global variables can only be modified from the top level. No <code>global</code> keyword for you!</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
 <span class="c1">#:</span>
 <span class="c1">#: It has some positional arguments!</span>
@@ -250,7 +247,8 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
 <span class="n">x</span> <span class="o">!!</span>  <span class="n">y</span>      <span class="c1"># get its value again</span>
 <span class="n">x</span> <span class="o">!!~</span> <span class="n">y</span>      <span class="c1"># and remove it</span>
 
-<span class="n">x</span><span class="o">.</span><span class="n">y</span>     <span class="c1"># attribute &#39;y&#39; of an object X</span>
+<span class="n">x</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">z</span> <span class="c1"># set attribute &#39;y&#39; of X to Z</span>
+<span class="n">x</span><span class="o">.</span><span class="n">y</span>     <span class="c1"># ooh, Z again!</span>
 <span class="n">x</span><span class="o">.~</span><span class="n">y</span>    <span class="c1"># remove that attribute</span>
 </pre></div>
 <p>Boolean logic:</p><div class="highlight"><pre><span class="n">x</span> <span class="ow">or</span> <span class="n">y</span>

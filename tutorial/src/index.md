@@ -244,13 +244,6 @@ If the value on the right side is a collection, it can be pattern-matched.
 very_pattern, so_two_items, *rest = 3 * 'wow', 5 * 'sleep', 1 * 'eat', 2 * 'woof'
 ```
 
-Same thing for attributes of objects.
-
-```dg
-sys.ps1 = 'doge wants >>> '
-sys.ps2 = 'much lines ... '
-```
-
 Global variables can only be modified from the top level. No `global` keyword for you!
 
 ### Creating functions
@@ -365,7 +358,8 @@ x !!  y = z  # set item Y of a collection X to Z
 x !!  y      # get its value again
 x !!~ y      # and remove it
 
-x.y     # attribute 'y' of an object X
+x.y = z # set attribute 'y' of X to Z
+x.y     # ooh, Z again!
 x.~y    # remove that attribute
 ```
 
