@@ -208,11 +208,11 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
 </pre></div>
 <p>No arguments, no problem.</p><div class="highlight"><pre><span class="n">useless_function</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&quot;Really useless.&quot;</span>
 </pre></div>
-<p>Functions always return the last value they evaluate.</p><div class="highlight"><pre><span class="n">definitelyNot4</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
+<p>Functions always return the last value they evaluate.</p><div class="highlight"><pre><span class="n">definitely_not_4</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
   <span class="n">x</span> <span class="o">+</span> <span class="mi">2</span>
   <span class="mi">4</span>
 
-<span class="n">definitelyNot4</span> <span class="mi">40</span>
+<span class="n">definitely_not_4</span> <span class="mi">40</span>
 </pre></div>
 <p>Decorators don't need special syntax anymore. Simply call them with a function.</p><div class="highlight"><pre><span class="n">wtf</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="o">$</span> <span class="o">-&gt;</span>
   <span class="nb">print</span> <span class="s">&quot;I know static methods don&#39;t make sense outside of a class,&quot;</span>

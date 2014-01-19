@@ -293,11 +293,11 @@ useless_function = -> print "Really useless."
 Functions always return the last value they evaluate.
 
 ```dg
-definitelyNot4 = x ->
+definitely_not_4 = x ->
   x + 2
   4
 
-definitelyNot4 40
+definitely_not_4 40
 ```
 
 Decorators don't need special syntax anymore. Simply call them with a function.
