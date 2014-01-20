@@ -45,16 +45,3 @@ save = code tag dirname ->
   # is an error in the compiler, so opening the file before finishing the
   # encoding process is undesirable.
   with fd = open (os.path.join dirname (tag + '.dgbundle')) 'wb' => fd.write data
-
-
-#: Find differences between two bundles.
-#:
-#: diff :: [CodeType] [CodeType] -> a
-#:
-diff = this that ->
-  fnl = dict $ map ((i, x) -> os.path.basename x.co_filename, (i, x)) $ enumerate this
-  fnr = dict $ map ((i, x) -> os.path.basename x.co_filename, (i, x)) $ enumerate that
-  for f in (fnr.keys! | fnl.keys!) => if
-    not $ f in fnl => yield (f, -2)  # added
-    not $ f in fnr => yield (f, -3)  # removed
-    snd (fnl !! f) != snd (fnr !! f) => yield (f, -1)  # changed

@@ -1,132 +1,70 @@
-import '/os'
 import '/sys'
+import '/runpy'
 import '/argparse'
 
-import 'PY_TAG'
-import 'PY_VERSION'
-import 'bundlesupport'
+import '/dg'
+import '/dg/core'
+import '/dg/addon/repl'
 
 
-msg = x ->
-  '''Log a diagnostic message.
+p = argparse.ArgumentParser formatter_class: argparse.RawDescriptionHelpFormatter add_help: False
+  prog:   'dg'
+  usage:  '%(prog)s [-h | -b | -c command | -m module | file] [arg ...]'
+  epilog: '''
 
-    msg :: str -> a
+Options and arguments:
 
-  '''
-  print x file: sys.stderr
+  -h           show this message and exit
+  -b           rebootstrap the compiler
+  -c command   run a single command, then exit
+  -m module    run a module (or a package's `__main__`) as a script
+  file         run a script
+  arg ...      additional arguments accessible through `sys.argv`
 
+Environment variables:
 
-ver = x lowest: 0x03030000 highest: 0x0304FFFF ->
-  '''Parse a Python `hexversion` and make sure it is high enough.
+  PYTHONSTARTUP     a Python file executed on interactive startup
+  PYTHONSTARTUPDG   same as PYTHONSTARTUP, only in dg
 
-    ver :: str (Optional int) (Optional int) -> int
+'''
 
-  '''
-  (q, y) where except
-    e =>
-      q, w = x.split ','
-      y = int w 16
-      y < lowest  => raise $ ValueError 'target version is too low'
-      y > highest => raise $ ValueError 'target version is too high'
-    e :: ValueError =>
-      raise $ argparse.ArgumentTypeError (str e)
-
-
-f = fn -> open fn encoding: 'utf-8' errors: 'strict'
-p = argparse.ArgumentParser prog: 'dg' description: 'An infix LISP atop CPython.'
-p.add_argument '-b' '--build' metavar: 'tag,version' nargs: '?'   type: ver help: 'rebuild a bundle' const: (PY_TAG, PY_VERSION)
-p.add_argument 'source'       metavar: 'file'        nargs: '?'   type: f   help: 'file to execute'  default: sys.stdin
-p.add_argument 'args'         metavar: '...'         nargs: '...'           help: 'additional arguments'
+g = p.add_mutually_exclusive_group required: False
+g.add_argument '-h'   help: argparse.SUPPRESS dest: 'help'    action: 'store_true'
+g.add_argument '-b'   help: argparse.SUPPRESS dest: 'build'   action: 'store_true'
+g.add_argument '-c'   help: argparse.SUPPRESS dest: 'command'
+g.add_argument '-m'   help: argparse.SUPPRESS dest: 'module'
+p.add_argument 'args' help: argparse.SUPPRESS nargs: argparse.REMAINDER
 ns = p.parse_args!
 
+if
+  ns.help  => p.print_help!
+  ns.build =>
+    print $ 'Target: {0} 0x{1:X}'.format dg.PY_TAG dg.PY_VERSION
+    this = core.load dg.PY_TAG dg.BUNDLE_DIR
 
-if ns.build =>
-  SOURCE_TREE = os.path.dirname __file__
-  SOURCE_DIR  = os.path.join SOURCE_TREE 'core'
-  BUNDLE_DIR  = os.path.join SOURCE_TREE 'bundle'
+    # Ideally, three iterations should be enough:
+    #   1. Make a bundle with new features.
+    #   2. Recompile it to apply these features to the compiler itself.
+    #   3. Check that the compiler can still support itself.
+    for i in range 1 4 =>
+      print 'Iteration:' i
+      that = list $ core.build this dg.PY_TAG dg.PY_VERSION
+      diff = that != this
+      this = that
 
-  # Ideally, three iterations should be enough:
-  #   1. Make a bundle with new features.
-  #   2. Recompile it to apply these features to the compiler itself.
-  #   3. Check that the compiler can still support itself.
-  iter_count = 1 + 2 * (fst ns.build == PY_TAG)
-
-  msg $ 'Rebuilding for: {0} 0x{1:X}'.format *: ns.build
-  msg $ 'Running on:     {0} 0x{1:X}'.format PY_TAG PY_VERSION
-  this = bundlesupport.load PY_TAG BUNDLE_DIR
-  diff = False
-
-  for i in range 1 (1 + iter_count) =>
-    msg $ 'Rebuilding, iteration {}/{}.'.format i iter_count
-    that = list $ bundlesupport.rebuild this (fst ns.build) (snd ns.build) SOURCE_DIR
-    diff = list $ bundlesupport.diff this that
-    for (f, st) in diff => if
-      st == -1  => msg $ '   {} differs.'.format f
-      st == -2  => msg $ '   {} created.'.format f
-      st == -3  => msg $ '   {} removed.'.format f
-      otherwise => msg $ '   {} moved to position {}.'.format f st
-    this = that
-
-  if
-    fst ns.build != PY_TAG =>
-      msg $ 'WARNING: Targeting a different interpreter.'
-      msg $ 'WARNING: Cannot run any more iterations.'
-    diff =>
+    if diff =>
       msg $ 'FATAL: Differences found during the last iteration.'
       msg $ 'FATAL: A compiler error was detected. Aborting.'
       exit 1
 
-  bundlesupport.save this (fst ns.build) BUNDLE_DIR
-  exit 0
+    core.save this dg.PY_TAG dg.BUNDLE_DIR
+    exit 0
 
-import 'compilefd'
-import 'Compiler'
-
-import 'parse'
-import 'Name'
-import 'LeftBind'
-import 'Expression'
-
-env = dict __name__: '__main__' __builtins__: __builtins__
-sys.argv = ns.args
-sys.argv.insert 0 $ if (ns.source is sys.stdin => '') (otherwise => ns.source.name)
-
-if not ns.source.isatty! =>
-  eval (compilefd ns.source) env
-  exit 0
-
-
-command = code -> except
-  e =>
-    res  = parse code '<stdin>'
-    expr = next $ dropwhile (e -> e :: Expression and not e.closed) $ iterate (x -> last x.args) res
-
-    # Tap `Return` twice to override any of these checks.
-    (code.endswith '\n' or not
-      # There may be an indented block in the next line if
-      #     1. the last operator has no right-hand side;
-      expr :: LeftBind and not expr.op.norhs or
-        #   2. the last expression is accessing a built-in, which
-        #      doesn't make sense (unlike a call to that built-in;)
-        expr :: Name and not expr.closed and expr.value in Compiler.prefix or
-          # 3. the last line of the code is indented.
-          (last $ code.rsplit '\n' 1).startswith ' '
-    ) => (Compiler '').work res
-
-  # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
-  e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None
-
-st = os.environ.get 'PYTHONSTARTUP' ''
-st and ns.source is sys.stdin and eval (compile ((open st).read -1) st 'exec') env
-
-sys.stdin = ns.source
-sys.ps1 = getattr sys 'ps1' '>>> '
-sys.ps2 = getattr sys 'ps2' '... '
-
-while True => except
-  e => sys.displayhook $ eval
-    next $ dropwhile not $ map command $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
-    env
-  e :: EOFError   => raise SystemExit
-  e :: SystemExit => raise e
-  e => sys.excepthook (type e) e e.__traceback__.tb_next
+  ns.command => repl.runcode $ dg.compile ns.command       where sys.argv = list ('-c':+ns.args)
+  ns.module  => runpy.run_module alter_sys: True ns.module where sys.argv = list ('-m':+ns.args)
+  otherwise  =>
+    sys.argv = ns.args
+    filedesc = if ns.args   => open encoding: 'utf-8' errors: 'strict' $ head ns.args
+                  otherwise => sys.stdin
+    if filedesc.isatty! => repl.runrepl filedesc startup: (filedesc is sys.stdin)
+       otherwise        => repl.runcode $ dg.compilefd filedesc

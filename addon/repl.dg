@@ -1,0 +1,75 @@
+import '/os'
+import '/sys'
+import '/builtins'
+
+import '../parse'
+import '../compilefd'
+import '../compileast'
+
+import '../Name'
+import '../Compiler'
+import '../LeftBind'
+import '../Expression'
+
+
+#: Compile a Python file.
+#:
+#: compilepyfd :: TextIOBase -> CodeType
+#:
+compilepyfd = fd filename: '<stream>' ->
+  compile (fd.read -1) (getattr fd 'name' filename) 'exec'
+
+
+#: Compile some dg code iff it's a complete statement; return None otherwise.
+#:
+#: compilerepl :: str -> Maybe CodeObject
+#:
+compilerepl = source -> except
+  e =>
+    tree = parse source '<stdin>'
+    expr = next $ dropwhile (x -> x :: Expression and not x.closed) $
+                  iterate   (x -> last x.args) tree
+
+    # Tap `Return` twice to override any of these checks.
+    done = source.endswith '\n' or not
+      # There may be an indented block in the next line if
+      #     1. the last operator has no right-hand side;
+      expr :: LeftBind and not expr.op.norhs or
+        #   2. the last expression is accessing a built-in, which
+        #      doesn't make sense (unlike a call to that built-in;)
+        expr :: Name and not expr.closed and expr.value in Compiler.prefix or
+          # 3. the last line of the code is indented.
+          (last $ source.rsplit '\n' 1).startswith ' '
+
+    if done => compileast tree
+  # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
+  e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None
+
+
+#: Execute a single code object in a new environment.
+#:
+#: runcode :: CodeType -> _|_
+#:
+runcode = code -> eval code $ dict __name__: '__main__' __builtins__: builtins
+
+
+#: Start a REPL.
+#:
+#: runrepl :: TextIOBase -> _|_
+#:
+runrepl = fd environ: (dict __name__: '__main__' builtins: __builtins__) startup: False ->
+  startup => if
+    startup = os.environ.get 'PYTHONSTARTUPDG' '' => runcode $ compilefd   $ open startup
+    startup = os.environ.get 'PYTHONSTARTUP'   '' => runcode $ compilepyfd $ open startup
+
+  sys.stdin = fd
+  sys.ps1 = getattr sys 'ps1' '>>> '
+  sys.ps2 = getattr sys 'ps2' '... '
+  enveval = bind (flip eval) environ
+
+  while True => except
+    e => sys.displayhook $ enveval $ next $ dropwhile not $
+      map compilerepl $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
+    e :: EOFError   => raise SystemExit
+    e :: SystemExit => raise e
+    e => sys.excepthook (type e) e e.__traceback__.tb_next
