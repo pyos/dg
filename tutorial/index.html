@@ -76,18 +76,10 @@
         <div class="col-sm-12 col-md-10 col-md-offset-1">
           <h3>Installation</h3><p>Freaking easy:</p><ol><li>download the compiler (why don't you look at the <a href="..">index page</a> for that?);</li><li>put the "dg" directory somewhere in <code>$PYTHONPATH</code>, or <code>/usr/lib/python3.*/site-packages/</code>, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.</li></ol><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre>python3 -m dg  <span class="c"># REPL!</span>
 python3 -m dg file.dg --do-something-useful-this-time  <span class="c"># Script!</span>
+python3 -m dg -m module  <span class="c"># Module! (Or package!)</span>
+python3 -m dg -c <span class="s1">&#39;print &quot;Command!&quot;&#39;</span>
 </pre></div>
-<h5>Q: How to run some code from a shell?</h5><p>A: Use your shell's herestring/heredoc.</p><div class="highlight"><pre>python3 -m dg <span class="o">&lt;&lt;&lt;</span> <span class="s2">&quot;some code&quot;</span>
-</pre></div>
-<h5>Q: How to run some code from a shell <em>and</em> be able to use stdin?</h5><p>A: ...</p><h5>Q: Is it possible to run dg modules with <code>python -m</code>?</h5><p>Modules? No. Packages? Yes. Here's an example package in dg:</p><pre>mypackage
-|- __init__.py
-|- __main__.dg
-|- submodule.dg
-\- subpackage/
-   |- module1.dg
-   \- module2.dg</pre><p>Put this in <code>__init__.py</code>:</p><div class="highlight"><pre><span class="kn">import</span> <span class="nn">dg</span>
-</pre></div>
-<p>Done! Now <code>python -m mypackage</code> will run <code>mypackage.__main__</code>.</p><h3>Comments</h3><div class="highlight"><pre><span class="c1"># sh-style. Know what I&#39;m saying?</span>
+<p><code>dg [-X extension ...] [-h | -b | -c command | -m module | file] [arg ...]</code></p><p><strong>Options and arguments:</strong></p><ul><li><code>-h</code>: show this message and exit</li><li><code>-b</code>: rebootstrap the compiler</li><li><code>-X extension</code>: enable compile-time macros from a specific module</li><li><code>-c command</code>: run a single command, then exit</li><li><code>-m module</code>: run a module (or a package's <code>__main__</code>) as a script</li><li><code>file</code>: run a script</li><li><code>arg ...</code>: additional arguments accessible through <code>sys.argv</code></li></ul><p><strong>Environment variables:</strong></p><ul><li><code>PYTHONSTARTUP</code>     a Python file executed on interactive startup</li><li><code>PYTHONSTARTUPDG</code>   same as PYTHONSTARTUP, only in dg</li></ul><h3>Comments</h3><div class="highlight"><pre><span class="c1"># sh-style. Know what I&#39;m saying?</span>
 </pre></div>
 <p>You probably know about docstrings. What you don't know is that they look
 nothing like Python docstrings. Sphinx users may recognise this, though.</p><div class="highlight"><pre><span class="c1">#: Do something with an argument.</span>

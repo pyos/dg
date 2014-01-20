@@ -12,41 +12,27 @@ Even easier.
 ```bash
 python3 -m dg  # REPL!
 python3 -m dg file.dg --do-something-useful-this-time  # Script!
+python3 -m dg -m module  # Module! (Or package!)
+python3 -m dg -c 'print "Command!"'
 ```
 
-##### Q: How to run some code from a shell?
+`dg [-X extension ...] [-h | -b | -c command | -m module | file] [arg ...]`
 
-A: Use your shell's herestring/heredoc.
+**Options and arguments:**
 
-```bash
-python3 -m dg <<< "some code"
-```
+  * `-h`: show this message and exit
+  * `-b`: rebootstrap the compiler
+  * `-X extension`: enable compile-time macros from a specific module
+  * `-c command`: run a single command, then exit
+  * `-m module`: run a module (or a package's `__main__`) as a script
+  * `file`: run a script
+  * `arg ...`: additional arguments accessible through `sys.argv`
 
-##### Q: How to run some code from a shell *and* be able to use stdin?
+**Environment variables:**
 
-A: ...
+  * `PYTHONSTARTUP`     a Python file executed on interactive startup
+  * `PYTHONSTARTUPDG`   same as PYTHONSTARTUP, only in dg
 
-##### Q: Is it possible to run dg modules with `python -m`?
-
-Modules? No. Packages? Yes. Here's an example package in dg:
-
-```
-mypackage
-|- __init__.py
-|- __main__.dg
-|- submodule.dg
-\- subpackage/
-   |- module1.dg
-   \- module2.dg
-```
-
-Put this in `__init__.py`:
-
-```python
-import dg
-```
-
-Done! Now `python -m mypackage` will run `mypackage.__main__`.
 
 ### Comments
 
