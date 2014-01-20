@@ -717,7 +717,7 @@ Compiler = subclass CodeType where
     '!',     f func ~> (@pushast func, @append 'CALL_FUNCTION')
     '->',    f args ~>  @pushfunction args $ Constant None at: f.loc
     '~>',    f args ~>  @pushmethod   args $ Constant None at: f.loc
-    'where', f expr ~>  @pushast      expr  # Nothing to bind.
+    'where', f expr ~> (@infixr !! 'where') self f expr
     'while', f cond ~>  @pushcall f cond $ Constant None at: f.loc
     'for',   f cond ~>  @pushcall f cond $ Constant None at: f.loc
 
