@@ -1,0 +1,60 @@
+import '/os'
+import '/marshal'
+
+
+#: Recompile this directory.
+#:
+#: old     -- the current version of the bundle.
+#: tag     -- `sys.implementation.cache_tag` of the target.
+#: version -- `sys.hexversion` of the target.
+#:
+#: build :: [CodeType] str int -> [CodeType]
+#:
+build = old tag version ->
+  ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version
+  for c in old => eval c ns
+  for d in __path__ =>
+    for f in sorted (os.listdir d) => if not $ f.startswith '_' =>
+      with fd = open (os.path.join d f) 'r' =>
+        yield $ (ns !! 'compilefd') fd
+
+
+#: Load an existing bundle.
+#:
+#: tag     -- `sys.implementation.cache_tag` of the target interpreter.
+#: dirname -- path to the directory with bundles.
+#:
+#: load :: str str -> [CodeType]
+#:
+load = tag dirname ->
+  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'rb' => marshal.load fd
+
+
+#: Write the compiled code bundle as returned by `rebuild`.
+#:
+#: tag     -- `sys.implementation.cache_tag` of the target interpreter.
+#: dirname -- path to the directory with bundles.
+#:
+#: save :: [CodeType] str str -> a
+#:
+save = code tag dirname ->
+  data = marshal.dumps code
+  os.makedirs dirname exist_ok: True
+  # Note that `marshal.dump` may raise an exception mid-file,
+  # leaving the bundle in a corrupted state. That generally means there
+  # is an error in the compiler, so opening the file before finishing the
+  # encoding process is undesirable.
+  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'wb' => fd.write data
+
+
+#: Find differences between two bundles.
+#:
+#: diff :: [CodeType] [CodeType] -> a
+#:
+diff = this that ->
+  fnl = dict $ map ((i, x) -> os.path.basename x.co_filename, (i, x)) $ enumerate this
+  fnr = dict $ map ((i, x) -> os.path.basename x.co_filename, (i, x)) $ enumerate that
+  for f in (fnr.keys! | fnl.keys!) => if
+    not $ f in fnl => yield (f, -2)  # added
+    not $ f in fnr => yield (f, -3)  # removed
+    snd (fnl !! f) != snd (fnr !! f) => yield (f, -1)  # changed
