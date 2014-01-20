@@ -714,7 +714,7 @@ Compiler = subclass CodeType where
     '@', INVALID 'this operator is prefix'
 
     ',',     f item ~> (@pushast item, @append 'BUILD_TUPLE' 1)
-    '!',     f func ~> (@pushast func, @append 'CALL_FUNCTION')
+    '!',     f func ~>  @pushcall func
     '->',    f args ~>  @pushfunction args $ Constant None at: f.loc
     '~>',    f args ~>  @pushmethod   args $ Constant None at: f.loc
     'where', f expr ~> (@infixr !! 'where') self f expr
