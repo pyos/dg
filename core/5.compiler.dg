@@ -1,3 +1,4 @@
+import '/importlib'
 import '/itertools'
 import '/posixpath'
 
@@ -182,6 +183,15 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
 
 
 Compiler = subclass CodeType where
+  #: Load `infixl`, `infixr`, and `prefix` macros from a module.
+  #:
+  #: extend :: str -> a
+  #:
+  extend = classmethod $ mod ~>
+    @infixl.update $ getattr mod 'infixl' dict!
+    @infixr.update $ getattr mod 'infixr' dict!
+    @prefix.update $ getattr mod 'prefix' dict!
+
   #: Note where this code object starts in the source code.
   #:
   #: setfile :: Node -> a
@@ -560,11 +570,16 @@ Compiler = subclass CodeType where
     #: import '/dg/addon/fork'       imports 'fork' from package 'dg.addon'
     #: import 'markup'               imports 'markup' from the current package
     #:
-    'import', ARGCOUNT 1 max: 2 $ f (name, *qual) ~>
-      qual, = qual or (None,)
+    'import', ARGCOUNT 1 max: ANY $ f (name, *flags) ~>
       name       :: Constant or ERROR name 'module names should be known at compile time'
       name.value :: str      or ERROR name 'module names are strings'
-      qual in (None, 'qualified') or ERROR qual 'what is this?'
+      qual  = False
+      macro = False
+
+      for flag in flags => if
+        flag == 'qualified' => qual  = True
+        flag == 'extension' => macro = True
+        otherwise => ERROR flag 'unsupported import flag'
 
       parent = 1
       path   = (posixpath.normpath name.value).split posixpath.sep
@@ -588,6 +603,28 @@ Compiler = subclass CodeType where
           @append    'IMPORT_FROM' delta:  1 $ @names !! file
           @append    'ROT_TWO'     delta:  0
           @append    'POP_TOP'     delta: -1
+
+      if macro =>
+        # First, check if the path specified is a module or is actually
+        # a global within that module.
+        mod = except
+          err => importlib.import_module $ '.'.join path
+          err :: ImportError => ERROR name 'extensions must be importable'
+
+        if not $ mod :: types.ModuleType => mod = except
+          err => importlib.import_module $ '.'join $ init path
+          err :: ImportError => ERROR name 'extensions must be importable'
+
+        # Replacing `__class__` allows subcells to inherit these changes.
+        @__class__ = subclass @__class__ where
+          infixl = @infixl.copy!
+          infixr = @infixr.copy!
+          prefix = @prefix.copy!
+        # If the module is `m` in package `a.b.c`, the macros are in
+        # `m-macro` from `a.b.c`. E.g. `a/b/c/m-macro.dg`.
+        @__class__.extend $ except
+          err => importlib.import_module $ '.'.join path + '-macro'
+          err :: ImportError => ERROR name 'this module has no compiler extensions'
 
       @append 'DUP_TOP' delta: +1
       @popast $ Name $ path !! (-not qual)
