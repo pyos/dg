@@ -45,6 +45,20 @@ ARGCOUNT = min fn max: None -> if
     otherwise               => fn self f args
 
 
+#: A wrapper for `spec_b` handlers. See `parser.dg` for a description of what that is.
+#:
+#: SPECB :: (Node [(Node, Node)] -> a) -> (Node [Node] -> a)
+#:
+SPECB = fn -> self f xs ->
+  if len xs == 1 and head xs :: Expression and (head xs).op == '' => xs = (head xs).args
+  fn self f $ list
+    where for x in xs => yield $ if
+      x :: RightBind  and x.op == '=>' => ERROR x "where's the condition?"
+      x :: LeftBind   and x.op == '=>' => (head x.args, Constant None)
+      x :: Expression and x.op == '=>' => x.args
+      otherwise => ERROR x "expected a `condition => action` statement"
+
+
 # Common prefix functions. See `Generator.prefix`.
 INVALID    = x -> f _  ~> ERROR f x
 COLLECTION = x -> f xs ~> (@pushlist xs, @append x (len xs) $ 1 - len xs)
@@ -670,13 +684,22 @@ Compiler = subclass CodeType where
       @pushast it
       @append  'YIELD_VALUE'
 
+    'if', SPECB $ f xs ~>
+      jumps = list
+        where for (cond, action) in xs => yield $
+          @pushast cond
+          with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+            @pushast action
+            @jump 'JUMP_FORWARD' delta: -1
+      @pushconst None
+      for x in jumps => x.set
+
     'raise', ARGCOUNT 1 $ f (exc,) ~>
       # TODO __cause__
       @pushast exc
       @append  'RAISE_VARARGS' 1 # There's nothing on the stack, but nobody will notice.
 
-    'except', ARGCOUNT 1 max: ANY $ f cases ~>
-      (name, try), *xs = if_syntax cases
+    'except', ARGCOUNT 1 max: ANY $ SPECB $ f ((name, try), *xs) ~>
       @pushconst None
       @depth +7  # A very pessimistic estimate.
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
