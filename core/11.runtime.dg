@@ -80,18 +80,12 @@ builtins.__dict__.update locals! where
   #:
   #: I bet you didn't even know __build_class__ existed.
   #:
-  #: _ :: str (dict str object) (Maybe str: str str *type type **(dict str object) -> type
+  #: _ :: str (dict str object) (Maybe str) str str *type **(dict str object) -> type
   #:
-  __dg_build_class__ = module attrs doc qualname name *: bases metaclass: type **: kwds ->
-    for q in bases => if
-      issubclass metaclass (type q) => None
-      issubclass (type q) metaclass => metaclass = type q
-      otherwise => raise $ TypeError 'metaclass conflict'
-
-    data = metaclass.__prepare__ name bases **: kwds
-    data.update   attrs
-    data.update $ dict __doc__: doc __qualname__: qualname __module__: module
-    metaclass name bases data **: kwds
+  __dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
+    types.new_class name bases kwds $ ns ->
+      ns.update attrs
+      ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
 
 
 ModuleLoader = subclass machinery.SourceFileLoader where if
