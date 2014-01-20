@@ -10,14 +10,26 @@ ANY = float 'inf'
 #:
 #: compile :: str (Optional str) -> types.CodeType
 #:
-compile = data filename: '<string>' -> (Compiler '').work $ parse data filename
+compile = data filename: '<string>' -> compileast $ parse data filename
 
 
 #: Compile the contents of a file-like object.
 #:
 #: compilefd :: TextIOBase (Optional str) -> types.CodeType
 #:
-compilefd = fd filename: '<stream>' -> (Compiler '').work $ parsefd fd filename
+compilefd = fd filename: '<stream>' -> compileast $ parsefd fd filename
+
+
+#: Compile an AST into Python bytecode.
+#:
+#: compileast :: Node -> types.CodeType
+#:
+compileast = x ->
+  self = Compiler ''
+  @setfile x
+  @pushast x
+  @append  'RETURN_VALUE' delta: -1
+  @frozen
 
 
 #: Raise a SyntaxError.
@@ -170,16 +182,6 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
 
 
 Compiler = subclass CodeType where
-  #: Compile an AST into Python bytecode.
-  #:
-  #: work :: Node -> types.CodeType
-  #:
-  work = x ~>
-    @setfile x
-    @pushast x
-    @append  'RETURN_VALUE' delta: -1
-    @frozen
-
   #: Note where this code object starts in the source code.
   #:
   #: setfile :: Node -> a
