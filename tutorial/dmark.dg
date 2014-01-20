@@ -1,163 +1,85 @@
-import '/sys/stdin'
 import '/re/compile'
 import '/itertools/groupby'
-import '/collections/deque'
 import '/xml/sax/saxutils/escape'
 
-except
-  e =>
-    import '/pygments/lexers'     qualified
-    import '/pygments/formatters' qualified
-  e :: ImportError => ()
+import '/pygments/lexers'     qualified
+import '/pygments/formatters' qualified
 
 
-# etail :: ({ pop :: -> a }, a) -> iter [a]
-#
-# Pop elements from the end of a sequence until `elem` is encountered.
-#
-etail = seq elem -> takewhile (_ -> seq.pop! != elem) $ reversed $ list seq
+parse = x ->
+  '''Convert a markdownish text into HTML.
 
-# strip :: MatchObject -> str
-#
-# Get everything after the end of a regex match.
-#
-strip = m -> ''.join $ drop m.end! m.string
+    parse :: str -> str
 
-# inline :: (* -> str) -> (MatchObject, deque str) -> str
-#
-# Call a function with matched regex groups.
-#
-inline = f -> match stack -> f *: (filter (:: str) match.groups!)
-
-# wrapped :: (str, str) -> (MatchObject, deque str) -> str
-#
-# Open a tag on first call, close it (and everything inside) on second call.
-#
-wrapped = start end -> match stack -> if
-  end in stack => ''.join (etail stack end) + end
-  otherwise    => stack.append end or start
+  '''
+  stage1 $ iter x.splitlines!
 
 
-i_re = compile $ ''.join $ list'
-  '(?i)'
-  r'(?P<code>(`+)(.*?)\2)'  # NOTE:: `\2` should point to ``(`+)``
-  r'|(?P<strong>\*\*|__)'
-  r'|(?P<emphasis>\*|_)'
-  r'|(?P<deleted>~~)'
+highlight = lang code formatter: pygments.formatters.HtmlFormatter! ->
+  '''Highlight a piece of code with Pygments. (Or simply wrap it in <pre> tags.)
 
-  r'|\b(?P<youtube>http://(?:www\.)?youtube\.com/watch\?v=([a-z0-9_-]+)[&=\d\w]*)'
-  r'|\b(?P<generic>[a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%\d{2}|\([^\s(<>)"\']+\))+)'
-  r'|\b(?P<email>[\w\.%+-]+@[\w\.-]+\.\w{2,4})\b'
-  r'|(?P<namedlink>\[(.*?)\]\(((?:[^()]+|\(.*?\)|[^)])*)\))'
+    highlight :: (Maybe str) str (Optional Formatter) -> str
 
-  r'|(?P<escape>\\(.))'
-  r'|(?P<text>[\w-]*[^\W_-]|.)'
+  '''
+  except e => pygments.highlight code (pygments.lexers.get_lexer_by_name lang) formatter
+         e => '<pre>{}</pre>'.format $ escape code
 
 
-# i_subst :: dict str ((MatchObject, deque str) -> str)
-#
-# Map group names to token handlers.
-# The first argument is a regex match (obviously.)
-# The second argument is a deque of tags to be closed.
-#
-i_subst = dict'
-  'code',      inline '<code>{2}</code>'.format
-  'strong',    wrapped '<strong>' '</strong>'
-  'emphasis',  wrapped '<em>'     '</em>'
-  'deleted',   wrapped '<del>'    '</del>'
-
-  'youtube',   inline '<iframe width="560" height="315" frameborder="0" allowfullscreen src="http://youtube.com/embed/{1}"></iframe>'.format
-  'generic',   inline '<a href="{0}">{0}</a>'.format
-  'namedlink', inline '<a href="{2}">{1}</a>'.format
-  'email',     inline '<a href="mailto:{0}">{0}</a>'.format
-
-  'escape',    inline '{1}'.format
-  'text',      inline '{0}'.format
+stage1re = compile r'''(?isx)
+   (?P<fenced> ```)
+  |(?P<code>   \ {4}|\t)
+  |(?P<rule>   \s*([*-]\s*){3,}$)
+  |(?P<ol>     \s*\d+\.\s+)
+  |(?P<ul>     \s*[*+-]\s+)
+  |(?P<h>      \s*(?P<h_size>\#{1,6})\s*)
+  |(?P<quote>  \s*>)
+  |(?P<break>  \s*$)
+  |(?P<p>      \s*)
+'''
 
 
-# i_parse :: str -> str
-#
-# Substitute matches of `i_re` with contents of `i_subst`.
-#
-i_parse = line ->
-  stack = deque!
-  i_re.sub (m -> (i_subst !! m.lastgroup) m stack) (escape line) + ''.join (reversed stack)
+stage2re = compile r'''(?isx)
+   (?P<code>      (`+) (?P<code_>        . +?) \2)
+  |(?P<bold>      \*\* (?P<bold_>  (?:\\?.)+?) \*\*)
+  |(?P<italic>    \*   (?P<italic_>(?:\\?.)+?) \*)
+  |(?P<strike>    ~~   (?P<strike_>(?:\\?.)+?) ~~)
+  |(?P<invert>    %%   (?P<invert_>(?:\\?.)+?) %%)
+  # Not sure what this shitty group matches. IIRC, I "borrowed" it from Tornado.
+  |(?P<hyperlink> \b[a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%[0-9a-f]{2}|\([^\s(<>)"\']+\))+)
+  |(?P<namedlink> \[(?P<link_name>.*?)\]\((?P<link_href>(?:[^()]+|\(.*?\)|[^)])*)\))
+  |(?P<text>      [\w-]*[^\W_-])
+  |(?P<escape>    \\?(?P<escaped>.))
+'''
 
 
-# block :: (str, str, Maybe str) -> (iter [str], iter [str]) -> str
-#
-# Apply `i_parse` to each line, then join them with a separator,
-# then wrap the result in a pair of tags.
-#
-# If separator is `None` rather than an empty string, the text is split into
-# blocks a second time.
-#
-block = start end separator -> tokens block ->
-  text = map strip block
-  html = map i_parse text
-  start + (if (separator is None => parse text) (otherwise => separator.join html)) + end
+stage1 = xs -> ''.join $ map
+  (g, zs) ->
+    ys = map (m -> m.string !! slice m.end! None) zs
+    if g == 'break'  => ''
+       g == 'rule'   => '<hr />'
+       g == 'quote'  => '<blockquote>{}</blockquote>'.format $ stage1 ys
+       g == 'p'      => '<p>{}</p>'                  .format $ stage2 $ '\n'.join ys
+       g == 'code'   => '<pre>{}</pre>'              .format $ escape $ '\n'.join ys
+       g == 'ul'     => '<ul><li>{}</li></ul>'       .format $ '</li><li>'.join $ map stage2 ys
+       g == 'ol'     => '<ol><li>{}</li></ol>'       .format $ '</li><li>'.join $ map stage2 ys
+       g == 'fenced' => highlight (next ys) $ '\n'.join $ takewhile (x -> not $ x.startswith '```') xs
+       g == 'h'      => ''.join
+         where for m in zs => yield $ '<h{1}>{0}</h{1}>'.format
+           stage2 $ m.string !! slice m.end! None
+           len $ m.group 'h_size'
+  groupby (map stage1re.match xs) (m -> m.lastgroup)
 
 
-# highlight :: (str, str) -> str
-#
-# Apply syntax highlighting to a piece of code.
-#
-highlight = lang code -> except
-  e => pygments.highlight code
-    pygments.lexers.get_lexer_by_name lang
-    pygments.formatters.HtmlFormatter!
-  e :: Exception => '<pre>{}</pre>'.format (escape code)
-
-
-g_re = compile $ ''.join $ list'
-  '(?i)'
-  r'(?P<fenced>```)'
-  r'|(?P<code> {4}|\t)'
-  r'|(?P<rule>([*-]\s*){3,}$)'
-  r'|(?P<ol>\s*\d+\.\s+)'
-  r'|(?P<ul>\s*[*+-]\s+)'
-  r'|(?P<h>\s*(#{1,6})\s*)'
-  r'|(?P<quote>\s*>)'
-  r'|(?P<break>\s*$)'
-  r'|(?P<p>\s*)'
-
-
-# g_subst :: dict str ((iter [str], iter [str]) -> str)
-#
-# Map group names to token handlers.
-# The first argument is `g_re` applied to each line.
-# The second argument is the same thing, but stops upon reaching a block
-# of a different kind.
-#
-g_subst = dict'
-  'quote',  block '<blockquote>' '</blockquote>' None
-  'ol',     block '<ol><li>'     '</li></ol>'    '</li><li>'
-  'ul',     block '<ul><li>'     '</li></ul>'    '</li><li>'
-  'p',      block '<p>'          '</p>'          '\n'
-
-  'break',  tokens block -> ''
-  'rule',   tokens block -> '<hr />'
-  'code',   tokens block -> highlight '' $ '\n'.join $ map strip block
-  'fenced', tokens block -> highlight
-    (strip $ next block).strip!
-    '\n'.join $ map (`getattr` 'string') $ takewhile (m -> m.lastgroup != 'fenced') tokens
-
-  'h',      tokens block -> ''.join $ map
-    match -> '<h{0}>{1}</h{0}>'.format
-      len $ next $ drop 1 $ filter (:: str) match.groups!
-      i_parse $ strip match
-    block
-
-
-# parse :: Either str (iter [str]) -> str
-#
-# Parse a string or an iterable of lines as pseudomarkdown text.
-#
-parse = text ->
-  types = map g_re.match $ if (text :: str => text.splitlines!) (otherwise => text)
-  ''.join $ map
-    (kind, block) -> (g_subst !! kind) types block
-    groupby types (`getattr` 'lastgroup')
-
-
-__name__ == '__main__' => print $ parse $ stdin.read -1
+stage2 = x -> stage2re.sub
+  m ->
+    g = m.lastgroup
+    if g == 'text'      => m.group 0
+       g == 'escape'    => m.group 'escaped'
+       g == 'bold'      => '<strong>{}</strong>'            .format $ stage2 $ m.group 'bold_'
+       g == 'italic'    => '<em>{}</em>'                    .format $ stage2 $ m.group 'italic_'
+       g == 'invert'    => '<span class="spoiler">{}</span>'.format $ stage2 $ m.group 'invert_'
+       g == 'strike'    => '<del>{}</del>'                  .format $ stage2 $ m.group 'strike_'
+       g == 'code'      => '<code>{}</code>'                .format $          m.group 'code_'
+       g == 'hyperlink' => '<a href="{0}">{0}</a>'          .format $          m.group 'hyperlink'
+       g == 'namedlink' => '<a href="{0}">{1}</a>'          .format $ *: (m.group 'link_href' 'link_name')
+  escape x
