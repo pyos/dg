@@ -16,8 +16,7 @@ import '../Expression'
 #:
 #: compilepyfd :: TextIOBase -> CodeType
 #:
-compilepyfd = fd filename: '<stream>' ->
-  compile (fd.read -1) (getattr fd 'name' filename) 'exec'
+compilepyfd = fd filename: '<stream>' -> compile (fd.read -1) filename 'exec'
 
 
 #: Compile some dg code iff it's a complete statement; return None otherwise.
@@ -59,8 +58,8 @@ runcode = code -> eval code $ dict __name__: '__main__' __builtins__: builtins
 #:
 runrepl = fd environ: (dict __name__: '__main__' builtins: __builtins__) startup: False ->
   startup => if
-    startup = os.environ.get 'PYTHONSTARTUPDG' '' => runcode $ compilefd   $ open startup
-    startup = os.environ.get 'PYTHONSTARTUP'   '' => runcode $ compilepyfd $ open startup
+    fn = os.environ.get 'PYTHONSTARTUPDG' '' => runcode $ compilefd   (open fn) fn
+    fn = os.environ.get 'PYTHONSTARTUP'   '' => runcode $ compilepyfd (open fn) fn
 
   sys.stdin = fd
   sys.ps1 = getattr sys 'ps1' '>>> '

@@ -11,13 +11,9 @@ parse = data filename: '<string>' -> (DgParser data filename).file
 
 #: Parse the contents of a file-like object opened in text mode.
 #:
-#: Note that the `filename` argument is only used if the file-like object
-#: has no `name` attribute itself.
-#:
 #: parsefd :: TextIOBase (Optional str) -> Node
 #:
-parsefd = data filename: '<stream>' ->
-  parse (data.read -1) (getattr data 'name' filename)
+parsefd = data filename: '<stream>' -> parse (data.read -1) filename
 
 
 #: A recursive descent parser with a built-in regex-based tokenizer.
