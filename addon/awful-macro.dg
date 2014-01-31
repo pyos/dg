@@ -1,0 +1,89 @@
+import '/sys'
+import '/builtins'
+import '/readline'
+import '/traceback'
+
+colored = except
+  # `clint` recommended for maximum awesomeness.
+  err => import '/clint/textui/colored'
+  err => subclass object where
+    magenta = cyan = green =
+     yellow = blue = white =
+      black = red  = staticmethod $ x -> x
+
+
+#: Format a full traceback.
+#:
+#: tbformat :: type Exception TracebackType -> str
+#:
+tbformat = t value trace -> (+)
+  '\n'.join $ map tbformat.item (traceback.extract_tb trace)
+  '\n' + if
+    value :: SyntaxError => tbformat.syntax t value
+    otherwise            => tbformat.error  t value
+
+
+#: Format one line of a traceback.
+#:
+#: item :: (str, int, str, Maybe str) -> str
+#:
+tbformat.item = (f, ln, fn, txt) -> '  {} line {}{}{}'.format
+  colored.yellow $ f
+  colored.cyan   $ ln
+  # Do not show function name at top level.
+  if fn and fn != '<module>' => ' ({})'.format $ colored.white fn
+     otherwise => ''
+  # The file may not exist.
+  if txt is None => ''
+     otherwise   => ': ' + txt
+
+
+#: Format a standard error message.
+#:
+#: error :: type Exception -> str
+#:
+tbformat.error = t value -> '{}: {}'.format (colored.red t.__name__) value
+
+
+#: Like `error`, only for `SyntaxError`s. Should display where the error is.
+#:
+#: syntax :: type SyntaxError -> str
+#:
+tbformat.syntax = t value -> '{}\n{}: {}'.format
+  tbformat.item (value.filename, value.lineno, '', txt) where txt = if
+    not value.text or value.offset > len value.text => ''
+    otherwise => '{}{}{}\n{}^'.format
+      colored.white  $ str.lstrip $ value.text !! slice None (value.offset - 1)
+      colored.red    $              value.text !! (value.offset - 1)
+      colored.white  $ str.rstrip $ value.text !! slice value.offset None
+      ' ' * (len (value.filename + str value.lineno) + 9 + value.offset)
+  colored.red t.__name__
+  value.msg
+
+
+sys.displayhook = v original: sys.displayhook -> original $ if
+  # `exit` and `quit` should not need to be called when used from a REPL.
+  v is exit => v 0
+  v is quit => v 0
+  otherwise => v
+
+
+sys.excepthook = t v tb original: sys.excepthook -> except
+  err => print file: sys.stderr $ tbformat t v tb
+  # *Somebody* will surely find a way to break `Traceback`.
+  # Note that this will display the original traceback, too.
+  err => original (type err) err err.__traceback__
+
+
+Prompt = subclass object where
+  __init__ = self @text -> None
+  __str__  = self -> str $ if
+    builtins._ is None => colored.white @text
+    builtins._         => colored.green @text
+    otherwise          => colored.red   @text
+
+sys.ps1 = Prompt 'dg> '
+sys.ps2 = Prompt '  + '
+# `_` will only be set by `displayhook` after the first command.
+# The prompt requires it at the start, though.
+builtins._ = None

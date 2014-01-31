@@ -1,0 +1,2 @@
+# This file exists only to permit "import '/dg/addon/awful' extension".
+# The stuff you're looking for is in `awful-macro.dg`.
