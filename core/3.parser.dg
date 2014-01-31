@@ -6,11 +6,7 @@ import '/ast/literal_eval'
 #:
 #: parse :: str (Optional str) -> Node
 #:
-parse = data filename: '<string>' ->
-  p = Parser data filename
-  p.block (filename, 1, 1, head p.lines) closed: False $ x -> if
-    x is EOFTok => True
-    x :: Ending => p.error 'unexpected close-paren' x.loc
+parse = data filename: '<string>' -> (DgParser data filename).file
 
 
 #: Parse the contents of a file-like object opened in text mode.
@@ -35,104 +31,114 @@ parsefd = data filename: '<stream>' ->
 #:
 Parser = subclass collections.deque where
   __init__ = @data @filename ~>
-    @tokens  = @regex.finditer @data
-    @indent  = collections.deque $ list' 0
-    @lineno  = 1
-    @charno  = 1
-    @lines   = @data.split '\n'
+    @tokens = @regex.finditer @data
+    @indent = collections.deque $ list' 0
+    @lineno = 1
+    @charno = 1
+    @lines  = @data.split '\n'
     None
 
   __iter__ = self -> self
-  __next__ = self ->
-    if self => @pop!
-       otherwise => except
-         e =>
-           m   = next @tokens
-           g   = m.group!
-           pos = @filename, @lineno, @charno, @lines !! (@lineno - 1)
+  __next__ = self -> if
+    self      => @pop!
+    otherwise => except
+      err =>
+        match = next @tokens
+        text  = match.group 0
+        pos   = @location
 
-           '\n' in g => @charno = -g.rfind '\n'
-           @charno += len g
-           @lineno += g.count '\n'
-           @token pos m.lastgroup m
+        '\n' in text => @charno = -text.rfind '\n'
+        @charno += len text
+        @lineno += text.count '\n'
+        @token pos match.lastgroup match
+      err :: StopIteration => EOFTok
 
-         e :: StopIteration => EOFTok
+  #: Current location as a tuple.
+  #:
+  #: location :: (str, int, int, str)
+  #:
+  location = ~> (@filename, @lineno, @charno, @lines !! (@lineno - 1))
 
-  #: A big regex used to tokenize input text. Each top-level group
-  #: must have a handling branch in `token`, else `SyntaxError` is raised.
+  #: A regex used to tokenize input text.
   #:
   #: regex :: Re
   #:
-  regex = re.compile r'''(?isx)
-    (?P<space>  [^\S\n]+|\s*\#[^\n]*)
-   |(?P<const>  [+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|[0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?j?))
-   |(?P<str>    (?P<flags>br|r?b?)(?P<quote>['"]{3}|['"])(?P<content>(?:\\.|[^\\])*?)\5)
-   |(?P<strerr> (?:br|r?b?)['"])
-   |(?P<name>   \w+'*|\*+(?=:)|([!$%&*+\--/:<-@\\^|~;]+)|(,+)|\s*(\n)(\ *)|`(\w+'*)`)
-   |(?P<block>  \()
-   |(?P<end>    \))
-   |.
-  '''
-
-  # `Name`s that have the corresponding flags set.
-  # (`infixn` -> `infix`, but there's a method with that name below.)
-  spec_a = set' 'for' 'while' 'with'
-  spec_b = set' 'if' 'except'
-  nolhs  = set' '@' '~'
-  norhs  = set' '!'
-  infixn = set' 'and' 'in' 'is' 'or' 'where'
+  regex = re.compile r'''.'''
 
   #: Handle a single regex match.
   #:
   #: token :: (str, int, int, str) str MatchObject -> Node
   #:
-  token = pos f m ~>
-    if f == 'space' => next self
-       f == 'const' => Constant at: pos $ literal_eval $ m.group 0
-       f == 'str'   => Constant at: pos $ literal_eval $
-         x = 3 * m.group 'quote' !! 0
-         m.group 'flags' + x + m.group 'content' + x
+  token = pos groupname match ~> @error 'internal error: no grammar' pos
 
-       f == 'name' =>
-         x, a, b, c, d, e = m.group 8 9 10 11 12 13
+  #: Handle a parse error.
+  #:
+  #: error :: str (str, int, int, str) -> _|_
+  #:
+  error = staticmethod $ description at -> raise $ SyntaxError description at
 
-         c =>
-           # Handling indentation here is more efficient.
-           pos2  = @filename, @lineno, @charno, @lines !! (@lineno - 1)
-           level = len d
 
-           level > last @indent =>
-             @indent.append level
-             @append $ @block pos closed: False $ x ->
-               x :: Ending => x is Dedent or
-                 # Indented blocks can be ended with close-parens.
-                 # We have to account for a decrease in indentation, though.
-                 @indent.pop!
-                 # This may not be the only indented block that've ended.
-                 # A parenthesized one will take `x` off the stack.
-                 @append x
-               x :: Ending
+DgParser = subclass Parser where
+  regex = re.compile r'''(?isx)
+    (?P<space>  [^\S\n]+|\s*\#[^\n]*)
+   |(?P<number> [+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|[0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?j?))
+   |(?P<string> (?P<flags>br|r?b?)(['"]{3}|['"])(?P<content>(?:\\.|[^\\])*?)\5)
+   |(?P<strerr> (?:br|r?b?)['"])
+   |(?P<name>   \w+'*|\*+(?=:))
+   |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
+   |(?P<eol>    \s*\n(?P<indent>\ *))
+   |(?P<block>  \()
+   |(?P<end>    \))
+   |(?P<iname>  `(?P<iname_>\w+'*)`)
+   |.
+  '''
 
-           # `level >  last @indent` => the indented block was ended by a close-paren.
-           # `level == last @indent` => we're still parsing it.
-           while level < last @indent =>
-             @indent.pop!
-             @append $ Name '\n' infix: True varary: True at: pos
-             @append $ Dedent
-             last @indent < level => @error 'no matching indentation level' pos2
+  token = pos f m ~> if
+    f == 'space'  => next self
+    f == 'block'  => @block pos (== Ending ')')
+    f == 'end'    => Ending   at: pos ')'
+    f == 'name'   => Name     at: pos             $ m.group 0
+    f == 'infix'  => Name     at: pos infix: True $ m.group 0
+    f == 'iname'  => Name     at: pos infix: True $ m.group 'iname_'
+    f == 'number' => Constant at: pos $ literal_eval $ m.group 0
+    f == 'string' => Constant at: pos x where
+      f = m.group 'flags'
+      x = (m.group 'content').encode 'utf-8'
+      'r' in f or (x = bytes $ map ord $ x.decode 'unicode-escape')
+      'b' in f or (x = x.decode 'utf-8')
 
-         Name (c or e or x) at: pos
-           infix:  (bool $ a or b or c or e or x in infixn)
-           varary: (bool $ b or c)
-           nolhs:  (a in nolhs)
-           norhs:  (a in norhs)
-           spec_a: (x in spec_a)
-           spec_b: (x in spec_b)
+    f == 'eol' =>
+      level = len $ m.group 'indent'
 
-       f == 'block'  => @block pos (Ending ')' ==)
-       f == 'end'    => Ending ')' at: pos
-       f == 'strerr' => @error 'unexpected EOF while reading a string literal' pos
-       otherwise     => @error 'invalid character'                             pos
+      if level > last @indent =>
+        @indent.append level
+        @append $ @block pos closed: False $ x ->
+          x :: Ending => x is Dedent or
+            # Indented blocks can be ended with close-parens.
+            # We have to account for a decrease in indentation, though.
+            @indent.pop!
+            # A parenthesized block will take `x` off the stack.
+            @append x
+          x :: Ending
+
+      while level < last @indent =>
+        @indent.pop!
+        @append $ Name '\n' at: pos
+        @append $ Dedent
+        if level > last @indent => @error 'no matching indentation level' @location
+
+      Name '\n' at: pos
+
+    f == 'strerr' => @error 'unexpected EOF in a string literal' pos
+    otherwise     => @error 'invalid character'                  pos
+
+  #: Parse a complete file.
+  #:
+  #: file :: Node
+  #:
+  file = ~> @block (@filename, 1, 1, head @lines) closed: False $ x -> if
+    x is EOFTok => True
+    x :: Ending => @error 'unexpected close-paren' x.loc
 
   #: Read tokens until the end of the block.
   #:
@@ -145,26 +151,19 @@ Parser = subclass collections.deque where
   block = pos end closed: True ~>
     result = Constant at: pos $ if (closed => tuple!) (otherwise => None)
     isexpr = False
-    x      = next self
 
-    while not $ end x =>
-      if x is Dedent => @error 'broken indentation in this block'   pos
-         x is EOFTok => @error 'unexpected EOF in a block'          pos
-         x :: Ending => @error 'this block was not closed properly' pos
-
-         isexpr    => result = @infix (Name '' infix: True varary: True at: x.loc) result x
-         x != '\n' => result, isexpr = @special x, True
-      x = next self
+    while not $ end (x = next self) => if
+      x is EOFTok => @error 'unexpected EOF in a block'          pos
+      x is Dedent => @error 'broken indentation in this block'   pos
+      x :: Ending => @error 'this block was not closed properly' pos
+      isexpr      => result = @infix (Name '' at: x.loc) result x
+      x != '\n'   => result, isexpr = @special x, True
 
     result.closed |= closed
     result.indent  = not closed
     result
 
   #: Combine two parts of a tree with an infix `Name`.
-  #:
-  #: op  -- something to combine with.
-  #: lhs -- everything to the left.
-  #: rhs -- next `Node` to the right.
   #:
   #: infix :: Name Node Node -> Node
   #:
@@ -179,7 +178,7 @@ Parser = subclass collections.deque where
     rhs.nolhs and not rhs.closed =>
       # Got to handle that first, as the empty operator may not have
       # enough binding strength for that later.
-      rhs = @infix (Name '' infix: True varary: True at: rhs.loc) rhs $ next self
+      rhs = @infix (Name '' at: rhs.loc) rhs $ next self
 
     if
       rhs :: Ending or op.norhs =>
@@ -198,8 +197,6 @@ Parser = subclass collections.deque where
       otherwise => @infixin op lhs rhs
 
   #: Recursively descend into `lhs` to apply infix precedence rules.
-  #:
-  #: `rhs` may be `None` if there is none.
   #:
   #: infixin :: Name Node (Maybe Node) -> Expression
   #:
@@ -222,14 +219,12 @@ Parser = subclass collections.deque where
 
   #: Create a simple function call. (Almost) no fancy rules.
   #:
-  #: `rhs` can't be `None` once again. Handle that in some other way.
-  #:
   #: make_call :: Name Node Node -> Expression
   #:
   make_call = op lhs rhs ~> if
     op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' =>
-      # In an indented block after an empty name, each statement
-      # is a separate RHS.
+      # If a function call is followed by an indented block,
+      # each statement is treated as an argument.
       Expression op lhs at: lhs.loc *: rhs.args
     otherwise =>
       Expression op lhs at: lhs.loc $ if
@@ -238,38 +233,20 @@ Parser = subclass collections.deque where
 
   #: Handle a couple of fancy syntactic constructs.
   #:
-  #: Suppose we have `x == Name "yoba"`. Then:
-  #:   condition  | syntax        | result
-  #:   -----------+---------------+------------------------------------
-  #:   x.spec_a   | yoba a => b   | Expression (Name 'yoba') a b
-  #:   -----------+---------------+------------------------------------
-  #:   x.spec_b   | yoba a => b   | Expression (Name '') (Name 'yoba')
-  #:              |      c => d   |    Expression (Name '=>') a b
-  #:              |      e => f   |    Expression (Name '=>') c d
-  #:              |               |    Expression (Name '=>') e f
-  #:              | (here, `a => b` may be omitted.)
-  #:
   #: special :: Node -> Node
   #:
-  special = x ~>
-    x.spec_a =>
-      x = @infix x (@block x.loc ('=>' ==)) (next self)
-
-    x.spec_b =>
+  special = x ~> if
+    # These nodes consume everything until the next fat arrow.
+    # "f X =>" becomes equivalent to "(X) `f`".
+    x.flags & 1 => @infix x (@block x.loc ('=>' ==)) (next self)
+    # These nodes consume everything until the EOL.
+    # "f ...\n" => "f (...)\n".
+    x.flags & 2 =>
       arg = @block x.loc closed: False $ y ->
         end = y :: Ending or y == '\n'
         end => @append y
         end
 
-      arg != Constant None =>
-         x = @infix (Name '' infix: True varary: True at: arg.loc) x arg
-
-    x
-
-  #: Handle a parse error.
-  #:
-  #: THAT's what we have to thank for these (str, int, int, str)-type locations.
-  #:
-  #: error :: str (str, int, int, str) -> _|_
-  #:
-  error = staticmethod $ description at -> raise $ SyntaxError description at
+      if arg == Constant None => x
+         otherwise => @infixin (Name '' infix: True at: arg.loc) x arg
+    otherwise => x

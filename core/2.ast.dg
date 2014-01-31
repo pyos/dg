@@ -8,20 +8,17 @@
 #:   nolhs  :: bool -- (infix = True) whether the node is, in fact, postfix
 #:   norhs  :: bool -- (infix = True) same as `nolhs`, only prefix
 #:   varary :: bool -- (infix = True) whether `a R b R c` constructs only one `R`
-#:   spec_a :: bool -- why don't you see the parser for that
-#:   spec_b :: bool
+#:   flags  :: int
 #:
 Node = subclass object where
+  # These are only used by `Name`s.
+  infix = nolhs = norhs = varary = False
+  flags = 0
+
   __init__ = *: args **: kwargs ~>
-    @loc    = kwargs.pop 'at'     None
+    @loc    = kwargs.pop 'at'     ('<constructed>', 1, 1, '')
     @closed = kwargs.pop 'closed' False
     @indent = kwargs.pop 'indent' False
-    @infix  = kwargs.pop 'infix'  False
-    @nolhs  = kwargs.pop 'nolhs'  False
-    @norhs  = kwargs.pop 'norhs'  False
-    @varary = kwargs.pop 'varary' False
-    @spec_a = kwargs.pop 'spec_a' False
-    @spec_b = kwargs.pop 'spec_b' False
     @init *: args **: kwargs
     None
 
@@ -34,14 +31,23 @@ Node = subclass object where
 
 #: An identifier.
 #:
-#: The only kind of `Node` that can have anything
-#: other than `closed` or `indent` set to `True`.
-#:
 #: type Name < Node where
 #:   value :: str
 #:
 Name = subclass Node where
-  init   = @value ~>
+  INFIX  = set' 'and' 'in' 'is' 'or' 'where'
+  VARARY = set' ',' '\n' ''
+  NOLHS  = set' '@' '~'
+  NORHS  = set' '!'
+  FLAGS  = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
+
+  init = @value infix: False ~>
+    @infix  = @value in @INFIX or infix
+    @nolhs  = @value in @NOLHS
+    @norhs  = @value in @NORHS
+    @varary = @value in @VARARY
+    @flags  = @FLAGS.get @value 0
+
   repr   =        ~> @value
   __eq__ =      x ~> @value == x
 
