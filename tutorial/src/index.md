@@ -16,23 +16,37 @@ python3 -m dg -m module  # Module! (Or package!)
 python3 -m dg -c 'print "Command!"'
 ```
 
-`dg [-X extension ...] [-h | -b | -c command | -m module | file] [arg ...]`
+##### Q: I expected a copy of a help message.
 
-**Options and arguments:**
+A: `python -m dg [-q] [-X module ...] [-h | -b | -c command | -m module | file] ...`
+
+Options and arguments:
 
   * `-h`: show this message and exit
   * `-b`: rebootstrap the compiler
-  * `-X extension`: enable compile-time macros from a specific module
+  * `-q`: enable awesome tracebacks and prompts (equivalent to `-X dg.addon.awful`)
+  * `-X module`: enable compile-time macros from a specific module
   * `-c command`: run a single command, then exit
   * `-m module`: run a module (or a package's `__main__`) as a script
   * `file`: run a script
-  * `arg ...`: additional arguments accessible through `sys.argv`
+  * `...`: additional arguments accessible through `sys.argv`
 
-**Environment variables:**
+Environment variables:
 
   * `PYTHONSTARTUP`     a Python file executed on interactive startup
   * `PYTHONSTARTUPDG`   same as PYTHONSTARTUP, only in dg
 
+##### Q: All the cool modules for Python have entry point scripts. Do you have a script?
+
+A: Why would you need one? Most shells support `alias`.
+
+```sh
+$ alias dg="python3 -m dg -q"
+$ dg # Good ones do, anyway.
+dg>
+```
+
+Just put that in your `.bashrc` or something.
 
 ### Comments
 
