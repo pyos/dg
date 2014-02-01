@@ -1,3 +1,4 @@
+import '/warnings'
 import '/importlib'
 import '/itertools'
 import '/posixpath'
@@ -187,10 +188,8 @@ Compiler = subclass CodeType where
   #:
   #: extend :: object -> a
   #:
-  extend = classmethod $ mod ~>
-    @infixl.update $ getattr mod 'infixl' dict!
-    @infixr.update $ getattr mod 'infixr' dict!
-    @prefix.update $ getattr mod 'prefix' dict!
+  extend = classmethod $ mod ~> if not $ getattr mod 'NO_MACRO' False =>
+    warnings.warn 'extension API is not decided upon yet' FutureWarning
 
   #: Note where this code object starts in the source code.
   #:
@@ -657,12 +656,9 @@ Compiler = subclass CodeType where
 
         # Replacing `__class__` allows subcells to inherit these changes.
         @__class__ = subclass @__class__ where
-          infixl = @infixl.copy!
-          infixr = @infixr.copy!
-          prefix = @prefix.copy!
-        # If the module is `m` in package `a.b.c`, the macros are in
-        # `m-macro` from `a.b.c`. E.g. `a/b/c/m-macro.dg`.
         @__class__.extend $ except
+          # If the module is `m` in package `a.b.c`, the macros are in
+          # `m-macro` from `a.b.c`. E.g. `a/b/c/m-macro.dg`.
           err => importlib.import_module $ '.'.join path + '-macro'
           err :: ImportError => ERROR name 'this module has no compiler extensions'
 

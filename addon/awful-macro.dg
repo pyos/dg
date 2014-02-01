@@ -11,6 +11,7 @@ colored = except
      yellow = blue = white =
       black = red  = staticmethod $ x -> x
 
+NO_MACRO = True
 
 #: Format a full traceback.
 #:
