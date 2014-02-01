@@ -242,11 +242,12 @@ CodeType = subclass object where
 
   #: Pop the value from the top of the stack, assign it to a name.
   #:
-  #: popname :: str -> a
+  #: popname :: str (Optional bool) -> a
   #:
-  popname = v ~> if
+  popname = v free: False ~> if
+    free           => @append 'STORE_DEREF' delta: -1 $ @freevars !! v
     v in @cellvars => @append 'STORE_DEREF' delta: -1 $ @cellvars !! v
-    v in @enclosed => @append 'STORE_DEREF' delta: -1 $ @freevars !! v
+    v in @freevars => @append 'STORE_DEREF' delta: -1 $ @freevars !! v
     @function      => @append 'STORE_FAST'  delta: -1 $ @varnames !! v
     otherwise      => @append 'STORE_NAME'  delta: -1 $ @names    !! v
 

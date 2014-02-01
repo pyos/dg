@@ -82,7 +82,7 @@ COMPARISON =      ARGCOUNT 2 $ f (a, b) ~>
   chain = list
     where while a :: Expression and not a.closed and @prefix.get a.op.value is COMPARISON =>
       yield (a.op, snd a.args)
-      a = fst a.args
+      a := fst a.args
 
   @pushast a
   jumps = list
@@ -330,6 +330,8 @@ Compiler = subclass CodeType where
   pushfunction = args body ~>
     a, kw, da, dkw, va, vkw, patterns = DEFNARGS args
     g = @spawn '<lambda>' a kw va vkw
+    g.regsyms body
+    for (name, pattern) in patterns.items! => g.regsyms pattern
     for (name, pattern) in patterns.items! =>
       g.pushname name
       g.popast   pattern
@@ -345,7 +347,7 @@ Compiler = subclass CodeType where
   #:
   pushmethod = xs body ~> @pushfunction xs body where if
     xs :: Expression and not xs.closed and xs.op == '' => xs.args.insert 0 (Name 'self')
-    otherwise => xs = Expression (Name '') (Name 'self') xs at: xs.loc
+    otherwise => xs := Expression (Name '') (Name 'self') xs at: xs.loc
 
   #: Push a result of try-except-finally onto the stack.
   #:
@@ -426,8 +428,10 @@ Compiler = subclass CodeType where
   #:
   #: popast :: Node -> a
   #:
-  popast = x ~> if
+  popast = x free: False ~> if
     x :: RightBind => if
+      free => ERROR x 'this operator can only assign to names'
+
       # A single item prefixed with an at sign is a shorthand
       # for attribute assignment. That is, `self.attribute = ...`.
       x.op == '@' =>
@@ -442,20 +446,10 @@ Compiler = subclass CodeType where
       # items in this variable as a list. When there are no other elements,
       # however, the star does nothing.
       #
-      x.op == '*' => @popast $ head x.args
+      x.op == '*' => @popast free: free $ head x.args
       otherwise   => ERROR x 'not something one can assign to'
 
     x :: Expression => if
-      len x.args == 2 and x.op == '.' =>
-        item, attr = x.args
-        attr :: Name or ERROR attr 'not an attribute'
-        @pushast item
-        @append  'STORE_ATTR' delta: -2 $ @names !! attr.value
-
-      len x.args == 2 and x.op == '!!' =>
-        @pushlist x.args
-        @append   'STORE_SUBSCR' delta: -3
-
       # A comma-separated list of assignment targets.
       #
       # 1. Assume the value on top of the stack is an iterable.
@@ -473,10 +467,50 @@ Compiler = subclass CodeType where
              i = head qs
         for a in x.args => @popast a
 
+      free => ERROR x 'this operator can only assign to names'
+
+      len x.args == 2 and x.op == '.' =>
+        item, attr = x.args
+        attr :: Name or ERROR attr 'not an attribute'
+        @pushast item
+        @append  'STORE_ATTR' delta: -2 $ @names !! attr.value
+
+      len x.args == 2 and x.op == '!!' =>
+        @pushlist x.args
+        @append   'STORE_SUBSCR' delta: -3
+
       otherwise => ERROR x 'not something one can assign to'
 
-    x :: Name => @popname x.value
+    x :: Name => if
+      free and not (x.value in @enclosed) => ERROR x 'this variable is undefined in outside scopes'
+      otherwise => @popname x.value free: free
     otherwise => ERROR x 'not something one can assign to'
+
+  #: Find all local symbols in an AST.
+  #:
+  #: symbols :: object -> [str]
+  #:
+  symbols = x ~> if
+    x :: Name       => ()
+    x :: Constant   => ()
+    x :: Expression => if
+      x.op == '=' and x.args =>if
+        head x.args :: Name => itertools.chain.from_iterable $ map @symbols (tail x.args) +: ((head x.args).value,)
+        otherwise           => itertools.chain.from_iterable $ map @symbols x.args
+      # NOTE: there are multiple in-place operators.
+      #       They operate on already defined variables, however.
+      # NOTE: `for` uses a variable, but it doesn't make sense to export it.
+      # NOTE: same thing for `except` and `import`.
+      x.op == '->'    => ()  # These create new functions and don't affect
+      x.op == '~>'    => ()  # this namespace.
+      x.op == 'where' => ()
+      otherwise => itertools.chain.from_iterable $ @symbols x.op :+ map @symbols x.args
+
+  #: Register all symbols for later use.
+  #:
+  #: regsyms :: Node -> a
+  #:
+  regsyms = x ~> for n in @symbols x => @varnames !! n
 
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
@@ -542,6 +576,13 @@ Compiler = subclass CodeType where
       @var = x
       @append 'DUP_TOP' delta: +1
       @popast name
+
+    ':=', ARGCOUNT 2 $ f (name, value) ~>
+      @var, x = repr name, @var
+      @pushast value
+      @var = x
+      @append 'DUP_TOP' delta: +1
+      @popast name free: True
 
     '.', ARGCOUNT 2 $ f (x, y) ~>
       y :: Name or ERROR y 'not an attribute'
@@ -636,6 +677,8 @@ Compiler = subclass CodeType where
     'where', ARGCOUNT 2 $ f (ret, env) ~>
       g = @spawn '<lambda>'
       g.setfile  ret
+      g.regsyms  env
+      g.regsyms  ret
       g.pushlast env ret
       @pushclosure g tuple! dict!
       @append 'CALL_FUNCTION' 0
@@ -782,6 +825,7 @@ Compiler = subclass CodeType where
     '->', f body ~>
       g = @spawn '<lambda>'
       g.setfile f
+      g.regsyms body
       g.pushast body
       @pushclosure g tuple! dict!
 
@@ -793,6 +837,7 @@ Compiler = subclass CodeType where
       @pushname 'property'
       g = @spawn '<lambda>' ('self',)
       g.setfile f
+      g.regsyms body
       g.pushast body
       @pushclosure g tuple! dict!
       @append 'CALL_FUNCTION' 1 delta: -1
@@ -804,6 +849,7 @@ Compiler = subclass CodeType where
     'where', f env ~>
       g = @spawn '<lambda>'
       g.setfile env
+      g.regsyms env
       g.pushast env
       @pushclosure g tuple! dict!
       @append 'CALL_FUNCTION' 0
