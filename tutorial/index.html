@@ -178,7 +178,23 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
 </pre></div>
 <p>If the value on the right side is a collection, it can be pattern-matched.</p><div class="highlight"><pre><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
 </pre></div>
-<p>Global variables can only be modified from the top level. No <code>global</code> keyword for you!</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
+<p>If you ever need to modify a variable in a closure, use <code>:=</code> instead.</p><div class="highlight"><pre><span class="n">outer_function</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
+  <span class="n">inner_function</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">x</span>
+  <span class="n">inner_function</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">a</span>
+
+<span class="n">outer_function</span> <span class="mi">5</span>  <span class="c1">#=&gt; 5</span>
+</pre></div>
+<div class="highlight"><pre><span class="n">outer_function</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
+  <span class="n">inner_function</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
+    <span class="n">a</span> <span class="o">:=</span> <span class="n">x</span>
+  <span class="n">inner_function</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">a</span>
+
+<span class="n">outer_function</span> <span class="mi">5</span>  <span class="c1">#=&gt; 6</span>
+</pre></div>
+<p>Global variables can only be modified from the top level. Not even <code>:=</code> will help you.</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
 <span class="c1">#:</span>
 <span class="c1">#: It has some positional arguments!</span>
 <span class="c1">#:</span>
@@ -334,7 +350,8 @@ statement, <code>where</code> is your friend.</p><div class="highlight"><pre><sp
 </pre></div>
 <p>As a side effect, it can be used to make generator expressions.</p><div class="highlight"><pre><span class="nb">list</span> <span class="p">(</span><span class="ow">where</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="o">=&gt;</span> <span class="kr">yield</span> <span class="o">$</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">x</span><span class="p">)</span>
 </pre></div>
-<h3>What does it have to do with...</h3><p>OK, ready? <code>subclass</code> turns the local namespace into a class, and a local namespace
+<p>Note, though, that since <code>where</code> creates a new scope, variables outside of it
+can only be changed with <code>:=</code> (as if it were a function.)</p><h3>What does it have to do with...</h3><p>OK, ready? <code>subclass</code> turns the local namespace into a class, and a local namespace
 is exactly what <code>where</code> creates. Its arguments are base classes. The <code>metaclass</code>
 keyword argument is optional.</p><div class="highlight"><pre><span class="kt">ShibaInu</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span> <span class="n">metaclass</span><span class="o">:</span> <span class="nb">type</span> <span class="ow">where</span>
   <span class="n">cuteness</span> <span class="o">=</span> <span class="mi">80</span>

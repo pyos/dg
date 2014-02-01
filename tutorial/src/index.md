@@ -244,7 +244,29 @@ If the value on the right side is a collection, it can be pattern-matched.
 very_pattern, so_two_items, *rest = 3 * 'wow', 5 * 'sleep', 1 * 'eat', 2 * 'woof'
 ```
 
-Global variables can only be modified from the top level. No `global` keyword for you!
+If you ever need to modify a variable in a closure, use `:=` instead.
+
+```dg
+outer_function = a ->
+  inner_function = x ->
+    a = x
+  inner_function (a + 1)
+  a
+
+outer_function 5  #=> 5
+```
+
+```dg
+outer_function = a ->
+  inner_function = x ->
+    a := x
+  inner_function (a + 1)
+  a
+
+outer_function 5  #=> 6
+```
+
+Global variables can only be modified from the top level. Not even `:=` will help you.
 
 ### Creating functions
 
@@ -513,6 +535,9 @@ As a side effect, it can be used to make generator expressions.
 ```dg
 list (where for x in range 5 => yield $ 2 ** x)
 ```
+
+Note, though, that since `where` creates a new scope, variables outside of it
+can only be changed with `:=` (as if it were a function.)
 
 ### What does it have to do with...
 
