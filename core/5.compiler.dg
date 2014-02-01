@@ -426,7 +426,7 @@ Compiler = subclass CodeType where
 
   #: Pop a value off the stack and store it somewhere.
   #:
-  #: popast :: Node -> a
+  #: popast :: Node (Optional bool) -> a
   #:
   popast = x free: False ~> if
     x :: RightBind => if
@@ -486,6 +486,17 @@ Compiler = subclass CodeType where
       otherwise => @popname x.value free: free
     otherwise => ERROR x 'not something one can assign to'
 
+  #: Push something, then store it somewhere.
+  #:
+  #: pushpop :: Node Node (Optional bool) -> a
+  #:
+  pushpop = name value free: False ~>
+    @var, x = repr name, @var
+    @pushast value
+    @var = x
+    @append 'DUP_TOP' delta: +1
+    @popast name free: free
+
   #: Find all local symbols in an AST.
   #:
   #: symbols :: object -> [str]
@@ -515,10 +526,12 @@ Compiler = subclass CodeType where
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
     '\n',  f xs ~> @pushlast *: xs
-    'not', ARGCOUNT 1 $ f (item,)      ~> (@pushast item, @append 'UNARY_NOT')
-    '->',  ARGCOUNT 2 $ f (args, body) ~>  @pushfunction args body
-    '~>',  ARGCOUNT 2 $ f (args, body) ~>  @pushmethod   args body
-    '!!~', ARGCOUNT 2 $ f (coll, item) ~>
+    'not', ARGCOUNT 1 $ f (item,)       ~> (@pushast item, @append 'UNARY_NOT')
+    '=',   ARGCOUNT 2 $ f (name, value) ~>  @pushpop name value
+    ':=',  ARGCOUNT 2 $ f (name, value) ~>  @pushpop name value free: True
+    '->',  ARGCOUNT 2 $ f (args, body)  ~>  @pushfunction args body
+    '~>',  ARGCOUNT 2 $ f (args, body)  ~>  @pushmethod   args body
+    '!!~', ARGCOUNT 2 $ f (coll, item)  ~>
       @pushconst None
       @pushast   coll
       @pushast   item
@@ -569,20 +582,6 @@ Compiler = subclass CodeType where
     '!=',     COMPARISON
     '>=',     COMPARISON
     '>',      COMPARISON
-
-    '=', ARGCOUNT 2 $ f (name, value) ~>
-      @var, x = repr name, @var
-      @pushast value
-      @var = x
-      @append 'DUP_TOP' delta: +1
-      @popast name
-
-    ':=', ARGCOUNT 2 $ f (name, value) ~>
-      @var, x = repr name, @var
-      @pushast value
-      @var = x
-      @append 'DUP_TOP' delta: +1
-      @popast name free: True
 
     '.', ARGCOUNT 2 $ f (x, y) ~>
       y :: Name or ERROR y 'not an attribute'
