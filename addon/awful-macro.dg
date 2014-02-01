@@ -3,6 +3,7 @@ import '/builtins'
 import '/readline'
 import '/traceback'
 
+
 colored = except
   # `clint` recommended for maximum awesomeness.
   err => import '/clint/textui/colored'
@@ -12,30 +13,42 @@ colored = except
       black = red  = staticmethod $ x -> x
 
 
+console_width = except
+  err => import '/clint/textui/cols/console_width'
+  err => kwargs -> 80
+
+
 #: Format a full traceback.
 #:
 #: tbformat :: type Exception TracebackType -> str
 #:
-tbformat = t value trace -> (+)
-  '\n'.join $ map tbformat.item (traceback.extract_tb trace)
-  '\n' + if
-    value :: SyntaxError => tbformat.syntax t value
-    otherwise            => tbformat.error  t value
+tbformat = t value trace -> '\n'.join $ list'
+  if value :: SyntaxError => tbformat.syntax t value
+     otherwise            => tbformat.error  t value
+  '\n'.join $ map tbformat.item $ reversed $ traceback.extract_tb trace
 
 
 #: Format one line of a traceback.
 #:
 #: item :: (str, int, str, Maybe str) -> str
 #:
-tbformat.item = (f, ln, fn, txt) -> '  {} line {}{}{}'.format
-  colored.yellow $ f
-  colored.cyan   $ ln
+tbformat.item = (f, ln, fn, txt) ->
   # Do not show function name at top level.
-  if fn and fn != '<module>' => ' ({})'.format $ colored.white fn
-     otherwise => ''
+  fn  = if fn == '<module>' or not fn => ''
+           otherwise                  => ': ' + fn
   # The file may not exist.
-  if txt is None => ''
-     otherwise   => ': ' + txt
+  txt = if txt is None => ''
+           otherwise   => ': ' + txt
+  # Contents of the file is the most useless info here.
+  # We'll truncate it to fit the line into the console.
+  width  = console_width dict!
+  length = 8 + len f + len (str ln) + len fn
+  # However, it only makes sense if we have more than 5 characters.
+  # Otherwise, better hide it completely.
+  txt = if length > width - 5       => ''
+           length > width - len txt => txt !! slice 0 (width - length - 3) + '...'
+           otherwise => txt
+  '  {} line {}{}{}'.format (colored.yellow f) (colored.cyan ln) fn txt
 
 
 #: Format a standard error message.
@@ -49,23 +62,30 @@ tbformat.error = t value -> '{}: {}'.format (colored.red t.__name__) value
 #:
 #: syntax :: type SyntaxError -> str
 #:
-tbformat.syntax = t value -> '{}\n{}: {}'.format
+tbformat.syntax = t value -> '{}: {}\n{}'.format
+  colored.red t.__name__
+  value.msg
   tbformat.item (value.filename, value.lineno, '', txt) where txt = if
     not value.text or value.offset > len value.text => ''
     otherwise => '{}{}{}\n{}^'.format
-      colored.white  $ str.lstrip $ value.text !! slice None (value.offset - 1)
-      colored.red    $              value.text !! (value.offset - 1)
-      colored.white  $ str.rstrip $ value.text !! slice value.offset None
+      str.lstrip  $ value.text !! slice None (value.offset - 1)
+      colored.red $ value.text !! (value.offset - 1)
+      str.rstrip  $ value.text !! slice value.offset None
       ' ' * (len (value.filename + str value.lineno) + 9 + value.offset)
-  colored.red t.__name__
-  value.msg
 
 
-sys.displayhook = v original: sys.displayhook -> original $ if
+sys.displayhook = v -> if
   # `exit` and `quit` should not need to be called when used from a REPL.
   v is exit => v 0
   v is quit => v 0
-  otherwise => v
+  v is None => None
+  otherwise =>
+    text = str sys.ret + repr v
+    except e => print text
+           e :: UnicodeEncodeError => print $
+             enc = text.encode sys.stdout.encoding 'backslashreplace'
+             enc.decode sys.stdout.encoding 'strict'
+    builtins._ = v
 
 
 sys.excepthook = t v tb original: sys.excepthook -> except
@@ -75,15 +95,7 @@ sys.excepthook = t v tb original: sys.excepthook -> except
   err => original (type err) err err.__traceback__
 
 
-Prompt = subclass object where
-  __init__ = self @text -> None
-  __str__  = self -> str $ if
-    builtins._ is None => colored.white @text
-    builtins._         => colored.green @text
-    otherwise          => colored.red   @text
-
-sys.ps1 = Prompt 'dg> '
-sys.ps2 = Prompt '  + '
-# `_` will only be set by `displayhook` after the first command.
-# The prompt requires it at the start, though.
+sys.ps1 = colored.yellow 'dg ' + '$ '
+sys.ps2 = '   | '
+sys.ret = colored.green  '   = '
 builtins._ = None
