@@ -71,4 +71,4 @@ runrepl = fd environ: (dict __name__: '__main__' builtins: __builtins__) startup
       map compilerepl $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
     e :: EOFError   => raise SystemExit
     e :: SystemExit => raise e
-    e => sys.excepthook (type e) e e.__traceback__.tb_next.tb_next
+    e => sys.excepthook (type e) e e.__traceback__.tb_next
