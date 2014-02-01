@@ -69,6 +69,7 @@ runrepl = fd environ: (dict __name__: '__main__' builtins: __builtins__) startup
   while True => except
     e => sys.displayhook $ enveval $ next $ dropwhile not $
       map compilerepl $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
-    e :: EOFError   => raise SystemExit
-    e :: SystemExit => raise e
+    e :: EOFError          => raise SystemExit
+    e :: SystemExit        => raise e
+    e :: KeyboardInterrupt => print '^C' file: sys.stderr
     e => sys.excepthook (type e) e e.__traceback__.tb_next
