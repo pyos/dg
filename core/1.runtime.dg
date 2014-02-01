@@ -12,11 +12,11 @@ builtins.__dict__.update locals! where
   set'   = *: xs       -> set  xs
   list'  = *: xs       -> list xs
   dict'  = *: xs **: k -> dict xs **: k
-  tuple' = (,) = *: xs -> xs
+  tuple' = , = *: xs -> xs
 
-  call  = (!) = ($) = f *: a **: k -> f *: a **: k
   bind  = functools.partial
   flip  = f -> x y -> f y x
+  ! = $ = f *: a **: k -> f *: a **: k
   <-    = f g -> *: a **: k -> f $ g *: a **: k
 
   ..  = range
