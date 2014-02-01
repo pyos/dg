@@ -1,6 +1,6 @@
 import '/re'
 import '/collections'
-import '/ast/literal_eval'
+
 
 #: Parse an input string.
 #:
@@ -77,8 +77,19 @@ Parser = subclass collections.deque where
 DgParser = subclass Parser where
   regex = re.compile r'''(?isx)
     (?P<space>  [^\S\n]+|\s*\#[^\n]*)
-   |(?P<number> [+-]?(?:0b[0-1]+|0o[0-7]+|0x[0-9a-f]+|[0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?j?))
-   |(?P<string> (?P<flags>br|r?b?)(['"]{3}|['"])(?P<content>(?:\\.|[^\\])*?)\5)
+   |(?P<number> (?P<realnum>
+      [+-]?(?:
+        (?P<isbin>0b[0-1]   +)
+       |(?P<isoct>0o[0-7]   +)
+       |(?P<ishex>0x[0-9a-f]+)
+       |(?:[0-9]+ (?P<isfloat> (?:\.[0-9]+)? (?:e[+-]?[0-9]+)?))
+      )
+    )(?P<isimag>j)?)
+   |(?P<string>
+      (?P<flags>br|r?b?)
+      (?P<quote>['"]{3}|['"])
+      (?P<content>(?:[^\\]|\\.)*?)
+      \11)  # should point to <quote>
    |(?P<strerr> (?:br|r?b?)['"])
    |(?P<name>   \w+'*|\*+(?=:))
    |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
@@ -96,12 +107,18 @@ DgParser = subclass Parser where
     f == 'name'   => Name     at: pos             $ m.group 0
     f == 'infix'  => Name     at: pos infix: True $ m.group 0
     f == 'iname'  => Name     at: pos infix: True $ m.group 'iname_'
-    f == 'number' => Constant at: pos $ literal_eval $ m.group 0
     f == 'string' => Constant at: pos x where
       f = m.group 'flags'
       x = (m.group 'content').encode 'utf-8'
       'r' in f or (x = bytes $ map ord $ x.decode 'unicode-escape')
       'b' in f or (x = x.decode 'utf-8')
+
+    f == 'number' => Constant at: pos $ (if (m.group 'isimag' => 1j) (True => 1)) * if
+      m.group 'isfloat' => float (m.group 'realnum')
+      m.group 'isbin'   => int   (m.group 'realnum') 2
+      m.group 'isoct'   => int   (m.group 'realnum') 8
+      m.group 'ishex'   => int   (m.group 'realnum') 16
+      otherwise         => int   (m.group 'realnum') 10
 
     f == 'eol' =>
       level = len $ m.group 'indent'
