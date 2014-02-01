@@ -64,11 +64,10 @@ runrepl = fd environ: (dict __name__: '__main__' builtins: __builtins__) startup
   sys.stdin = fd
   sys.ps1 = getattr sys 'ps1' '>>> '
   sys.ps2 = getattr sys 'ps2' '... '
-  enveval = bind (flip eval) environ
 
   while True => except
-    e => sys.displayhook $ enveval $ next $ dropwhile not $
-      map compilerepl $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
+    e => sys.displayhook $ `eval` environ $ next $ dropwhile not
+         map compilerepl $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
     e :: EOFError          => raise SystemExit
     e :: SystemExit        => raise e
     e :: KeyboardInterrupt => print '^C' file: sys.stderr
