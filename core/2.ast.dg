@@ -19,14 +19,15 @@ Node = subclass object where
     @loc    = kwargs.pop 'at'     ('<constructed>', 1, 1, '')
     @closed = kwargs.pop 'closed' False
     @indent = kwargs.pop 'indent' False
-    @init *: args **: kwargs
+    @__ast_init__ *: args **: kwargs
     None
 
-  __repr__ = self -> if @closed   => '({})'.format @repr
-                        otherwise =>               @repr
+  __repr__ = self -> if
+    @closed   => '({})'.format @__ast_repr__
+    otherwise =>               @__ast_repr__
 
-  init = ~> raise $ TypeError 'instantiating Node directly is pointless'
-  repr = ~> 'nil'
+  __ast_init__ = ~> raise $ TypeError 'instantiating Node directly is pointless'
+  __ast_repr__ = ~> 'nil'
 
 
 #: An identifier.
@@ -41,15 +42,15 @@ Name = subclass Node where
   NORHS  = set' '!'
   FLAGS  = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
 
-  init = @value infix: False ~>
+  __ast_repr__ = ~> @value
+  __ast_init__ = @value infix: False ~>
     @infix  = @value in @INFIX or infix
     @nolhs  = @value in @NOLHS
     @norhs  = @value in @NORHS
     @varary = @value in @VARARY
     @flags  = @FLAGS.get @value 0
 
-  repr   =        ~> @value
-  __eq__ =      x ~> @value == x
+  __eq__ = x ~> @value == x
 
   #: Whether this (infix) node has priority over the other one.
   #:
@@ -124,8 +125,8 @@ Name = subclass Node where
 #:   args :: [Node] -- arguments
 #:
 Expression = subclass Node where
-  init = @op *: args ~> (@args = list args)
-  repr =             ~> (' {!r} ' .format @op).join $ map repr @args
+  __ast_init__ = @op *: args ~> (@args = list args)
+  __ast_repr__ = ~> (' {!r} ' .format @op).join $ map repr @args
 
 
 #: A marshallable compile-time constant.
@@ -134,9 +135,9 @@ Expression = subclass Node where
 #:   value :: Either int float complex str
 #:
 Constant = subclass Node where
-  init   = @value ~>
-  repr   =        ~> repr @value
-  __eq__ =      x ~> x :: Constant and @value == x.value
+  __ast_init__ = @value ~>
+  __ast_repr__ =  ~> repr @value
+  __eq__ = x ~> x :: Constant and @value == x.value
 
 
 #: An infix expression missing its right part.
@@ -144,7 +145,7 @@ Constant = subclass Node where
 #: -- no signature
 #:
 LeftBind = subclass Expression where
-  repr = ~> '{[0]!r} {!r}'.format @args @op
+  __ast_repr__ = ~> '{[0]!r} {!r}'.format @args @op
 
 
 #: An infix expression missing its left part.
@@ -152,7 +153,7 @@ LeftBind = subclass Expression where
 #: -- no signature
 #:
 RightBind = subclass Expression where
-  repr = ~> '{!r} {[0]!r}'.format @op @args
+  __ast_repr__ = ~> '{!r} {[0]!r}'.format @op @args
 
 
 #: A signal for `Parser.block` to stop reading `Node`s.
@@ -164,9 +165,9 @@ RightBind = subclass Expression where
 #:   value :: object
 #:
 Ending = subclass Node where
-  init   = @value ~>
-  repr   =        ~> '<E: {!r}>'.format @value
-  __eq__ =      x ~> x :: Ending and @value == x.value
+  __ast_init__ = @value ~>
+  __ast_repr__ = ~> '<E: {!r}>'.format @value
+  __eq__ = x ~> x :: Ending and @value == x.value
 
 Dedent = Ending '\n'
 EOFTok = Ending '\0'
