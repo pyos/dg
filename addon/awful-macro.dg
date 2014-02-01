@@ -65,7 +65,7 @@ tbformat.error = t value -> '{}: {}'.format (colored.red t.__name__) value
 tbformat.syntax = t value -> '{}: {}\n{}'.format
   colored.red t.__name__
   value.msg
-  tbformat.item (value.filename, value.lineno, '', txt) where txt = if
+  tbformat.item (value.filename, value.lineno, txt, None) where txt = if
     not value.text or value.offset > len value.text => ''
     otherwise => '{}{}{}\n{}^'.format
       str.lstrip  $ value.text !! slice None (value.offset - 1)
