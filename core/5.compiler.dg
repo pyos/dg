@@ -48,7 +48,7 @@ ERROR = at description -> if
 #: `ANY` for `max` means "the function is variadic".
 #: Unless specified, `max` is assumed to be the same as `min`.
 #:
-#: ARGCOUNT :: int int (Node [Node] -> a) -> (Node [Node] -> a)
+#: ARGCOUNT :: int (Node [Node] -> a) (Optional int) -> (Node [Node] -> a)
 #:
 ARGCOUNT = min fn max: None -> if
   min is ANY => fn
@@ -185,7 +185,7 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
 Compiler = subclass CodeType where
   #: Load `infixl`, `infixr`, and `prefix` macros from a module.
   #:
-  #: extend :: str -> a
+  #: extend :: object -> a
   #:
   extend = classmethod $ mod ~>
     @infixl.update $ getattr mod 'infixl' dict!
