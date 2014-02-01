@@ -201,6 +201,32 @@ Compiler = subclass CodeType where
     @lineno   = x.loc !! 1
     @lineoff  = x.loc !! 1
 
+  #: Find all local symbols in an AST.
+  #:
+  #: symbols :: object -> [str]
+  #:
+  symbols = x ~> if
+    x :: Name       => ()
+    x :: Constant   => ()
+    x :: Expression => if
+      x.op == '=' and x.args =>if
+        head x.args :: Name => itertools.chain.from_iterable $ map @symbols (tail x.args) +: ((head x.args).value,)
+        otherwise           => itertools.chain.from_iterable $ map @symbols x.args
+      # NOTE: there are multiple in-place operators.
+      #       They operate on already defined variables, however.
+      # NOTE: `for` uses a variable, but it doesn't make sense to export it.
+      # NOTE: same thing for `except` and `import`.
+      x.op == '->'    => ()  # These create new functions and don't affect
+      x.op == '~>'    => ()  # this namespace.
+      x.op == 'where' => ()
+      otherwise => itertools.chain.from_iterable $ @symbols x.op :+ map @symbols x.args
+
+  #: Register all symbols for later use.
+  #:
+  #: regsyms :: Node -> a
+  #:
+  regsyms = x ~> for n in @symbols x => @varnames !! n
+
   #: Push the result of evaluating `x` onto the stack.
   #:
   #: pushast :: Node -> a
@@ -496,32 +522,6 @@ Compiler = subclass CodeType where
     @var = x
     @append 'DUP_TOP' delta: +1
     @popast name free: free
-
-  #: Find all local symbols in an AST.
-  #:
-  #: symbols :: object -> [str]
-  #:
-  symbols = x ~> if
-    x :: Name       => ()
-    x :: Constant   => ()
-    x :: Expression => if
-      x.op == '=' and x.args =>if
-        head x.args :: Name => itertools.chain.from_iterable $ map @symbols (tail x.args) +: ((head x.args).value,)
-        otherwise           => itertools.chain.from_iterable $ map @symbols x.args
-      # NOTE: there are multiple in-place operators.
-      #       They operate on already defined variables, however.
-      # NOTE: `for` uses a variable, but it doesn't make sense to export it.
-      # NOTE: same thing for `except` and `import`.
-      x.op == '->'    => ()  # These create new functions and don't affect
-      x.op == '~>'    => ()  # this namespace.
-      x.op == 'where' => ()
-      otherwise => itertools.chain.from_iterable $ @symbols x.op :+ map @symbols x.args
-
-  #: Register all symbols for later use.
-  #:
-  #: regsyms :: Node -> a
-  #:
-  regsyms = x ~> for n in @symbols x => @varnames !! n
 
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
