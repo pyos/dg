@@ -20,58 +20,55 @@ console_width = except
 
 #: Format a full traceback.
 #:
-#: tbformat :: type Exception TracebackType -> str
+#: full :: Exception -> str
 #:
-tbformat = t value trace -> '\n'.join $ list'
-  if value :: SyntaxError => tbformat.syntax t value
-     otherwise            => tbformat.error  t value
-  '\n'.join $ map tbformat.item $ reversed $ traceback.extract_tb trace
+full = err tb -> (+)
+  if err :: SyntaxError => syntax err
+     otherwise          => normal err
+  ''.join $ map line $ reversed $ traceback.extract_tb tb
 
 
-#: Format one line of a traceback.
+#: Format a standard error message.
 #:
-#: item :: (str, int, str, Maybe str) -> str
+#: normal :: type Exception -> str
 #:
-tbformat.item = (f, ln, fn, txt) ->
+normal = err -> '{}: {}'.format (colored.red err.__class__.__name__) err
+
+
+#: Like `normal`, only for `SyntaxError`s. Should display where the error is.
+#:
+#: syntax :: type SyntaxError -> str
+#:
+syntax = err -> normal err + line (err.filename, err.lineno, txt, None) where
+  xs     = err.text.strip!
+  before = xs !! slice (err.offset - 1)
+  errchr = xs !! slice (err.offset - 1) err.offset
+  after  = xs !! slice  err.offset None
+  length = len (err.filename + str err.lineno + before) + 10
+  txt    = before + colored.red errchr + after + '\n' + ' ' * length + '^'
+
+
+#: Format a single item in a traceback.
+#:
+#: item  :: (str, int, str, Maybe str) -> str
+#:
+line = (f, ln, fn, txt) ->
   # Do not show function name at top level.
   fn  = if fn == '<module>' or not fn => ''
            otherwise                  => ': ' + fn
   # The file may not exist.
   txt = if txt is None => ''
            otherwise   => ': ' + txt
-  # Contents of the file is the most useless info here.
-  # We'll truncate it to fit the line into the console.
-  width  = console_width dict!
-  length = 8 + len f + len (str ln) + len fn
-  # However, it only makes sense if we have more than 5 characters.
-  # Otherwise, better hide it completely.
-  txt = if length > width - 5       => ''
-           length > width - len txt => txt !! slice 0 (width - length - 3) + '...'
-           otherwise => txt
-  '  {} line {}{}{}'.format (colored.yellow f) (colored.cyan $ str ln) fn txt
 
-
-#: Format a standard error message.
-#:
-#: error :: type Exception -> str
-#:
-tbformat.error = t value -> '{}: {}'.format (colored.red t.__name__) value
-
-
-#: Like `error`, only for `SyntaxError`s. Should display where the error is.
-#:
-#: syntax :: type SyntaxError -> str
-#:
-tbformat.syntax = t value -> '{}: {}\n{}'.format
-  colored.red t.__name__
-  value.msg
-  tbformat.item (value.filename, value.lineno, txt, None) where txt = if
-    not value.text or value.offset > len value.text => ''
-    otherwise => '{}{}{}\n{}^'.format
-      str.lstrip  $ value.text !! slice None (value.offset - 1)
-      colored.red $ value.text !! (value.offset - 1)
-      str.rstrip  $ value.text !! slice value.offset None
-      ' ' * (len (value.filename + str value.lineno) + 9 + value.offset)
+  '\n  ' + colored.yellow f + ' line ' + colored.cyan (str ln) + fn +
+    # Contents of the file is the most useless info here.
+    # We'll truncate it to fit the line into the console.
+    space = console_width dict! - len (f + str ln + fn) - 8
+    # However, it only makes sense if we have more than 5 characters.
+    # Otherwise, better hide it completely.
+    if 0 > space - 5       => ''
+       0 > space - len txt => txt !! slice (space - 3) + '...'
+       otherwise => txt
 
 
 sys.displayhook = v -> if
@@ -89,7 +86,7 @@ sys.displayhook = v -> if
 
 
 sys.excepthook = t v tb original: sys.excepthook -> except
-  err => print file: sys.stderr $ tbformat t v tb
+  err => print file: sys.stderr $ full v tb
   # *Somebody* will surely find a way to break `Traceback`.
   # Note that this will display the original traceback, too.
   err => original (type err) err err.__traceback__
