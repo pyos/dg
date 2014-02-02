@@ -48,7 +48,7 @@ tbformat.item = (f, ln, fn, txt) ->
   txt = if length > width - 5       => ''
            length > width - len txt => txt !! slice 0 (width - length - 3) + '...'
            otherwise => txt
-  '  {} line {}{}{}'.format (colored.yellow f) (colored.cyan ln) fn txt
+  '  {} line {}{}{}'.format (colored.yellow f) (colored.cyan $ str ln) fn txt
 
 
 #: Format a standard error message.
@@ -95,7 +95,7 @@ sys.excepthook = t v tb original: sys.excepthook -> except
   err => original (type err) err err.__traceback__
 
 
-sys.ps1 = colored.yellow 'dg ' + '$ '
+sys.ps1 = 'dg $ '
 sys.ps2 = '   | '
 sys.ret = colored.green  '   = '
 builtins._ = None
