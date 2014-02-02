@@ -59,8 +59,8 @@ if
       this = that
 
     if diff =>
-      msg $ 'FATAL: Differences found during the last iteration.'
-      msg $ 'FATAL: A compiler error was detected. Aborting.'
+      print $ 'FATAL: Differences found during the last iteration.'
+      print $ 'FATAL: A compiler error was detected. Aborting.'
       exit 1
 
     core.save this dg.PY_TAG dg.BUNDLE_DIR
