@@ -1,5 +1,6 @@
 import '/re'
 import '/collections'
+import '/ast/literal_eval'
 
 
 #: Parse an input string.
@@ -107,11 +108,9 @@ DgParser = subclass Parser where
     f == 'name'   => Name     at: pos             $ m.group 0
     f == 'infix'  => Name     at: pos infix: True $ m.group 0
     f == 'iname'  => Name     at: pos infix: True $ m.group 'iname_'
-    f == 'string' => Constant at: pos x where
-      f = m.group 'flags'
-      x = (m.group 'content').encode 'utf-8'
-      'r' in f or (x = bytes $ map ord $ x.decode 'unicode-escape')
-      'b' in f or (x = x.decode 'utf-8')
+    f == 'string' => Constant at: pos $ literal_eval $
+      q = 3 * m.group 'quote' !! 0
+      m.group 'flags' + q + m.group 'content' + q
 
     f == 'number' => Constant at: pos $ (if (m.group 'isimag' => 1j) (True => 1)) * if
       m.group 'isfloat' => float (m.group 'realnum')
