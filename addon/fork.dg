@@ -1,99 +1,90 @@
-'''Multiprocessing and threading, dg style.
-
-  Employs multi-statement anonymous functions:
-
-    >>> fork.process $ ->
-    ...   sleep 3
-    ...   print '1'
-    ...
-    <Process(...)>
-    >>>
-
-    # 3 seconds later...
-    1
-
-  Does not use void (i.e. `-> NoneType`) methods:
-
-    >>> fork.thread.daemon $ ->
-    ...   sleep 3
-    ...   print '1'
-    ...
-    <Thread(...)>
-    >>>
-
-    # 3 seconds later...
-    1
-
-  Makes cyclic timers simple:
-
-    >>> thread, cancel = fork.repeat.thread 3 $ -> print '1'
-    >>>
-
-    # 3 seconds later...
-    1   # and 3 more seconds later...
-    1   # and again...
-    1
-
-    >>> cancel! # Stops printing ones.
-
-'''
-
+#: Multiprocessing and threading, dg style.
+#:
+#: Employs multi-statement anonymous functions:
+#:
+#:   >>> fork.process $ ->
+#:   ...   sleep 3
+#:   ...   print '1'
+#:   ...
+#:   <Process(...)>
+#:   >>>
+#:
+#:   # 3 seconds later...
+#:   1
+#:
+#: Does not use void (i.e. `-> NoneType`) methods:
+#:
+#:   >>> fork.thread.daemon $ ->
+#:   ...   sleep 3
+#:   ...   print '1'
+#:   ...
+#:   <Thread(...)>
+#:   >>>
+#:
+#:   # 3 seconds later...
+#:   1
+#:
+#: Makes cyclic timers simple:
+#:
+#:   >>> thread, cancel = fork.repeat.thread 3 $ -> print '1'
+#:   >>>
+#:
+#:   # 3 seconds later...
+#:   1   # and 3 more seconds later...
+#:   1   # and again...
+#:   1
+#:
+#:   >>> cancel! # Stops printing ones.
+#:
 import '/itertools'
 import '/threading'
 import '/multiprocessing'
 
 
+#: Fork off a process that calls a function.
+#:
+#: process :: (* ** -> a) * (daemon :: Optional bool) ** -> Process
+#:
 process = fn *: args daemon: False **: kwargs ->
-  '''Fork off a process that calls a function.
-
-    process :: (* ** -> a) * (daemon :: Optional bool) ** -> Process
-
-  '''
   pr = multiprocessing.Process None fn None args kwargs daemon: daemon
   pr.start!
   pr
 
 
+#: Fork off a thread that calls a function.
+#:
+#: thread :: (* -> a) * (daemon :: Optional bool) ** -> Thread
+#:
 thread = fn *: args daemon: False **: kwargs ->
-  '''Fork off a thread that calls a function.
-
-    thread :: (* -> a) * (daemon :: Optional bool) ** -> Thread
-
-  '''
   th = threading.Thread None fn None args kwargs daemon: daemon
   th.daemon = daemon
   th.start!
   th
 
 
+#: Create a timer that calls a function after a delay
+#: while an iterable is not empty. The returned function cancels the timer.
+#:
+#: itertimer :: ((-> b) -> c) float (iter a) (-> b) -> (c, -> d)
+#:
 itertimer = spawn interval iterable fn ->
-  '''
-    Create a timer that calls a function after a delay
-    while an iterable is not empty. The returned function cancels the timer.
-
-    itertimer :: ((-> b) -> c) float (iter a) (-> b) -> (c, -> d)
-
-  '''
   stop = spawn.Event!
   retv = spawn $ -> for _ in takewhile (_ -> not $ stop.wait interval) iterable => fn!
   retv, stop.set
 
-timer = spawn interval fn ->
-  '''Create a timer that calls a function once.
 
-    timer :: ((-> a) -> b) float (-> a) -> (b, -> c)
+#: Create a timer that calls a function once.
+#:
+#:   timer :: ((-> a) -> b) float (-> a) -> (b, -> c)
+#:
+timer = spawn interval fn -> itertimer spawn interval (list' 0) fn
 
-  '''
-  itertimer spawn interval (list' 0) fn
 
-
-repeat = spawn interval fn ->
-  '''Create a timer that calls a function after regular intervals until stopped.
-
-    repeat :: float ((-> a) -> b) (-> a) -> (b, -> c)
-
-  '''
-  itertimer spawn interval (itertools.repeat 0) fn
+#: Create a timer that calls a function after regular intervals until stopped.
+#:
+#: repeat :: float ((-> a) -> b) (-> a) -> (b, -> c)
+#:
+repeat = spawn interval fn -> itertimer spawn interval (itertools.repeat 0) fn
 
 
 for (fn, mod) in ((process, multiprocessing), (thread, threading)) =>
