@@ -453,8 +453,6 @@ Compiler = subclass CodeType where
   #:
   popast = x free: False ~> if
     x :: RightBind => if
-      free => ERROR x 'this operator can only assign to names'
-
       # A single item prefixed with an at sign is a shorthand
       # for attribute assignment. That is, `self.attribute = ...`.
       x.op == '@' =>
@@ -488,9 +486,7 @@ Compiler = subclass CodeType where
            len qs < 1 => @append delta: (sz - 1) 'UNPACK_SEQUENCE' sz
            otherwise  => @append delta: (sz - 1) 'UNPACK_EX' $ i + 256 * (sz - i - 1) where
              i = head qs
-        for a in x.args => @popast a
-
-      free => ERROR x 'this operator can only assign to names'
+        for a in x.args => @popast a free: free
 
       len x.args == 2 and x.op == '.' =>
         item, attr = x.args
@@ -504,9 +500,7 @@ Compiler = subclass CodeType where
 
       otherwise => ERROR x 'not something one can assign to'
 
-    x :: Name => if
-      free and not (x.value in @enclosed) => ERROR x 'this variable is undefined in outside scopes'
-      otherwise => @popname x.value free: free
+    x :: Name => @popname x.value free: (free and x.value in @enclosed)
     otherwise => ERROR x 'not something one can assign to'
 
   #: Push something, then store it somewhere.
