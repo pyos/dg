@@ -1,5 +1,6 @@
 import '/os'
 import '/sys'
+import '/types'
 import '/builtins'
 
 import '../parse'
@@ -45,11 +46,14 @@ compilerepl = source -> except
   e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None
 
 
-#: Execute a single code object in a new environment.
+#: Execute a single code object as `__main__`.
 #:
 #: runcode :: CodeType -> _|_
 #:
-runcode = code -> eval code $ dict __name__: '__main__' __builtins__: builtins
+runcode = code ->
+  md = sys.modules !! '__main__' = types.ModuleType '__main__'
+  md.__file__ = code.co_filename
+  eval code md.__dict__
 
 
 #: Start a REPL.
