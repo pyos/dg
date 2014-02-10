@@ -48,7 +48,7 @@ compilerepl = source -> except
 
 #: Execute a single code object as `__main__`.
 #:
-#: runcode :: CodeType -> _|_
+#: runcode :: CodeType -> object
 #:
 runcode = code ->
   md = sys.modules !! '__main__' = types.ModuleType '__main__'
