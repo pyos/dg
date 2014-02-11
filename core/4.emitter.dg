@@ -237,19 +237,18 @@ CodeType = subclass object where
     v in @varnames => @append 'LOAD_FAST'   delta: +1 $ @varnames !! v
     v in @enclosed => @append 'LOAD_DEREF'  delta: +1 $ @freevars !! v
     v in CONSTANTS => @pushconst $ CONSTANTS !! v
-    @function      => @append 'LOAD_GLOBAL' delta: +1 $ @names !! v
-    otherwise      => @append 'LOAD_NAME'   delta: +1 $ @names !! v
+    otherwise      => @append 'LOAD_GLOBAL' delta: +1 $ @names !! v
 
   #: Pop the value from the top of the stack, assign it to a name.
   #:
   #: popname :: str (Optional bool) -> a
   #:
   popname = v free: False ~> if
-    free           => @append 'STORE_DEREF' delta: -1 $ @freevars !! v
-    v in @cellvars => @append 'STORE_DEREF' delta: -1 $ @cellvars !! v
-    v in @freevars => @append 'STORE_DEREF' delta: -1 $ @freevars !! v
-    @function      => @append 'STORE_FAST'  delta: -1 $ @varnames !! v
-    otherwise      => @append 'STORE_NAME'  delta: -1 $ @names    !! v
+    free           => @append 'STORE_DEREF'  delta: -1 $ @freevars !! v
+    v in @cellvars => @append 'STORE_DEREF'  delta: -1 $ @cellvars !! v
+    v in @freevars => @append 'STORE_DEREF'  delta: -1 $ @freevars !! v
+    @function      => @append 'STORE_FAST'   delta: -1 $ @varnames !! v
+    otherwise      => @append 'STORE_GLOBAL' delta: -1 $ @names    !! v
 
   #: Load cell objects referencing some names.
   #:
