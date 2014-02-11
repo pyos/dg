@@ -18,7 +18,7 @@
     <style id="special"      _name="Special Variable"  map-to="python:special-variable"/>
     <style id="boolean"      _name="Boolean"           map-to="python:boolean"/>
     <style id="operator"     _name="Operator"          map-to="def:keyword"/>
-    <style id="constant"     _name="Constant"/>
+    <style id="constant"     _name="Constant"          map-to="def:constant"/>
     <style id="link"         _name="Link"/>
   </styles>
 
@@ -188,12 +188,12 @@
         </context>
 
         <context style-ref="exception">
-          <match>(?&lt;!\.)[A-Z]\w*(Error|Exception|Warning)'*(?!['\w])</match>
+          <match>_*[A-Z]\w*(Error|Exception|Warning)'*(?!['\w])</match>
         </context>
 
         <context style-ref="exception">
-          <prefix>(?&lt;!\.)</prefix>
           <suffix>(?!['\w])</suffix>
+          <keyword>Error</keyword>
           <keyword>Exception</keyword>
           <keyword>KeyboardInterrupt</keyword>
           <keyword>SystemExit</keyword>
@@ -218,7 +218,7 @@
         </context>
 
         <context style-ref="constant"><match>[A-Z_]+'*(?!['\w])</match></context>
-        <context style-ref="type">    <match>[A-Z]\w*'*(?!['\w])</match></context>
+        <context style-ref="type">    <match>_*[A-Z]\w*'*(?!['\w])</match></context>
         <context style-ref="link">    <match>\w+'*</match></context>
         <context>                     <match>[()]</match></context>
         <context>                     <match>\s+</match></context>
