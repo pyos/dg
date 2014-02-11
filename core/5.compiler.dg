@@ -64,12 +64,14 @@ ARGCOUNT = min fn max: None -> if
 #:
 SPECB = fn -> self f xs ->
   if len xs == 1 and head xs :: Expression and (head xs).op == '' => xs = (head xs).args
-  fn self f $ list
-    where for x in xs => yield $ if
-      x :: RightBind  and x.op == '=>' => ERROR x "where's the condition?"
-      x :: LeftBind   and x.op == '=>' => (head x.args, Constant None)
-      x :: Expression and x.op == '=>' => x.args
-      otherwise => ERROR x "expected a `condition => action` statement"
+  fn self f f._specb where f._specb = if
+    hasattr f '_specb' => f._specb
+    otherwise => list
+      where for x in xs => yield $ if
+        x :: RightBind  and x.op == '=>' => ERROR x "where's the condition?"
+        x :: LeftBind   and x.op == '=>' => (head x.args, Constant None)
+        x :: Expression and x.op == '=>' => x.args
+        otherwise => ERROR x "expected a `condition => action` statement"
 
 
 # Common prefix functions. See `Generator.prefix`.
@@ -197,25 +199,6 @@ Compiler = subclass CodeType where
     @filename = x.loc !! 0
     @lineno   = x.loc !! 1
     @lineoff  = x.loc !! 1
-
-  #: Find all local assignments in an AST.
-  #:
-  #: symbols :: object -> [str]
-  #:
-  symbols = x ~>
-    x :: Expression => if
-      x.op.value in @symscan =>
-        fn = @symscan !! x.op.value
-        for a in fn self x.op x.args => yield a
-      otherwise =>
-        for a in @symbols x.op => yield a
-        for q in x.args => for a in @symbols q => yield a
-
-  #: Register all symbols for later use.
-  #:
-  #: regsyms :: Node -> a
-  #:
-  regsyms = x ~> for n in @symbols x => @varnames !! n
 
   #: Push the result of evaluating `x` onto the stack.
   #:
@@ -347,7 +330,7 @@ Compiler = subclass CodeType where
     a, kw, da, dkw, va, vkw, patterns = DEFNARGS args
     g = @spawn '<lambda>' a kw va vkw
     g.regsyms body
-    for (name, pattern) in patterns.items! => g.regsyms pattern
+    for (name, pattern) in patterns.items! => for a in @popast_symscan pattern => g.varnames !! a
     for (name, pattern) in patterns.items! =>
       g.pushname name
       g.popast   pattern
@@ -442,9 +425,9 @@ Compiler = subclass CodeType where
 
   #: Pop a value off the stack and store it somewhere.
   #:
-  #: popast :: Node (Optional bool) -> a
+  #: popast :: Node -> a
   #:
-  popast = x free: False ~> if
+  popast = x ~> if
     x :: RightBind => if
       # A single item prefixed with an at sign is a shorthand
       # for attribute assignment. That is, `self.attribute = ...`.
@@ -460,7 +443,7 @@ Compiler = subclass CodeType where
       # items in this variable as a list. When there are no other elements,
       # however, the star does nothing.
       #
-      x.op == '*' => @popast free: free $ head x.args
+      x.op == '*' => @popast $ head x.args
       otherwise   => ERROR x 'not something one can assign to'
 
     x :: Expression => if
@@ -479,7 +462,7 @@ Compiler = subclass CodeType where
            len qs < 1 => @append delta: (sz - 1) 'UNPACK_SEQUENCE' sz
            otherwise  => @append delta: (sz - 1) 'UNPACK_EX' $ i + 256 * (sz - i - 1) where
              i = head qs
-        for a in x.args => @popast a free: free
+        for a in x.args => @popast a
 
       len x.args == 2 and x.op == '.' =>
         item, attr = x.args
@@ -493,8 +476,38 @@ Compiler = subclass CodeType where
 
       otherwise => ERROR x 'not something one can assign to'
 
-    x :: Name => @popname x.value free: (free and x.value in @enclosed)
+    x :: Name => @popname x.value
     otherwise => ERROR x 'not something one can assign to'
+
+  #: Push something, then store it somewhere.
+  #:
+  #: pushpop :: Node Node -> a
+  #:
+  pushpop = name value ~>
+    @var, x = repr name, @var
+    @pushast value
+    @var = x
+    @append 'DUP_TOP' delta: +1
+    @popast name
+
+  #: Find all local assignments in an AST.
+  #:
+  #: symbols :: object -> [str]
+  #:
+  symbols = x ~>
+    x :: Expression => if
+      x.op :: Name and x.op.value in @symscan =>
+        fn = @symscan !! x.op.value
+        for a in fn self x.op x.args => yield a
+      otherwise =>
+        for a in @symbols x.op => yield a
+        for q in x.args => for a in @symbols q => yield a
+
+  #: Register all symbols for later use.
+  #:
+  #: regsyms :: Node -> a
+  #:
+  regsyms = x ~> for n in @symbols x => @varnames !! n
 
   #: Symbol scanner for `popast`. Returns an iterator of all changed variables.
   #:
@@ -507,25 +520,36 @@ Compiler = subclass CodeType where
       otherwise     => for a in @symbols nm => yield a
     nm :: Name => yield nm.value
 
-  #: Push something, then store it somewhere.
-  #:
-  #: pushpop :: Node Node (Optional bool) -> a
-  #:
-  pushpop = name value free: False ~>
-    @var, x = repr name, @var
-    @pushast value
-    @var = x
-    @append 'DUP_TOP' delta: +1
-    @popast name free: free
-
   symscan = dict'
-    '=', ARGCOUNT 2 $ _ (n, x) ~>
+    # TODO import
+    '',  ARGCOUNT ANY $ _ args   ~> @symbols $ Expression *: args
+    '=', ARGCOUNT   2 $ _ (n, x) ~>
       for a in @popast_symscan n => yield a
       for a in @symbols        x => yield a
 
     ':=', ARGCOUNT 2 $ _ (n, x) ~>
       for a in @popast_symscan n => not $ a in @enclosed => yield a
       for a in @symbols x        => yield a
+
+    'for', ARGCOUNT 1 max: 2 $ f (var, *body) ~>
+      not $ var :: Expression and var.op == 'in' and len var.args == 2 => ERROR var $ if
+        # In Python, `in` has a higher precedence than `,`. That is,
+        # if you simply write `a, b in c` you get `a, (b in c)`. `for a, b in c:`
+        # is merely a special case in the parser; dg has no such thing.
+        var :: Expression and var.op == ',' and not var.closed => 'forgot the parentheses?'
+        otherwise => 'should be `a in b`'
+
+      v, e = var.args
+      for a in @popast_symscan v => yield a
+      for a in @symbols        e => yield a
+      for x in body => for a in @symbols x => yield a
+
+    'except', ARGCOUNT 1 max: ANY $ SPECB $ f ((e, x), *y) ~>
+      for a in @popast_symscan e => yield a
+      for a in @symbols        x => yield a
+      for (b, c) in y =>
+        for a in @symbols b => yield a
+        for a in @symbols c => yield a
 
     # These create new functions. We shouldn't scan them.
     '->',    _ _ ~> ()
@@ -537,7 +561,7 @@ Compiler = subclass CodeType where
     '\n',  f xs ~> @pushlast *: xs
     'not', ARGCOUNT 1 $ f (item,)       ~> (@pushast item, @append 'UNARY_NOT')
     '=',   ARGCOUNT 2 $ f (name, value) ~>  @pushpop name value
-    ':=',  ARGCOUNT 2 $ f (name, value) ~>  @pushpop name value free: True
+    ':=',  ARGCOUNT 2 $ f (name, value) ~>  @pushpop name value
     '->',  ARGCOUNT 2 $ f (args, body)  ~>  @pushfunction args body
     '~>',  ARGCOUNT 2 $ f (args, body)  ~>  @pushmethod   args body
     '!!~', ARGCOUNT 2 $ f (coll, item)  ~>
@@ -741,13 +765,7 @@ Compiler = subclass CodeType where
     #: Note that `var` may be any valid assignment target, not only a local variable.
     #:
     'for', ARGCOUNT 2 $ f (var, body) ~>
-      not $ var :: Expression and var.op == 'in' and len var.args == 2 => ERROR var $ if
-        # In Python, `in` has a higher precedence than `,`. That is,
-        # if you simply write `a, b in c` you get `a, (b in c)`. `for a, b in c:`
-        # is merely a special case in the parser; dg has no such thing.
-        var :: Expression and var.op == ',' and not var.closed => 'forgot the parentheses?'
-        otherwise => 'should be `a in b`'
-
+      # `var` was already syntax-checked in `symscan`.
       @pushconst None
       @pushast $ snd var.args
       @append    'GET_ITER'

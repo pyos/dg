@@ -244,10 +244,9 @@ CodeType = subclass object where
   #: popname :: str (Optional bool) -> a
   #:
   popname = v free: False ~> if
-    free           => @append 'STORE_DEREF'  delta: -1 $ @freevars !! v
     v in @cellvars => @append 'STORE_DEREF'  delta: -1 $ @cellvars !! v
-    v in @freevars => @append 'STORE_DEREF'  delta: -1 $ @freevars !! v
-    @function      => @append 'STORE_FAST'   delta: -1 $ @varnames !! v
+    v in @varnames => @append 'STORE_FAST'   delta: -1 $ @varnames !! v
+    v in @enclosed => @append 'STORE_DEREF'  delta: -1 $ @freevars !! v
     otherwise      => @append 'STORE_GLOBAL' delta: -1 $ @names    !! v
 
   #: Load cell objects referencing some names.
