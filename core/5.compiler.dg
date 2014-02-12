@@ -27,13 +27,13 @@ compileast = x ->
   self = Compiler ''
   @setfile x
   @pushast x
-  @append  'RETURN_VALUE' delta: -1
+  @append 'RETURN_VALUE' delta: -1
   @frozen
 
 
 #: Raise a SyntaxError.
 #:
-#: Error :: Node str -> _|_
+#: Error :: Node str -> a
 #:
 Error = at description -> raise $ SyntaxError description at.loc
 
@@ -43,7 +43,7 @@ Error = at description -> raise $ SyntaxError description at.loc
 #: `ANY` for `min` means "accept any amount of arguments".
 #: `ANY` for `max` means "the function is variadic".
 #:
-#: FixedArity :: int int (Node [Node] -> a) -> (Node [Node] -> a)
+#: FixedArity :: int int Handler -> Handler
 #:
 FixedArity = min max h -> f args ~>
   len args < min => Error f $ 'got {1} arguments, min. {0}'.format min $ len args
@@ -51,9 +51,19 @@ FixedArity = min max h -> f args ~>
   h self f args
 
 
+#: Make a handler update its first argument with the result.
+#:
+#: Inplace :: Handler -> Handler
+#:
+Inplace = h -> f xs ~>
+  h self f xs
+  @append 'DUP_TOP' 0 +1
+  @popast $ head xs
+
+
 #: Turn a function that takes node pairs into one that takes `u => v` nodes.
 #:
-#: ArrowPairs :: (Node [(Node, Node)] -> a) -> (Node [Node] -> a)
+#: ArrowPairs :: (Node [(Node, Node)] -> a) -> Handler
 #:
 ArrowPairs = h -> f xs ~>
   not $ getattr f '_handled' False =>
@@ -68,21 +78,36 @@ ArrowPairs = h -> f xs ~>
   h self f f._arrpairs
 
 
-# Common prefix functions. See `Generator.prefix`.
-INVALID    = x -> f xs ~> Error f x
-COLLECTION = x -> f xs ~> (@pushlist xs, @append x (len xs) $ 1 - len xs)
-BINARY     = x -> FixedArity 2 2 $ f xs ~> (@pushlist xs, @append x 0 -1)
-INPLACE    = x -> FixedArity 2 2 $ f xs ~> (@pushlist xs, @append x 0 -1, @append 'DUP_TOP' 0 +1, @popast $ head xs)
-JUMP       = x -> FixedArity 2 2 $ f (a, b) ~> (@pushast a, with @jump x delta: -1 => @pushast b)
-COMPARISON =      FixedArity 2 2 $ f (a, b) ~>
-  chain = list
-    where while a :: Expression and not a.closed and @prefix.get a.op.value is COMPARISON =>
-      yield (a.op, snd a.args)
-      a := fst a.args
+#: Raise a `SyntaxError` regardless of arguments.
+#:
+#: WithError :: str -> Handler
+#:
+WithError = x -> f xs ~> Error f x
+
+
+#: Apply a single bytecode instruction to all arguments.
+#:
+#: WithOpcode :: str -> Handler
+#:
+WithOpcode = x -> f xs ~>
+  @pushlist xs
+  @append x (len xs) $ 1 - len xs
+
+
+#: Take the first argument that doesn't match a jump condition.
+#:
+#: WithJump :: str -> Handler
+
+WithJump   = x -> FixedArity 2 2 $ f (a, b) ~> (@pushast a, with @jump x delta: -1 => @pushast b)
+Comparison =      FixedArity 2 2 $ f (a, b) ~>
+  chain = list!
+  while a :: Expression and not a.closed and @prefix.get a.op.value is Comparison =>
+    chain.insert 0 (a.op, snd a.args)
+    a = fst a.args
 
   @pushast a
   jumps = list
-    where for (op, arg) in reversed chain => yield $
+    where for (op, arg) in chain => yield $
       @pushast arg
       @append  'DUP_TOP'    delta: +1 #=> a, b, b
       @append  'ROT_THREE'  delta: +0 #=> b, a, b
@@ -318,29 +343,33 @@ Compiler = subclass CodeType where
 
   #: Create a function.
   #:
-  #: pushfunction :: (Either Node [Node]) Node -> a
+  #: pushfunc :: Node Node -> a
   #:
-  pushfunction = args body ~>
-    a, kw, da, dkw, va, vkw, patterns = DEFNARGS args
+  pushfunc = args body ~> @pushfunc' body *: (DEFNARGS args)
+
+  #: Create a function with known arguments.
+  #:
+  #: pushfunc' :: Node [str] [str] [Node] (dict str Node) [str] [str] (dict str Node) -> a
+  #:
+  pushfunc' = body a kw da dkw va vkw patterns ~>
     g = @spawn '<lambda>' a kw va vkw
     g.regsyms body
     for (name, pattern) in patterns.items! => for a in @popast_symscan pattern => g.varnames !! a
     for (name, pattern) in patterns.items! =>
       g.pushname name
       g.popast   pattern
-    g.setfile args
+    g.setfile body
     g.pushast body
     @pushclosure g da dkw
 
-  #: Create a method.
+  #: Create a method (a function with an additional argument named "self".)
   #:
-  #: Which is basically a function with an additional argument named "self".
+  #: pushmeth :: Node Node -> a
   #:
-  #: pushmethod :: Node Node -> a
-  #:
-  pushmethod = xs body ~> @pushfunction xs body where if
-    xs :: Expression and not xs.closed and xs.op == '' => xs.args.insert 0 (Name 'self')
-    otherwise => xs := Expression (Name '') (Name 'self') xs at: xs.loc
+  pushmeth = args body ~>
+    a, *xs = DEFNARGS args
+    a.insert 0 'self'
+    @pushfunc' body a *: xs
 
   #: Push a result of try-except-finally onto the stack.
   #:
@@ -369,7 +398,7 @@ Compiler = subclass CodeType where
   #: pushexcept :: Node Node [(Node, Node)] -> a
   #:
   pushexcept = name try cases ~>
-    main = @jump 'SETUP_EXCEPT' delta: +3
+    main = @jump 'SETUP_EXCEPT' delta: +8  # +what?
     @pushast try
     @append 'ROT_TWO'   delta: +0
     @append 'POP_BLOCK' delta: -1
@@ -403,7 +432,7 @@ Compiler = subclass CodeType where
     with @jump 'JUMP_IF_FALSE_OR_POP' delta: -1 => None
     # This will re-raise the exception if there was one.
     # Otherwise, it will pop None off the stack.
-    @append 'END_FINALLY' delta: -4
+    @append 'END_FINALLY' delta: -9
 
     with @jump 'JUMP_FORWARD' =>
       # If a handler was triggered, there's now a return value
@@ -554,62 +583,62 @@ Compiler = subclass CodeType where
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
     '\n',  f xs ~> @pushlast *: xs
-    'not', FixedArity 1 1 $ f (item,)       ~> (@pushast item, @append 'UNARY_NOT')
-    '=',   FixedArity 2 2 $ f (name, value) ~>  @pushpop name value
-    ':=',  FixedArity 2 2 $ f (name, value) ~>  @pushpop name value
-    '->',  FixedArity 2 2 $ f (args, body)  ~>  @pushfunction args body
-    '~>',  FixedArity 2 2 $ f (args, body)  ~>  @pushmethod   args body
+    '=',   FixedArity 2 2 $ f (name, value) ~> @pushpop  name value
+    ':=',  FixedArity 2 2 $ f (name, value) ~> @pushpop  name value
+    '->',  FixedArity 2 2 $ f (args, body)  ~> @pushfunc args body
+    '~>',  FixedArity 2 2 $ f (args, body)  ~> @pushmeth args body
     '!!~', FixedArity 2 2 $ f (coll, item)  ~>
-      @pushconst None
       @pushast   coll
       @pushast   item
       @append    'DELETE_SUBSCR' delta: -2
+      @pushconst None
 
-    ':',      INVALID    'keyword argument to what?'
-    '!',      INVALID    'this operator is postfix'
-    '~',      INVALID    'this operator is prefix'
-    '@',      INVALID    'this operator is prefix'
-    ',',      COLLECTION 'BUILD_TUPLE'
-    "set'",   COLLECTION 'BUILD_SET'
-    "list'",  COLLECTION 'BUILD_LIST'
-    "tuple'", COLLECTION 'BUILD_TUPLE'
-    '!!',     BINARY     'BINARY_SUBSCR'
-    '+',      BINARY     'BINARY_ADD'
-    '-',      BINARY     'BINARY_SUBTRACT'
-    '*',      BINARY     'BINARY_MULTIPLY'
-    '**',     BINARY     'BINARY_POWER'
-    '/',      BINARY     'BINARY_TRUE_DIVIDE'
-    '//',     BINARY     'BINARY_FLOOR_DIVIDE'
-    '%',      BINARY     'BINARY_MODULO'
-    '&',      BINARY     'BINARY_AND'
-    '^',      BINARY     'BINARY_XOR'
-    '|',      BINARY     'BINARY_OR'
-    '<<',     BINARY     'BINARY_LSHIFT'
-    '>>',     BINARY     'BINARY_RSHIFT'
-    '!!=',    INPLACE    'BINARY_SUBSCR'
-    '+=',     INPLACE    'INPLACE_ADD'
-    '-=',     INPLACE    'INPLACE_SUBTRACT'
-    '*=',     INPLACE    'INPLACE_MULTIPLY'
-    '**=',    INPLACE    'INPLACE_POWER'
-    '/=',     INPLACE    'INPLACE_TRUE_DIVIDE'
-    '//=',    INPLACE    'INPLACE_FLOOR_DIVIDE'
-    '%=',     INPLACE    'INPLACE_MODULO'
-    '&=',     INPLACE    'INPLACE_AND'
-    '^=',     INPLACE    'INPLACE_XOR'
-    '|=',     INPLACE    'INPLACE_OR'
-    '<<=',    INPLACE    'INPLACE_LSHIFT'
-    '>>=',    INPLACE    'INPLACE_RSHIFT'
-    'or',     JUMP       'JUMP_IF_TRUE_OR_POP'
-    '=>',     JUMP       'JUMP_IF_FALSE_OR_POP'
-    'and',    JUMP       'JUMP_IF_FALSE_OR_POP'
-    'is',     COMPARISON
-    'in',     COMPARISON
-    '<',      COMPARISON
-    '<=',     COMPARISON
-    '==',     COMPARISON
-    '!=',     COMPARISON
-    '>=',     COMPARISON
-    '>',      COMPARISON
+    ':',      WithError 'keyword argument to what?'
+    '!',      WithError 'this operator is postfix'
+    '~',      WithError 'this operator is prefix'
+    '@',      WithError 'this operator is prefix'
+    ',',      WithOpcode 'BUILD_TUPLE'
+    "set'",   WithOpcode 'BUILD_SET'
+    "list'",  WithOpcode 'BUILD_LIST'
+    "tuple'", WithOpcode 'BUILD_TUPLE'
+    'or',     WithJump   'JUMP_IF_TRUE_OR_POP'
+    '=>',     WithJump   'JUMP_IF_FALSE_OR_POP'
+    'and',    WithJump   'JUMP_IF_FALSE_OR_POP'
+    'not',    FixedArity 1 1 $ WithOpcode 'UNARY_NOT'
+    '!!',     FixedArity 2 2 $ WithOpcode 'BINARY_SUBSCR'
+    '+',      FixedArity 2 2 $ WithOpcode 'BINARY_ADD'
+    '-',      FixedArity 2 2 $ WithOpcode 'BINARY_SUBTRACT'
+    '*',      FixedArity 2 2 $ WithOpcode 'BINARY_MULTIPLY'
+    '**',     FixedArity 2 2 $ WithOpcode 'BINARY_POWER'
+    '/',      FixedArity 2 2 $ WithOpcode 'BINARY_TRUE_DIVIDE'
+    '//',     FixedArity 2 2 $ WithOpcode 'BINARY_FLOOR_DIVIDE'
+    '%',      FixedArity 2 2 $ WithOpcode 'BINARY_MODULO'
+    '&',      FixedArity 2 2 $ WithOpcode 'BINARY_AND'
+    '^',      FixedArity 2 2 $ WithOpcode 'BINARY_XOR'
+    '|',      FixedArity 2 2 $ WithOpcode 'BINARY_OR'
+    '<<',     FixedArity 2 2 $ WithOpcode 'BINARY_LSHIFT'
+    '>>',     FixedArity 2 2 $ WithOpcode 'BINARY_RSHIFT'
+    '!!=',    FixedArity 2 2 $ Inplace $ WithOpcode 'BINARY_SUBSCR'
+    '+=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_ADD'
+    '-=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_SUBTRACT'
+    '*=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_MULTIPLY'
+    '**=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_POWER'
+    '/=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_TRUE_DIVIDE'
+    '//=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_FLOOR_DIVIDE'
+    '%=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_MODULO'
+    '&=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_AND'
+    '^=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_XOR'
+    '|=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_OR'
+    '<<=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_LSHIFT'
+    '>>=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_RSHIFT'
+    'is',     Comparison
+    'in',     Comparison
+    '<',      Comparison
+    '<=',     Comparison
+    '==',     Comparison
+    '!=',     Comparison
+    '>=',     Comparison
+    '>',      Comparison
 
     '.', FixedArity 2 2 $ f (x, y) ~>
       y :: Name or Error y 'not an attribute'
@@ -623,9 +652,9 @@ Compiler = subclass CodeType where
 
     '.~', FixedArity 2 2 $ f (x, y) ~>
       y :: Name or Error y 'not an attribute'
-      @pushconst None
       @pushast   x
       @append    'DELETE_ATTR' delta: -1 $ @names !! y.value
+      @pushconst None
 
     '$', FixedArity 2 2 $ f (g, x) ~> if
       g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
@@ -797,77 +826,38 @@ Compiler = subclass CodeType where
     'raise', FixedArity 1 1 $ f (exc,) ~>
       # TODO __cause__
       @pushast exc
-      @append  'RAISE_VARARGS' 1 # There's nothing on the stack, but nobody will notice.
+      @append  'RAISE_VARARGS' 1
 
     'except', FixedArity 1 ANY $ ArrowPairs $ f ((name, try), *xs) ~>
       @pushconst None
-      @depth +7  # A very pessimistic estimate.
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
          otherwise                          => @pushexcept  name try xs
-      @depth -7
 
   infixl = dict'
-    ':', INVALID 'keyword argument to what?'
-    '~', INVALID 'this operator is prefix'
-    '@', INVALID 'this operator is prefix'
+    ':', WithError 'keyword argument to what?'
+    '~', WithError 'this operator is prefix'
+    '@', WithError 'this operator is prefix'
 
-    ',',     f item ~> (@pushast item, @append 'BUILD_TUPLE' 1)
-    '!',     f func ~>  @pushcall func
-    '->',    f args ~>  @pushfunction args $ Constant None at: f.loc
-    '~>',    f args ~>  @pushmethod   args $ Constant None at: f.loc
-    'where', f expr ~> (@infixr !! 'where') self f expr
-    'while', f cond ~>  @pushcall f cond $ Constant None at: f.loc
-    'for',   f cond ~>  @pushcall f cond $ Constant None at: f.loc
+    '!',     f g ~> @pushcall g
+    ',',     f x ~> @pushcall f x  # i.e. same as in `prefix`.
+    '->',    f x ~> @pushcall f x $ Constant None at: f.loc  # `x R` => `x R None`
+    '~>',    f x ~> @pushcall f x $ Constant None at: f.loc
+    'while', f x ~> @pushcall f x $ Constant None at: f.loc
+    'for',   f x ~> @pushcall f x $ Constant None at: f.loc
+    'where', f x ~> @pushcall f x $ Constant None at: f.loc
 
   infixr = dict'
-    ':', INVALID 'keyword argument to what?'
-    '!', INVALID 'this operator is postfix'
-    ',', INVALID 'this operator is unbindable'
+    ':', WithError 'keyword argument to what?'
+    '!', WithError 'this operator is postfix'
+    ',', WithError 'this operator is unbindable'
 
-    '~', f x ~> (@pushast x, @append 'UNARY_INVERT')
-    '-', f x ~> (@pushast x, @append 'UNARY_NEGATIVE')
+    '~',     f x ~> (@pushast x, @append 'UNARY_INVERT')
+    '-',     f x ~> (@pushast x, @append 'UNARY_NEGATIVE')
+    'where', f x ~>  @pushcall f x $ Constant None at: f.loc
+    '@',     f x ~>  @pushcall (Name '.' at: f.loc) (Name 'self' at: f.loc) x
 
-    #: Local attribute lookup.
-    #:
-    #: Equivalent to `self.name`.
-    #:
-    '@', f name ~>
-      name :: Name or Error name 'not an attribute'
-      @pushname 'self'
-      @append   'LOAD_ATTR' $ @names !! name.value
-
-    #: Argumentless function.
-    #:
-    #: Not generally recommended, but whatever.
-    #:
-    '->', f body ~>
-      g = @spawn '<lambda>'
-      g.setfile f
-      g.regsyms body
-      g.pushast body
-      @pushclosure g tuple! dict!
-
-    #: Object property.
-    #:
-    #: Equivalent to `property $ self -> body`.
-    #:
+    '->', f body ~> @pushfunc' body () () () dict! () () dict!
     '~>', f body ~>
       @pushname 'property'
-      g = @spawn '<lambda>' ('self',)
-      g.setfile f
-      g.regsyms body
-      g.pushast body
-      @pushclosure g tuple! dict!
+      @pushfunc' body ('self',) () () dict! () () dict!
       @append 'CALL_FUNCTION' 1 delta: -1
-
-    #: Return value-less binding.
-    #:
-    #: Mostly useful for generators: `list (where for ... => yield ...)`
-    #:
-    'where', f env ~>
-      g = @spawn '<lambda>'
-      g.setfile env
-      g.regsyms env
-      g.pushast env
-      @pushclosure g tuple! dict!
-      @append 'CALL_FUNCTION' 0
