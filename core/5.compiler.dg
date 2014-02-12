@@ -701,16 +701,6 @@ Compiler = subclass CodeType where
           @append    'POP_TOP'     delta: -1
 
       if macro =>
-        # First, check if the path specified is a module or is actually
-        # a global within that module.
-        mod = except
-          err => importlib.import_module $ '.'.join path
-          err :: ImportError => Error name 'extensions must be importable'
-
-        if not $ mod :: types.ModuleType => mod = except
-          err => importlib.import_module $ '.'join $ init path
-          err :: ImportError => Error name 'extensions must be importable'
-
         # Replacing `__class__` allows subcells to inherit these changes.
         @__class__ = subclass @__class__ where
         @__class__.extend $ except
