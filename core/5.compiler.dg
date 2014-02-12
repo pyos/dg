@@ -686,13 +686,12 @@ Compiler = subclass CodeType where
       path or Error name 'this resolves to an empty name'
 
       if
-        parent == 0 and (qual or len path == 1) =>
+        qual or (parent == 0 and len path == 1) =>
           @pushconst parent
           @pushconst None
           @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join path
 
         otherwise =>
-          qual => Error qual 'relative imports cannot be qualified'
           *dir, file = path
           @pushconst parent
           @pushconst (file,)
