@@ -134,8 +134,7 @@ CodeType = subclass object where
     @enclosed   = if
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       otherwise => set!
-
-    exhaust $ map (@varnames !!) $ itertools.chain a kw va vkw
+    for v in itertools.chain a kw va vkw => @varnames !! v
 
     @bytecode  = list!
     @stacksize = 0
