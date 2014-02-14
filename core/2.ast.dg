@@ -50,7 +50,8 @@ Name = subclass Node where
     @varary = @value in @VARARY
     @flags  = @FLAGS.get @value 0
 
-  __eq__ = x ~> @value == x
+  __eq__   = self x -> @value == x
+  __hash__ = self   -> hash @value
 
   #: Whether this (infix) node has priority over the other one.
   #:
