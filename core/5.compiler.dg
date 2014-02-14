@@ -333,7 +333,7 @@ Compiler = subclass CodeType where
     g.regsyms body
     for (_, v) in patterns.items! => for a in @popast_symscan v => g.varnames !! a
     for (k, v) in patterns.items! =>
-      g.pushname a
+      g.pushname k
       g.popast   v
     g.pushast body
     @pushclosure g da dkw
