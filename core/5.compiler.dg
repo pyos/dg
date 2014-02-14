@@ -25,7 +25,6 @@ compilefd = fd filename: '<stream>' -> compileast $ parsefd fd filename
 #:
 compileast = x ->
   self = Compiler ''
-  @setfile x
   @pushast x
   @append 'RETURN_VALUE' delta: -1
   @frozen
@@ -97,7 +96,7 @@ WithOpcode = x -> f xs ~>
 #: Take the first argument that doesn't match a jump condition.
 #:
 #: WithJump :: str -> Handler
-
+#:
 WithJump   = x -> FixedArity 2 2 $ f (a, b) ~> (@pushast a, with @jump x delta: -1 => @pushast b)
 Comparison =      FixedArity 2 2 $ f (a, b) ~>
   chain = list!
@@ -122,39 +121,9 @@ Comparison =      FixedArity 2 2 $ f (a, b) ~>
     @append 'POP_TOP'  # stack size change was accounted for by @jump
 
 
-#: Parse function call arguments.
-#:
-#: positional1 positional2 keyword: value *: varargs **: varkwargs
-#:
-#: CALLARGS :: [Node] -> ([Node], dict str Node, Maybe Node, Maybe Node)
-#:
-CALLARGS = xs -> a, kw, va, vkw where
-  a   = list!
-  kw  = dict!
-  va  = None
-  vkw = None
-
-  for x in xs => if
-    x :: Expression and x.op == ':' => if
-      fst x.args == '*'  =>
-        va => Error x 'can only have one `*: x`'
-        va = snd x.args
-      fst x.args == '**' =>
-        vkw => Error x 'can only have one `**: x`'
-        vkw = snd x.args
-      fst x.args :: Name => kw !! (fst x.args).value = snd x.args
-      otherwise => Error x 'keywords should be identifiers'
-    otherwise => a.append x
-
-  len a  > 255 => Error (fst xs) 'too many arguments'
-  len kw > 255 => Error (fst xs) 'too many keyword arguments'
-
-
 #: Parse function definition arguments.
 #:
-#: Unlike `CALLARGS`, this function enforces a strict order and supports patterns.
-#:
-#: positional1 (positional2, iterable): default_value *: varargs keyword_only *: varkwargs
+#: positional1 (positional2, iterable): default_value *: varargs keyword_only **: varkwargs
 #:
 #: DEFNARGS :: Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
 #:
@@ -166,40 +135,39 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
   va   = list!  # varargs (a singleton)
   vkw  = list!  # varkwargs (a singleton)
   add  = dict!  # (name -> pattern) mapping
-  cnt  = itertools.count 0
 
-  pattern = x -> if
+  pattern = i x -> if
     x :: Name => if
       x in a + kw + va => Error x 'duplicate argument name'
-      x == '_'         => 'ignore:{}'.format $ next cnt
+      x == '_'         => 'ignore:{}'.format i
       otherwise        => x.value
-    otherwise => name where add !! (name = 'pattern:{}'.format $ next cnt) = x
+    otherwise => name where add !! (name = 'pattern:{}'.format i) = x
 
   data = if xs :: Expression and not xs.closed and xs.op == '' => xs.args
             otherwise                                          => list' xs
 
-  for x in data => if
+  for (i, x) in enumerate data => if
     x :: Expression and x.op == ':' => if
-      x :: LeftBind  => Error x "where's the value?"
-      x :: RightBind => Error x "where's the keyword?"
+      x :: LeftBind  => Error x 'default value missing'
+      x :: RightBind => Error x 'argument name missing'
       fst x.args == '*' =>
         va => Error x 'can only have one `*: x`'
-        va.append $ pattern $ snd x.args
+        va.append $ pattern i $ snd x.args
       fst x.args == '**' =>
         vkw => Error x 'can only have one `**: x`'
-        vkw.append $ pattern $ snd x.args
+        vkw.append $ pattern i $ snd x.args
       va =>
         k, v = x.args
         k :: Name or Error k 'keywords should be identifiers'
-        kw.append name where dkw !! (name = pattern k) = v
+        kw.append name where dkw !! (name = pattern i k) = v
       otherwise =>
-        a.append $ pattern $ fst x.args
+        a.append $ pattern i $ fst x.args
         da.append $ snd x.args
-    va => kw.append $ pattern x
+    va => kw.append $ pattern i x
     da => Error x 'this argument must have a default value'
-    otherwise => a.append $ pattern x
+    otherwise => a.append $ pattern i x
 
-  len a  > 255 => Error xs 'too many arguments'
+  len a  > 255 => Error xs 'too many positional arguments'
   len kw > 255 => Error xs 'too many keyword arguments'
 
 
@@ -210,31 +178,26 @@ Compiler = subclass CodeType where
   #:
   extend = classmethod $ mod ~> NotImplemented
 
-  #: Note where this code object starts in the source code.
-  #:
-  #: setfile :: Node -> a
-  #:
-  setfile = x ~>
-    @filename = x.loc !! 0
-    @lineno   = x.loc !! 1
-    @lineoff  = x.loc !! 1
-
   #: Push the result of evaluating `x` onto the stack.
   #:
   #: pushast :: Node -> a
   #:
   pushast = x ~>
-    x.loc and @lineoff >= 0 =>
-      # A good time to map bytecode to source code lines.
-      lineoff = x.loc !! 1 - @lineoff
-      lineoff > 0 =>
-        byteoff = codelen $ drop @byteoff @bytecode
-        byteoff > 0 =>
-          @lineoff = x.loc !! 1
-          @byteoff = len @bytecode
-          @lnotab += lineoff // 256 * b'\x00\xff'
-          @lnotab += byteoff // 256 * b'\xff\x00'
-          @lnotab += bytes (byteoff % 256, lineoff % 256)
+    x.loc => if
+      @lineoff == -1 =>
+        @filename = x.loc !! 0
+        @lineno   = x.loc !! 1
+        @lineoff  = x.loc !! 1
+      otherwise =>
+        lineoff = x.loc !! 1 - @lineoff
+        lineoff > 0 =>
+          byteoff = codelen $ drop @byteoff @bytecode
+          byteoff > 0 =>
+            @lineoff = x.loc !! 1
+            @byteoff = len @bytecode
+            @lnotab += lineoff // 256 * b'\x00\xff'
+            @lnotab += byteoff // 256 * b'\xff\x00'
+            @lnotab += bytes (byteoff % 256, lineoff % 256)
 
     if x :: Name       => @pushname  x.value
        x :: Constant   => @pushconst x.value
@@ -307,15 +270,30 @@ Compiler = subclass CodeType where
   #: pushcalltop :: int [Node] -> a
   #:
   pushcalltop = argc argv ~>
-    a, kw, va, vkw = CALLARGS argv
-    @pushlist a
+    kw = dict!
+
+    for x in argv => if
+      x :: Expression and x.op == ':' => if
+        x :: LeftBind      => Error x 'keyword without a value'
+        x :: RightBind     => Error x 'keyword missing'
+        fst x.args in kw   => Error x 'keywords should be unique'
+        fst x.args :: Name => kw !! (fst x.args).value = snd x.args
+        otherwise          => Error x 'keywords should be identifiers'
+      otherwise => @pushast x
+
+    argc += len argv - len kw
+    argc   > 255 => Error (fst argv) 'too many positional arguments'
+    len kw > 255 => Error (fst argv) 'too many keyword arguments'
+    va  = kw.pop '*'  None
+    vkw = kw.pop '**' None
+
     @pushkeys kw.items!
     va  => @pushast va
     vkw => @pushast vkw
     @append
       'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
-      0 + argc + len a + 256 * len kw
-      0 - argc - len a - 2   * len kw - bool va - bool vkw
+      0 + argc + 256 * len kw
+      0 - argc - 2   * len kw - bool va - bool vkw
 
   #: Default infix bind implementation.
   #:
@@ -336,7 +314,6 @@ Compiler = subclass CodeType where
     otherwise =>
       c = if right     => @spawn f.value ('<L>',) ('<R>',)
              otherwise => @spawn f.value ('<R>',) ('<L>',)
-      c.setfile  f
       c.pushcall f (Name '<L>') (Name '<R>')
       @pushclosure c tuple! $ dict' $ if right     => '<R>', arg
                                          otherwise => '<L>', arg
@@ -358,7 +335,6 @@ Compiler = subclass CodeType where
     for (name, pattern) in patterns.items! =>
       g.pushname name
       g.popast   pattern
-    g.setfile body
     g.pushast body
     @pushclosure g da dkw
 
@@ -718,7 +694,6 @@ Compiler = subclass CodeType where
     #:
     'where', FixedArity 2 2 $ f (ret, env) ~>
       g = @spawn '<lambda>'
-      g.setfile  ret
       g.regsyms  env
       g.regsyms  ret
       g.pushlast env ret
