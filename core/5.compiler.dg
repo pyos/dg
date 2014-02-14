@@ -97,7 +97,7 @@ WithOpcode = x -> f xs ~>
 #:
 #: WithJump :: str -> Handler
 #:
-WithJump   = x -> FixedArity 2 2 $ f (a, b) ~> (@pushast a, with @jump x delta: -1 => @pushast b)
+WithJump   = x -> FixedArity 2 2 $ f (a, b) ~> (@pushast a, with @jump x False -1 => @pushast b)
 Comparison =      FixedArity 2 2 $ f (a, b) ~>
   chain = list!
   while a :: Expression and not a.closed and @prefix.get a.op.value is Comparison =>
@@ -331,10 +331,10 @@ Compiler = subclass CodeType where
   pushfunc' = body a kw da dkw va vkw patterns ~>
     g = @spawn '<lambda>' a kw va vkw
     g.regsyms body
-    for (name, pattern) in patterns.items! => for a in @popast_symscan pattern => g.varnames !! a
-    for (name, pattern) in patterns.items! =>
-      g.pushname name
-      g.popast   pattern
+    for (_, v) in patterns.items! => for a in @popast_symscan v => g.varnames !! a
+    for (k, v) in patterns.items! =>
+      g.pushname a
+      g.popast   v
     g.pushast body
     @pushclosure g da dkw
 
