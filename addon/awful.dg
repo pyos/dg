@@ -22,9 +22,9 @@ console_width = except
 #: full :: Exception -> str
 #:
 full = err tb -> (+)
+  ''.join $ map line $ traceback.extract_tb tb
   if err :: SyntaxError => syntax err
      otherwise          => normal err
-  ''.join $ map line $ reversed $ traceback.extract_tb tb
 
 
 #: Format a standard error message.
@@ -38,7 +38,7 @@ normal = err -> '{}: {}'.format (colored.red err.__class__.__name__) err
 #:
 #: syntax :: type SyntaxError -> str
 #:
-syntax = err -> normal err + line (err.filename, err.lineno, txt, None) where
+syntax = err -> line (err.filename, err.lineno, txt, None) + normal err where
   before = err.text !! slice (err.offset - 1)
   errchr = err.text !! slice (err.offset - 1) err.offset
   after  = err.text !! slice  err.offset None
@@ -58,7 +58,7 @@ line = (f, ln, fn, txt) ->
   txt = if txt is None => ''
            otherwise   => ': ' + txt
 
-  '\n  ' + colored.yellow f + ' line ' + colored.cyan (str ln) + fn +
+  (+ '\n') $ '  ' + colored.yellow f + ' line ' + colored.cyan (str ln) + fn +
     # Contents of the file is the most useless info here.
     # We'll truncate it to fit the line into the console.
     space = console_width dict! - len (f + str ln + fn) - 8
