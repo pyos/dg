@@ -40,7 +40,6 @@ Error = at description -> raise $ SyntaxError description at.loc
 
 #: Enforce arbitrary argument count limits on a compile-time function.
 #:
-#: `ANY` for `min` means "accept any amount of arguments".
 #: `ANY` for `max` means "the function is variadic".
 #:
 #: FixedArity :: int int Handler -> Handler
