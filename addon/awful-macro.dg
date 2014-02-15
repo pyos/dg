@@ -1,98 +1,11 @@
 import '/sys'
 import '/builtins'
 import '/readline'
-import '/traceback'
 
 
-colored = except
-  # `clint` recommended for maximum awesomeness.
-  err => import '/clint/textui/colored'
-  err => subclass object where
-    magenta = cyan = green =
-     yellow = blue = white =
-      black = red  = staticmethod $ x -> x
-
-
-console_width = except
-  err => import '/clint/textui/cols/console_width'
-  err => kwargs -> 80
-
-
-#: Format a full traceback.
-#:
-#: full :: Exception -> str
-#:
-full = err tb -> (+)
-  if err :: SyntaxError => syntax err
-     otherwise          => normal err
-  ''.join $ map line $ reversed $ traceback.extract_tb tb
-
-
-#: Format a standard error message.
-#:
-#: normal :: type Exception -> str
-#:
-normal = err -> '{}: {}'.format (colored.red err.__class__.__name__) err
-
-
-#: Like `normal`, only for `SyntaxError`s. Should display where the error is.
-#:
-#: syntax :: type SyntaxError -> str
-#:
-syntax = err -> normal err + line (err.filename, err.lineno, txt, None) where
-  xs     = err.text.strip!
-  before = xs !! slice (err.offset - 1)
-  errchr = xs !! slice (err.offset - 1) err.offset
-  after  = xs !! slice  err.offset None
-  length = len (err.filename + str err.lineno + before) + 10
-  txt    = before + colored.red errchr + after + '\n' + ' ' * length + '^'
-
-
-#: Format a single item in a traceback.
-#:
-#: item  :: (str, int, str, Maybe str) -> str
-#:
-line = (f, ln, fn, txt) ->
-  # Do not show function name at top level.
-  fn  = if fn == '<module>' or not fn => ''
-           otherwise                  => ': ' + fn
-  # The file may not exist.
-  txt = if txt is None => ''
-           otherwise   => ': ' + txt
-
-  '\n  ' + colored.yellow f + ' line ' + colored.cyan (str ln) + fn +
-    # Contents of the file is the most useless info here.
-    # We'll truncate it to fit the line into the console.
-    space = console_width dict! - len (f + str ln + fn) - 8
-    # However, it only makes sense if we have more than 5 characters.
-    # Otherwise, better hide it completely.
-    if 0 > space - 5       => ''
-       0 > space - len txt => txt !! slice (space - 3) + '...'
-       otherwise => txt
-
-
-sys.displayhook = v -> if
-  # `exit` and `quit` should not need to be called when used from a REPL.
-  v is exit => v 0
-  v is quit => v 0
-  v is None => None
-  otherwise =>
-    text = str sys.ret + repr v
-    except e => print text
-           e :: UnicodeEncodeError => print $
-             enc = text.encode sys.stdout.encoding 'backslashreplace'
-             enc.decode sys.stdout.encoding 'strict'
-    builtins._ = v
-
-
-sys.excepthook = t v tb original: sys.excepthook -> except
-  err => print file: sys.stderr $ full v tb
-  # *Somebody* will surely find a way to break `Traceback`.
-  # Note that this will display the original traceback, too.
-  err => original (type err) err err.__traceback__
-
-
-sys.ps1 = 'dg $ '
-sys.ps2 = '   | '
-sys.ret = colored.green  '   = '
+sys.displayhook =  import 'awful/displayhook'
+sys.excepthook  =  import 'awful/excepthook'
+sys.ret         = (import 'awful/colored').green  '   = '
+sys.ps1         = 'dg $ '  # FIXME `colored` does not wrap stuff in `\001` and `\002`,
+sys.ps2         = '   | '  # thus confusing `readline`.
 builtins._ = None
