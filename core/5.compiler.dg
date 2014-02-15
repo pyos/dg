@@ -520,7 +520,6 @@ Compiler = subclass CodeType where
     nm :: Name => yield nm.value
 
   symscan = dict'
-    # TODO import
     '',  f args   ~> @symbols $ Expression *: args
 
     '=', FixedArity 2 2 $ f (n, x) ~>
@@ -550,6 +549,26 @@ Compiler = subclass CodeType where
       for (b, c) in y =>
         for a in @symbols b => yield a
         for a in @symbols c => yield a
+
+    'import', FixedArity 1 ANY $ f (name, *flags) ~>
+      name       :: Constant or Error name 'module names should be known at compile time'
+      name.value :: str      or Error name 'module names are strings'
+      qual  = False
+      macro = False
+
+      for flag in flags => if
+        flag == 'qualified' => qual  = True
+        flag == 'extension' => macro = True
+        otherwise => Error flag 'unsupported import flag'
+
+      parent = 1
+      path   = (posixpath.normpath name.value).split posixpath.sep
+      while path and head path == ''           and not (path.pop 0) => parent  = 0
+      while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
+      while path and head path == posixpath.curdir and  path.pop 0  =>
+      path or Error name 'this resolves to an empty name'
+      yield $ path !! (-not qual)
+      f._impdata = parent, path, qual, macro
 
     # These create new functions. We shouldn't scan them.
     '->',    _ _ ~> ()
@@ -644,22 +663,8 @@ Compiler = subclass CodeType where
     #: import 'markup'               imports 'markup' from the current package
     #:
     'import', FixedArity 1 ANY $ f (name, *flags) ~>
-      name       :: Constant or Error name 'module names should be known at compile time'
-      name.value :: str      or Error name 'module names are strings'
-      qual  = False
-      macro = False
-
-      for flag in flags => if
-        flag == 'qualified' => qual  = True
-        flag == 'extension' => macro = True
-        otherwise => Error flag 'unsupported import flag'
-
-      parent = 1
-      path   = (posixpath.normpath name.value).split posixpath.sep
-      while path and head path == ''           and not (path.pop 0) => parent  = 0
-      while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
-      while path and head path == posixpath.curdir and  path.pop 0  =>
-      path or Error name 'this resolves to an empty name'
+      hasattr f '_impdata' or Error name "internal error: should've called @symbols first"
+      parent, path, qual, macro = f._impdata
 
       if
         qual or (parent == 0 and len path == 1) =>
