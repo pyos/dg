@@ -60,7 +60,7 @@ runcode = code ->
 #:
 #: runrepl :: TextIOBase -> _|_
 #:
-runrepl = fd environ: (dict __name__: '__main__' builtins: __builtins__) startup: False ->
+runrepl = fd environ: (dict __name__: '__main__' builtins: builtins) startup: False ->
   startup => if
     fn = os.environ.get 'PYTHONSTARTUPDG' '' => runcode $ compilefd   (open fn) fn
     fn = os.environ.get 'PYTHONSTARTUP'   '' => runcode $ compilepyfd (open fn) fn
