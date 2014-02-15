@@ -83,7 +83,8 @@ Jump = subclass object where
 #:   names      :: dict str int -- attributes, globals & module names.
 #:   cellvars   :: dict str int -- local variables used by closures.
 #:   freevars   :: dict str int -- non-local variables.
-#:   enclosed   :: set -- names that may be added to `freevars`.
+#:   enclosed   :: set str -- names that may be added to `freevars`.
+#:   globals    :: set str -- variables in the global namespace.
 #:
 #:   bytecode  :: [(int, int)] -- (opcode, argument) pairs.
 #:   stacksize :: int -- minimum stack depth required for evaluation.
@@ -133,6 +134,9 @@ CodeType = subclass object where
     @freevars   = collections.defaultdict $ -> -1 - len @freevars
     @enclosed   = if
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
+      otherwise => set!
+    @globals    = if
+      cell      => cell.globals
       otherwise => set!
     for v in itertools.chain a kw va vkw => @varnames !! v
 
@@ -229,9 +233,9 @@ CodeType = subclass object where
 
   #: Push the value assigned to some name onto the value stack.
   #:
-  #: pushname :: str -> a
+  #: pushname :: str (Optional (str, int, int, str)) -> a
   #:
-  pushname = v ~> if
+  pushname = v at: None ~> if
     v in @cellvars => @append 'LOAD_DEREF'  delta: +1 $ @cellvars !! v
     v in @varnames => @append 'LOAD_FAST'   delta: +1 $ @varnames !! v
     v in @enclosed => @append 'LOAD_DEREF'  delta: +1 $ @freevars !! v

@@ -7,24 +7,25 @@ ANY = float 'inf'
 
 #: Compile some source code.
 #:
-#: compile :: str (Optional str) -> types.CodeType
+#: compile :: str (Optional str) (Optional (iter str)) -> types.CodeType
 #:
-compile = data filename: '<string>' -> compileast $ parse data filename
+compile = data filename: '<string>' ns: () -> compileast ns: ns $ parse data filename
 
 
 #: Compile the contents of a file-like object.
 #:
-#: compilefd :: TextIOBase (Optional str) -> types.CodeType
+#: compilefd :: TextIOBase (Optional str) (Optional (iter str)) -> types.CodeType
 #:
-compilefd = fd filename: '<stream>' -> compileast $ parsefd fd filename
+compilefd = fd filename: '<stream>' ns: () -> compileast ns: ns $ parsefd fd filename
 
 
 #: Compile an AST into Python bytecode.
 #:
-#: compileast :: Node -> types.CodeType
+#: compileast :: Node (Optional (iter str)) -> types.CodeType
 #:
-compileast = x ->
+compileast = x ns: () ->
   self = Compiler ''
+  @globals = set ns | set (@symbols x)
   @pushast x
   @append 'RETURN_VALUE' delta: -1
   @frozen
@@ -199,7 +200,7 @@ Compiler = subclass CodeType where
             @lnotab += byteoff // 256 * b'\xff\x00'
             @lnotab += bytes (byteoff % 256, lineoff % 256)
 
-    if x :: Name       => @pushname  x.value
+    if x :: Name       => @pushname  x.value at: x.loc
        x :: Constant   => @pushconst x.value
        x :: LeftBind   => @pushbind  False x.op *: x.args
        x :: RightBind  => @pushbind  True  x.op *: x.args
@@ -433,7 +434,7 @@ Compiler = subclass CodeType where
       x.op == '@' =>
         attr, = x.args
         attr :: Name or Error attr 'not an attribute'
-        @pushname 'self'
+        @pushname 'self' at: x.loc
         @append   'STORE_ATTR' delta: -2 $ @names !! attr.value
 
       # A single item prefixed with a star.

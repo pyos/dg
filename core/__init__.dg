@@ -16,7 +16,7 @@ build = old tag version ->
   for d in __path__ =>
     for f in sorted (os.listdir d) => if not $ f.startswith '_' =>
       with fd = open (os.path.join d f) 'r' =>
-        yield $ (ns !! 'compilefd') fd $ '<core:' + f + '>'
+        yield $ (ns !! 'compilefd') fd ('<core:' + f + '>') ns
 
 
 #: Load an existing bundle.
