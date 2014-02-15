@@ -39,12 +39,11 @@ normal = err -> '{}: {}'.format (colored.red err.__class__.__name__) err
 #: syntax :: type SyntaxError -> str
 #:
 syntax = err -> normal err + line (err.filename, err.lineno, txt, None) where
-  xs     = err.text.strip!
-  before = xs !! slice (err.offset - 1)
-  errchr = xs !! slice (err.offset - 1) err.offset
-  after  = xs !! slice  err.offset None
-  length = len (err.filename + str err.lineno + before) + 10
-  txt    = before + colored.red errchr + after + '\n' + ' ' * length + '^'
+  before = err.text !! slice (err.offset - 1)
+  errchr = err.text !! slice (err.offset - 1) err.offset
+  after  = err.text !! slice  err.offset None
+  length = len (err.filename + str err.lineno + before.lstrip!) + 10
+  txt    = before.lstrip! + colored.red errchr + after.rstrip! + '\n' + ' ' * length + '^'
 
 
 #: Format a single item in a traceback.
