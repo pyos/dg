@@ -458,7 +458,7 @@ Compiler = subclass CodeType where
         qs = list (where for (i, q) in enumerate x.args =>
           if q :: RightBind and q.op == '*' => yield i)
 
-        if len qs > 1 => Error (snd $ stars !! 1) 'cannot unpack into more than 1 list'
+        if len qs > 1 => Error (x.args !! (qs !! 1)) 'cannot unpack into more than 1 list'
            len qs < 1 => @append delta: (sz - 1) 'UNPACK_SEQUENCE' sz
            otherwise  => @append delta: (sz - 1) 'UNPACK_EX' $ i + 256 * (sz - i - 1) where
              i = head qs
