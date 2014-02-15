@@ -17,7 +17,7 @@
     <style id="exception"    _name="Exception Type"    map-to="python:builtin-constant"/>
     <style id="special"      _name="Special Variable"  map-to="python:special-variable"/>
     <style id="boolean"      _name="Boolean"           map-to="python:boolean"/>
-    <style id="operator"     _name="Operator"          map-to="def:keyword"/>
+    <style id="operator"     _name="Operator"          map-to="def:operator"/>
     <style id="constant"     _name="Constant"          map-to="def:constant"/>
     <style id="link"         _name="Link"/>
   </styles>
