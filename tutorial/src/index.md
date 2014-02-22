@@ -18,14 +18,13 @@ python3 -m dg -c 'print "Command!"'
 
 ##### Q: I expected a copy of a help message.
 
-A: `python -m dg [-q] [-X module ...] [-h | -b | -c command | -m module | file] ...`
+A: `python -m dg [-q] [-h | -b | -c command | -m module | file] ...`
 
 Options and arguments:
 
   * `-h`: show this message and exit
   * `-b`: rebootstrap the compiler
-  * `-q`: enable awesome tracebacks and prompts (equivalent to `-X dg.addon.awful`)
-  * `-X module`: enable compile-time macros from a specific module
+  * `-q`: enable awesome tracebacks and prompts (equivalent to `import '/dg/addon/awful/patch'`)
   * `-c command`: run a single command, then exit
   * `-m module`: run a module (or a package's `__main__`) as a script
   * `file`: run a script
