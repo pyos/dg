@@ -172,12 +172,6 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
 
 
 Compiler = subclass CodeType where
-  #: Load `infixl`, `infixr`, and `prefix` macros from a module.
-  #:
-  #: extend :: object -> a
-  #:
-  extend = classmethod $ mod ~> NotImplemented
-
   #: Push the result of evaluating `x` onto the stack.
   #:
   #: pushast :: Node -> a
@@ -557,8 +551,7 @@ Compiler = subclass CodeType where
       macro = False
 
       for flag in flags => if
-        flag == 'qualified' => qual  = True
-        flag == 'extension' => macro = True
+        flag == 'qualified' => qual = True
         otherwise => Error flag 'unsupported import flag'
 
       parent = 1
@@ -568,7 +561,7 @@ Compiler = subclass CodeType where
       while path and head path == posixpath.curdir and  path.pop 0  =>
       path or Error name 'this resolves to an empty name'
       yield $ path !! (-not qual)
-      f._impdata = parent, path, qual, macro
+      f._impdata = parent, path, qual
 
     # These create new functions. We shouldn't scan them.
     '->',    _ _ ~> ()
@@ -664,7 +657,7 @@ Compiler = subclass CodeType where
     #:
     'import', FixedArity 1 ANY $ f (name, *flags) ~>
       hasattr f '_impdata' or Error name "internal error: should've called @symbols first"
-      parent, path, qual, macro = f._impdata
+      parent, path, qual = f._impdata
 
       if
         qual or (parent == 0 and len path == 1) =>
@@ -680,15 +673,6 @@ Compiler = subclass CodeType where
           @append    'IMPORT_FROM' delta:  1 $ @names !! file
           @append    'ROT_TWO'     delta:  0
           @append    'POP_TOP'     delta: -1
-
-      if macro =>
-        # Replacing `__class__` allows subcells to inherit these changes.
-        @__class__ = subclass @__class__ where
-        @__class__.extend $ except
-          # If the module is `m` in package `a.b.c`, the macros are in
-          # `m-macro` from `a.b.c`. E.g. `a/b/c/m-macro.dg`.
-          err => importlib.import_module $ '.'.join path + '-macro'
-          err :: ImportError => Error name 'this module has no compiler extensions'
 
       @append 'DUP_TOP' delta: +1
       @popast $ Name $ path !! (-not qual)
