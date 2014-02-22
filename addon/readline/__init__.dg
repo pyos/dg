@@ -312,3 +312,47 @@ Readline = subclass object where
     state.cache.pop 'lastlen' 0
     state.cache.pop 'lastpos' 0
     state
+
+
+WithHistory = subclass Readline where
+  #: A reader that enables history navigation with up and down arrows.
+  #:
+  #: history :: [str] -- a list of previously entered lines
+  #:
+  __init__ = *: args **: kwargs ~>
+    (super WithHistory self).__init__ *: args **: kwargs
+    @history  = list!
+    @bindings = dict @bindings
+    @bindings !! Key.UP   = @history_prev
+    @bindings !! Key.DOWN = @history_next
+    None
+
+  #: Switch to the previous history entry, if any. The contents of the buffer are lost.
+  #:
+  #: history_prev :: ReadlineState -> ReadlineState
+  #:
+  history_prev = state ~>
+    i = state.cache.get 'history' -1
+    i > -len @history =>
+      state = state.erase  0 $ len state.buffer
+      state = state.insert 0 $ @history !! (i - 1)
+      state.cache !! 'history' = i - 1
+    state
+
+  #: Switch to the next history entry, if any. The contents of the buffer are lost.
+  #:
+  #: history_next :: ReadlineState -> ReadlineState
+  #:
+  history_next = state ~>
+    i = state.cache.get 'history' -1
+    i = state.cache.get 'history' -1
+    i < -1 =>
+      state = state.erase  0 $ len state.buffer
+      state = state.insert 0 $ @history !! (i + 1)
+      state.cache !! 'history' = i + 1
+    state
+
+  input = *: args **: kwargs ~> result where
+    @history.append ''
+    @history !! -1 = result = (super WithHistory self).input *: args **: kwargs
+    @history !! -1 or @history !!~ -1

@@ -8,36 +8,11 @@ except
     import '/sys'
     import '/builtins'
 
-    _history = list!
-    _history_prev = state ->
-      i = state.cache.get 'history' -1
-      if i > (-len _history) =>
-        state = state.erase  0 $ len state.buffer
-        state = state.insert 0 $ _history !! (i - 1)
-        state.cache !! 'history' = i - 1
-      state
+    _rdl = readline.WithHistory None
 
-    _history_next = state ->
-      i = state.cache.get 'history' -1
-      i = state.cache.get 'history' -1
-      if i < -1 =>
-        state = state.erase  0 $ len state.buffer
-        state = state.insert 0 $ _history !! (i + 1)
-        state.cache !! 'history' = i + 1
-      state
-
-    _Readline = subclass readline.Readline where
-      __init__ = tty ~>
-        readline.Readline.__init__ self tty
-        @bindings = dict @bindings
-        @bindings !! readline.Key.UP   = _history_prev
-        @bindings !! readline.Key.DOWN = _history_next
-        None
-
-    builtins.input = prompt ->
-      _reader = _Readline $ readline.Teletype sys.stdin sys.stdout
-      _history.append ''
-      _history !! -1 = _reader.input prompt
+    builtins.input = prompt: '' ->
+      _rdl.tty = readline.Teletype sys.stdin sys.stdout
+      _rdl.input prompt
 
 
 sys.displayhook = import 'displayhook'
