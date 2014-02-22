@@ -1,0 +1,11 @@
+import '/sys'
+import '/builtins'
+import '/readline'
+
+
+sys.displayhook = import 'displayhook'
+sys.excepthook  = import 'excepthook'
+sys.ret         = '  ' + (import 'colored').green  ' = '
+sys.ps1         = 'dg' + (import 'colored').yellow ' $ '
+sys.ps2         = '  ' + (import 'colored').yellow ' | '
+builtins._ = None
