@@ -1,0 +1,61 @@
+import '/fcntl'
+import '/struct'
+import '/termios'
+import '/contextlib'
+
+
+Teletype = subclass object where
+  #: Enter the raw mode of a TTY.
+  #:
+  #: raw :: bool bool :: Context NoneType
+  #:
+  raw = contextlib.contextmanager $ jobctl flowctl ~>
+    old = termios.tcgetattr @input
+    new = termios.tcgetattr @input
+    new !! 0 &= ~(termios.ISTRIP | termios.IXON)
+    new !! 3 &= ~(termios.ECHO   | termios.ICANON | termios.IEXTEN | termios.ISIG)
+    if flowctl => new !! 0 |= termios.IXON
+    if jobctl  => new !! 3 |= termios.ISIG
+    except error   => yield $ termios.tcsetattr @input termios.TCSADRAIN new
+           finally =>         termios.tcsetattr @input termios.TCSAFLUSH old
+
+  #: Find out how much stuff this TTY can display at once.
+  #:
+  #: size :: (int, int)
+  #:
+  size = ~>
+    # FIXME what would happen if a Windows SSH client connects to a UNIX server?
+    #   I sure hope that client emulates UNIX terminals.
+    struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
+
+  #: Get a single keypress from this TTY.
+  #:
+  #: key :: str
+  #:
+  key = ~> c where
+    c = @read 1
+    c == '\033' =>
+      c += @read 1
+      c == '\033N' => c += @read 1  # alternate character set 1
+      c == '\033O' => c += @read 1  # alternate character set 2
+      c == '\033[' =>  # ANSI CSI
+        c += @read 1
+        while not $ '@' <= last c <= '~' => c += @read 1
+
+  #: Move the caret `y` characters down and `x` characters to the right.
+  #:
+  #: relmove :: int int -> a
+  #:
+  relmove = y x ~> @write $ (+)
+    if y > 0     => '\033[{}B'.format y
+       y < 0     => '\033[{}A'.format (-y)
+       otherwise => ''  # If `y` is 0, terminals might assume 1.
+    if x > 0     => '\033[{}C'.format x
+       x < 0     => '\033[{}D'.format (-x)
+       otherwise => ''
+
+  #: Erase everything from the cursor to the end of the screen.
+  #:
+  #: erase :: a
+  #:
+  erase = ~> @write '\033[J'

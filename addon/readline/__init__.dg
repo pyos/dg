@@ -1,172 +1,10 @@
 import '/re'
-import '/sys'
-import '/fcntl'  # UNIX-only, required to determine window size
-import '/struct'
-import '/termios'  # UNIX-only, required to enable raw TTY mode
-import '/itertools'
-import '/contextlib'
 import '/collections'
 
-
-Key = subclass object where
-  # Determined by typing stuff into Gnome Terminal.
-  # May actually depend on the VT.
-  DEL_ASCII = '\x7f'  # Defined as DEL, but used as Backspace. Strange stuff.
-  DEL_ANSI  = '\033[3~'
-  INSERT    = '\033[2~'
-  PAGE_UP   = '\033[5~'
-  PAGE_DOWN = '\033[6~'
-  UP        = '\033[A'
-  DOWN      = '\033[B'
-  RIGHT     = '\033[C'
-  LEFT      = '\033[D'
-  HOME      = '\033[H'
-  END       = '\033[F'
-  HOME_ALT  = '\033OH'
-  END_ALT   = '\033OF'
-
-  # Control sequence = ASCII name [= known name] = value
-  CONTROL_A = SOH            = '\x01'
-  CONTROL_B = STX            = '\x02'
-  CONTROL_C = ETX = SIGINT   = '\x03'  # only usable via `enable_jobs = False`
-  CONTROL_D = EOF            = '\x04'
-  CONTROL_E = ENQ            = '\x05'
-  CONTROL_F = ACK            = '\x06'
-  CONTROL_G = BEL = ALARM    = '\x07'
-  CONTROL_H = BS  = DEL_CTRL = '\x08'
-  CONTROL_I = TAB            = '\x09'
-  # Control+J = '\n' is unusable due to how `input` works.
-  CONTROL_K = VT  = VTAB     = '\x0b'
-  CONTROL_L = FF  = NEWPAGE  = '\x0c'
-  # Control+M = '\r' is unusable due to automatic line break conversion.
-  CONTROL_N = SO             = '\x0e'
-  CONTROL_O = SI             = '\x0f'
-  CONTROL_P = DLE            = '\x10'
-  CONTROL_Q = DC1 = XON      = '\x11'  # only usable via `enable_flowctl = False`
-  CONTROL_R = DC2            = '\x12'
-  CONTROL_S = DC3 = XOFF     = '\x13'  # only usable via `enable_flowctl = False`
-  CONTROL_T = DC4            = '\x14'
-  CONTROL_U = NAK            = '\x15'
-  CONTROL_W = ETB            = '\x17'
-  CONTROL_X = CAN = CANCEL   = '\x18'
-  CONTROL_Y = EM             = '\x19'
-  CONTROL_Z = SUB = SUSPEND  = '\x1a'  # only usable via `enable_jobs = False`
-
-
-Color = subclass object where
-  FG = subclass object where
-    black   = '\033[30m{}\033[39m'.format
-    red     = '\033[31m{}\033[39m'.format
-    green   = '\033[32m{}\033[39m'.format
-    yellow  = '\033[33m{}\033[39m'.format
-    blue    = '\033[34m{}\033[39m'.format
-    magenta = '\033[35m{}\033[39m'.format
-    cyan    = '\033[36m{}\033[39m'.format
-    white   = '\033[37m{}\033[39m'.format
-
-  BG = subclass object where
-    black   = '\033[40m{}\033[39m'.format
-    red     = '\033[41m{}\033[39m'.format
-    green   = '\033[42m{}\033[39m'.format
-    yellow  = '\033[43m{}\033[39m'.format
-    blue    = '\033[44m{}\033[39m'.format
-    magenta = '\033[45m{}\033[39m'.format
-    cyan    = '\033[46m{}\033[39m'.format
-    white   = '\033[47m{}\033[39m'.format
-
-
-Teletype = subclass object where
-  #: ANSI character DFA.
-  #:
-  #: ANSI :: Re
-  #:
-  ANSI = re.compile r'''(?x)\033(?:
-    \[.*?[@-~]     # ANSI CSI: standard escape sequences.
-   |\]\d+;.*?\007  # ANSI OSC: e.g. sets the title of an XTerm-like VT.
-   |[NO].          # ANSI SS2/SS3: alternate character sets.
-  )'''
-
-  #: Various TTY-related functions.
-  #:
-  #: input  :: TextIOBase -- 'r'-mode TTY.
-  #: output :: TextIOBase -- 'w'-mode TTY.
-  #:
-  __init__ = @input @output ~>
-    not @input .isatty! => raise $ IOError 'input: not a tty'
-    not @output.isatty! => raise $ IOError 'output: not a tty'
-    None
-
-  read  = ~> @input.read
-  write = ~> @output.write
-  flush = ~> @output.flush
-
-  #: Determine the length of an ANSI-escaped string. ANSI escapes are assumed to be empty.
-  #:
-  #: ansi_len :: str -> int
-  #:
-  ansi_len = classmethod $ data ~> len $ @ANSI.sub '' data
-
-  #: Check whether a key's value is printable.
-  #:
-  #: printable :: str -> bool
-  #:
-  printable = classmethod $ data ~> if
-    len data == 0 => True
-    len data >= 2 => False  # only ANSI sequences match this
-    otherwise     => 32 <= ord data < 127 or 160 <= ord data
-
-  #: Enter the raw mode of a TTY.
-  #:
-  #: raw :: bool bool :: Context NoneType
-  #:
-  raw = contextlib.contextmanager $ enable_jobs enable_flowctl ~>
-    fd  = @input.fileno!
-    old = termios.tcgetattr fd
-    new = termios.tcgetattr fd
-    new !! 0 &= ~(termios.ISTRIP | termios.IXON)
-    new !! 3 &= ~(termios.ECHO   | termios.ICANON | termios.IEXTEN | termios.ISIG)
-    if enable_flowctl => new !! 0 |= termios.IXON
-    if enable_jobs    => new !! 3 |= termios.ISIG
-    except error   => yield $ termios.tcsetattr fd termios.TCSADRAIN new
-           finally =>         termios.tcsetattr fd termios.TCSAFLUSH old
-
-  #: Move the caret `y` characters down and `x` characters to the right.
-  #:
-  #: relmove :: int int -> a
-  #:
-  relmove = y x ~> @output.write $ (+)
-    if y > 0     => '\033[{}B'.format y
-       y < 0     => '\033[{}A'.format (-y)
-       otherwise => ''  # If `y` is 0, terminals might assume 1.
-    if x > 0     => '\033[{}C'.format x
-       x < 0     => '\033[{}D'.format (-x)
-       otherwise => ''
-
-  #: Get a single keypress from this TTY.
-  #:
-  #: key :: str
-  #:
-  key = ~> c where
-    c = @read 1
-    c == '\033' =>
-      c += @read 1
-      c == '\033N' => c += @read 1  # alternate character set 1
-      c == '\033O' => c += @read 1  # alternate character set 2
-      c == '\033[' =>  # ANSI CSI
-        c += @read 1
-        while not $ '@' <= last c <= '~' => c += @read 1
-
-  #: Iterate over keypresses until EOL.
-  #:
-  #: line :: iter str
-  #:
-  line = ~> while (c = @key) != '\n' => yield c
-
-  #: Find out how much stuff this TTY can display at once.
-  #:
-  #: size :: (int, int)
-  #:
-  size = ~> struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
+import 'ansi/Key'
+import 'ansi/Color'
+import 'tty/Teletype'
+import 'mix/History'
 
 
 ReadlineState = subclass object where
@@ -302,7 +140,8 @@ Readline = subclass object where
     _y, _x = state.cache.get 'lastpos' 0 `divmod` _w
     @tty.relmove (-_y) (-_x)
     # 2. Overwrite it with the new data, erase what can't be overwritten.
-    @tty.write $ prefix + @preprocess state.buffer + '\033[J'
+    @tty.write $ prefix + @preprocess state.buffer
+    @tty.erase
     # 3. Go back to the beginning. Note: if the string fits
     #    exactly on one line and the cursor is still there,
     #    VTs won't create an empty line.
@@ -329,47 +168,3 @@ Readline = subclass object where
     state.cache.pop 'lastlen' 0
     state.cache.pop 'lastpos' 0
     state
-
-
-WithHistory = subclass Readline where
-  #: A reader that enables history navigation with up and down arrows.
-  #:
-  #: history :: [str] -- a list of previously entered lines
-  #:
-  __init__ = *: args **: kwargs ~>
-    (super WithHistory self).__init__ *: args **: kwargs
-    @history  = list!
-    @bindings = dict @bindings
-    @bindings !! Key.UP   = @history_prev
-    @bindings !! Key.DOWN = @history_next
-    None
-
-  #: Switch to the previous history entry, if any. The contents of the buffer are lost.
-  #:
-  #: history_prev :: ReadlineState -> ReadlineState
-  #:
-  history_prev = state ~>
-    i = state.cache.get 'history' -1
-    i > -len @history =>
-      state = state.erase  0 $ len state.buffer
-      state = state.insert 0 $ @history !! (i - 1)
-      state.cache !! 'history' = i - 1
-    state
-
-  #: Switch to the next history entry, if any. The contents of the buffer are lost.
-  #:
-  #: history_next :: ReadlineState -> ReadlineState
-  #:
-  history_next = state ~>
-    i = state.cache.get 'history' -1
-    i = state.cache.get 'history' -1
-    i < -1 =>
-      state = state.erase  0 $ len state.buffer
-      state = state.insert 0 $ @history !! (i + 1)
-      state.cache !! 'history' = i + 1
-    state
-
-  input = *: args **: kwargs ~> result where
-    @history.append ''
-    @history !! -1 = result = (super WithHistory self).input *: args **: kwargs
-    @history !! -1 or @history !!~ -1

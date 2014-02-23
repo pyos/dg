@@ -1,0 +1,79 @@
+import '/re'
+
+
+#: ANSI character DFA.
+#:
+#: Sequence :: Re
+#:
+Sequence = re.compile r'''(?x)\033(?:
+  \[.*?[@-~]     # ANSI CSI: standard escape sequences.
+ |\]\d+;.*?\007  # ANSI OSC: e.g. sets the title of an XTerm-like VT.
+ |[NO].          # ANSI SS2/SS3: alternate character sets.
+)'''
+
+
+Key = subclass object where
+  # Determined by typing stuff into Gnome Terminal.
+  # May actually depend on the VT.
+  DEL_ASCII = '\x7f'  # Defined as DEL, but used as Backspace. Strange stuff.
+  DEL_ANSI  = '\033[3~'
+  INSERT    = '\033[2~'
+  PAGE_UP   = '\033[5~'
+  PAGE_DOWN = '\033[6~'
+  UP        = '\033[A'
+  DOWN      = '\033[B'
+  RIGHT     = '\033[C'
+  LEFT      = '\033[D'
+  HOME      = '\033[H'
+  END       = '\033[F'
+  HOME_ALT  = '\033OH'
+  END_ALT   = '\033OF'
+
+  # Control sequence = ASCII name [= known name] = value
+  CONTROL_A = SOH            = '\x01'
+  CONTROL_B = STX            = '\x02'
+  CONTROL_C = ETX = SIGINT   = '\x03'  # only usable via `enable_jobs = False`
+  CONTROL_D = EOF            = '\x04'
+  CONTROL_E = ENQ            = '\x05'
+  CONTROL_F = ACK            = '\x06'
+  CONTROL_G = BEL = ALARM    = '\x07'
+  CONTROL_H = BS  = DEL_CTRL = '\x08'
+  CONTROL_I = TAB            = '\x09'
+  # Control+J = '\n' is unusable due to how `input` works.
+  CONTROL_K = VT  = VTAB     = '\x0b'
+  CONTROL_L = FF  = NEWPAGE  = '\x0c'
+  # Control+M = '\r' is unusable due to automatic line break conversion.
+  CONTROL_N = SO             = '\x0e'
+  CONTROL_O = SI             = '\x0f'
+  CONTROL_P = DLE            = '\x10'
+  CONTROL_Q = DC1 = XON      = '\x11'  # only usable via `enable_flowctl = False`
+  CONTROL_R = DC2            = '\x12'
+  CONTROL_S = DC3 = XOFF     = '\x13'  # only usable via `enable_flowctl = False`
+  CONTROL_T = DC4            = '\x14'
+  CONTROL_U = NAK            = '\x15'
+  CONTROL_W = ETB            = '\x17'
+  CONTROL_X = CAN = CANCEL   = '\x18'
+  CONTROL_Y = EM             = '\x19'
+  CONTROL_Z = SUB = SUSPEND  = '\x1a'  # only usable via `enable_jobs = False`
+
+
+Color = subclass object where
+  FG = subclass object where
+    black   = '\033[30m{}\033[39m'.format
+    red     = '\033[31m{}\033[39m'.format
+    green   = '\033[32m{}\033[39m'.format
+    yellow  = '\033[33m{}\033[39m'.format
+    blue    = '\033[34m{}\033[39m'.format
+    magenta = '\033[35m{}\033[39m'.format
+    cyan    = '\033[36m{}\033[39m'.format
+    white   = '\033[37m{}\033[39m'.format
+
+  BG = subclass object where
+    black   = '\033[40m{}\033[39m'.format
+    red     = '\033[41m{}\033[39m'.format
+    green   = '\033[42m{}\033[39m'.format
+    yellow  = '\033[43m{}\033[39m'.format
+    blue    = '\033[44m{}\033[39m'.format
+    magenta = '\033[45m{}\033[39m'.format
+    cyan    = '\033[46m{}\033[39m'.format
+    white   = '\033[47m{}\033[39m'.format

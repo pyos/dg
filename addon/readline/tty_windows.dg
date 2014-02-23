@@ -1,0 +1,1 @@
+raise $ ImportError 'Windows is not supported (yet)'

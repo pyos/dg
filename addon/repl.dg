@@ -13,9 +13,13 @@ import '../LeftBind'
 import '../Expression'
 
 
-readline = except
+except
   err => import 'readline'
-  err :: ImportError => None
+  err :: ImportError => readline = None
+  err is None =>
+    Reader = subclass readline.History readline.Readline where
+      # TODO completion
+      # TODO highlighting
 
 
 #: Compile a Python file.
@@ -76,7 +80,7 @@ runrepl = fd environ: (dict __name__: '__main__' builtins: builtins) startup: Fa
 
   _input = if
     # TODO: syntax highlighting
-    readline  => (readline.WithHistory $ readline.Teletype fd sys.stdout).input
+    readline  => (Reader $ readline.Teletype fd sys.stdout).input
     otherwise => input
 
   while True => except

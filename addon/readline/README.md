@@ -28,10 +28,10 @@ reader.input 'enter stuff here: '
 #### Change some settings
 
 `Readline` has several methods and attributes that may be overriden.
-Subclass `WithHistory` instead to enable arrow-based history navigation.
+Add the `History` mix-in to enable arrow-based history navigation.
 
 ```dg
-MyReadline = subclass readline.WithHistory where
+MyReadline = subclass readline.History readline.Readline where
 ```
 
 #### Turn system task control on/off
@@ -112,33 +112,6 @@ There's also a `Key` object that provides some known key values.
       state
 ```
 
-#### Example: autocompletion
-
-```dg
-    @bindings !! readline.Key.TAB = @complete
-    None  # __init__ must always return None
-
-  complete = state ~>
-    # NOTE: get_word_at and get_completions_for_word
-    #  must be implemented manually.
-    word, start_position = get_word_at state.buffer state.position
-    cmps = get_completions_for word
-    if
-      len cmps == 1 =>
-        # If you wish to insert the completion,
-        # use `state.erase` and `state.insert`.
-        state = state.erase  start_position (len word)
-        state = state.insert start_position (head cmps)
-      otherwise =>
-        # If you wish to print something, finalize the old prompt first!
-        # Also, keep in mind that the terminal is in raw mode now, so use
-        # '\r\n' or '\n\r', not '\n'.
-        state = @finalize state
-        print *: cmps sep: '\r\n' end: '\r\n'
-    # The prompt will be automatically re-displayed.
-    state
-```
-
 #### Context-aware prompts
 
 The prompt may be a function, in which case it accepts a
@@ -151,3 +124,44 @@ reader.input $ state -> if
   state.buffer => 'now press enter: '
   otherwise    => 'write something: '
 ```
+
+#### Autocompletion
+
+Add the `Completion` mix-in to enable autocompletion; the `completion_key` attribute
+sets the keybinding. 
+
+```dg
+MyReadline2 = subclass readline.Completion MyReadline where
+```
+
+`Tab` triggers completion by default. Override the `completion_keys` set
+to change that.
+
+```dg
+  completion_keys = set' Key.TAB Key.CONTROL_T
+```
+
+The default completion logic is to split the input into words (chunks matched with
+`completion_regex`, which defaults to `\w+`)...
+
+```dg
+  completion_regex = re.compile r'[\w\.]+'
+```
+
+...find the word the caret's pointing at, call `complete_word`...
+
+```dg
+  complete_word = word ~> list $ filter (x -> x.startswith word) globals!
+```
+
+...then either put the result into the input, or print a list of completions
+with `display_completions`.
+
+```dg
+  display_completions = cmps ~> print *: cmps sep: '\r\n' end: '\r\n'
+```
+
+This logic could be modified by overriding the `complete_buffer` method, which
+receives a string buffer and the caret position and should return
+a `(offset, length, completions)` tuple, where `offset` and `length` point to the word
+that is being completed.
