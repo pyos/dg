@@ -1,4 +1,5 @@
 import '/re'
+import '/itertools'
 import 'ansi/Key'
 
 
@@ -99,7 +100,11 @@ Completion = subclass object where
   #:
   #: display_completions :: [str] -> a
   #:
-  display_completions = cmps ~> for c in cmps => print c
+  display_completions = cmps ~>
+    max_len  = max $ map len cmps
+    win_len  = @tty.size !! 1 // (max_len + 2)
+    rows = itertools.zip_longest fillvalue: '' *: (list' (iter cmps) * win_len)
+    for row in rows => print *: (map (x -> ' ' + x + ' ' * (max_len - len x)) row)
 
 
 Pygments = subclass object where
