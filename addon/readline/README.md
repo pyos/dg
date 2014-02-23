@@ -127,8 +127,7 @@ reader.input $ state -> if
 
 #### Autocompletion
 
-Add the `Completion` mix-in to enable autocompletion; the `completion_key` attribute
-sets the keybinding. 
+Add the `Completion` mix-in to enable autocompletion.
 
 ```dg
 MyReadline2 = subclass readline.Completion MyReadline where
@@ -138,7 +137,7 @@ MyReadline2 = subclass readline.Completion MyReadline where
 to change that.
 
 ```dg
-  completion_keys = set' Key.TAB Key.CONTROL_T
+  completion_keys = set' readline.Key.TAB readline.Key.CONTROL_T
 ```
 
 The default completion logic is to split the input into words (chunks matched with
@@ -163,7 +162,7 @@ with `display_completions`.
 
 This logic could be modified by overriding the `complete_buffer` method, which
 receives a string buffer and the caret position and should return
-a `(offset, length, completions)` tuple, where `offset` and `length` point to the word
+an `(offset, length, completions)` tuple, where `offset` and `length` point to the word
 that is being completed.
 
 #### Syntax highlighting with Pygments
