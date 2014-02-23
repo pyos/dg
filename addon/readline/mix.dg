@@ -47,8 +47,8 @@ History = subclass object where
 
 
 Completion = subclass object where
-  completion_keys = set' Key.TAB
-  completion_word = re.compile r'\w+'
+  completion_keys  = set' Key.TAB
+  completion_regex = re.compile r'\w+'
 
   #: A mix-in that enables basic completion.
   #:
@@ -84,7 +84,7 @@ Completion = subclass object where
   #: complete_buffer :: str int -> (int, int, [str])
   #:
   complete_buffer = buf at ~> except
-    err => m = next $ filter (m -> m.start! <= at <= m.end!) $ @completion_word.finditer buf
+    err => m = next $ filter (m -> m.start! <= at <= m.end!) $ @completion_regex.finditer buf
     err is None => m.start!, m.end! - m.start!, @complete_word m.group!
     err :: StopIteration => 0, 0, list!
 
