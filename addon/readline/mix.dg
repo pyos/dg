@@ -1,5 +1,5 @@
 import '/re'
-import '/itertools'
+import '/math'
 import 'ansi/Key'
 
 
@@ -96,15 +96,18 @@ Completion = subclass object where
   complete_word = word ~> list' "complete_word" "not" "implemented"
 
   #: Format and display a list of multiple possible completions.
-  #: (The prompt has already been finalized. Also, use `\r\n`, not `\n`.)
   #:
   #: display_completions :: [str] -> a
   #:
   display_completions = cmps ~>
-    max_len  = max $ map len cmps
-    win_len  = @tty.size !! 1 // (max_len + 2)
-    rows = itertools.zip_longest fillvalue: '' *: (list' (iter cmps) * win_len)
-    for row in rows => print *: (map (x -> ' ' + x + ' ' * (max_len - len x)) row)
+    maxlen = max $ map len cmps
+    width  = @tty.size !! 1 // (maxlen + 1)
+    height = math.ceil $ len cmps / width
+    for y in range height =>
+      for x in range y (len cmps `min` y + width * height) height =>
+        @tty.write ' '
+        @tty.write $ (cmps !! x).ljust maxlen
+      @tty.write '\n'
 
 
 Pygments = subclass object where
