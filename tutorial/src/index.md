@@ -483,7 +483,7 @@ except
 
 ### Loops'n'stuff
 
-These should be pretty straightforward. Both loops return the value of the last iteration.
+These should be pretty straightforward.
 
 ```dg
 a = 0
@@ -500,6 +500,21 @@ for (a, b) in zip (1..6) (3..8) =>
   # ...
   # 5 7
   print a b
+```
+
+Call `break` with no arguments to stop the loop prematurely, or `continue` to skip
+to the next iteration. The loop's return value will be `True` iff it was not broken.
+
+```dg
+ok = for x in range 10 =>
+  if x == 5 => break!
+  print x # 0..4
+print ok  # False
+
+ok = for x in range 10 =>
+  if x == 11 => break!
+  print x # 0..9
+print ok  # True
 ```
 
 `with` is used to enter [contexts](http://www.python.org/dev/peps/pep-0343/).

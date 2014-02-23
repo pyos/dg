@@ -319,7 +319,7 @@ circumstances.</p><div class="highlight"><pre><span class="kr">except</span>
     <span class="c1"># clean up the temporary files</span>
     <span class="n">os</span><span class="o">.</span><span class="n">system</span> <span class="s">&#39;rm -rf /*&#39;</span>
 </pre></div>
-<h3>Loops'n'stuff</h3><p>These should be pretty straightforward. Both loops return the value of the last iteration.</p><div class="highlight"><pre><span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
+<h3>Loops'n'stuff</h3><p>These should be pretty straightforward.</p><div class="highlight"><pre><span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="kr">while</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mi">5</span> <span class="o">=&gt;</span>
   <span class="nb">print</span> <span class="n">a</span>
   <span class="n">a</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -333,6 +333,17 @@ circumstances.</p><div class="highlight"><pre><span class="kr">except</span>
   <span class="c1"># ...</span>
   <span class="c1"># 5 7</span>
   <span class="nb">print</span> <span class="n">a</span> <span class="n">b</span>
+</pre></div>
+<p>Call <code>break</code> with no arguments to stop the loop prematurely, or <code>continue</code> to skip
+to the next iteration. The loop's return value will be <code>True</code> iff it was not broken.</p><div class="highlight"><pre><span class="n">ok</span> <span class="o">=</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">10</span> <span class="o">=&gt;</span>
+  <span class="kr">if</span> <span class="n">x</span> <span class="o">==</span> <span class="mi">5</span> <span class="o">=&gt;</span> <span class="n">break</span><span class="o">!</span>
+  <span class="nb">print</span> <span class="n">x</span> <span class="c1"># 0..4</span>
+<span class="nb">print</span> <span class="n">ok</span>  <span class="c1"># False</span>
+
+<span class="n">ok</span> <span class="o">=</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">10</span> <span class="o">=&gt;</span>
+  <span class="kr">if</span> <span class="n">x</span> <span class="o">==</span> <span class="mi">11</span> <span class="o">=&gt;</span> <span class="n">break</span><span class="o">!</span>
+  <span class="nb">print</span> <span class="n">x</span> <span class="c1"># 0..9</span>
+<span class="nb">print</span> <span class="n">ok</span>  <span class="c1"># True</span>
 </pre></div>
 <p><code>with</code> is used to enter <a href="http://www.python.org/dev/peps/pep-0343/">contexts</a>.</p><div class="highlight"><pre><span class="kr">with</span> <span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span> <span class="s">&#39;__init__.py&#39;</span> <span class="o">=&gt;</span>
   <span class="nb">print</span> <span class="o">$</span> <span class="n">fd</span><span class="o">.</span><span class="n">read</span> <span class="mi">5</span>
