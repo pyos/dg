@@ -172,6 +172,11 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
 
 
 Compiler = subclass CodeType where
+  __init__ = *: args **: kwargs ~>
+    (super Compiler self).__init__ *: args **: kwargs
+    @loops = list!
+    None
+
   #: Push the result of evaluating `x` onto the stack.
   #:
   #: pushast :: Node -> a
@@ -355,7 +360,10 @@ Compiler = subclass CodeType where
       @pushexcept name try cases
       @append 'POP_BLOCK'
       @pushconst None
+    # `break` and `continue` should not be used in `finally`.
+    _loops, @loops = @loops, list!
     @pushast finally
+    @loops = _loops
     @append 'POP_TOP'     delta: -1
     @append 'END_FINALLY' delta: -4
 
@@ -729,13 +737,19 @@ Compiler = subclass CodeType where
     #: I wonder if there's a nicer way to write interlinked jumps.
     #:
     'while', FixedArity 2 2 $ f (cond, body) ~>
-      @pushconst None
-      restart = @jump 'JUMP_ABSOLUTE' True
-      @pushast cond
-      with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
-        @append  'POP_TOP' delta: -1
-        @pushast body
-        restart.set
+      @pushconst False
+      with @jump 'SETUP_LOOP' =>
+        restart = @jump 'JUMP_ABSOLUTE' True
+        @loops.append $ @jump 'CONTINUE_LOOP' reverse: True
+        @pushast cond
+        with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+          @pushast body
+          @append  'POP_TOP' delta: -1
+          restart.set
+        @loops.pop -1
+        @append 'POP_BLOCK'
+        @append 'POP_TOP'   delta: -1
+        @pushconst True
 
     #: Iterate over a...iterator, duh.
     #:
@@ -743,18 +757,37 @@ Compiler = subclass CodeType where
     #:
     'for', FixedArity 2 2 $ f (var, body) ~>
       # `var` was already syntax-checked in `symscan`.
-      @pushconst None
-      @pushast $ snd var.args
-      @append    'GET_ITER'
-      restart = @jump 'JUMP_ABSOLUTE' True
-      with @jump 'FOR_ITER' delta: +1 =>
-        @popast $ fst var.args
-        @pushast  body
-        @append   'ROT_THREE' delta: +0
-        @append   'ROT_TWO'   delta: +0
-        @append   'POP_TOP'   delta: -1
-        restart.set
-      @depth -1  # FOR_ITER automatically pops the iterable off the stack.
+      @pushconst False
+      with @jump 'SETUP_LOOP' =>
+        @pushast $ snd var.args
+        @append    'GET_ITER'
+        restart = @jump 'JUMP_ABSOLUTE' True
+        @loops.append $ @jump 'CONTINUE_LOOP' reverse: True
+        with @jump 'FOR_ITER' delta: +1 =>
+          @popast $ fst var.args
+          @pushast  body
+          @append   'POP_TOP'   delta: -1
+          restart.set
+        @loops.pop -1
+        @append 'POP_BLOCK' delta: -1
+        @append 'POP_TOP'   delta: -1
+        @pushconst True
+
+    #: Stop the loop immediately.
+    #:
+    #: It will also return False.
+    #:
+    'break', FixedArity 0 0 $ f _ ~> if
+      @loops    => @append 'BREAK_LOOP'    delta: +1
+      otherwise => Error f '`break` outside of a loop'
+
+    #: Continue on to the next iteration.
+    #:
+    #: Does not affect the return value of the loop.
+    #:
+    'continue', FixedArity 0 0 $ f _ ~> if
+      @loops    => (last @loops).set
+      otherwise => Error f '`continue` outside of a loop'
 
     #: Yield control to the caller.
     #:
