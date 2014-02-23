@@ -67,7 +67,7 @@ Completion = subclass object where
   #:
   #: complete_event :: ReadlineState -> ReadlineState
   #:
-  complete_event = state ->
+  complete_event = state ~>
     start, length, cmps = @complete_buffer state.buffer state.position
     cmps => if
       len cmps == 1 =>
