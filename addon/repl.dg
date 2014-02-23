@@ -1,4 +1,5 @@
 import '/os'
+import '/re'
 import '/sys'
 import '/types'
 import '/builtins'
@@ -13,13 +14,50 @@ import '../LeftBind'
 import '../Expression'
 
 
-except
-  err => import 'readline'
-  err :: ImportError => readline = None
-  err is None =>
-    Reader = subclass readline.History readline.Readline where
-      # TODO completion
-      # TODO highlighting
+_get_input = ns -> except
+  _err => import 'readline'
+  _err is None =>
+    _Readline = (subclass
+      readline.Pygments
+      readline.Completion
+      readline.History
+      readline.Readline
+    ) where
+      completion_regex = re.compile r"\w+'*(?:\.\w+'*)*\.?"
+      pygments_lexer   = 'dg'
+
+      display_completions = cmps ~>
+        (super _Readline self).display_completions $
+          # Strip the dotted path first.
+          list $ map (x -> last $ x.split '.') cmps
+
+      #: Complete a variable or an attribute name (i.e. `VAR.VAR....[VAR]`.)
+      #: This method simulates `rlcompleter`.
+      #: WARNING: this can evaluate arbitrary code via `__getattr__`.
+      #:
+      #: complete_word :: str -> [str]
+      #:
+      complete_word = word ~>
+        path, dot, word = word.rpartition '.'
+        data = if path      => @_attributes_of path
+                  otherwise => set Compiler.prefix | set builtins.__dict__ | set ns
+        sorted $ map (path + dot +) $ filter (n -> n.startswith word) data
+
+      #: Get a set of attributes of an object. `path` should be a dotted name.
+      #:
+      #: _attributes_of :: str -> set str
+      #:
+      _attributes_of = path ~> except
+        err =>
+          item = eval (compileast $ parse path) ns
+          (set $ dir item).union *: (map dir $ type.mro item.__class__)
+        err :: Exception => set!
+
+    rdl = _Readline $ readline.Teletype sys.stdin sys.stdout
+    rdl.global = ns
+    rdl.input
+  # Readline is unavailable, fall back do default `input`.
+  _err :: ImportError => builtins.input
 
 
 #: Compile a Python file.
@@ -77,11 +115,7 @@ runrepl = fd environ: (dict __name__: '__main__' builtins: builtins) startup: Fa
   sys.stdin = fd
   sys.ps1 = getattr sys 'ps1' '>>> '
   sys.ps2 = getattr sys 'ps2' '... '
-
-  _input = if
-    # TODO: syntax highlighting
-    readline  => (Reader $ readline.Teletype fd sys.stdout).input
-    otherwise => input
+  _input = _get_input environ
 
   while True => except
     e => sys.displayhook $ `eval` environ $ next $ dropwhile not
