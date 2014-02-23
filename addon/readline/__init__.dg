@@ -5,6 +5,7 @@ import 'ansi/Key'
 import 'ansi/Color'
 import 'tty/Teletype'
 import 'mix/History'
+import 'mix/Completion'
 
 
 ReadlineState = subclass object where

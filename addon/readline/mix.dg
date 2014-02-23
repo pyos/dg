@@ -44,3 +44,59 @@ History = subclass object where
     @history.append ''
     @history !! -1 = result = (super History self).input *: args **: kwargs
     @history !! -1 or @history !!~ -1
+
+
+Completion = subclass object where
+  completion_keys = set' Key.TAB
+  completion_word = re.compile r'\w+'
+
+  #: A mix-in that enables basic completion.
+  #:
+  #: completion_key :: str -- the key on which to trigger completion.
+  #: completion_sep :: Re  -- a regex that matches all word separators.
+  #:
+  __init__ = *: args **: kwargs ~>
+    (super Completion self).__init__ *: args **: kwargs
+    @bindings = dict @bindings
+    for k in @completion_keys => @bindings !! k = @complete_event
+    None
+
+  #: Handle a completion event. Default implementation calls `complete_buffer`
+  #: and either substitutes the incomplete word for a result or outputs the list
+  #: with `display_completions`.
+  #:
+  #: complete_event :: ReadlineState -> ReadlineState
+  #:
+  complete_event = state ->
+    start, length, cmps = @complete_buffer state.buffer state.position
+    cmps => if
+      len cmps == 1 =>
+        state = state.erase  start length
+        state = state.insert start $ head cmps
+      otherwise =>
+        state = @finalize state
+        @display_completions cmps
+    state
+
+  #: Find the word to complete and get the list of possible completions.
+  #: Returns a (start index, length, completions) tuple.
+  #:
+  #: complete_buffer :: str int -> (int, int, [str])
+  #:
+  complete_buffer = buf at ~> except
+    err => m = next $ filter (m -> m.start! <= at <= m.end!) $ @completion_word.finditer buf
+    err is None => m.start!, m.end! - m.start!, @complete_word m.group!
+    err :: StopIteration => 0, 0, list!
+
+  #: Fetch the list of possible completions for a word.
+  #:
+  #: complete_word :: str -> [str]
+  #:
+  complete_word = word ~> list' "complete_word" "not" "implemented"
+
+  #: Format and display a list of multiple possible completions.
+  #: (The prompt has already been finalized. Also, use `\r\n`, not `\n`.)
+  #:
+  #: display_completions :: [str] -> a
+  #:
+  display_completions = cmps ~> for c in cmps => print c
