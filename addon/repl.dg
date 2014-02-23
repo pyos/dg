@@ -39,9 +39,9 @@ _get_input = ns -> except
       #:
       complete_word = word ~>
         path, dot, word = word.rpartition '.'
-        data = if path      => @_attributes_of path
-                  otherwise => set Compiler.prefix | set builtins.__dict__ | set ns
-        sorted $ map (path + dot +) $ filter (n -> n.startswith word) data
+        sorted $ map (path + dot +) $ filter (n -> n.startswith word) $
+          if path      => @_attributes_of path
+             otherwise => set Compiler.prefix | set builtins.__dict__ | set ns
 
       #: Get a set of attributes of an object. `path` should be a dotted name.
       #:
@@ -56,7 +56,7 @@ _get_input = ns -> except
     rdl = _Readline $ readline.Teletype sys.stdin sys.stdout
     rdl.global = ns
     rdl.input
-  # Readline is unavailable, fall back do default `input`.
+  # Readline is unavailable, fall back to default `input`.
   _err :: ImportError => builtins.input
 
 
