@@ -13,11 +13,12 @@ except
     builtins.input = prompt: '' ->
       _rdl.tty = readline.Teletype sys.stdin sys.stdout
       _rdl.input prompt
+  err => None
 
 
 sys.displayhook = import 'displayhook'
 sys.excepthook  = import 'excepthook'
-sys.ret         = '  ' + (import 'colored').green  ' = '
-sys.ps1         = 'dg' + (import 'colored').yellow ' $ '
-sys.ps2         = '  ' + (import 'colored').yellow ' | '
+sys.ret         = '  ' + (import 'Color').FG.green  ' = '
+sys.ps1         = 'dg' + (import 'Color').FG.yellow ' $ '
+sys.ps2         = '  ' + (import 'Color').FG.yellow ' | '
 builtins._ = None

@@ -8,11 +8,7 @@ import '/contextlib'
 import '/collections'
 
 
-#: Some standard keys.
-#:
-#: Key :: Key
-#:
-Key = (subclass object)! where
+Key = subclass object where
   # Determined by typing stuff into Gnome Terminal.
   # May actually depend on the VT.
   DEL_ASCII = '\x7f'  # Defined as DEL, but used as Backspace. Strange stuff.
@@ -57,16 +53,26 @@ Key = (subclass object)! where
   CONTROL_Z = SUB = SUSPEND  = '\x1a'  # only usable via `enable_jobs = False`
 
 
-Color = (subclass object)! where
-  _colors = list' 'black' 'red' 'green' 'yellow' 'blue' 'magenta' 'cyan' 'white' '' 'reset'
-  _wrap   = i  m -> t -> '\033[{}m{}\033[{}m'.format (m + i) t (m + 9)
-  _make   = xs m ->
-    self = (subclass object)!
-    for (i, x) in enumerate xs => setattr self x $ _wrap i m
-    self
+Color = subclass object where
+  FG = subclass object where
+    black   = '\033[30m{}\033[39m'.format
+    red     = '\033[31m{}\033[39m'.format
+    green   = '\033[32m{}\033[39m'.format
+    yellow  = '\033[33m{}\033[39m'.format
+    blue    = '\033[34m{}\033[39m'.format
+    magenta = '\033[35m{}\033[39m'.format
+    cyan    = '\033[36m{}\033[39m'.format
+    white   = '\033[37m{}\033[39m'.format
 
-  FG = _make _colors 30
-  BG = _make _colors 40
+  BG = subclass object where
+    black   = '\033[40m{}\033[39m'.format
+    red     = '\033[41m{}\033[39m'.format
+    green   = '\033[42m{}\033[39m'.format
+    yellow  = '\033[43m{}\033[39m'.format
+    blue    = '\033[44m{}\033[39m'.format
+    magenta = '\033[45m{}\033[39m'.format
+    cyan    = '\033[46m{}\033[39m'.format
+    white   = '\033[47m{}\033[39m'.format
 
 
 Teletype = subclass object where

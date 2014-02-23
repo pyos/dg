@@ -3,10 +3,10 @@ import '/builtins'
 import '/traceback'
 
 
-colored = except
+Color = except
   # `clint` recommended for maximum awesomeness.
-  err => import '/clint/textui/colored'
-  err => subclass object where
+  err => import '/dg/addon/readline/Color'
+  err => subclass object where BG = FG = subclass object where
     magenta = cyan = green =
      yellow = blue = white =
       black = red  = staticmethod $ x -> x
@@ -31,7 +31,7 @@ full = err tb -> (+)
 #:
 #: normal :: type Exception -> str
 #:
-normal = err -> '{}: {}'.format (colored.red err.__class__.__name__) err
+normal = err -> '{}: {}'.format (Color.FG.red err.__class__.__name__) err
 
 
 #: Like `normal`, only for `SyntaxError`s. Should display where the error is.
@@ -43,7 +43,7 @@ syntax = err -> line (err.filename, err.lineno, txt, None) + normal err where
   errchr = err.text !! slice (err.offset - 1) err.offset
   after  = err.text !! slice  err.offset None
   length = len (err.filename + str err.lineno + before.lstrip!) + 10
-  txt    = before.lstrip! + colored.red errchr + after.rstrip! + '\n' + ' ' * length + '^'
+  txt    = before.lstrip! + Color.FG.red errchr + after.rstrip! + '\n' + ' ' * length + '^'
 
 
 #: Format a single item in a traceback.
@@ -58,7 +58,7 @@ line = (f, ln, fn, txt) ->
   txt = if txt is None => ''
            otherwise   => ': ' + txt
 
-  (+ '\n') $ '  ' + colored.yellow f + ' line ' + colored.cyan (str ln) + fn +
+  (+ '\n') $ '  ' + Color.FG.yellow f + ' line ' + Color.FG.cyan (str ln) + fn +
     # Contents of the file is the most useless info here.
     # We'll truncate it to fit the line into the console.
     space = console_width dict! - len (f + str ln + fn) - 8
