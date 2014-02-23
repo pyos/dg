@@ -13,6 +13,11 @@ import '../LeftBind'
 import '../Expression'
 
 
+readline = except
+  err => import 'readline'
+  err :: ImportError => None
+
+
 #: Compile a Python file.
 #:
 #: compilepyfd :: TextIOBase -> CodeType
@@ -69,9 +74,14 @@ runrepl = fd environ: (dict __name__: '__main__' builtins: builtins) startup: Fa
   sys.ps1 = getattr sys 'ps1' '>>> '
   sys.ps2 = getattr sys 'ps2' '... '
 
+  _input = if
+    # TODO: syntax highlighting
+    readline  => (readline.WithHistory $ readline.Teletype fd sys.stdout).input
+    otherwise => input
+
   while True => except
     e => sys.displayhook $ `eval` environ $ next $ dropwhile not
-         map compilerepl $ iterate (x -> x + '\n' + input sys.ps2) $ input sys.ps1
+         map compilerepl $ iterate (x -> x + '\n' + _input sys.ps2) $ _input sys.ps1
     e :: EOFError          => raise SystemExit
     e :: SystemExit        => raise e
     e :: KeyboardInterrupt => print '^C' file: sys.stderr

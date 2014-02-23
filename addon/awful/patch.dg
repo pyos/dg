@@ -2,20 +2,6 @@ import '/sys'
 import '/builtins'
 
 
-except
-  err => import '/dg/addon/readline'
-  err is None =>
-    import '/sys'
-    import '/builtins'
-
-    _rdl = readline.WithHistory None
-
-    builtins.input = prompt: '' ->
-      _rdl.tty = readline.Teletype sys.stdin sys.stdout
-      _rdl.input prompt
-  err => None
-
-
 sys.displayhook = import 'displayhook'
 sys.excepthook  = import 'excepthook'
 sys.ret         = '  ' + (import 'Color').FG.green  ' = '
