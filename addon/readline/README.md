@@ -165,3 +165,13 @@ This logic could be modified by overriding the `complete_buffer` method, which
 receives a string buffer and the caret position and should return
 a `(offset, length, completions)` tuple, where `offset` and `length` point to the word
 that is being completed.
+
+#### Syntax highlighting with Pygments
+
+ 1. Enable the `Pygments` mix-in.
+ 2. Set `pygments_lexer` to the name of the preferred lexer.
+
+```dg
+MyReadline3 = subclass readline.Pygments MyReadline2 where
+  pygments_lexer = 'dg'
+```
