@@ -55,7 +55,18 @@ Key = (subclass object)! where
   CONTROL_X = CAN = CANCEL   = '\x18'
   CONTROL_Y = EM             = '\x19'
   CONTROL_Z = SUB = SUSPEND  = '\x1a'  # only usable via `enable_jobs = False`
-  
+
+
+Color = (subclass object)! where
+  _colors = list' 'black' 'red' 'green' 'yellow' 'blue' 'magenta' 'cyan' 'white' '' 'reset'
+  _wrap   = i  m -> t -> '\033[{}m{}\033[{}m'.format (m + i) t (m + 9)
+  _make   = xs m ->
+    self = (subclass object)!
+    for (i, x) in enumerate xs => setattr self x $ _wrap i m
+    self
+
+  FG = _make _colors 30
+  BG = _make _colors 40
 
 
 Teletype = subclass object where
