@@ -4,7 +4,6 @@ import '/traceback'
 
 
 Color = except
-  # `clint` recommended for maximum awesomeness.
   err => import '/dg/addon/readline/Color'
   err => subclass object where BG = FG = subclass object where
     magenta = cyan = green =
