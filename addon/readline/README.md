@@ -25,14 +25,17 @@ reader  = readline.Readline console
 reader.input 'enter stuff here: '
 ```
 
-#### Change some settings
+#### Add history
 
-`Readline` has several methods and attributes that may be overriden.
-Add the `History` mix-in to enable arrow-based history navigation.
+Inherit from the `History` mix-in to enable arrow-based history navigation.
 
 ```dg
 MyReadline = subclass readline.History readline.Readline where
 ```
+
+`History` instances have a `history` attribute, which is a list of strings
+that have been entered so far. Save it in a file somewhere and restore on startup,
+if you wish.
 
 #### Turn system task control on/off
 
