@@ -18,7 +18,6 @@ _get_input = ns -> except
   _err => import 'readline'
   _err is None =>
     _Readline = (subclass
-      readline.Pygments
       readline.Completion
       readline.History
       readline.Readline
