@@ -69,16 +69,16 @@ stage1 = xs -> ''.join $ map
     ys = map (m -> m.string !! slice m.end! None) zs
     if g == 'break'  => ''
        g == 'rule'   => '<hr />'
-       g == 'quote'  => '<blockquote>{}</blockquote>'.format $ stage1 ys
-       g == 'p'      => '<p>{}</p>'                  .format $ stage2 $ '\n'.join ys
+       g == 'quote'  => '<blockquote>{}</blockquote>'.format $ stage1 $ escape ys
+       g == 'p'      => '<p>{}</p>'                  .format $ stage2 $ escape $ '\n'.join ys
        g == 'code'   => '<pre>{}</pre>'              .format $ escape $ '\n'.join ys
-       g == 'ul'     => '<ul><li>{}</li></ul>'       .format $ '</li><li>'.join $ map stage2 ys
-       g == 'ol'     => '<ol><li>{}</li></ol>'       .format $ '</li><li>'.join $ map stage2 ys
+       g == 'ul'     => '<ul><li>{}</li></ul>'       .format $ '</li><li>'.join $ map (stage2 <- escape) ys
+       g == 'ol'     => '<ol><li>{}</li></ol>'       .format $ '</li><li>'.join $ map (stage2 <- escape) ys
        g == 'haml'   => haml $ '\n'.join ys
        g == 'fenced' => highlight (next ys) $ '\n'.join $ takewhile (x -> not $ x.startswith '```') xs
        g == 'h'      => ''.join
          where for m in zs => yield $ '<h{1}>{0}</h{1}>'.format
-           stage2 $ m.string !! slice m.end! None
+           stage2 $ escape $ m.string !! slice m.end! None
            len $ m.group 'h_size'
   groupby (map stage1re.match xs) (m -> m.lastgroup)
 
@@ -96,4 +96,4 @@ stage2 = x -> stage2re.sub
        g == 'code'      => '<code>{}</code>'                   .format $          m.group 'code_'
        g == 'hyperlink' => '<a href="{0}">{0}</a>'             .format $          m.group 'hyperlink'
        g == 'namedlink' => '<a href="{0}">{1}</a>'             .format $ *: (m.group 'link_href' 'link_name')
-  escape x
+  x
