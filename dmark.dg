@@ -2,6 +2,7 @@ import '/re/compile'
 import '/itertools/groupby'
 import '/xml/sax/saxutils/escape'
 
+import '/hamlike/Hamlike'
 import '/pygments/lexers'     qualified
 import '/pygments/formatters' qualified
 
@@ -25,9 +26,19 @@ highlight = lang code formatter: pygments.formatters.HtmlFormatter! ->
          e => '<pre>{}</pre>'.format $ escape code
 
 
+haml = data ->
+  '''Parse haml-like text.
+
+    haml :: str -> str
+
+  '''
+  (Hamlike data '<string>').block.data
+
+
 stage1re = compile r'''(?isx)
    (?P<fenced> ```)
   |(?P<code>   \ {4}|\t)
+  |(?P<haml>   \s*\?\?)
   |(?P<rule>   \s*([*-]\s*){3,}$)
   |(?P<ol>     \s*\d+\.\s+)
   |(?P<ul>     \s*[*+-]\s+)
@@ -44,6 +55,7 @@ stage2re = compile r'''(?isx)
   |(?P<italic>    \*   (?P<italic_>(?:\\?.)+?) \*)
   |(?P<strike>    ~~   (?P<strike_>(?:\\?.)+?) ~~)
   |(?P<invert>    %%   (?P<invert_>(?:\\?.)+?) %%)
+  |(?P<muted>     \.\. (?P<muted_> (?:\\?.)+?) \.\.)
   # Not sure what this shitty group matches. IIRC, I "borrowed" it from Tornado.
   |(?P<hyperlink> \b[a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%[0-9a-f]{2}|\([^\s(<>)"\']+\))+)
   |(?P<namedlink> \[(?P<link_name>.*?)\]\((?P<link_href>(?:[^()]+|\(.*?\)|[^)])*)\))
@@ -62,6 +74,7 @@ stage1 = xs -> ''.join $ map
        g == 'code'   => '<pre>{}</pre>'              .format $ escape $ '\n'.join ys
        g == 'ul'     => '<ul><li>{}</li></ul>'       .format $ '</li><li>'.join $ map stage2 ys
        g == 'ol'     => '<ol><li>{}</li></ol>'       .format $ '</li><li>'.join $ map stage2 ys
+       g == 'haml'   => haml $ '\n'.join ys
        g == 'fenced' => highlight (next ys) $ '\n'.join $ takewhile (x -> not $ x.startswith '```') xs
        g == 'h'      => ''.join
          where for m in zs => yield $ '<h{1}>{0}</h{1}>'.format
@@ -75,11 +88,12 @@ stage2 = x -> stage2re.sub
     g = m.lastgroup
     if g == 'text'      => m.group 0
        g == 'escape'    => m.group 'escaped'
-       g == 'bold'      => '<strong>{}</strong>'            .format $ stage2 $ m.group 'bold_'
-       g == 'italic'    => '<em>{}</em>'                    .format $ stage2 $ m.group 'italic_'
-       g == 'invert'    => '<span class="spoiler">{}</span>'.format $ stage2 $ m.group 'invert_'
-       g == 'strike'    => '<del>{}</del>'                  .format $ stage2 $ m.group 'strike_'
-       g == 'code'      => '<code>{}</code>'                .format $          m.group 'code_'
-       g == 'hyperlink' => '<a href="{0}">{0}</a>'          .format $          m.group 'hyperlink'
-       g == 'namedlink' => '<a href="{0}">{1}</a>'          .format $ *: (m.group 'link_href' 'link_name')
+       g == 'bold'      => '<strong>{}</strong>'               .format $ stage2 $ m.group 'bold_'
+       g == 'italic'    => '<em>{}</em>'                       .format $ stage2 $ m.group 'italic_'
+       g == 'invert'    => '<span class="spoiler">{}</span>'   .format $ stage2 $ m.group 'invert_'
+       g == 'muted'     => '<span class="text-muted">{}</span>'.format $ stage2 $ m.group 'muted_'
+       g == 'strike'    => '<del>{}</del>'                     .format $ stage2 $ m.group 'strike_'
+       g == 'code'      => '<code>{}</code>'                   .format $          m.group 'code_'
+       g == 'hyperlink' => '<a href="{0}">{0}</a>'             .format $          m.group 'hyperlink'
+       g == 'namedlink' => '<a href="{0}">{1}</a>'             .format $ *: (m.group 'link_href' 'link_name')
   escape x
