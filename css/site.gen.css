@@ -45,6 +45,12 @@ h3 {
     h3 {
       margin-left: -15px; } }
 
+h4 {
+  margin-top: 30px; }
+  @media (min-width: 768px) {
+    h4 {
+      margin-left: -15px; } }
+
 h5 {
   font-weight: bold; }
 
