@@ -37,7 +37,7 @@
         </h3><h4 class="serious-dawg-lead text-left" >NOT<span class="serious-dawg-accent">'</span>REALLY®</h4>
 
       </div><div class="row">
-        <div class="col-sm-12 col-md-10 col-md-offset-1">
+        <div class="col-sm-12 col-md-10 col-md-offset-1 markdown">
           <h3>Installation</h3><p>Freaking easy:</p><ol><li>download the compiler (why don't you look at the <a href="..">index page</a> for that?);</li><li>put the "dg" directory somewhere in <code>$PYTHONPATH</code>, or <code>/usr/lib/python3.*/site-packages/</code>, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.</li></ol><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre>python3 -m dg  <span class="c"># REPL!</span>
 python3 -m dg file.dg --do-something-useful-this-time  <span class="c"># Script!</span>
 python3 -m dg -m module  <span class="c"># Module! (Or package!)</span>
@@ -389,7 +389,7 @@ So if you have a directory structure like this...</p><pre>mypackage
 |- submodule.dg
 \- subpackage/
    |- module1.dg
-   \- module2.dg</pre><p>...and your <code>module2.dg</code> looks like this...</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
+   \- module2.dg</pre><p><span class="text-muted">.and your <code>module2.dg</code> looks like this</span>.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
 <span class="kr">import</span> <span class="s">&#39;module1/global_variable&#39;</span>
 <span class="kr">import</span> <span class="s">&#39;../submodule&#39;</span>
 <span class="c1"># Now we have `module1`, `global_variable`, and `submodule`.</span>
