@@ -4,6 +4,7 @@ clean: ; find * \( -type d -empty -o -name index.html -o -name '*.pyc' -o -name 
 css:   css-site
 css-site: ; python3 -m dg build.dg src . /css/site.sass
 
-html:  html-index html-tutorial
+html:  html-index html-tutorial #html-language
 html-index:    ; python3 -m dg build.dg src . /index.hamlike
 html-tutorial: ; python3 -m dg build.dg src . /tutorial/index.hamlike
+#html-language: ; python3 -m dg build.dg src . /language/index.hamlike
