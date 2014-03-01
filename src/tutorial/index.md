@@ -2,7 +2,7 @@
 
 Freaking easy:
 
-1. download the compiler (why don't you look at the [index page](..) for that?);
+1. download the compiler (why don't you look at the [index page](@@ref:/) for that?);
 2. put the "dg" directory somewhere in `$PYTHONPATH`, or `/usr/lib/python3.*/site-packages/`, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.
 
 ### Usage
@@ -99,7 +99,7 @@ None
 "
 
 r"Raw strings have escapes disabled: \a \b \f \n \r \t \v. Useful for regex."
-b"Byte literals are ASCII-only strings that represent binary data. \x42\x08\x15\x00"
+b"Byte literals are ASCII-only and represent binary data. \x42\x08\x15\x00"
 rb"Guess what raw byte literals are."
 ```
 
@@ -200,7 +200,7 @@ print *: doge **: opts
 There's also a reverse pipe operator.
 
 ```dg
-print $ "> {}: {}".format "Karkat" "Insert a reference to something other than Doge"
+print $ "> {}: {}".format "Karkat" "Reference something other than Doge"
 ```
 
 ##### Q: What if...what if there are NO arguments? At all?

@@ -1,0 +1,106 @@
+@mixin notreally-book-sized()
+  width: 381px
+  margin: auto
+
+  @media (max-width: 425px)
+    // Doesn't really fit on the screen at that size
+    display: none
+
+
+@mixin narrow-on-big-screens($medium, $big)
+  margin-left: auto
+  margin-right: auto
+
+  @media (min-width: 768px)
+    width: $medium
+
+  @media (min-width: 992px)
+    width: $big
+
+
+.navbar
+  // `.container` has a 15px padding
+  @include narrow-on-big-screens(720px, 810px)
+
+
+#root-page
+  .container
+    @include narrow-on-big-screens(750px, 840px)
+
+  @media (min-width: 768px)
+    .container .jumbotron
+      padding-right: 300px
+      border-radius: 0 0 6px 6px
+      background-position: right -50px
+
+    .navbar
+      background: url(../images/doge.jpg) no-repeat right 0px #c39f53
+      border: none
+
+      .navbar-brand,
+      .navbar-text,
+      .navbar-nav > li > a
+        color: rgba(255, 255, 255, 0.7)
+        text-shadow: none
+
+        &:hover, &:focus
+          color: #ffffff
+          text-shadow: none
+          background-color: transparent
+
+
+h3
+  margin-top: 40px
+
+  @media (min-width: 768px)
+    // There's at least 18+15 px available due to `width` and `padding` of `.container`.
+    margin-left: -15px
+
+
+h5
+  font-weight: bold
+
+
+pre
+  background: #fafafa
+  border-color: #f6f6f6
+
+
+.text-muted
+  color: rgba(0, 0, 0, 0.3)
+
+
+.container .jumbotron
+  background: url(../images/doge.jpg) no-repeat right #c39f53
+  color: white
+
+  .text-muted
+    color: rgba(255, 255, 255, 0.5)
+
+
+.serious-dawg
+  @include notreally-book-sized()
+  background: url(../images/seriousdawg.jpg) no-repeat top center #0058a2
+  color: white
+  font-family: "URW Bookman L", "Times New Roman", Times, serif
+  font-size: 54px
+  min-height: 339px
+  padding: 359px 0 20px 0
+
+
+.serious-dawg-lead
+  @include notreally-book-sized()
+  padding: 15px
+
+
+.serious-dawg-accent
+  color: #0058a2
+
+
+.navbar
+  @media (min-width: 768px)
+    margin-bottom: 0
+    background: white
+    border-color: white
+    box-shadow: none
+    -webkit-box-shadow: none

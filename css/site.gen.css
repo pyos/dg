@@ -1,0 +1,94 @@
+.navbar {
+  margin-left: auto;
+  margin-right: auto; }
+  @media (min-width: 768px) {
+    .navbar {
+      width: 720px; } }
+  @media (min-width: 992px) {
+    .navbar {
+      width: 810px; } }
+
+#root-page .container {
+  margin-left: auto;
+  margin-right: auto; }
+  @media (min-width: 768px) {
+    #root-page .container {
+      width: 750px; } }
+  @media (min-width: 992px) {
+    #root-page .container {
+      width: 840px; } }
+@media (min-width: 768px) {
+  #root-page .container .jumbotron {
+    padding-right: 300px;
+    border-radius: 0 0 6px 6px;
+    background-position: right -50px; }
+  #root-page .navbar {
+    background: url(../images/doge.jpg) no-repeat right 0px #c39f53;
+    border: none; }
+    #root-page .navbar .navbar-brand,
+    #root-page .navbar .navbar-text,
+    #root-page .navbar .navbar-nav > li > a {
+      color: rgba(255, 255, 255, 0.7);
+      text-shadow: none; }
+      #root-page .navbar .navbar-brand:hover, #root-page .navbar .navbar-brand:focus,
+      #root-page .navbar .navbar-text:hover,
+      #root-page .navbar .navbar-text:focus,
+      #root-page .navbar .navbar-nav > li > a:hover,
+      #root-page .navbar .navbar-nav > li > a:focus {
+        color: white;
+        text-shadow: none;
+        background-color: transparent; } }
+
+h3 {
+  margin-top: 40px; }
+  @media (min-width: 768px) {
+    h3 {
+      margin-left: -15px; } }
+
+h5 {
+  font-weight: bold; }
+
+pre {
+  background: #fafafa;
+  border-color: #f6f6f6; }
+
+.text-muted {
+  color: rgba(0, 0, 0, 0.3); }
+
+.container .jumbotron {
+  background: url(../images/doge.jpg) no-repeat right #c39f53;
+  color: white; }
+  .container .jumbotron .text-muted {
+    color: rgba(255, 255, 255, 0.5); }
+
+.serious-dawg {
+  width: 381px;
+  margin: auto;
+  background: url(../images/seriousdawg.jpg) no-repeat top center #0058a2;
+  color: white;
+  font-family: "URW Bookman L", "Times New Roman", Times, serif;
+  font-size: 54px;
+  min-height: 339px;
+  padding: 359px 0 20px 0; }
+  @media (max-width: 425px) {
+    .serious-dawg {
+      display: none; } }
+
+.serious-dawg-lead {
+  width: 381px;
+  margin: auto;
+  padding: 15px; }
+  @media (max-width: 425px) {
+    .serious-dawg-lead {
+      display: none; } }
+
+.serious-dawg-accent {
+  color: #0058a2; }
+
+@media (min-width: 768px) {
+  .navbar {
+    margin-bottom: 0;
+    background: white;
+    border-color: white;
+    box-shadow: none;
+    -webkit-box-shadow: none; } }

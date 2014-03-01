@@ -1,0 +1,84 @@
+import '/re'
+import '/posixpath'
+import '/subprocess'
+
+import '/dmark'
+import '/hamlike'
+
+
+p_file     = path -> with fd = open path => fd.read -1
+p_sass     = path -> ((subprocess.Popen ('sass', path) stdout: subprocess.PIPE).stdout.read -1).decode 'utf-8'
+p_hamlike  = path data -> (hamlike.Hamlike data path).block.data
+p_markdown = path data -> dmark.parse data
+
+
+#: Handle special directives (e.g. references to other files.)
+#:
+#: @@rel:fn -- `fn` relative to where the compiled file will be.
+#: @@include:fn -- contents of `fn` relative to the file currently being compiled.
+#:
+p_directive = this target data -> re.sub r'@@(\w+):([\w\.\-/]+)' fn data where fn = m -> if
+  m.group 1 == 'include' => compile this   (m.group 2) target
+  m.group 1 == 'ref'     => resolve target (m.group 2)
+  otherwise => raise $ ValueError $ 'unknown directive: ' + m.group 1
+
+
+chains = dict'
+  'hamlike', this target -> p_directive this target $ p_hamlike  this $ p_file this
+  'md',      this target -> p_directive this target $ p_markdown this $ p_file this
+  'sass',    this target -> p_directive this target $ p_sass     this
+
+
+extensions = dict'
+  'hamlike', 'html'
+  'md',      'html'
+  'sass',    'gen.css'
+
+
+#: Make `path` relative to `this`' directory.
+#:
+#: :param this: the file that will reference something.
+#: :param path: the file that will be referenced.
+#: :param target: whether to use the file extension of a compilation target.
+#:
+resolve = this path target: True -> posixpath.normpath $
+  name, _, ext = path.rpartition '.'
+  dir,  s,   _ = this.rpartition '/'
+
+  rel = '../' * this.count '/' + if
+    target    => name.lstrip '/' + '.' + extensions.get ext ext
+    otherwise => path.lstrip '/'
+
+  if path.startswith '/' => rel
+     otherwise => dir + s + rel
+    
+
+#: Compile a single file.
+#:
+#: :param this: the file currently being compiled.
+#: :param path: the file to compile.
+#: :param target: the location of the compiled file.
+#:
+compile = this path target ->
+  path = posixpath.normpath $ posixpath.join
+    posixpath.dirname this
+    resolve this path target: False
+  (chains !! (path.rpartition '.' !! 2)) path target
+
+
+if __name__ == '__main__' => None where
+  import '/os'
+  import '/sys'
+  root = os.getcwd!
+  source, target, *files = tail sys.argv
+
+  for file in files =>
+    os.chdir source
+    name = resolve '' file
+    data = compile '' file name
+    os.chdir root
+
+    os.chdir target
+    os.makedirs (os.path.dirname name or '.') 0o755 exist_ok: True
+    with fd = open name 'w' => fd.write data
+    os.chdir root

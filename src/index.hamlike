@@ -1,0 +1,66 @@
+%!doctype html
+%html lang="en" id="root-page"
+  %head
+    @@include:/head.hamlike
+    %title -> dg — it's a Python! No, it's a Haskell!
+  %body
+    @@include:/navbar.hamlike
+
+    %div class="container"
+      %div class="jumbotron"
+        %h1 -> d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.
+
+      %div class="row marketing"
+        %div class="col-sm-6"
+          %h4 -> Overthrow the oppressive dictatorship!
+          %p
+            Guido rejecting your awesome syntactic proposals? He's not in charge anymore.
+
+          %h4 -> Annoy advocates of the category theory!
+          %p
+            With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
+            system, dg is the best way to make fans of static typing shut up already.
+
+          %h4 -> Be on the verge of progress!
+          %p
+            Syntactic sugar is the most important thing nowadays.
+            And don't let those Java guys tell you otherwise.
+
+        %div class="col-sm-6"
+          %h4 -> Add one more language to your résumé!
+          %p
+            Read <a href="@@ref:/tutorial/">this awesome tutorial</a> and tell everyone
+            how impossibly smart you are.
+
+          %h4 -> It even runs on PyPy!
+          %p
+            Got to wait for a JIT-enabled PyPy 3.3 first, though.
+
+          %h4 -> Seriously, what IS this?
+          %p
+            A programming language that compiles to CPython bytecode, much
+            like Scala compiles to JVM's. That essentially means that
+            dg is an alternative syntax for Python 3. It allows you to use
+            all of the existing libraries, too.
+
+      %div class="row"
+        %div class="col-md-8 col-md-offset-2 col-sm-10 col-sm-offset-1"
+          %h2 class="text-center" -> Still not convinced?
+          @@include:/index.md
+
+      %div class="row text-center"
+        %div class="col-md-12"
+          %h2 -> Just download the damn thing already.
+          %p
+            %code -> git clone https://github.com/pyos/dg.git
+            or get
+            %a href="https://github.com/pyos/dg/archive/master.zip" -> this zip archive
+
+      %div class="footer text-muted"
+        %p
+          Totally made by <a href="https://github.com/pyos">@pyos</a>.
+          "pyos" means "dog", by the way.
+        %p
+          Thanks to <a href="http://reddit.com/user/kurtbdudley">@kurtbdudley</a> for
+          %a href="http://r2.reddit.com/r/doge/comments/1pnmaz/i_couldnt_find_a_high_res_image_of_doge_for_my/"
+            this awesome image.

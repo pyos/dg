@@ -1,0 +1,20 @@
+%!doctype html
+%html lang="en"
+  %head
+    @@include:/head.hamlike
+    %title -> dg — kind of a tutorial.
+  %body
+    @@include:/navbar.hamlike
+
+    %div class="container"
+      %div class="text-center header"
+        %h3 class="serious-dawg" -> Learning dg
+        %h4 class="serious-dawg-lead text-left" -> NOT<span class="serious-dawg-accent">'</span>REALLY®
+
+      %div class="row"
+        %div class="col-sm-12 col-md-10 col-md-offset-1"
+          @@include:index.md
+
+      %div class="footer text-muted"
+        %p -> ^D Interrupted by EOF
+        %p -> Totally made by <a href="https://github.com/pyos">@pyos</a>

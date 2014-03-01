@@ -1,0 +1,13 @@
+%div class="navbar navbar-default navbar-static-top" role="navigation"
+  %div class="container-fluid"
+    %div class="navbar-header"
+      %button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse"
+        %span class="sr-only" -> Toggle navigation
+        %span class="icon-bar"
+        %span class="icon-bar"
+        %span class="icon-bar"
+      %a class="navbar-brand" href="@@ref:/" -> dg
+    %div class="navbar-collapse collapse"
+      <ul class="nav navbar-nav">
+        %li -> %a href="@@ref:/tutorial/" -> Tutorial
+        %li -> %a href="@@ref:/language/" -> The language
