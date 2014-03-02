@@ -1,16 +1,15 @@
 import '/sys'
 import '/runpy'
-import '/argparse'
 
 import '/dg'
 import '/dg/core'
 import '/dg/addon/repl'
 
 
-p = argparse.ArgumentParser formatter_class: argparse.RawDescriptionHelpFormatter add_help: False
-  prog:   'python -m dg'
-  usage:  '%(prog)s [-h | -b | -c command | -m module | file] ...'
-  epilog: '''
+USAGE = '''
+Usage:
+
+  python3 -m dg [-h | -b | -c command | -m module | file] ...'
 
 Options and arguments:
 
@@ -25,46 +24,31 @@ Environment variables:
 
   PYTHONSTARTUP     a Python file executed on interactive startup
   PYTHONSTARTUPDG   same as PYTHONSTARTUP, only in dg
-
 '''
 
-g = p.add_mutually_exclusive_group required: False
-g.add_argument '-h'   help: argparse.SUPPRESS dest: 'help'    action: 'store_true'
-g.add_argument '-b'   help: argparse.SUPPRESS dest: 'build'   action: 'store_true'
-g.add_argument '-c'   help: argparse.SUPPRESS dest: 'command'
-g.add_argument '-m'   help: argparse.SUPPRESS dest: 'module'
-p.add_argument 'args' help: argparse.SUPPRESS nargs: argparse.REMAINDER
-ns = p.parse_args!
 
-if
-  ns.help  => p.print_help!
-  ns.build =>
-    print $ 'Target: {0} 0x{1:X}'.format dg.PY_TAG dg.PY_VERSION
-    this = core.load dg.PY_TAG dg.BUNDLE_DIR
+_run = fd -> if
+  fd.isatty! => repl.runrepl fd startup: (fd is sys.stdin)
+  otherwise  => repl.runcode $ dg.compilefd fd fd.name
 
-    # Ideally, three iterations should be enough:
-    #   1. Make a bundle with new features.
-    #   2. Recompile it to apply these features to the compiler itself.
-    #   3. Check that the compiler can still support itself.
-    for i in range 1 4 =>
-      print 'Iteration:' i
-      that = list $ core.build this dg.PY_TAG dg.PY_VERSION
-      diff = that != this
-      this = that
 
-    if diff =>
-      print $ 'FATAL: Differences found during the last iteration.'
-      print $ 'FATAL: A compiler error was detected. Aborting.'
-      exit 1
+_arg = -> if
+  len sys.argv > 1 => sys.argv.pop 1
+  otherwise        => exit $ 'error: {[0]} requires an argument'.format sys.argv
 
-    core.save this dg.PY_TAG dg.BUNDLE_DIR
-    exit 0
 
-  ns.command => repl.runcode $ dg.compile ns.command       where sys.argv = list ('-c':+ns.args)
-  ns.module  => runpy.run_module alter_sys: True ns.module where sys.argv = list ('-m':+ns.args)
-  otherwise  =>
-    sys.argv = ns.args
-    filedesc = if ns.args   => open encoding: 'utf-8' errors: 'strict' $ head ns.args
-                  otherwise => sys.stdin
-    if filedesc.isatty! => repl.runrepl filedesc startup: (filedesc is sys.stdin)
-       otherwise        => repl.runcode $ dg.compilefd filedesc filedesc.name
+sys.argv.pop 0
+sys.argv = sys.argv or list' ''
+
+if head sys.argv == '-h' => print USAGE
+   head sys.argv == '-b' =>
+     this = core.load       dg.PY_TAG dg.BUNDLE_DIR
+     this = core.build this dg.PY_TAG dg.PY_VERSION  # build new features
+     this = core.build this dg.PY_TAG dg.PY_VERSION  # apply new features to itself
+     this = core.build this dg.PY_TAG dg.PY_VERSION  # self-test
+     core.save (list this)  dg.PY_TAG dg.BUNDLE_DIR
+
+   head sys.argv == '-m' => runpy.run_module _arg! None '__main__' True
+   head sys.argv == '-c' => repl.runcode $ dg.compile _arg! '<string>'
+   head sys.argv == ''   => _run sys.stdin
+   otherwise             => _run $ open encoding: 'utf-8' $ head sys.argv
