@@ -17,11 +17,7 @@ import '../Expression'
 _get_input = ns -> except
   _err => import 'readline'
   _err is None =>
-    _Readline = (subclass
-      readline.Completion
-      readline.History
-      readline.Readline
-    ) where
+    _Readline = subclass readline.Completion readline.History readline.Readline where
       completion_regex = re.compile r"\w+'*(?:\.\w+'*)*\.?"
       pygments_lexer   = 'dg'
 
@@ -53,7 +49,6 @@ _get_input = ns -> except
         err :: Exception => set!
 
     rdl = _Readline $ readline.Teletype sys.stdin sys.stdout
-    rdl.global = ns
     rdl.input
   # Readline is unavailable, fall back to default `input`.
   _err :: ImportError => builtins.input

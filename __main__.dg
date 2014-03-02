@@ -1,7 +1,6 @@
 import '/sys'
 import '/runpy'
 import '/argparse'
-import '/importlib'
 
 import '/dg'
 import '/dg/core'
@@ -10,15 +9,13 @@ import '/dg/addon/repl'
 
 p = argparse.ArgumentParser formatter_class: argparse.RawDescriptionHelpFormatter add_help: False
   prog:   'python -m dg'
-  usage:  '%(prog)s [-q] [-h | -b | -c command | -m module | file] ...'
+  usage:  '%(prog)s [-h | -b | -c command | -m module | file] ...'
   epilog: '''
 
 Options and arguments:
 
   -h           show this message and exit
   -b           rebootstrap the compiler
-  -q           enable awesome tracebacks and prompts
-               (equivalent to `import '/dg/addon/awful/patch'`)
   -c command   run a single command, then exit
   -m module    run a module (or a package's `__main__`) as a script
   file         run a script
@@ -36,11 +33,9 @@ g.add_argument '-h'   help: argparse.SUPPRESS dest: 'help'    action: 'store_tru
 g.add_argument '-b'   help: argparse.SUPPRESS dest: 'build'   action: 'store_true'
 g.add_argument '-c'   help: argparse.SUPPRESS dest: 'command'
 g.add_argument '-m'   help: argparse.SUPPRESS dest: 'module'
-p.add_argument '-q'   help: argparse.SUPPRESS dest: 'extend'  action: 'append_const' const: 'dg.addon.awful.patch'
 p.add_argument 'args' help: argparse.SUPPRESS nargs: argparse.REMAINDER
 ns = p.parse_args!
 
-for e in (ns.extend or ()) => importlib.import_module e
 if
   ns.help  => p.print_help!
   ns.build =>
