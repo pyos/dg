@@ -1,0 +1,110 @@
+import '/re'
+import '/sys'
+import '/types'
+import '/builtins'
+
+import 'Name'
+import 'LeftBind'
+import 'Expression'
+import 'Compiler'
+import 'parse'
+import 'compilefd'
+import 'compileast'
+
+
+except
+  _err => import 'readline'
+  _err :: ImportError =>
+    Teletype = subclass object where __init__ = _ _ ~> None
+    Readline = subclass object where __init__, input = (_ ~> None), input
+
+  _err is None =>
+    #: Get a set of attributes of an object. `path` should be a dotted name.
+    #:
+    #: _attributes_of :: str (dict str object) -> set str
+    #:
+    _attributes_of = path ns -> except
+      err =>
+        item = eval (compileast $ parse path) ns
+        (set $ dir item).union *: (map dir $ type.mro item.__class__)
+      err :: Exception => set!
+
+    Teletype = subclass readline.Teletype where
+    Readline = subclass readline.mix.History readline.mix.Completer readline.Readline where
+      # Matches any number of valid dg identifiers separated by dots.
+      # (No whitespace!)
+      completion_regex = re.compile r"\w+'*(?:\.\w+'*)*\.?"
+
+      # This attribute must be set to the global namespace.
+      # Otherwise, variables defined from within the REPL will not be completed.
+      completion_ns = dict!
+
+      # Display only the attribute name when listing possible completions.
+      # The rest (i.e. the object itself) is irrelevant and is always the same.
+      display_completions = cmps ~>
+        (super Readline self).display_completions $
+          list $ map (x -> last $ x.split '.') cmps
+
+      # Complete a variable or an attribute name (i.e. `VAR.VAR....[VAR]`.)
+      # This method simulates `rlcompleter`. (It can even evaluate arbitrary
+      # code via `__getattr__`, too. WARNING, I guess.)
+      complete_word = word ~>
+        path, dot, word = word.rpartition '.'
+        sorted $ map (path + dot +) $ filter (n -> n.startswith word) $
+          if path      => _attributes_of path @completion_ns
+             otherwise => set Compiler.prefix | set builtins.__dict__ | set @completion_ns
+
+
+compilerepl = source -> except
+  e =>
+    tree = parse source '<input>'
+    expr = next $ dropwhile (x -> x :: Expression and not x.closed) $
+                  iterate   (x -> last x.args) tree
+
+    # Tap `Return` twice to override any of these checks.
+    done = source.endswith '\n' or not
+      # There may be an indented block in the next line if
+      #     1. the last operator has no right-hand side;
+      expr :: LeftBind and not expr.op.norhs or
+        #   2. the last expression is accessing a built-in, which
+        #      doesn't make sense (unlike a call to that built-in;)
+        expr :: Name and not expr.closed and expr.value in Compiler.prefix or
+          # 3. the last line of the code is indented.
+          (last $ source.rsplit '\n' 1).startswith ' '
+
+    if done => compileast tree
+  # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
+  e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None
+
+
+runcode = code ->
+  md = sys.modules !! '__main__' = types.ModuleType '__main__'
+  md.__file__ = code.co_filename
+  eval code md.__dict__
+
+
+runrepl = fd ->
+  environ   = (sys.modules !! '__main__' = types.ModuleType '__main__').__dict__
+  sys.stdin = fd
+  sys.ps1   = getattr sys 'ps1' '>>> '
+  sys.ps2   = getattr sys 'ps2' '... '
+
+  rdl = Readline $ readline.Teletype sys.stdin sys.stdout
+  rdl.completion_ns = environ
+
+  while True => except
+    e => x = next $ dropwhile not $ map compilerepl $
+             iterate (x -> x + '\n' + rdl.input sys.ps2) $ rdl.input sys.ps1
+    e :: EOFError          => raise SystemExit
+    e :: SystemExit        => raise e
+    e :: KeyboardInterrupt => print '' file: sys.stderr
+    e :: BaseException     => sys.excepthook (type e) e e.__traceback__
+    e is None => except
+      e => sys.displayhook $ eval x environ
+      e :: SystemExit    => raise e
+      e :: BaseException => sys.excepthook (type e) e e.__traceback__
+
+
+runfile = fd -> if
+  fd.isatty! => runrepl fd
+  otherwise  => runcode $ compilefd fd $ getattr fd 'name' '<input>'

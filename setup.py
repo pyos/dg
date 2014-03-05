@@ -10,5 +10,5 @@ setup(
     url='https://github.com/pyos/dg.git',
     packages=['dg'],
     package_dir={'dg': '.'},
-    package_data={'dg': ['*.dg', 'addon/*.dg', 'addon/*/*.dg', 'core/*.dg', 'bundle/*.dgbundle']}
+    package_data={'dg': ['*.dg', '*/*.dg', '*/*.dgbundle']}
 )
