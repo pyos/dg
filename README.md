@@ -28,6 +28,12 @@ python -m dg <<< "print 'Hello, World!'"
 
 [http://pyos.github.io/dg/](http://pyos.github.io/dg/)
 
+### Text editor support
+
+ * [Sublime Text and TextMate bundle](https://github.com/pyos/dg-textmate)
+ * [GEdit/GtkSourceView syntax definition](https://github.com/pyos/dg-gedit)
+ * [vim plugin](https://github.com/rubik/vim-dg) (courtesy of @rubik)
+
 ### To-do
 
  * Actual docstrings as advertised on gh-pages.
