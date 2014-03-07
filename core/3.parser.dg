@@ -122,24 +122,24 @@ DgParser = subclass Parser where
     f == 'eol' =>
       level = len $ m.group 'indent'
 
-      if level > last @indent =>
-        @indent.append level
-        @append $ @block pos closed: False $ x ->
-          x :: Ending => x is Dedent or
-            # Indented blocks can be ended with close-parens.
-            # We have to account for a decrease in indentation, though.
-            @indent.pop!
-            # A parenthesized block will take `x` off the stack.
-            @append x
-          x :: Ending
-
-      while level < last @indent =>
-        @indent.pop!
-        @append $ Name '\n' at: pos
-        @append $ Dedent
-        if level > last @indent => @error 'no matching indentation level' @location
-
-      Name '\n' at: pos
+      if level == last @indent => Name '\n' at: pos infix: True
+         level >  last @indent =>
+           @indent.append level
+           @block pos closed: False $ x ->
+             x :: Ending => x is Dedent or
+               # Indented blocks can be ended with close-parens.
+               # We have to account for a decrease in indentation, though.
+               @indent.pop!
+               # A parenthesized block will take `x` off the stack.
+               @append x
+             x :: Ending
+         otherwise =>
+           @append $ Name '\n' at: pos infix: True
+           while level != @indent.pop! =>
+             @indent or @error 'no matching indentation level' @location
+             @append $ Dedent
+           @indent.append level
+           @pop!
 
     f == 'strerr' => @error 'unexpected EOF in a string literal' pos
     otherwise     => @error 'invalid character'                  pos
@@ -180,13 +180,6 @@ DgParser = subclass Parser where
   #: infix :: Name Node Node -> Node
   #:
   infix = op lhs rhs ~>
-    br = False
-
-    not op.norhs => while rhs == '\n' =>
-      # There are some special cases for indented rhs,
-      # so we'll have to ignore the line breaks for now.
-      br, rhs = rhs, next self
-
     rhs.nolhs and not rhs.closed =>
       # Got to handle that first, as the empty operator may not have
       # enough binding strength for that later.
@@ -197,10 +190,6 @@ DgParser = subclass Parser where
         @append rhs
         op != '' => lhs = @infixin op lhs None
         lhs
-
-      br and not rhs.indent =>
-        op != '' => lhs = @infixin op lhs None
-        @infixin br lhs rhs
 
       rhs.infix and not rhs.closed and (op == '' or not (rhs > op)) =>
         op != '' => lhs = @infixin op lhs None
@@ -217,8 +206,9 @@ DgParser = subclass Parser where
       lhs.args.append $ @infixin op (lhs.args.pop -1) rhs
       lhs
 
-    rhs is None =>
-      LeftBind op lhs closed: True at: lhs.loc
+    rhs is None => if
+      op == '\n' => lhs
+      otherwise  => LeftBind op lhs closed: True at: lhs.loc
 
     lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
       lhs.args.extend $ tail (@make_call op lhs rhs).args
@@ -255,7 +245,7 @@ DgParser = subclass Parser where
     # "f ...\n" => "f (...)\n".
     x.flags & 2 =>
       arg = @block x.loc closed: False $ y ->
-        end = y :: Ending or y == '\n'
+        end = y :: Ending or y == '\n' or y.indent
         end => @append y
         end
 
