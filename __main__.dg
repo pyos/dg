@@ -56,10 +56,10 @@ sys.argv = sys.argv or list' ''
 if head sys.argv == '-h' => print USAGE
    head sys.argv == '-b' =>
      this = core.load       dg.PY_TAG dg.BUNDLE_DIR
-     this = core.build this dg.PY_TAG dg.PY_VERSION  # build new features
-     this = core.build this dg.PY_TAG dg.PY_VERSION  # apply new features to itself
-     this = core.build this dg.PY_TAG dg.PY_VERSION  # self-test
-     core.save (list this)  dg.PY_TAG dg.BUNDLE_DIR
+     this = list $ core.build this dg.PY_TAG dg.PY_VERSION  # build new features
+     this = list $ core.build this dg.PY_TAG dg.PY_VERSION  # apply new features to itself
+     this = list $ core.build this dg.PY_TAG dg.PY_VERSION  # self-test
+     core.save this dg.PY_TAG dg.BUNDLE_DIR
 
    head sys.argv == '-m' => runpy.run_module _arg! None '__main__' True
    head sys.argv == '-c' => repl.runcode $ dg.compile _arg! '<string>'
