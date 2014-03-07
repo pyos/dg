@@ -32,7 +32,7 @@ python -m dg <<< "print 'Hello, World!'"
 
  * [Sublime Text and TextMate bundle](https://github.com/pyos/dg-textmate)
  * [GEdit/GtkSourceView syntax definition](https://github.com/pyos/dg-gedit)
- * [vim plugin](https://github.com/rubik/vim-dg) (courtesy of @rubik)
+ * [vim plugin](https://github.com/rubik/vim-dg) (courtesy of [Michele Lacchia](https://github.com/rubik))
 
 ### To-do
 
