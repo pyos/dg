@@ -48,7 +48,7 @@ Parser = subclass collections.deque where
         @charno += len text
         @lineno += text.count '\n'
         @token pos match.lastgroup match
-      err :: StopIteration => EOFTok
+      err :: StopIteration => Ending @location '\0'
 
   #: Current location as a tuple.
   #:
@@ -77,56 +77,62 @@ Parser = subclass collections.deque where
 
 DgParser = subclass Parser where
   regex = re.compile r'''(?isx)
-    (?P<space>  [^\S\n]+|\s*\#[^\n]*)
-   |(?P<number> (?P<realnum>
-      [+-]?(?:
-        (?P<isbin>0b[0-1]   +)
-       |(?P<isoct>0o[0-7]   +)
-       |(?P<ishex>0x[0-9a-f]+)
-       |(?:[0-9]+ (?P<isfloat> (?:\.[0-9]+)? (?:e[+-]?[0-9]+)?))
-      )
-    )(?P<isimag>j)?)
-   |(?P<string>
-      (?P<flags>br|r?b?)
-      (?P<quote>['"]{3}|['"])
-      (?P<content>(?:[^\\]|\\.)*?)
-      \11)  # should point to <quote>
-   |(?P<strerr> (?:br|r?b?)['"])
-   |(?P<name>   \w+'*|\*+(?=:))
-   |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
-   |(?P<eol>    \s*\n(?P<indent>\ *))
-   |(?P<block>  \()
-   |(?P<end>    \))
-   |(?P<iname>  `(?P<iname_>\w+'*)`)
-   |.
+    (?: # Skip
+      [^\S\n]+|
+      \s*\#[^\n]*
+    )*
+    (?: # Match
+      (?P<number> (?P<realnum>
+        [+-]?(?:
+          (?P<isbin>0b[0-1]   +)
+         |(?P<isoct>0o[0-7]   +)
+         |(?P<ishex>0x[0-9a-f]+)
+         |(?:[0-9]+ (?P<isfloat> (?:\.[0-9]+)? (?:e[+-]?[0-9]+)?))
+        )
+      )(?P<isimag>j)?)
+     |(?P<string>
+        (?P<flags>br|r?b?)
+        (?P<quote>['"]{3}|['"])
+        (?P<content>(?:[^\\]|\\.)*?)
+        \10)  # should point to <quote>
+     |(?P<strerr> (?:br|r?b?)['"])
+     |(?P<name>   \w+'*|\*+(?=:))
+     |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
+     |(?P<eol>    \s*\n(?P<indent>\ *))
+     |(?P<block>  \()
+     |(?P<end>    \))
+     |(?P<iname>  `(?P<iname_>\w+'*)`)
+     |(?P<error>  .)
+    )
   '''
 
   token = pos f m ~> if
-    f == 'space'  => next self
-    f == 'block'  => @block pos (== Ending ')')
-    f == 'end'    => Ending   at: pos ')'
-    f == 'name'   => Name     at: pos             $ m.group 0
-    f == 'infix'  => Name     at: pos infix: True $ m.group 0
-    f == 'iname'  => Name     at: pos infix: True $ m.group 'iname_'
-    f == 'string' => Constant at: pos $ literal_eval $
+    f == 'block'  => @block pos True $ x -> x :: Ending and x.value == ')'
+    f == 'end'    => Ending   pos ')'
+    f == 'name'   => Name     pos False $ m.group 'name'
+    f == 'infix'  => Name     pos True  $ m.group 'infix'
+    f == 'iname'  => Name     pos True  $ m.group 'iname_'
+    f == 'string' => Constant pos $ literal_eval $
       q = 3 * m.group 'quote' !! 0
       m.group 'flags' + q + m.group 'content' + q
 
-    f == 'number' => Constant at: pos $ (if (m.group 'isimag' => 1j) (True => 1)) * if
-      m.group 'isfloat' => float (m.group 'realnum')
-      m.group 'isbin'   => int   (m.group 'realnum') 2
-      m.group 'isoct'   => int   (m.group 'realnum') 8
-      m.group 'ishex'   => int   (m.group 'realnum') 16
-      otherwise         => int   (m.group 'realnum') 10
+    f == 'number' => Constant pos $ (*)
+      if m.group 'isimag' => 1j
+         otherwise        => 1
+      if m.group 'isfloat' => float (m.group 'realnum')
+         m.group 'isbin'   => int   (m.group 'realnum') 2
+         m.group 'isoct'   => int   (m.group 'realnum') 8
+         m.group 'ishex'   => int   (m.group 'realnum') 16
+         otherwise         => int   (m.group 'realnum') 10
 
     f == 'eol' =>
       level = len $ m.group 'indent'
 
-      if level == last @indent => Name '\n' at: pos infix: True
+      if level == last @indent => Name pos True '\n'
          level >  last @indent =>
            @indent.append level
-           @block pos closed: False $ x ->
-             x :: Ending => x is Dedent or
+           @block pos False $ x ->
+             x :: Ending => x.value == '\n' or
                # Indented blocks can be ended with close-parens.
                # We have to account for a decrease in indentation, though.
                @indent.pop!
@@ -134,42 +140,44 @@ DgParser = subclass Parser where
                @append x
              x :: Ending
          otherwise =>
-           @append $ Name '\n' at: pos infix: True
+           @append $ Name pos True '\n'
            while level != @indent.pop! =>
              @indent or @error 'no matching indentation level' @location
-             @append $ Dedent
+             @append $ Ending @location '\n'
            @indent.append level
            @pop!
 
     f == 'strerr' => @error 'unexpected EOF in a string literal' pos
-    otherwise     => @error 'invalid character'                  pos
+    f == 'error'  => @error 'invalid character'                  pos
+    otherwise     => raise $ KeyError $ 'unhandled group {!r}'.format f
 
   #: Parse a complete file.
   #:
   #: file :: Node
   #:
-  file = ~> @block (@filename, 1, 1, head @lines) closed: False $ x -> if
-    x is EOFTok => True
-    x :: Ending => @error 'unexpected close-paren' x.loc
+  file = ~> @block @location False $ x ->
+    x :: Ending => if
+      x.value == '\0' => True
+      x.value == '\n' => @error 'indentation < 0?'       x.loc
+      otherwise       => @error 'unexpected close-paren' x.loc
 
-  #: Read tokens until the end of the block.
+  #: Read tokens until `end` returns True.
   #:
-  #: pos -- (filename, lineno, charno, first line) of this block.
-  #: end -- returns True if a `Node` is an acceptable block end.
-  #: closed -- whether the block is encased in hard parentheses.
+  #: block :: (str, int, int, str) bool (Node -> bool) -> Node
   #:
-  #: block :: (str, int, int, str) (Node -> bool) (Optional bool) -> Node
-  #:
-  block = pos end closed: True ~>
-    result = Constant at: pos $ if (closed => tuple!) (otherwise => None)
+  block = pos closed end ~>
     isexpr = False
+    result = Constant pos $ if
+      closed    => tuple!  # Don't write `()` here. It's meaningless.
+      otherwise => None
 
     while not $ end (x = next self) => if
-      x is EOFTok => @error 'unexpected EOF in a block'          pos
-      x is Dedent => @error 'broken indentation in this block'   pos
-      x :: Ending => @error 'this block was not closed properly' pos
-      isexpr      => result = @infix (Name '' at: x.loc) result x
-      x != '\n'   => result, isexpr = @special x, True
+      x :: Ending => if
+        x.value == '\n' => @error 'indentation less than minimum for this block' x.loc
+        x.value == '\0' => @error 'unexpected EOF (a block was not closed)'      pos
+        otherwise       => @error 'invalid close-paren'                          x.loc
+      isexpr    => result = @infix (Name x.loc True '') result x
+      x != '\n' => result, isexpr = @special x, True
 
     result.closed |= closed
     result.indent  = not closed
@@ -183,7 +191,7 @@ DgParser = subclass Parser where
     rhs.nolhs and not rhs.closed =>
       # Got to handle that first, as the empty operator may not have
       # enough binding strength for that later.
-      rhs = @infix (Name '' at: rhs.loc) rhs $ next self
+      rhs = @infix (Name rhs.loc True '') rhs $ next self
 
     if
       rhs :: Ending or op.norhs =>
@@ -208,14 +216,19 @@ DgParser = subclass Parser where
 
     rhs is None => if
       op == '\n' => lhs
-      otherwise  => LeftBind op lhs closed: True at: lhs.loc
+      otherwise  =>
+        bind = LeftBind lhs.loc op lhs
+        bind.closed = True
+        bind
 
     lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
       lhs.args.extend $ tail (@make_call op lhs rhs).args
       lhs
 
     op == '' and lhs.infix and not lhs.closed =>
-      RightBind lhs at: lhs.loc $ if (Name '' > lhs => @special rhs) (otherwise => rhs)
+      RightBind lhs.loc lhs $ if
+        '' > lhs  => @special rhs
+        otherwise => rhs
 
     otherwise => @make_call op lhs rhs
 
@@ -227,11 +240,11 @@ DgParser = subclass Parser where
     op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' =>
       # If a function call is followed by an indented block,
       # each statement is treated as an argument.
-      Expression op lhs at: lhs.loc *: rhs.args
+      Expression lhs.loc op lhs *: rhs.args
     otherwise =>
-      Expression op lhs at: lhs.loc $ if
-        Name '' > op => @special rhs
-        otherwise    => rhs
+      Expression lhs.loc op lhs $ if
+        '' > op   => @special rhs
+        otherwise => rhs
 
   #: Handle a couple of fancy syntactic constructs.
   #:
@@ -240,15 +253,15 @@ DgParser = subclass Parser where
   special = x ~> if
     # These nodes consume everything until the next fat arrow.
     # "f X =>" becomes equivalent to "(X) `f`".
-    x.flags & 1 => @infix x (@block x.loc ('=>' ==)) (next self)
+    x.flags & 1 => @infix x (@block x.loc True ('=>' ==)) (next self)
     # These nodes consume everything until the EOL.
     # "f ...\n" => "f (...)\n".
     x.flags & 2 =>
-      arg = @block x.loc closed: False $ y ->
+      arg = @block x.loc False $ y ->
         end = y :: Ending or y == '\n' or y.indent
         end => @append y
         end
 
-      if arg == Constant None => x
-         otherwise => @infixin (Name '' infix: True at: arg.loc) x arg
+      if arg :: Constant and arg.value is None => x
+         otherwise => @infixin (Name arg.loc True '') x arg
     otherwise => x

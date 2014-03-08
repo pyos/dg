@@ -313,7 +313,7 @@ Compiler = subclass CodeType where
     otherwise =>
       c = if right     => @spawn f.value ('<L>',) ('<R>',)
              otherwise => @spawn f.value ('<R>',) ('<L>',)
-      c.pushcall f (Name '<L>') (Name '<R>')
+      c.pushcall f (Name f.loc False '<L>') (Name f.loc False '<R>')
       @pushclosure c tuple! $ dict' $ if right     => '<R>', arg
                                          otherwise => '<L>', arg
 
@@ -522,7 +522,7 @@ Compiler = subclass CodeType where
     nm :: Name => yield nm.value
 
   symscan = dict'
-    '',  f args   ~> @symbols $ Expression *: args
+    '',  f args ~> @symbols $ Expression f.loc *: args
 
     '=', FixedArity 2 2 $ f (n, x) ~>
       for a in @popast_symscan n => yield a
@@ -683,7 +683,7 @@ Compiler = subclass CodeType where
           @append    'POP_TOP'     delta: -1
 
       @append 'DUP_TOP' delta: +1
-      @popast $ Name $ path !! (-not qual)
+      @popast $ Name name.loc False $ path !! (-not qual)
 
     #: Local binding.
     #:
@@ -718,7 +718,7 @@ Compiler = subclass CodeType where
     'with', FixedArity 2 2 $ f (ctx, body) ~>
       var, ctx = if
         ctx :: Expression and len ctx.args == 2 and ctx.op == '=' => ctx.args
-        otherwise => Name '_', ctx
+        otherwise => Name ctx.loc False '_', ctx
 
       @pushconst None  # reserve space for a return value
       @pushast   ctx
@@ -826,11 +826,11 @@ Compiler = subclass CodeType where
 
     '!',     f g ~> @pushcall g
     ',',     f x ~> @pushcall f x  # i.e. same as in `prefix`.
-    '->',    f x ~> @pushcall f x $ Constant None at: f.loc  # `x R` => `x R None`
-    '~>',    f x ~> @pushcall f x $ Constant None at: f.loc
-    'while', f x ~> @pushcall f x $ Constant None at: f.loc
-    'for',   f x ~> @pushcall f x $ Constant None at: f.loc
-    'where', f x ~> @pushcall f x $ Constant None at: f.loc
+    '->',    f x ~> @pushcall f x $ Constant f.loc None  # `x R` => `x R None`
+    '~>',    f x ~> @pushcall f x $ Constant f.loc None
+    'while', f x ~> @pushcall f x $ Constant f.loc None
+    'for',   f x ~> @pushcall f x $ Constant f.loc None
+    'where', f x ~> @pushcall f x $ Constant f.loc None
 
   infixr = dict'
     ':', WithError 'keyword argument to what?'
@@ -839,8 +839,8 @@ Compiler = subclass CodeType where
 
     '~',     f x ~> (@pushast x, @append 'UNARY_INVERT')
     '-',     f x ~> (@pushast x, @append 'UNARY_NEGATIVE')
-    'where', f x ~>  @pushcall f x $ Constant None at: f.loc
-    '@',     f x ~>  @pushcall (Name '.' at: f.loc) (Name 'self' at: f.loc) x
+    'where', f x ~>  @pushcall f x $ Constant f.loc None
+    '@',     f x ~>  @pushcall (Name f.loc True '.') (Name f.loc False 'self') x
 
     '->', f body ~> @pushfunc' body () () () dict! () () dict!
     '~>', f body ~>

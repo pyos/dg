@@ -1,174 +1,124 @@
-#: Generic AST node. No direct instances are found in the parser output.
-#:
-#: type Node where
-#:   loc :: (str, int, int, str) -- (filename, line, character, first line)
-#:   closed :: bool -- whether the node is parenthesized
-#:   indent :: bool -- whether the node is an indented block
-#:   infix  :: bool -- whether the node is infix between two other nodes
-#:   nolhs  :: bool -- (infix = True) whether the node is, in fact, postfix
-#:   norhs  :: bool -- (infix = True) same as `nolhs`, only prefix
-#:   varary :: bool -- (infix = True) whether `a R b R c` constructs only one `R`
-#:   flags  :: int
-#:
+INFIXN = set' 'and' 'in' 'is' 'or' 'where'
+VARARY = set' ',' '\n' ''
+NOLHS  = set' '@' '~'
+NORHS  = set' '!'
+FLAGS  = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
+
+STRENGTH = dict'
+  '@',     ( 5,    5)    # attribute of `self`
+  '.',     ( 0,    0)    # getattr
+  '!.',    ( 0,    0)    # call with no arguments, then getattr
+  '!',     ( 0,   -10)   # call with no arguments
+  ':',     ( 0,   -10)   # keyword argument
+  '',      (-20,  -20)   # call with an argument
+  '!!',    (-30,  -30)   # container subscription (i.e. `a[b]`)
+  '**',    (-30,  -40)   # exponentiation
+  '*',     (-50,  -50)   # multiplication
+  '/',     (-50,  -50)   # fp division
+  '//',    (-50,  -50)   # int division
+  '%',     (-50,  -50)   # modulus
+  '+',     (-60,  -60)   # addition
+  '-',     (-60,  -60)   # subtraction
+  '<',     (-80,  -80)   # less than
+  '<=',    (-80,  -80)   # ^ or equal
+  '>',     (-80,  -80)   # greater than
+  '>=',    (-80,  -80)   # ^ or equal
+  '==',    (-80,  -80)   # equal
+  '!=',    (-80,  -80)   # not ^
+  'is',    (-80,  -80)   # occupies the same memory location as
+  'in',    (-80,  -80)   # is one of the elements of
+  '<<',    (-100, -100)  # *  2 **
+  '>>',    (-100, -100)  # // 2 **
+  '&',     (-110, -110)  # bitwise and
+  '^',     (-120, -120)  # bitwise xor
+  '|',     (-130, -130)  # bitwise or
+  'and',   (-140, -140)  # B if A else A
+  'or',    (-150, -150)  # A if A else B
+  '$',     (-150, -160)  # call with one argument and no f-ing parentheses
+  '->',    (-25,  -180)  # a function
+  '~>',    (-25,  -180)  # a method (i.e. a function with `self` as an argument)
+  ',',     (-170, -170)  # a tuple
+  '=',     (-170, -180)  # assignment
+  '!!=',   (-170, -180)  # in-place versions of some of the other functions
+  '+=',    (-170, -180)
+  '-=',    (-170, -180)
+  '*=',    (-170, -180)
+  '**=',   (-170, -180)
+  '/=',    (-170, -180)
+  '//=',   (-170, -180)
+  '%=',    (-170, -180)
+  '&=',    (-170, -180)
+  '^=',    (-170, -180)
+  '|=',    (-170, -180)
+  '<<=',   (-170, -180)
+  '>>=',   (-170, -180)
+  'where', (-170, -180)  # with some stuff that is not visible outside of that expression
+  'for',   (-180, -190)  # evaluate stuff for each item in an iterable
+  'while', (-180, -190)  # evaluate stuff until condition becomes false
+  'with',  (-180, -190)
+  '=>',    (-180, -190)  # if-then
+  '\n',    (-230, -230)  # do A then B
+
+
 Node = subclass object where
   # These are only used by `Name`s.
-  infix = nolhs = norhs = varary = False
-  flags = 0
+  closed = False  # :: bool -- whether the node is parenthesized
+  indent = False  # :: bool -- whether the node is intented relative to the surroundings
+  infix  = False  # :: bool -- whether the node is an infix `Name`
+  nolhs  = False  # :: bool -- whether an `infix` `Name` can only be right-bound
+  norhs  = False  # :: bool -- whether an `infix` `Name` can only be left-bound
+  varary = False  # :: bool -- whether an `infix` `Name` accepts 3+ arguments
+  flags  = 0      # special null denotations
 
-  __init__ = *: args **: kwargs ~>
-    @loc    = kwargs.pop 'at'     ('<constructed>', 1, 1, '')
-    @closed = kwargs.pop 'closed' False
-    @indent = kwargs.pop 'indent' False
-    @__ast_init__ *: args **: kwargs
-    None
-
-  __repr__ = self -> if
-    @closed   => '({})'.format @__ast_repr__
-    otherwise =>               @__ast_repr__
-
-  __ast_init__ = ~> raise $ TypeError 'instantiating Node directly is pointless'
-  __ast_repr__ = ~> 'nil'
+  __init__ = self @loc -> None
+  __repr__ = self      -> '<Node: nil>'
 
 
-#: An identifier.
-#:
-#: type Name < Node where
-#:   value :: str
-#:
 Name = subclass Node where
-  INFIX  = set' 'and' 'in' 'is' 'or' 'where'
-  VARARY = set' ',' '\n' ''
-  NOLHS  = set' '@' '~'
-  NORHS  = set' '!'
-  FLAGS  = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
-
-  __ast_repr__ = ~> @value
-  __ast_init__ = @value infix: False ~>
-    @infix  = @value in @INFIX or infix
-    @nolhs  = @value in @NOLHS
-    @norhs  = @value in @NORHS
-    @varary = @value in @VARARY
-    @flags  = @FLAGS.get @value 0
+  __init__ = self @loc infix @value ->
+    @infix  = @value in INFIXN or infix
+    @nolhs  = @value in NOLHS
+    @norhs  = @value in NORHS
+    @varary = @value in VARARY
+    @flags  = FLAGS.get @value 0
+    None
 
   __eq__   = self x -> @value == x
   __hash__ = self   -> hash @value
+  __repr__ = self   -> if
+    @closed   => '(' + @value + ')'
+    otherwise =>       @value
 
   #: Whether this (infix) node has priority over the other one.
   #:
   #: `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
   #: is higher than right binding strength of `R`, `(a R b) Q c` otherwise.
   #:
-  #: __gt__ :: Name -> bool
-  #:
-  __gt__ = over strength: (dict'
-    '@',     ( 5,    5)    # attribute of `self`
-    '.',     ( 0,    0)    # getattr
-    '!.',    ( 0,    0)    # call with no arguments, then getattr
-    '!',     ( 0,   -10)   # call with no arguments
-    ':',     ( 0,   -10)   # keyword argument
-    '',      (-20,  -20)   # call with an argument
-    '!!',    (-30,  -30)   # container subscription (i.e. `a[b]`)
-    '**',    (-30,  -40)   # exponentiation
-    '*',     (-50,  -50)   # multiplication
-    '/',     (-50,  -50)   # fp division
-    '//',    (-50,  -50)   # int division
-    '%',     (-50,  -50)   # modulus
-    '+',     (-60,  -60)   # addition
-    '-',     (-60,  -60)   # subtraction
-    '<',     (-80,  -80)   # less than
-    '<=',    (-80,  -80)   # ^ or equal
-    '>',     (-80,  -80)   # greater than
-    '>=',    (-80,  -80)   # ^ or equal
-    '==',    (-80,  -80)   # equal
-    '!=',    (-80,  -80)   # not ^
-    'is',    (-80,  -80)   # occupies the same memory location as
-    'in',    (-80,  -80)   # is one of the elements of
-    '<<',    (-100, -100)  # *  2 **
-    '>>',    (-100, -100)  # // 2 **
-    '&',     (-110, -110)  # bitwise and
-    '^',     (-120, -120)  # bitwise xor
-    '|',     (-130, -130)  # bitwise or
-    'and',   (-140, -140)  # B if A else A
-    'or',    (-150, -150)  # A if A else B
-    '$',     (-150, -160)  # call with one argument and no f-ing parentheses
-    '->',    (-25,  -180)  # a function
-    '~>',    (-25,  -180)  # a method (i.e. a function with `self` as an argument)
-    ',',     (-170, -170)  # a tuple
-    '=',     (-170, -180)  # assignment
-    '!!=',   (-170, -180)  # in-place versions of some of the other functions
-    '+=',    (-170, -180)
-    '-=',    (-170, -180)
-    '*=',    (-170, -180)
-    '**=',   (-170, -180)
-    '/=',    (-170, -180)
-    '//=',   (-170, -180)
-    '%=',    (-170, -180)
-    '&=',    (-170, -180)
-    '^=',    (-170, -180)
-    '|=',    (-170, -180)
-    '<<=',   (-170, -180)
-    '>>=',   (-170, -180)
-    'where', (-170, -180)  # with some stuff that is not visible outside of that expression
-    'for',   (-180, -190)  # evaluate stuff for each item in an iterable
-    'while', (-180, -190)  # evaluate stuff until condition becomes false
-    'with',  (-180, -190)
-    '=>',    (-180, -190)  # if-then
-    '\n',    (-230, -230)  # do A then B
-  ).get default: (-70, -70) ~> strength @value default !! 0 > strength over.value default !! 1
+  __gt__ = over ~> if
+    over :: str => STRENGTH.get @value (-70, -70) !! 0 > STRENGTH.get over (-70, -70) !! 1
+    otherwise   => self > over.value
+  __le__ = over ~> not $ self > over
+  __lt__ = over ~> not $ self > over
 
 
-#: A single function call.
-#:
-#: If the function in question is prefix, `op` will be `''`.
-#:
-#: type Expression < Node where
-#:   op   :: Node   -- function
-#:   args :: [Node] -- arguments
-#:
 Expression = subclass Node where
-  __ast_init__ = @op *: args ~> (@args = list args)
-  __ast_repr__ = ~> (' {!r} ' .format @op).join $ map repr @args
+  __init__ = self @loc @op *: args -> None where @args = list args
+  __repr__ = self -> '(' + (repr @op or ' ').join (map repr @args) + ')'
 
 
-#: A marshallable compile-time constant.
-#:
-#: type Constant < Node where
-#:   value :: Either int float complex str
-#:
 Constant = subclass Node where
-  __ast_init__ = @value ~>
-  __ast_repr__ =  ~> repr @value
-  __eq__ = x ~> x :: Constant and @value == x.value
+  __init__ = self @loc @value -> None
+  __repr__ = self -> repr @value
 
 
-#: An infix expression missing its right part.
-#:
-#: -- no signature
-#:
 LeftBind = subclass Expression where
-  __ast_repr__ = ~> '{[0]!r} {!r}'.format @args @op
+  __repr__ = self -> '({[0]!r} {!r})'.format @args @op
 
 
-#: An infix expression missing its left part.
-#:
-#: -- no signature
-#:
 RightBind = subclass Expression where
-  __ast_repr__ = ~> '{!r} {[0]!r}'.format @op @args
+  __repr__ = self -> '({!r} {[0]!r})'.format @op @args
 
 
-#: A signal for `Parser.block` to stop reading `Node`s.
-#:
-#: The string `value` will be different depending on the type of
-#: close-paren. Does not appear in parser output.
-#:
-#: type Ending < Node where
-#:   value :: object
-#:
 Ending = subclass Node where
-  __ast_init__ = @value ~>
-  __ast_repr__ = ~> '<E: {!r}>'.format @value
-  __eq__ = x ~> x :: Ending and @value == x.value
-
-Dedent = Ending '\n'
-EOFTok = Ending '\0'
+  __init__ = self @loc @value -> None
+  __repr__ = self -> '<Ending: {!r}>'.format @value
