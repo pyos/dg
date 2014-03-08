@@ -18,21 +18,45 @@ python3 -m dg -c 'print "Command!"'
 
 ##### Q: I expected a copy of a help message.
 
-A: `python -m dg [-h | -b | -c command | -m module | file] ...`
+A:
 
-Options and arguments:
+```
+python3 [options] -m dg [-h | -b | -c command | -m module | file] ...
 
-  * `-h`: show this message and exit
-  * `-b`: rebootstrap the compiler
-  * `-c command`: run a single command, then exit
-  * `-m module`: run a module (or a package's `__main__`) as a script
-  * `file`: run a script
-  * `...`: additional arguments accessible through `sys.argv`
+VM options that make sense when used with dg:
+
+  -B           don't save bytecode cache (i.e. `.pyc` and `.pyo` files);
+  -E           ignore environment variables
+  -s           don't add user site directory to sys.path
+  -S           don't `import site` on startup
+  -u           don't buffer standard output
+  -v           trace import statements
+  -X           implementation-specific options
+
+Arguments:
+
+  -h           show this message and exit
+  -b           rebootstrap the compiler
+  -c command   run a single command, then exit
+  -m module    run a module (or a package's `__main__`) as a script
+  file         run a script
+  ...          additional arguments accessible through `sys.argv`
 
 Environment variables:
 
-  * `PYTHONSTARTUP`     a Python file executed on interactive startup
-  * `PYTHONSTARTUPDG`   same as PYTHONSTARTUP, only in dg
+  PYTHONSTARTUP     a Python file executed on interactive startup
+  PYTHONSTARTUPDG   a dg file, overrides PYTHONSTARTUP
+  PYTHONPATH        a `:`-separated list of directories to search for modules in
+  PYTHONPREFIX      override the `--prefix` option of `configure`
+
+...that have the same effect as options:
+
+  PYTHONDONTWRITEBYTECODE    -B
+  PYTHONNOUSERSITE           -s
+  PYTHONUNBUFFERED           -u
+  PYTHONVERBOSE              -v
+
+```
 
 ##### Q: All the cool modules for Python have entry point scripts. Do you have a script?
 
