@@ -94,11 +94,7 @@ Name = subclass Node where
   #: `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
   #: is higher than right binding strength of `R`, `(a R b) Q c` otherwise.
   #:
-  __gt__ = over ~> if
-    over :: str => STRENGTH.get @value (-70, -70) !! 0 > STRENGTH.get over (-70, -70) !! 1
-    otherwise   => self > over.value
-  __le__ = over ~> not $ self > over
-  __lt__ = over ~> not $ self > over
+  __gt__ = over ~> STRENGTH.get self (-70, -70) !! 0 > STRENGTH.get over (-70, -70) !! 1
 
 
 Expression = subclass Node where

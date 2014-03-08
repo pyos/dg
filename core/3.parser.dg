@@ -211,7 +211,7 @@ DgParser = subclass Parser where
   #:
   infixin = op lhs rhs ~> if
     lhs :: Expression and not lhs.closed and op > lhs.op =>
-      lhs.args.append $ @infixin op (lhs.args.pop -1) rhs
+      lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
       lhs
 
     rhs is None => if
@@ -222,12 +222,12 @@ DgParser = subclass Parser where
         bind
 
     lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
-      lhs.args.extend $ tail (@make_call op lhs rhs).args
+      lhs.args += (@make_call op lhs rhs).args !! slice 1 None
       lhs
 
     op == '' and lhs.infix and not lhs.closed =>
       RightBind lhs.loc lhs $ if
-        '' > lhs  => @special rhs
+        Name.__gt__ '' lhs  => @special rhs
         otherwise => rhs
 
     otherwise => @make_call op lhs rhs
@@ -241,10 +241,10 @@ DgParser = subclass Parser where
       # If a function call is followed by an indented block,
       # each statement is treated as an argument.
       Expression lhs.loc op lhs *: rhs.args
+    Name.__gt__ '' op =>
+      Expression lhs.loc op lhs $ @special rhs
     otherwise =>
-      Expression lhs.loc op lhs $ if
-        '' > op   => @special rhs
-        otherwise => rhs
+      Expression lhs.loc op lhs rhs
 
   #: Handle a couple of fancy syntactic constructs.
   #:
