@@ -8,6 +8,16 @@
     .navbar {
       width: 810px; } }
 
+.container {
+  margin-left: auto;
+  margin-right: auto; }
+  @media (min-width: 768px) {
+    .container {
+      width: 750px; } }
+  @media (min-width: 992px) {
+    .container {
+      width: 970px; } }
+
 #root-page .container {
   margin-left: auto;
   margin-right: auto; }
@@ -57,7 +67,7 @@
 
 pre {
   background: #fafafa;
-  border-color: #f6f6f6; }
+  border-color: #f0f0f0; }
 
 .text-muted {
   color: rgba(0, 0, 0, 0.3); }
