@@ -1,10 +1,16 @@
-all:   clean js css html
+PYTHON = /usr/bin/env python3
+DG     = $(PYTHON) -m dg
+
+SOURCE_DIR = src
+TARGET_DIR = .
+BUILD      = $(DG) build.dg $(SOURCE_DIR) $(TARGET_DIR)
+
+all:   clean css html
 clean: ; find * \( -type d -empty -o -name index.html -o -name '*.pyc' -o -name '*.gen.*' \) -delete
 
 css:   css-site
-css-site: ; python3 -m dg build.dg src . /css/site.sass
+css-site: ; $(BUILD) /css/site.sass
 
-html:  html-index html-tutorial #html-language
-html-index:    ; python3 -m dg build.dg src . /index.hamlike
-html-tutorial: ; python3 -m dg build.dg src . /tutorial/index.hamlike
-#html-language: ; python3 -m dg build.dg src . /language/index.hamlike
+html:  html-index html-tutorial
+html-index:    ; $(BUILD) /index.hamlike
+html-tutorial: ; $(BUILD) /tutorial/index.hamlike
