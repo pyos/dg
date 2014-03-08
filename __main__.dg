@@ -8,7 +8,7 @@ import '/dg/repl'
 
 
 USAGE = '''
-python3 [options] -m dg [-h | -b | -c command | -m module | file] ...'
+python3 [options] -m dg [-h | -b | -c command | -m module | file] ...
 
 VM options that make sense when used with dg:
 
