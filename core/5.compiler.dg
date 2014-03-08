@@ -71,7 +71,7 @@ ArrowPairs = h -> f xs ~>
     f._arrpairs = list
       where for x in xs => yield $ if
         x :: RightBind  and x.op == '=>' => Error x 'missing expression'
-        x :: LeftBind   and x.op == '=>' => x.args + list' (Constant None)
+        x :: LeftBind   and x.op == '=>' => x.args + list' (Constant x.loc None)
         x :: Expression and x.op == '=>' => x.args
         otherwise => Error x 'expected `u => v`'
   h self f f._arrpairs
