@@ -50,7 +50,11 @@ except
       # code via `__getattr__`, too. WARNING, I guess.)
       complete_word = word ~>
         path, dot, word = word.rpartition '.'
-        sorted $ map (path + dot +) $ filter (n -> n.startswith word) $
+        filter_fn = if
+          # Hide private attributes unless an underscore was typed.
+          word      => n -> n.startswith word
+          otherwise => n -> not $ n.startswith '_'
+        sorted $ map (path + dot +) $ filter filter_fn $
           if path      => _attributes_of path @completion_ns
              otherwise => set Compiler.prefix | set builtins.__dict__ | set @completion_ns
 
