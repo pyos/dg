@@ -19,33 +19,28 @@ parsefd = data filename: '<stream>' -> parse (data.read -1) filename
 
 Parser = subclass collections.deque where
   regex = re.compile r'''(?isx)
-    (?: # Skip
-      [^\S\n]+|
-      \s*\#[^\n]*
-    )*
-    (?: # Match
-      (?P<number> (?P<realnum>
-        [+-]?(?:
-          (?P<isbin>0b[0-1]   +)
-         |(?P<isoct>0o[0-7]   +)
-         |(?P<ishex>0x[0-9a-f]+)
-         |(?:[0-9]+ (?P<isfloat> (?:\.[0-9]+)? (?:e[+-]?[0-9]+)?))
-        )
-      )(?P<isimag>j)?)
-     |(?P<string>
-        (?P<flags>br|r?b?)
-        (?P<quote>['"]{3}|['"])
-        (?P<content>(?:[^\\]|\\.)*?)
-        \10)  # should point to <quote>
-     |(?P<strerr> (?:br|r?b?)['"])
-     |(?P<name>   \w+'*|\*+(?=:))
-     |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
-     |(?P<eol>    \s*\n(?P<indent>\ *))
-     |(?P<block>  \()
-     |(?P<end>    \))
-     |(?P<iname>  `(?P<iname_>\w+'*)`)
-     |(?P<error>  .)
-    )
+    (?P<skip>   [^\S\n]+|\s*\#[^\n]*)
+   |(?P<number> (?P<realnum>
+      [+-]?(?:
+        (?P<isbin>0b[0-1]   +)
+       |(?P<isoct>0o[0-7]   +)
+       |(?P<ishex>0x[0-9a-f]+)
+       |(?:[0-9]+ (?P<isfloat> (?:\.[0-9]+)? (?:e[+-]?[0-9]+)?))
+      )
+    )(?P<isimag>j)?)
+   |(?P<string>
+      (?P<flags>br|r?b?)
+      (?P<quote>['"]{3}|['"])
+      (?P<content>(?:[^\\]|\\.)*?)
+      \11)  # should point to <quote>
+   |(?P<strerr> (?:br|r?b?)['"])
+   |(?P<name>   \w+'*|\*+(?=:))
+   |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
+   |(?P<eol>    \s*\n(?P<indent>\ *))
+   |(?P<block>  \()
+   |(?P<end>    \))
+   |(?P<iname>  `(?P<iname_>\w+'*)`)
+   |(?P<error>  .)
   '''
 
   #: A recursive descent parser with a built-in regex-based tokenizer.
@@ -90,6 +85,7 @@ Parser = subclass collections.deque where
   #: token :: (str, int, int, str) str MatchObject -> Node
   #:
   token = pos f m ~> if
+    f == 'skip'   => next self
     f == 'block'  => @block pos True $ x -> x :: Ending and x.value == ')'
     f == 'end'    => Ending   pos ')'
     f == 'name'   => Name     pos False $ m.group 'name'
@@ -239,9 +235,9 @@ Parser = subclass collections.deque where
     # "f ...\n" => "f (...)\n".
     x.flags & 2 =>
       arg = @block x.loc False $ y ->
-        end = y :: Ending or y == '\n' or y.indent
-        end => @append y
-        end
+        y :: Ending or y == '\n' or y.indent =>
+          @append y
+          True
 
       if arg :: Constant and arg.value is None => x
          otherwise => @infixin (Name arg.loc True '') x arg
