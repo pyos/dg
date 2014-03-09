@@ -71,9 +71,6 @@ Node = subclass object where
   varary = False  # :: bool -- whether an `infix` `Name` accepts 3+ arguments
   flags  = 0      # special null denotations
 
-  __init__ = self @loc -> None
-  __repr__ = self      -> '<Node: nil>'
-
 
 Name = subclass Node where
   __init__ = self @loc infix @value ->
