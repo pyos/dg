@@ -7,7 +7,7 @@ import '/ast/literal_eval'
 #:
 #: parse :: str (Optional str) -> Node
 #:
-parse = data filename: '<string>' -> (DgParser data filename).file
+parse = data filename: '<string>' -> (Parser data filename).file
 
 
 #: Parse the contents of a file-like object opened in text mode.
@@ -17,65 +17,7 @@ parse = data filename: '<string>' -> (DgParser data filename).file
 parsefd = data filename: '<stream>' -> parse (data.read -1) filename
 
 
-#: A recursive descent parser with a built-in regex-based tokenizer.
-#:
-#: type Parser < deque Node where
-#:   tokens :: iter MatchObject -- see `regex`.
-#:   indent :: deque int -- a stack of indentation levels, starting with 0.
-#:   lineno :: int -- 1-based line number.
-#:   charno :: int -- 1-based character number.
-#:   lines  :: list str -- the input, split at line breaks.
-#:
 Parser = subclass collections.deque where
-  __init__ = @data @filename ~>
-    @tokens = @regex.finditer @data
-    @indent = collections.deque $ list' 0
-    @lineno = 1
-    @charno = 1
-    @lines  = @data.split '\n'
-    None
-
-  __iter__ = self -> self
-  __next__ = self -> if
-    self      => @pop!
-    otherwise => except
-      err =>
-        match = next @tokens
-        text  = match.group 0
-        pos   = @location
-
-        '\n' in text => @charno = -text.rfind '\n'
-        @charno += len text
-        @lineno += text.count '\n'
-        @token pos match.lastgroup match
-      err :: StopIteration => Ending @location '\0'
-
-  #: Current location as a tuple.
-  #:
-  #: location :: (str, int, int, str)
-  #:
-  location = ~> (@filename, @lineno, @charno, @lines !! (@lineno - 1))
-
-  #: A regex used to tokenize input text.
-  #:
-  #: regex :: Re
-  #:
-  regex = re.compile r'''.'''
-
-  #: Handle a single regex match.
-  #:
-  #: token :: (str, int, int, str) str MatchObject -> Node
-  #:
-  token = pos groupname match ~> @error 'internal error: no grammar' pos
-
-  #: Handle a parse error.
-  #:
-  #: error :: str (str, int, int, str) -> _|_
-  #:
-  error = staticmethod $ description at -> raise $ SyntaxError description at
-
-
-DgParser = subclass Parser where
   regex = re.compile r'''(?isx)
     (?: # Skip
       [^\S\n]+|
@@ -106,6 +48,47 @@ DgParser = subclass Parser where
     )
   '''
 
+  #: A recursive descent parser with a built-in regex-based tokenizer.
+  #:
+  #:   tokens :: iter MatchObject -- see `regex`.
+  #:   indent :: deque int -- a stack of indentation levels, starting with 0.
+  #:   lineno :: int -- 1-based line number.
+  #:   charno :: int -- 1-based character number.
+  #:   lines  :: list str -- the input, split at line breaks.
+  #:
+  __init__ = @data @filename ~>
+    @tokens = @regex.finditer @data
+    @indent = collections.deque $ list' 0
+    @lineno = 1
+    @charno = 1
+    @lines  = @data.split '\n'
+    None
+
+  __iter__ = self -> self
+  __next__ = self -> if
+    self      => @pop!
+    otherwise => except
+      err =>
+        match = next @tokens
+        text  = match.group 0
+        pos   = @location
+
+        '\n' in text => @charno = -text.rfind '\n'
+        @charno += len text
+        @lineno += text.count '\n'
+        @token pos match.lastgroup match
+      err :: StopIteration => Ending @location '\0'
+
+  #: Current location as a tuple.
+  #:
+  #: location :: (str, int, int, str)
+  #:
+  location = ~> (@filename, @lineno, @charno, @lines !! (@lineno - 1))
+
+  #: Handle a single regex match.
+  #:
+  #: token :: (str, int, int, str) str MatchObject -> Node
+  #:
   token = pos f m ~> if
     f == 'block'  => @block pos True $ x -> x :: Ending and x.value == ')'
     f == 'end'    => Ending   pos ')'
@@ -142,13 +125,13 @@ DgParser = subclass Parser where
          otherwise =>
            @append $ Name pos True '\n'
            while level != @indent.pop! =>
-             @indent or @error 'no matching indentation level' @location
+             @indent or raise (SyntaxError 'no matching indentation level' @location)
              @append $ Ending @location '\n'
            @indent.append level
            @pop!
 
-    f == 'strerr' => @error 'unexpected EOF in a string literal' pos
-    f == 'error'  => @error 'invalid character'                  pos
+    f == 'strerr' => raise $ SyntaxError 'unexpected EOF in a string literal' pos
+    f == 'error'  => raise $ SyntaxError 'invalid character'                  pos
     otherwise     => raise $ KeyError $ 'unhandled group {!r}'.format f
 
   #: Parse a complete file.
@@ -158,8 +141,8 @@ DgParser = subclass Parser where
   file = ~> @block @location False $ x ->
     x :: Ending => if
       x.value == '\0' => True
-      x.value == '\n' => @error 'indentation < 0?'       x.loc
-      otherwise       => @error 'unexpected close-paren' x.loc
+      x.value == '\n' => raise $ SyntaxError 'indentation < 0?'       x.loc
+      otherwise       => raise $ SyntaxError 'unexpected close-paren' x.loc
 
   #: Read tokens until `end` returns True.
   #:
@@ -173,9 +156,9 @@ DgParser = subclass Parser where
 
     while not $ end (x = next self) => if
       x :: Ending => if
-        x.value == '\n' => @error 'indentation less than minimum for this block' x.loc
-        x.value == '\0' => @error 'unexpected EOF (a block was not closed)'      pos
-        otherwise       => @error 'invalid close-paren'                          x.loc
+        x.value == '\n' => raise $ SyntaxError 'indentation less than minimum for this block' x.loc
+        x.value == '\0' => raise $ SyntaxError 'unexpected EOF (a block was not closed)'      pos
+        otherwise       => raise $ SyntaxError 'invalid close-paren'                          x.loc
       isexpr    => result = @infix (Name x.loc True '') result x
       x != '\n' => result, isexpr = @special x, True
 
@@ -196,11 +179,11 @@ DgParser = subclass Parser where
     if
       rhs :: Ending or op.norhs =>
         @append rhs
-        op != '' => lhs = @infixin op lhs None
+        op != '' and op != '\n' => lhs = @infixin op lhs None
         lhs
 
-      rhs.infix and not rhs.closed and (op == '' or not (rhs > op)) =>
-        op != '' => lhs = @infixin op lhs None
+      rhs.infix and not rhs.closed and (op == '' or not (op < rhs)) =>
+        op != '' and op != '\n' => lhs = @infixin op lhs None
         @infix rhs lhs $ next self
 
       otherwise => @infixin op lhs rhs
@@ -210,16 +193,14 @@ DgParser = subclass Parser where
   #: infixin :: Name Node (Maybe Node) -> Expression
   #:
   infixin = op lhs rhs ~> if
-    lhs :: Expression and not lhs.closed and op > lhs.op =>
+    lhs :: Expression and not lhs.closed and lhs.op < op =>
       lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
       lhs
 
-    rhs is None => if
-      op == '\n' => lhs
-      otherwise  =>
-        bind = LeftBind lhs.loc op lhs
-        bind.closed = True
-        bind
+    rhs is None =>
+      bind = LeftBind lhs.loc op lhs
+      bind.closed = True
+      bind
 
     lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
       lhs.args += (@make_call op lhs rhs).args !! slice 1 None
@@ -227,7 +208,7 @@ DgParser = subclass Parser where
 
     op == '' and lhs.infix and not lhs.closed =>
       RightBind lhs.loc lhs $ if
-        Name.__gt__ '' lhs  => @special rhs
+        lhs < ''  => @special rhs
         otherwise => rhs
 
     otherwise => @make_call op lhs rhs
@@ -241,7 +222,7 @@ DgParser = subclass Parser where
       # If a function call is followed by an indented block,
       # each statement is treated as an argument.
       Expression lhs.loc op lhs *: rhs.args
-    Name.__gt__ '' op =>
+    op < '' =>
       Expression lhs.loc op lhs $ @special rhs
     otherwise =>
       Expression lhs.loc op lhs rhs

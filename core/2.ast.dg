@@ -89,12 +89,12 @@ Name = subclass Node where
     @closed   => '(' + @value + ')'
     otherwise =>       @value
 
-  #: Whether this (infix) node has priority over the other one.
+  #: Compare infix priorities of two nodes.
   #:
   #: `a R b Q c` <=> `a R (b Q c)` if left binding strength of `Q`
   #: is higher than right binding strength of `R`, `(a R b) Q c` otherwise.
   #:
-  __gt__ = over ~> STRENGTH.get self (-70, -70) !! 0 > STRENGTH.get over (-70, -70) !! 1
+  __lt__ = q ~> STRENGTH.get q (-70, -70) !! 0 > STRENGTH.get self (-70, -70) !! 1
 
 
 Expression = subclass Node where
