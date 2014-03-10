@@ -11,7 +11,8 @@ if sys.implementation.cache_tag is None:
 
 PY_TAG      = sys.implementation.cache_tag
 PY_VERSION  = sys.hexversion
-BUNDLE_FILE = os.path.join(__path__[0], 'bundle', PY_TAG + '.dgbundle')
+BUNDLE_DIR  = os.path.join(__path__[0], 'bundle')
+BUNDLE_FILE = os.path.join(BUNDLE_DIR, PY_TAG + '.dgbundle')
 
 if not os.path.exists(BUNDLE_FILE):
     raise ImportError('python implementation {!r} not supported'.format(PY_TAG))
