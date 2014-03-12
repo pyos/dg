@@ -192,14 +192,15 @@ Parser = subclass collections.deque where
       lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
       lhs
 
+    lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
+      rhs is None or
+        lhs.args += (@make_call op lhs rhs).args !! slice 1 None
+      lhs
+
     rhs is None =>
       bind = LeftBind lhs.loc op lhs
       bind.closed = True
       bind
-
-    lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
-      lhs.args += (@make_call op lhs rhs).args !! slice 1 None
-      lhs
 
     op == '' and lhs.infix and not lhs.closed =>
       RightBind lhs.loc lhs $ if
