@@ -166,23 +166,22 @@ Parser = subclass collections.deque where
   #:
   #: infix :: Name Node Node -> Node
   #:
-  infix = op lhs rhs ~>
-    rhs.nolhs and not rhs.closed =>
-      # Got to handle that first, as the empty operator may not have
-      # enough binding strength for that later.
-      rhs = @infix (Name rhs.loc True '') rhs $ next self
-
-    if
-      rhs :: Ending or op.norhs =>
-        @append rhs
-        op != '' and op != '\n' => lhs = @infixin op lhs None
-        lhs
-
-      rhs.infix and not rhs.closed and (op == '' or not (op < rhs)) =>
-        op != '' and op != '\n' => lhs = @infixin op lhs None
-        @infix rhs lhs $ next self
-
-      otherwise => @infixin op lhs rhs
+  infix = op lhs rhs ~> if
+    # FIXME `special` below uses different end conditions.
+    #
+    #     [source]    [expected]    [what actually happens]
+    #     if x =>     if (x =>)     if (x => # no Ending here, we consume the next token!
+    #        y => z      (y => z)      (y => z))  # (which is the indented block)
+    #
+    rhs :: Ending or op.norhs =>
+      @append rhs
+      if op in ('', '\n') => lhs  # these are no-op on one argument
+         otherwise        => @infixin op lhs None
+    rhs.infix and not rhs.closed and (op == '' or not (op < rhs)) => if
+      rhs.nolhs        => @infixin op lhs $ @infix (Name rhs.loc True '') rhs $ next self
+      op in ('', '\n') => @infix rhs lhs $ next self
+      otherwise        => @infix rhs (@infixin op lhs None) $ next self
+    otherwise => @infixin op lhs rhs
 
   #: Recursively descend into `lhs` to apply infix precedence rules.
   #:
