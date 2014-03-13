@@ -11,3 +11,4 @@
       %ul class="nav navbar-nav"
         %li -> %a href="https://github.com/pyos/dg" -> GitHub
         %li -> %a href="@@ref:/tutorial/" -> Tutorial
+        %li -> %a href="@@ref:/repl/" -> Try it

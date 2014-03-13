@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="../css/bootstrap.min.css" rel="stylesheet">
+<link href="../css/bootstrap-theme.min.css" rel="stylesheet">
+<link href="../css/site.gen.css" rel="stylesheet">
+<link href="../css/code.css" rel="stylesheet">
+<script type="text/javascript" src="../js/jquery-2.0.3.min.js">
+</script><script type="text/javascript" src="../js/bootstrap.min.js">
+</script><!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js">
+  </script><script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+
+    <title >dg — try it! (Please don't hack the REPL.)
+    </title><script src="../js/repl.js">
+    </script><style type="text/css">
+      #repl-code, #repl-stdin { width: 100%; font-family: monospace; }
+      #repl-stdout, #repl-stderr { overflow: auto; max-height: 400px; }</style>
+  </head><body>
+    <div class="navbar navbar-default navbar-static-top" role="navigation">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+        <span class="sr-only" >Toggle navigation
+        </span><span class="icon-bar">
+        </span><span class="icon-bar">
+        </span><span class="icon-bar"></span>
+      </button><a class="navbar-brand" href=".." >dg</a>
+    </div><div class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li ><a href="https://github.com/pyos/dg" >GitHub</a>
+        </li><li ><a href="../tutorial" >Tutorial</a>
+        </li><li ><a href="../repl" >Try it</a></li></ul></div></div>
+</div>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-12 col-md-6">
+          <h3 >Code
+          </h3><p  ><textarea rows="15" id="repl-code" spellcheck="false">print "Hello, World!"</textarea>
+
+          </p><h3 >Input
+          </h3><p  ><textarea rows="5" id="repl-stdin" spellcheck="false"></textarea>
+          </p><p  ><button type="button" class="btn btn-primary" id="repl-doit" >Do it!</button></p>
+
+        </div><div class="col-sm-12 col-md-6">
+          <div id="repl-waiting" style="display:none" ><h3 >Loading...</h3>
+          </div><div id="repl-status"  style="display:none">
+            <h3>
+              <span id="repl-status-sum" >Finished
+              </span>
+              <span class="text-muted" >in <span id="repl-time"></span>s
+              </span>
+              <span class="text-muted" id="repl-retval-wrap">
+                with code <span id="repl-retval"></span>
+              </span>
+              <span class="text-muted" id="repl-signal-wrap">
+                with code <span id="repl-signal"></span></span>
+            </h3><div id="repl-stdout-wrap">
+              <h4 >stdout:
+              </h4><pre id="repl-stdout"></pre>
+            </div><div id="repl-stderr-wrap">
+              <h4 >stderr:
+              </h4><pre id="repl-stderr"></pre></div>
+          </div><div id="repl-error" style="display:none">
+            <h3 >Internal error
+            </h3><p id="repl-error-msg"></p></div></div>
+
+      </div><div class="footer text-muted">
+        <p >Security audit pending.
+        </p><p >Totally made by <a href="https://github.com/pyos">@pyos</a>.</p></div></div></body>
+</html>

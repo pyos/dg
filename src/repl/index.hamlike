@@ -1,0 +1,48 @@
+%!doctype html
+%html lang="en"
+  %head
+    @@include:/head.hamlike
+    %title -> dg — try it! (Please don't hack the REPL.)
+    %script src="@@ref:/js/repl.js"
+    %style type="text/css"
+      #repl-code, #repl-stdin { width: 100%; font-family: monospace; }
+      #repl-stdout, #repl-stderr { overflow: auto; max-height: 400px; }
+  %body
+    @@include:/navbar.hamlike
+
+    %div class="container"
+      %div class="row"
+        %div class="col-sm-12 col-md-6"
+          %h3 -> Code
+          %p  -> <textarea rows="15" id="repl-code" spellcheck="false">print "Hello, World!"</textarea>
+
+          %h3 -> Input
+          %p  -> <textarea rows="5" id="repl-stdin" spellcheck="false"></textarea>
+          %p  -> %button type="button" class="btn btn-primary" id="repl-doit" -> Do it!
+
+        %div class="col-sm-12 col-md-6"
+          %div id="repl-waiting" style="display:none" -> %h3 -> Loading...
+          %div id="repl-status"  style="display:none"
+            %h3
+              %span id="repl-status-sum" -> Finished
+              \ 
+              %span class="text-muted" -> in <span id="repl-time"></span>s
+              \ 
+              %span class="text-muted" id="repl-retval-wrap"
+                with code <span id="repl-retval"></span>
+              \ 
+              %span class="text-muted" id="repl-signal-wrap"
+                with code <span id="repl-signal"></span>
+            %div id="repl-stdout-wrap"
+              %h4 -> stdout:
+              %pre id="repl-stdout"
+            %div id="repl-stderr-wrap"
+              %h4 -> stderr:
+              %pre id="repl-stderr"
+          %div id="repl-error" style="display:none"
+            %h3 -> Internal error
+            %p id="repl-error-msg"
+
+      %div class="footer text-muted"
+        %p -> Security audit pending.
+        %p -> Totally made by <a href="https://github.com/pyos">@pyos</a>.
