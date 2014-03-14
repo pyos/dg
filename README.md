@@ -40,4 +40,4 @@ python -m dg <<< "print 'Hello, World!'"
  * String interpolation: `i"{expression #flags}"` == `"{:flags}".format expression`
  * Tools for easy AST manipulation.
  * Compiler extension API.
- * Some of the more obscure Python features: exception causes, `yield from`, function annotations.
+ * Some of the more obscure Python features: exception causes, function annotations.

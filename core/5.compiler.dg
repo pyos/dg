@@ -793,11 +793,11 @@ Compiler = subclass CodeType where
     #:
     #: Did you know that generators have a `send` method? Look it up.
     #:
-    'yield', FixedArity 1 1 $ f (it,) ~>
-      # TODO: yield from. `pushast iter`, `pushast it`, `YIELD_FROM`, delta: -1.
+    'yield', FixedArity 1 2 $ f (*flags, it) ~>
       @generator = True
-      @pushast it
-      @append  'YIELD_VALUE'
+      if not flags            => @pushast it, @append 'YIELD_VALUE'
+         flags !! 0 == 'from' => @pushast it, @pushconst None, @append 'YIELD_FROM' delta: -1
+         otherwise            => Error (flags !! 0) 'unrecognized option'
 
     'if', ArrowPairs $ f xs ~>
       jumps = list
