@@ -13,5 +13,4 @@ css-site: ; $(BUILD) /css/site.sass
 
 html:  html-index html-tutorial
 html-index:    ; $(BUILD) /index.hamlike
-html-repl:     ; $(BUILD) /repl/index.hamlike
 html-tutorial: ; $(BUILD) /tutorial/index.hamlike
