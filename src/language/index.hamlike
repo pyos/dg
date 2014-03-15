@@ -11,6 +11,7 @@
         %div class="col-sm-12 col-md-10 col-md-offset-1 markdown"
           @@include:index.md
 
-      %div class="footer text-muted"
+    %div class="footer text-muted"
+      %div class="container"
         %p -> ^D Interrupted by EOF
         %p -> Totally made by <a href="https://github.com/pyos">@pyos</a>

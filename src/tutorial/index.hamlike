@@ -7,14 +7,15 @@
     @@include:/navbar.hamlike
 
     %div class="container"
-      %div class="text-center header"
-        %h3 class="serious-dawg" -> Learning dg
-        %h4 class="serious-dawg-lead text-left" -> NOT<span class="serious-dawg-accent">'</span>REALLY®
+      %div class="header serious-dawg"
+        %h3 class="text-center" -> Learning dg
+        %h4 class="text-left"   -> NOT<span class="accent">'</span>REALLY®
 
       %div class="row"
         %div class="col-sm-12 col-md-10 col-md-offset-1 markdown"
           @@include:index.md
 
-      %div class="footer text-muted"
+    %div class="footer text-muted"
+      %div class="container"
         %p -> ^D Interrupted by EOF
         %p -> Totally made by <a href="https://github.com/pyos">@pyos</a>

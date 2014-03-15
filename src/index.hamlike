@@ -1,15 +1,17 @@
 %!doctype html
-%html lang="en" id="root-page"
+%html lang="en"
   %head
     @@include:/head.hamlike
     %title -> dg — it's a Python! No, it's a Haskell!
   %body
-    @@include:/navbar.hamlike
+    %div class="fun-dawg"
+      @@include:/navbar.hamlike
 
-    %div class="container"
-      %div class="jumbotron"
-        %h1 -> d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.
+      %div class="container container-narrow"
+        %div class="jumbotron"
+          %h1 -> d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.
 
+    %div class="container container-narrow"
       %div class="row marketing"
         %div class="col-sm-6"
           %h4 -> Overthrow the oppressive dictatorship!
@@ -56,7 +58,8 @@
             or get
             %a href="https://github.com/pyos/dg/archive/master.zip" -> this zip archive
 
-      %div class="footer text-muted"
+    %div class="footer text-muted"
+      %div class="container container-narrow"
         %p
           Totally made by <a href="https://github.com/pyos">@pyos</a>.
           "pyos" means "dog", by the way.
