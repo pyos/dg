@@ -56,7 +56,7 @@ _arg = -> if
 
 
 sys.argv.pop 0
-sys.argv = sys.argv or list' ''
+sys.argv = sys.argv or list' '-'
 
 if head sys.argv == '-h' => print USAGE
    head sys.argv == '-b' =>
@@ -73,7 +73,7 @@ if head sys.argv == '-h' => print USAGE
 
    head sys.argv == '-m' => runpy.run_module _arg! None '__main__' True
    head sys.argv == '-c' => repl.runcode $ dg.compile _arg! '<string>'
-   head sys.argv != ''   => repl.runfile $ open encoding: 'utf-8' $ head sys.argv
+   head sys.argv != '-'  => repl.runfile $ open encoding: 'utf-8' $ head sys.argv
    otherwise             => repl.runfile sys.stdin where if
      sys.flags.ignore_environment =>  # `python -E`
      fn = os.environ.get 'PYTHONSTARTUPMOD' => importlib.import_module fn
