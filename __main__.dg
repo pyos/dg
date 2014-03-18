@@ -9,7 +9,9 @@ import '/dg/repl'
 
 
 USAGE = '''
-python3 [options] -m dg [-h | -b | -c command | -m module | file] ...
+python3 [options] -m dg -h
+python3 [options] -m dg -b [tag [hexversion]]
+python3 [options] -m dg [-c <command> | -m <module> | <file>] ...
 
 VM options that make sense when used with dg:
 
@@ -25,6 +27,8 @@ Arguments:
 
   -h           show this message and exit
   -b           rebootstrap the compiler
+    tag        cache tag of the target interpreter (e.g. `cpython-35`)
+    hexversion version of the target interpreter as 8 hex digits (e.g. `030500A0`)
   -c command   run a single command, then exit
   -m module    run a module (or a package's `__main__`) as a script
   file         run a script
@@ -56,11 +60,16 @@ sys.argv = sys.argv or list' ''
 
 if head sys.argv == '-h' => print USAGE
    head sys.argv == '-b' =>
-     this = core.load       dg.PY_TAG dg.BUNDLE_DIR
-     this = list $ core.build this dg.PY_TAG dg.PY_VERSION  # build new features
-     this = list $ core.build this dg.PY_TAG dg.PY_VERSION  # apply new features to itself
-     this = list $ core.build this dg.PY_TAG dg.PY_VERSION  # self-test
-     core.save this dg.PY_TAG dg.BUNDLE_DIR
+     tag, version = if
+       len sys.argv > 2 => sys.argv !! 1, int (sys.argv !! 2) 16
+       len sys.argv > 1 => sys.argv !! 1, dg.PY_VERSION
+       otherwise        => dg.PY_TAG,     dg.PY_VERSION
+     this = core.load dg.PY_TAG dg.BUNDLE_DIR
+     this = list $ core.build this tag version  # build new features
+     tag == dg.PY_TAG =>
+       this = list $ core.build this tag version  # apply new features to itself
+       this = list $ core.build this tag version  # self-test
+     core.save this tag dg.BUNDLE_DIR
 
    head sys.argv == '-m' => runpy.run_module _arg! None '__main__' True
    head sys.argv == '-c' => repl.runcode $ dg.compile _arg! '<string>'
