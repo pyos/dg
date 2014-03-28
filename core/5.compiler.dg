@@ -429,6 +429,19 @@ Compiler = subclass CodeType where
   #: popast :: Node -> a
   #:
   popast = x ~> if
+    x :: Constant or (x :: Name and x in CONSTANTS) =>
+      # assert x == pop()
+      @append 'DUP_TOP' delta: 1
+      @pushast x
+      @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index '=='
+      with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
+        @pushname 'ConstantPatternError'
+        @append   'ROT_TWO'
+        @pushast  x
+        @append   'CALL_FUNCTION' 2 delta: -2
+        @append   'RAISE_VARARGS' 1 delta: -1
+      @append 'POP_TOP'
+
     x :: RightBind => if
       # A single item prefixed with an at sign is a shorthand
       # for attribute assignment. That is, `self.attribute = ...`.
@@ -448,6 +461,35 @@ Compiler = subclass CodeType where
       otherwise   => Error x 'not something one can assign to'
 
     x :: Expression => if
+      # T a b c = x
+      #
+      # => not $ x :: T => raise PatternError
+      #    a, b, c = x
+      #
+      x.op == '' =>
+        @pushast $ x.args.pop 0           # x, T
+        @append   'DUP_TOP_TWO' delta: 2  # x, T, x, T
+        @pushname '::'
+        @append   'ROT_THREE'
+        @append   'CALL_FUNCTION' 2 delta: -2
+        with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
+          @pushname 'InstancePatternError'
+          @append   'ROT_THREE'
+          @append   'CALL_FUNCTION' 2 delta: -2
+          @append   'RAISE_VARARGS' 1 delta: -1
+        x.op.value = ','
+        @append 'POP_TOP' delta: +1  # offset the -2 from the `with` branch
+        @popast x
+
+      # x: y = z
+      #
+      # => x = y = z
+      #
+      x.op == ':' =>
+        @append 'DUP_TOP' delta: 1
+        @popast $ fst x.args
+        @popast $ snd x.args
+
       # A comma-separated list of assignment targets.
       #
       # 1. Assume the value on top of the stack is an iterable.
@@ -518,6 +560,8 @@ Compiler = subclass CodeType where
     nm :: Expression => if
       nm.op == ','  => for x in nm.args => for a in @popast_symscan x => yield a
       nm.op == '*'  => for x in nm.args => for a in @popast_symscan x => yield a
+      nm.op == ':'  => for x in nm.args => for a in @popast_symscan x => yield a
+      nm.op == ''   => for x in tail nm.args => for a in @popast_symscan x => yield a
       otherwise     => for a in @symbols nm => yield a
     nm :: Name => yield nm.value
 

@@ -8,6 +8,8 @@ import '/collections'
 import '/importlib/machinery'
 
 
+builtins.otherwise = True  # it's in CONSTANTS, cannot assign to it
+builtins.finally   = True  # not actually used
 builtins.__dict__.update locals! where
   set'   = *: xs       -> set  xs
   list'  = *: xs       -> list xs
@@ -73,9 +75,6 @@ builtins.__dict__.update locals! where
   init = !! slice None -1
   last = !! -1
 
-  otherwise = True
-  finally   = True  # not actually used
-
   #: A version of __build_class__ that does not use functions.
   #:
   #: I bet you didn't even know __build_class__ existed.
@@ -86,6 +85,9 @@ builtins.__dict__.update locals! where
     types.new_class name bases kwds $ ns ->
       ns.update attrs
       ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
+
+  InstancePatternError = subclass ValueError where
+  ConstantPatternError = subclass ValueError where
 
 
 ModuleLoader = subclass machinery.SourceFileLoader where if
