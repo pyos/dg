@@ -424,23 +424,45 @@ Compiler = subclass CodeType where
       @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
       @append 'DELETE_FAST' $ @varnames !! '<except-result>'
 
+  #: Check that a condition for a value on top of the stack is true.
+  #:
+  #: asserttop :: Node str (-> b) -> a
+  #:
+  asserttop = x err check ~>
+    @pushast x
+    @append  'DUP_TOP_TWO' delta: 2
+    check!   # delta: -1
+    with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
+      @pushname err
+      @append   'ROT_THREE'
+      @append   'CALL_FUNCTION' 2 delta: -2
+      @append   'RAISE_VARARGS' 1 delta: -1
+    @append 'POP_TOP' delta: +1  # offset the -2 from the `with` branch
+
   #: Pop a value off the stack and store it somewhere.
   #:
   #: popast :: Node -> a
   #:
   popast = x ~> if
+    x :: Name => @popname x.value
     x :: Constant or (x :: Name and x in CONSTANTS) =>
-      # assert x == pop()
-      @append 'DUP_TOP' delta: 1
-      @pushast x
-      @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index '=='
-      with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
-        @pushname 'ConstantPatternError'
-        @append   'ROT_TWO'
-        @pushast  x
-        @append   'CALL_FUNCTION' 2 delta: -2
-        @append   'RAISE_VARARGS' 1 delta: -1
-      @append 'POP_TOP'
+      @asserttop x 'ConstantPatternError' $ ->
+        # assert x == top()
+        @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index '=='
+      @append 'POP_TOP' delta: -1
+
+    x :: LeftBind => if
+      x.op == ',' =>
+        @append 'UNPACK_SEQUENCE' 1
+        @popast $ fst x.args
+
+      x.op == '!' =>
+        @asserttop (fst x.args) 'InstancePatternError' $ ->
+          @pushname '::'
+          @append   'ROT_THREE'
+          @append   'CALL_FUNCTION' 2 delta: -2
+        @append 'POP_TOP' delta: -1
+      otherwise => Error x 'not something one can assign to'
 
     x :: RightBind => if
       # A single item prefixed with an at sign is a shorthand
@@ -467,18 +489,12 @@ Compiler = subclass CodeType where
       #    a, b, c = x
       #
       x.op == '' =>
-        @pushast $ x.args.pop 0           # x, T
-        @append   'DUP_TOP_TWO' delta: 2  # x, T, x, T
-        @pushname '::'
-        @append   'ROT_THREE'
-        @append   'CALL_FUNCTION' 2 delta: -2
-        with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
-          @pushname 'InstancePatternError'
+        @asserttop (x.args.pop 0) 'InstancePatternError' $ ->
+          # assert top() :: fst x.args
+          @pushname '::'
           @append   'ROT_THREE'
           @append   'CALL_FUNCTION' 2 delta: -2
-          @append   'RAISE_VARARGS' 1 delta: -1
         x.op.value = ','
-        @append 'POP_TOP' delta: +1  # offset the -2 from the `with` branch
         @popast x
 
       # x: y = z
@@ -507,19 +523,16 @@ Compiler = subclass CodeType where
              i = head qs
         for a in x.args => @popast a
 
-      len x.args == 2 and x.op == '.' =>
+      x.op == '.' =>
         item, attr = x.args
         attr :: Name or Error attr 'not an attribute'
         @pushast item
         @append  'STORE_ATTR' delta: -2 $ @names !! attr.value
 
-      len x.args == 2 and x.op == '!!' =>
+      x.op == '!!' =>
         @pushlist x.args
         @append   'STORE_SUBSCR' delta: -3
-
       otherwise => Error x 'not something one can assign to'
-
-    x :: Name => @popname x.value
     otherwise => Error x 'not something one can assign to'
 
   #: Push something, then store it somewhere.
