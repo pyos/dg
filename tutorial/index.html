@@ -284,8 +284,7 @@ This includes patterns:</p><div class="highlight"><pre><span class="n">get_dawgs
 </pre></div>
 <p><code>yield</code> turns a function into a <a href="http://docs.python.org/dev/glossary.html#term-generator">generator/coroutine</a>.</p><div class="highlight"><pre><span class="n">count</span> <span class="o">=</span> <span class="n">start</span> <span class="o">-&gt;</span>
   <span class="kr">yield</span> <span class="n">start</span>
-  <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">count</span> <span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">=&gt;</span>
-    <span class="kr">yield</span> <span class="n">x</span>
+  <span class="kr">yield</span> <span class="n">from</span> <span class="o">$</span> <span class="n">count</span> <span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 <h3>Operators</h3><p>Standard issue stuff:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">+</span> <span class="n">y</span>   <span class="c1"># addition</span>
 <span class="n">x</span> <span class="o">-</span> <span class="n">y</span>   <span class="c1"># subtraction or set difference</span>
@@ -300,11 +299,11 @@ This includes patterns:</p><div class="highlight"><pre><span class="n">get_dawgs
 <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">y</span>  <span class="c1"># bit shift to the left</span>
 <span class="n">x</span> <span class="o">&gt;&gt;</span> <span class="n">y</span>  <span class="c1"># bit shift to the right</span>
 </pre></div>
-<p>All of the operators above have an in-place form:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">+=</span> <span class="n">y</span>  <span class="c1"># sets x to (x + y)</span>
+<p>All of the above operators have an in-place form:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">+=</span> <span class="n">y</span>  <span class="c1"># sets x to (x + y)</span>
 <span class="n">x</span> <span class="o">/=</span> <span class="n">y</span>  <span class="c1"># sets x to (x / y)</span>
 <span class="n">x</span> <span class="o">|=</span> <span class="n">y</span>  <span class="c1"># you get the idea</span>
 </pre></div>
-<p>Prefix:</p><div class="highlight"><pre><span class="o">~</span><span class="n">x</span> <span class="c1"># bit inversion</span>
+<p>Prefix:</p><div class="highlight"><pre><span class="o">~</span><span class="n">x</span> <span class="c1"># bitwise inversion</span>
 <span class="o">-</span><span class="n">x</span> <span class="c1"># numeric negation</span>
 </pre></div>
 <p>Attribute/subitem access:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">!!</span>  <span class="n">y</span> <span class="o">=</span> <span class="n">z</span>  <span class="c1"># set item Y of a collection X to Z</span>

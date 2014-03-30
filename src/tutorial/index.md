@@ -459,8 +459,7 @@ wtf = staticmethod $ ->
 ```dg
 count = start ->
   yield start
-  for x in count (start + 1) =>
-    yield x
+  yield from $ count (start + 1)
 ```
 
 ### Operators
@@ -482,7 +481,7 @@ x << y  # bit shift to the left
 x >> y  # bit shift to the right
 ```
 
-All of the operators above have an in-place form:
+All of the above operators have an in-place form:
 
 ```dg
 x += y  # sets x to (x + y)
@@ -493,7 +492,7 @@ x |= y  # you get the idea
 Prefix:
 
 ```dg
-~x # bit inversion
+~x # bitwise inversion
 -x # numeric negation
 ```
 
