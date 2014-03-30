@@ -18,10 +18,10 @@ python3 -m dg -c 'print "Command!"'
 
 ##### Q: I expected a copy of a help message.
 
-A:
-
 ```
-python3 [options] -m dg [-h | -b | -c command | -m module | file] ...
+python3 [options] -m dg -h
+python3 [options] -m dg -b [tag [hexversion]]
+python3 [options] -m dg [-c <command> | -m <module> | <file>] ...
 
 VM options that make sense when used with dg:
 
@@ -37,6 +37,8 @@ Arguments:
 
   -h           show this message and exit
   -b           rebootstrap the compiler
+    tag        cache tag of the target interpreter (e.g. `cpython-35`)
+    hexversion version of the target interpreter as 8 hex digits (e.g. `030500A0`)
   -c command   run a single command, then exit
   -m module    run a module (or a package's `__main__`) as a script
   file         run a script
@@ -60,7 +62,7 @@ Environment variables:
 
 ##### Q: All the cool modules for Python have entry point scripts. Do you have a script?
 
-A: Why would you need one? Most shells support `alias`.
+Why would you need one? Most shells support `alias`.
 
 ```sh
 $ alias dg="python3 -m dg"
@@ -93,7 +95,7 @@ function = argument -> something_absolutely_different
 
 ##### Q: That docstring syntax doesn't seem to work.
 
-A: Not implemented yet.
+Not implemented yet.
 
 ### Literals
 
@@ -200,7 +202,7 @@ print "such console," "beautiful text"
 
 ##### Q: Can I pass arguments by name?
 
-A: Sure. `name: value`.
+Sure. `name: value`.
 
 ```dg
 print "wow" "two lines" sep: "\n"
@@ -260,13 +262,60 @@ print "Doge says:" sep: "\n"
 such_variable = "much_constant"
 ```
 
-If the value on the right side is a collection, it can be pattern-matched.
+##### Q: What is a valid variable name?
+
+Any sequence of alphanumeric characters or underscores that does not start with a digit
+and may end with an arbitrary amount of apostrophes.
+
+```dg
+__im_a_1337_VARIABLE'''''
+```
+
+##### Q: Is there any pattern-matching available?
+
+Assigning to a constant works like an assertion of sorts: if the value to the right
+is not equal to that constant, `ConstantPatternError` (a subclass of `ValueError`) is raised.
+
+```dg
+4 = 2 + 2  #=> does nothing
+5 = 2 + 2  #=> raises ConstantPatternError
+```
+
+If the value on the right side is a collection, it can be unpacked.
 
 ```dg
 very_pattern, so_two_items, *rest = 3 * 'wow', 5 * 'sleep', 1 * 'eat', 2 * 'woof'
 ```
 
-If you ever need to modify a variable in a closure, use `:=` instead.
+Collections can be type-checked, too. `Something a b c = x` is the same as
+`a, b, c = x` iff x is an instance of Something; if not, it raises `InstancePatternError`.
+
+```dg
+# Assuming Dawg is a namedtuple with fields 'name' and 'cuteness':
+x = Dawg 'Doge' 90
+# Variable names do not have to match field names, of course.
+# Only the order is important.
+Dawg name cuteness_value = x
+#=> name = 'Doge'
+#   cuteness_value = 90
+```
+
+And finally, `a:b = c` assigns `c` to both `a` and `b`. How is this useful?
+Well, patterns can be arbitrarily nested.
+
+```dg
+# Assuming DawgPack is a namedtuple with fields 'leader' and 'others':
+pack = DawgPack x (Dawg 'Alice' 80, Dawg 'Bob' 70, Dawg 'Charlie' 74)
+
+DawgPack leader:(Dawg 'Doge' _) (alice, *others) = pack
+#=> leader = Dawg 'Doge' 90
+#   alice  = Dawg 'Alice' 80
+#   others = (Dawg 'Bob' 70, Dawg 'Charlie' 74)
+```
+
+##### Q: How do I modify variables defined in outside scopes? `=` seems to create a new local one.
+
+Use `:=` instead.
 
 ```dg
 outer_function = a ->
@@ -288,7 +337,7 @@ outer_function = a ->
 outer_function 5  #=> 6
 ```
 
-Global variables can only be modified from the top level. Not even `:=` will help you.
+Note that this does not work with global variables.
 
 ### Creating functions
 
@@ -326,6 +375,16 @@ another_function = arg1 *: other_arguments **: other_keyword_arguments ->
     len other_keyword_arguments
 
 another_function "Do something" "too" keyword: 'argument'
+```
+
+Anything that is valid to the left of `=` is also valid as an argument name.
+This includes patterns:
+
+```dg
+get_dawgs_name = (Dawg name _) -> name
+
+get_dawgs_name $ Dawg 'Doge' 90  #=> 'Doge'
+get_dawgs_name 'totally_a_dawg'  #=> InstancePatternError
 ```
 
 No arguments, no problem.

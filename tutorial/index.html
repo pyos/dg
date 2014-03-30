@@ -43,7 +43,9 @@ python3 -m dg file.dg --do-something-useful-this-time  <span class="c"># Script!
 python3 -m dg -m module  <span class="c"># Module! (Or package!)</span>
 python3 -m dg -c <span class="s1">&#39;print &quot;Command!&quot;&#39;</span>
 </pre></div>
-<h5>Q: I expected a copy of a help message.</h5><p>A:</p><pre>python3 [options] -m dg [-h | -b | -c command | -m module | file] ...
+<h5>Q: I expected a copy of a help message.</h5><pre>python3 [options] -m dg -h
+python3 [options] -m dg -b [tag [hexversion]]
+python3 [options] -m dg [-c &lt;command&gt; | -m &lt;module&gt; | &lt;file&gt;] ...
 
 VM options that make sense when used with dg:
 
@@ -59,6 +61,8 @@ Arguments:
 
   -h           show this message and exit
   -b           rebootstrap the compiler
+    tag        cache tag of the target interpreter (e.g. `cpython-35`)
+    hexversion version of the target interpreter as 8 hex digits (e.g. `030500A0`)
   -c command   run a single command, then exit
   -m module    run a module (or a package's `__main__`) as a script
   file         run a script
@@ -77,7 +81,7 @@ Environment variables:
   PYTHONNOUSERSITE           -s
   PYTHONUNBUFFERED           -u
   PYTHONVERBOSE              -v
-</pre><h5>Q: All the cool modules for Python have entry point scripts. Do you have a script?</h5><p>A: Why would you need one? Most shells support <code>alias</code>.</p><div class="highlight"><pre><span class="nv">$ </span><span class="nb">alias </span><span class="nv">dg</span><span class="o">=</span><span class="s2">&quot;python3 -m dg&quot;</span>
+</pre><h5>Q: All the cool modules for Python have entry point scripts. Do you have a script?</h5><p>Why would you need one? Most shells support <code>alias</code>.</p><div class="highlight"><pre><span class="nv">$ </span><span class="nb">alias </span><span class="nv">dg</span><span class="o">=</span><span class="s2">&quot;python3 -m dg&quot;</span>
 <span class="nv">$ </span>dg <span class="c"># Good ones do, anyway.</span>
 &gt;&gt;&gt;
 </pre></div>
@@ -94,7 +98,7 @@ nothing like Python docstrings. Sphinx users may recognise this, though.</p><div
 <span class="c1">#:</span>
 <span class="n">function</span> <span class="o">=</span> <span class="n">argument</span> <span class="o">-&gt;</span> <span class="n">something_absolutely_different</span>
 </pre></div>
-<h5>Q: That docstring syntax doesn't seem to work.</h5><p>A: Not implemented yet.</p><h3>Literals</h3><div class="highlight"><pre><span class="bp">True</span>
+<h5>Q: That docstring syntax doesn't seem to work.</h5><p>Not implemented yet.</p><h3>Literals</h3><div class="highlight"><pre><span class="bp">True</span>
 <span class="bp">False</span>
 <span class="bp">None</span>
 
@@ -150,7 +154,7 @@ from pairs (i.e. tuples of size 2), though.</p><div class="highlight"><pre><span
 </pre></div>
 <h3>Function calls</h3><ol><li>Write the name of the function.</li><li>Insert a space.</li><li>Put an argument you want to call it with.</li><li>Repeat 2 and 3 until tired.</li></ol><div class="highlight"><pre><span class="nb">print</span> <span class="s">&quot;such console,&quot;</span> <span class="s">&quot;beautiful text&quot;</span>
 </pre></div>
-<h5>Q: Can I pass arguments by name?</h5><p>A: Sure. <code>name: value</code>.</p><div class="highlight"><pre><span class="nb">print</span> <span class="s">&quot;wow&quot;</span> <span class="s">&quot;two lines&quot;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+<h5>Q: Can I pass arguments by name?</h5><p>Sure. <code>name: value</code>.</p><div class="highlight"><pre><span class="nb">print</span> <span class="s">&quot;wow&quot;</span> <span class="s">&quot;two lines&quot;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
 </pre></div>
 <h5>Q: What if the arguments are stored in a list?</h5><p><code>*: that_list</code>. Also, the keyword arguments stored in a dict can be
 passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class="n">doge</span> <span class="o">=</span> <span class="s">&quot;so tuple&quot;</span><span class="o">,</span> <span class="s">&quot;many strings&quot;</span>
@@ -174,9 +178,34 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
 </pre></div>
 <h3>Assignment</h3><div class="highlight"><pre><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
 </pre></div>
-<p>If the value on the right side is a collection, it can be pattern-matched.</p><div class="highlight"><pre><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
+<h5>Q: What is a valid variable name?</h5><p>Any sequence of alphanumeric characters or underscores that does not start with a digit
+and may end with an arbitrary amount of apostrophes.</p><div class="highlight"><pre><span class="n">__im_a_1337_VARIABLE&#39;&#39;&#39;&#39;&#39;</span>
 </pre></div>
-<p>If you ever need to modify a variable in a closure, use <code>:=</code> instead.</p><div class="highlight"><pre><span class="n">outer_function</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
+<h5>Q: Is there any pattern-matching available?</h5><p>Assigning to a constant works like an assertion of sorts: if the value to the right
+is not equal to that constant, <code>ConstantPatternError</code> (a subclass of <code>ValueError</code>) is raised.</p><div class="highlight"><pre><span class="mi">4</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>  <span class="c1">#=&gt; does nothing</span>
+<span class="mi">5</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>  <span class="c1">#=&gt; raises ConstantPatternError</span>
+</pre></div>
+<p>If the value on the right side is a collection, it can be unpacked.</p><div class="highlight"><pre><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
+</pre></div>
+<p>Collections can be type-checked, too. <code>Something a b c = x</code> is the same as
+<code>a, b, c = x</code> iff x is an instance of Something; if not, it raises <code>InstancePatternError</code>.</p><div class="highlight"><pre><span class="c1"># Assuming Dawg is a namedtuple with fields &#39;name&#39; and &#39;cuteness&#39;:</span>
+<span class="n">x</span> <span class="o">=</span> <span class="kt">Dawg</span> <span class="s">&#39;Doge&#39;</span> <span class="mi">90</span>
+<span class="c1"># Variable names do not have to match field names, of course.</span>
+<span class="c1"># Only the order is important.</span>
+<span class="kt">Dawg</span> <span class="n">name</span> <span class="n">cuteness_value</span> <span class="o">=</span> <span class="n">x</span>
+<span class="c1">#=&gt; name = &#39;Doge&#39;</span>
+<span class="c1">#   cuteness_value = 90</span>
+</pre></div>
+<p>And finally, <code>a:b = c</code> assigns <code>c</code> to both <code>a</code> and <code>b</code>. How is this useful?
+Well, patterns can be arbitrarily nested.</p><div class="highlight"><pre><span class="c1"># Assuming DawgPack is a namedtuple with fields &#39;leader&#39; and &#39;others&#39;:</span>
+<span class="n">pack</span> <span class="o">=</span> <span class="kt">DawgPack</span> <span class="n">x</span> <span class="p">(</span><span class="kt">Dawg</span> <span class="s">&#39;Alice&#39;</span> <span class="mi">80</span><span class="o">,</span> <span class="kt">Dawg</span> <span class="s">&#39;Bob&#39;</span> <span class="mi">70</span><span class="o">,</span> <span class="kt">Dawg</span> <span class="s">&#39;Charlie&#39;</span> <span class="mi">74</span><span class="p">)</span>
+
+<span class="kt">DawgPack</span> <span class="n">leader</span><span class="o">:</span><span class="p">(</span><span class="kt">Dawg</span> <span class="s">&#39;Doge&#39;</span> <span class="n">_</span><span class="p">)</span> <span class="p">(</span><span class="n">alice</span><span class="o">,</span> <span class="o">*</span><span class="n">others</span><span class="p">)</span> <span class="o">=</span> <span class="n">pack</span>
+<span class="c1">#=&gt; leader = Dawg &#39;Doge&#39; 90</span>
+<span class="c1">#   alice  = Dawg &#39;Alice&#39; 80</span>
+<span class="c1">#   others = (Dawg &#39;Bob&#39; 70, Dawg &#39;Charlie&#39; 74)</span>
+</pre></div>
+<h5>Q: How do I modify variables defined in outside scopes? <code>=</code> seems to create a new local one.</h5><p>Use <code>:=</code> instead.</p><div class="highlight"><pre><span class="n">outer_function</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
   <span class="n">inner_function</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
     <span class="n">a</span> <span class="o">=</span> <span class="n">x</span>
   <span class="n">inner_function</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
@@ -192,7 +221,7 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
 
 <span class="n">outer_function</span> <span class="mi">5</span>  <span class="c1">#=&gt; 6</span>
 </pre></div>
-<p>Global variables can only be modified from the top level. Not even <code>:=</code> will help you.</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
+<p>Note that this does not work with global variables.</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
 <span class="c1">#:</span>
 <span class="c1">#: It has some positional arguments!</span>
 <span class="c1">#:</span>
@@ -215,6 +244,12 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
     <span class="nb">len</span> <span class="n">other_keyword_arguments</span>
 
 <span class="n">another_function</span> <span class="s">&quot;Do something&quot;</span> <span class="s">&quot;too&quot;</span> <span class="n">keyword</span><span class="o">:</span> <span class="s">&#39;argument&#39;</span>
+</pre></div>
+<p>Anything that is valid to the left of <code>=</code> is also valid as an argument name.
+This includes patterns:</p><div class="highlight"><pre><span class="n">get_dawgs_name</span> <span class="o">=</span> <span class="p">(</span><span class="kt">Dawg</span> <span class="n">name</span> <span class="n">_</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">name</span>
+
+<span class="n">get_dawgs_name</span> <span class="o">$</span> <span class="kt">Dawg</span> <span class="s">&#39;Doge&#39;</span> <span class="mi">90</span>  <span class="c1">#=&gt; &#39;Doge&#39;</span>
+<span class="n">get_dawgs_name</span> <span class="s">&#39;totally_a_dawg&#39;</span>  <span class="c1">#=&gt; InstancePatternError</span>
 </pre></div>
 <p>No arguments, no problem.</p><div class="highlight"><pre><span class="n">useless_function</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&quot;Really useless.&quot;</span>
 </pre></div>
@@ -423,7 +458,7 @@ So if you have a directory structure like this...</p><pre>mypackage
 |- submodule.dg
 \- subpackage/
    |- module1.dg
-   \- module2.dg</pre><p><span class="text-muted">.and your <code>module2.dg</code> looks like this</span>.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
+   \- module2.dg</pre><p>...and your <code>module2.dg</code> looks like this...</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
 <span class="kr">import</span> <span class="s">&#39;module1/global_variable&#39;</span>
 <span class="kr">import</span> <span class="s">&#39;../submodule&#39;</span>
 <span class="c1"># Now we have `module1`, `global_variable`, and `submodule`.</span>
