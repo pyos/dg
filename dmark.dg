@@ -55,7 +55,6 @@ stage2re = compile r'''(?isx)
   |(?P<italic>    \*   (?P<italic_>(?:\\?.)+?) \*)
   |(?P<strike>    ~~   (?P<strike_>(?:\\?.)+?) ~~)
   |(?P<invert>    %%   (?P<invert_>(?:\\?.)+?) %%)
-  |(?P<muted>     \.\. (?P<muted_> (?:\\?.)+?) \.\.)
   # Not sure what this shitty group matches. IIRC, I "borrowed" it from Tornado.
   |(?P<hyperlink> \b[a-z][a-z0-9+\.-]*:(?:[,\.?]?[^\s(<>)"\',\.?%]|%[0-9a-f]{2}|\([^\s(<>)"\']+\))+)
   |(?P<namedlink> \[(?P<link_name>.*?)\]\((?P<link_href>(?:[^()]+|\(.*?\)|[^)])*)\))
@@ -91,7 +90,6 @@ stage2 = x -> stage2re.sub
        g == 'bold'      => '<strong>{}</strong>'               .format $ stage2 $ m.group 'bold_'
        g == 'italic'    => '<em>{}</em>'                       .format $ stage2 $ m.group 'italic_'
        g == 'invert'    => '<span class="spoiler">{}</span>'   .format $ stage2 $ m.group 'invert_'
-       g == 'muted'     => '<span class="text-muted">{}</span>'.format $ stage2 $ m.group 'muted_'
        g == 'strike'    => '<del>{}</del>'                     .format $ stage2 $ m.group 'strike_'
        g == 'code'      => '<code>{}</code>'                   .format $          m.group 'code_'
        g == 'hyperlink' => '<a href="{0}">{0}</a>'             .format $          m.group 'hyperlink'
