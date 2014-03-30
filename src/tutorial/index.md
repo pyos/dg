@@ -256,6 +256,49 @@ print "Doge says:" sep: "\n"
   "finally sleep"
 ```
 
+### External modules
+
+dg can import any Python module you throw at it, standard library included.
+
+```dg
+import '/sys'
+```
+
+If you're importing from a package, module names are relative to it.
+So if you have a directory structure like this...
+
+```
+mypackage
+|- __init__.py
+|- __main__.dg
+|- submodule.dg
+\- subpackage/
+   |- module1.dg
+   \- module2.dg
+```
+
+...and your `module2.dg` looks like this...
+
+```dg
+import 'module1'
+import 'module1/global_variable'
+import '../submodule'
+# Now we have `module1`, `global_variable`, and `submodule`.
+```
+
+...the ending to this sentence becomes obvious. Oh, and since those are POSIX
+paths, they are normalized automatically.
+
+```dg
+import '/doesnotexist/../../sys'  # same as '/sys'
+```
+
+`import` returns the object it has imported.
+
+```dg
+import '/os' == os
+```
+
 ### Assignment
 
 ```dg
@@ -743,47 +786,4 @@ fst  (1, 2)        #=> 1
 snd  (1, 2)        #=> 2
 init (1, 2, 3, 4)  #=> 1, 2, 3
 last (1, 2, 3, 4)  #=> 4
-```
-
-### Library support
-
-dg can import any Python module you throw at it, standard library included.
-
-```dg
-import '/sys'
-```
-
-If you're importing from a package, module names are relative to it.
-So if you have a directory structure like this...
-
-```
-mypackage
-|- __init__.py
-|- __main__.dg
-|- submodule.dg
-\- subpackage/
-   |- module1.dg
-   \- module2.dg
-```
-
-...and your `module2.dg` looks like this...
-
-```dg
-import 'module1'
-import 'module1/global_variable'
-import '../submodule'
-# Now we have `module1`, `global_variable`, and `submodule`.
-```
-
-...the ending to this sentence becomes obvious. Oh, and since those are POSIX
-paths, they are normalized automatically.
-
-```dg
-import '/doesnotexist/../../sys'  # same as '/sys'
-```
-
-`import` returns the object it has imported.
-
-```dg
-import '/os' == os
 ```

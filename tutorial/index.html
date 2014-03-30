@@ -176,6 +176,25 @@ passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class
   <span class="s">&quot;not want talk&quot;</span>
   <span class="s">&quot;finally sleep&quot;</span>
 </pre></div>
+<h3>External modules</h3><p>dg can import any Python module you throw at it, standard library included.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/sys&#39;</span>
+</pre></div>
+<p>If you're importing from a package, module names are relative to it.
+So if you have a directory structure like this...</p><pre>mypackage
+|- __init__.py
+|- __main__.dg
+|- submodule.dg
+\- subpackage/
+   |- module1.dg
+   \- module2.dg</pre><p>...and your <code>module2.dg</code> looks like this...</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
+<span class="kr">import</span> <span class="s">&#39;module1/global_variable&#39;</span>
+<span class="kr">import</span> <span class="s">&#39;../submodule&#39;</span>
+<span class="c1"># Now we have `module1`, `global_variable`, and `submodule`.</span>
+</pre></div>
+<p>...the ending to this sentence becomes obvious. Oh, and since those are POSIX
+paths, they are normalized automatically.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/doesnotexist/../../sys&#39;</span>  <span class="c1"># same as &#39;/sys&#39;</span>
+</pre></div>
+<p><code>import</code> returns the object it has imported.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="o">==</span> <span class="n">os</span>
+</pre></div>
 <h3>Assignment</h3><div class="highlight"><pre><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
 </pre></div>
 <h5>Q: What is a valid variable name?</h5><p>Any sequence of alphanumeric characters or underscores that does not start with a digit
@@ -448,25 +467,6 @@ everything <em>but</em> the last item. The last two functions do not work on ite
 <span class="nb">snd</span>  <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span>        <span class="c1">#=&gt; 2</span>
 <span class="nb">init</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1">#=&gt; 1, 2, 3</span>
 <span class="nb">last</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1">#=&gt; 4</span>
-</pre></div>
-<h3>Library support</h3><p>dg can import any Python module you throw at it, standard library included.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/sys&#39;</span>
-</pre></div>
-<p>If you're importing from a package, module names are relative to it.
-So if you have a directory structure like this...</p><pre>mypackage
-|- __init__.py
-|- __main__.dg
-|- submodule.dg
-\- subpackage/
-   |- module1.dg
-   \- module2.dg</pre><p>...and your <code>module2.dg</code> looks like this...</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
-<span class="kr">import</span> <span class="s">&#39;module1/global_variable&#39;</span>
-<span class="kr">import</span> <span class="s">&#39;../submodule&#39;</span>
-<span class="c1"># Now we have `module1`, `global_variable`, and `submodule`.</span>
-</pre></div>
-<p>...the ending to this sentence becomes obvious. Oh, and since those are POSIX
-paths, they are normalized automatically.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/doesnotexist/../../sys&#39;</span>  <span class="c1"># same as &#39;/sys&#39;</span>
-</pre></div>
-<p><code>import</code> returns the object it has imported.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="o">==</span> <span class="n">os</span>
 </pre></div>
 </div></div>
 
