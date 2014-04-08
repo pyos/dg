@@ -16,7 +16,7 @@ except
   _err => import 'readline'
   _err :: ImportError =>
     Teletype = subclass object where __init__ = _ _ ~> None
-    Readline = subclass object where __init__, input = (_ ~> None), input
+    Readline = subclass object where __init__, input = (_ ~> None), builtins.input
 
   _err is None =>
     #: Get a set of attributes of an object. `path` should be a dotted name.
@@ -93,7 +93,7 @@ runrepl = fd ->
   sys.ps1   = getattr sys 'ps1' '>>> '
   sys.ps2   = getattr sys 'ps2' '... '
 
-  rdl = Readline $ readline.Teletype sys.stdin sys.stdout
+  rdl = Readline $ Teletype sys.stdin sys.stdout
   rdl.completion_ns = environ
 
   while True => except
