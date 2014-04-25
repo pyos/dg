@@ -64,7 +64,7 @@ STRENGTH = dict'
 Node = subclass object where
   # These are only used by `Name`s.
   closed = False  # :: bool -- whether the node is parenthesized
-  indent = False  # :: bool -- whether the node is intented relative to the surroundings
+  indent = False  # :: bool -- whether the node is indented relative to the surroundings
   infix  = False  # :: bool -- whether the node is an infix `Name`
   nolhs  = False  # :: bool -- whether an `infix` `Name` can only be right-bound
   norhs  = False  # :: bool -- whether an `infix` `Name` can only be left-bound
