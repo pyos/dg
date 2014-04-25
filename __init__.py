@@ -3,7 +3,7 @@ import sys
 import marshal
 
 
-if sys.hexversion < 0x03030000:
+if not hasattr(sys, 'implementation'):
     raise ImportError('python >= 3.3 required')
 
 if sys.implementation.cache_tag is None:
