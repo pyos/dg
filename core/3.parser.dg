@@ -177,8 +177,9 @@ Parser = subclass collections.deque where
       @append rhs
       if op in ('', '\n') => lhs  # these are no-op on one argument
          otherwise        => @infixin op lhs None
-    rhs.infix and not rhs.closed and (op == '' or not (op < rhs)) => if
-      rhs.nolhs        => @infixin op lhs $ @infix (Name rhs.loc True '') rhs $ next self
+    rhs.infix and not rhs.closed => if
+      rhs.nolhs or (op != '' and op < rhs) =>
+        @infixin op lhs $ @infix (Name rhs.loc True '') rhs $ next self
       op in ('', '\n') => @infix rhs lhs $ next self
       otherwise        => @infix rhs (@infixin op lhs None) $ next self
     otherwise => @infixin op lhs rhs
