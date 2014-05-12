@@ -105,18 +105,19 @@ Readline = subclass object where
   #: If the prompt is a function, it will be called with the current
   #: `ReadlineState` whenever the display is updated.
   #:
-  #: input :: (Either str (ReadlineState -> str)) -> str
+  #: input :: (Either str (ReadlineState -> str)) (Optional float) -> str
   #:
-  input = prompt ~> state.buffer where with @tty.raw @enable_jobs @enable_flowctl => except
-    error =>
-      state = ReadlineState prompt
-      @update state
-      for c in @tty.line => @update $
-        state = if
-          @bindings.get  c => (@bindings !! c) state
-          @tty.printable c => state.insert state.position c
-          otherwise        => state  # ignore unrecognized special commands
-    finally => @finalize state
+  input = prompt timeout: 0 ~> state.buffer where
+    with @tty.raw @enable_jobs @enable_flowctl => except
+      error =>
+        state = ReadlineState prompt
+        @update state
+        for c in @tty.line timeout => @update $
+          state = if
+            @bindings.get  c => (@bindings !! c) state
+            @tty.printable c => state.insert state.position c
+            otherwise        => state  # ignore unrecognized special commands
+      finally => @finalize state
 
   #: Write a preview of a line buffer onto a TTY.
   #:

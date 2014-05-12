@@ -1,6 +1,8 @@
 import '/os'
+import '/time'
 import '/fcntl'
 import '/struct'
+import '/select'
 import '/termios'
 import '/contextlib'
 
@@ -40,9 +42,13 @@ Teletype = subclass object where
 
   #: Iterate over keypresses until EOL.
   #:
-  #: line :: iter str
+  #: line :: float -> iter str
   #:
-  line = ~> while (c = @key) != '\n' => yield c
+  line = timeout ~>
+    end = time.time! + timeout
+    while (c = @key $ if
+      timeout   => end - time.time!
+      otherwise => 0) != '\n' => yield c
 
   #: Enter the raw mode of a TTY.
   #:
@@ -69,12 +75,13 @@ Teletype = subclass object where
 
   #: Get a single keypress from this TTY.
   #:
-  #: key :: str
+  #: key :: int -> str
   #:
-  key = ~> c where
+  key = timeout ~> c where
+    timeout => not $ fst $ select.select (@input,) () () timeout => raise BlockingIOError
     c = @read 1
     c == '\033' =>
-      c += @read 1
+      c += @read 1  # Assume ANSI escapes appear instantaneously.
       c == '\033N' => c += @read 1  # alternate character set 1
       c == '\033O' => c += @read 1  # alternate character set 2
       c == '\033[' =>  # ANSI CSI
