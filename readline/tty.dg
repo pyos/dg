@@ -47,7 +47,7 @@ Teletype = subclass object where
   line = timeout ~>
     end = time.time! + timeout
     while (c = @key $ if
-      timeout   => end - time.time!
+      timeout   => max 0 $ end - time.time!
       otherwise => 0) != '\n' => yield c
 
   #: Enter the raw mode of a TTY.
@@ -75,7 +75,7 @@ Teletype = subclass object where
 
   #: Get a single keypress from this TTY.
   #:
-  #: key :: int -> str
+  #: key :: float -> str
   #:
   key = timeout ~> c where
     timeout => not $ fst $ select.select (@input,) () () timeout => raise BlockingIOError
