@@ -76,5 +76,5 @@ if head sys.argv == '-h' => print USAGE
    head sys.argv != '-'  => repl.runfile $ open encoding: 'utf-8' $ head sys.argv
    otherwise             => repl.runfile sys.stdin where if
      sys.flags.ignore_environment =>  # `python -E`
-     fn = os.environ.get 'PYTHONSTARTUPMOD' => importlib.import_module fn
-     fn = os.environ.get 'PYTHONSTARTUP'    => runpy.run_path fn None '__main__'
+     (fn = os.environ.get 'PYTHONSTARTUPMOD') => importlib.import_module fn
+     (fn = os.environ.get 'PYTHONSTARTUP')    => runpy.run_path fn None '__main__'
