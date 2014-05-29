@@ -4,16 +4,16 @@
     @@include:/head.hamlike
     %title -> dg — it's a Python! No, it's a Haskell!
   %body
-    %div class="fun-dawg"
+    %div.fun-dawg
       @@include:/navbar.hamlike
 
-      %div class="container container-narrow"
-        %div class="jumbotron"
+      %div.container.container-narrow
+        %div.jumbotron
           %h1 -> d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.
 
-    %div class="container container-narrow"
-      %div class="row marketing"
-        %div class="col-sm-6"
+    %div.container.container-narrow
+      %div.row.marketing
+        %div.col-sm-6
           %h4 -> Overthrow the oppressive dictatorship!
           %p
             Guido rejecting your awesome syntactic proposals? He's not in charge anymore.
@@ -28,7 +28,7 @@
             Syntactic sugar is the most important thing nowadays.
             And don't let those Java guys tell you otherwise.
 
-        %div class="col-sm-6"
+        %div.col-sm-6
           %h4 -> Add one more language to your résumé!
           %p
             Read <a href="@@ref:/tutorial/">this awesome tutorial</a> and tell everyone
@@ -45,21 +45,21 @@
             dg is an alternative syntax for Python 3. It allows you to use
             all of the existing libraries, too.
 
-      %div class="row"
-        %div class="col-md-8 col-md-offset-2 col-sm-10 col-sm-offset-1"
-          %h2 class="text-center" -> Still not convinced?
+      %div.row
+        %div.col-md-8.col-md-offset-2.col-sm-10.col-sm-offset-1
+          %h2.text-center -> Still not convinced?
           @@include:/index.md
 
-      %div class="row text-center"
-        %div class="col-md-12"
+      %div.row.text-center
+        %div.col-md-12
           %h2 -> Just download the damn thing already.
           %p
             %code -> git clone https://github.com/pyos/dg.git
             or get
             %a href="https://github.com/pyos/dg/archive/master.zip" -> this zip archive
 
-    %div class="footer text-muted"
-      %div class="container container-narrow"
+    %div.footer.text-muted
+      %div.container.container-narrow
         %p
           Totally made by <a href="https://github.com/pyos">@pyos</a>.
           "pyos" means "dog", by the way.

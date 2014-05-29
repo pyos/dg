@@ -1,13 +1,13 @@
-%div class="navbar navbar-default navbar-static-top" role="navigation"
-  %div class="container-fluid"
-    %div class="navbar-header"
-      %button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse"
-        %span class="sr-only" -> Toggle navigation
-        %span class="icon-bar"
-        %span class="icon-bar"
-        %span class="icon-bar"
-      %a class="navbar-brand" href="@@ref:/" -> dg
-    %div class="navbar-collapse collapse"
-      %ul class="nav navbar-nav"
+%div.navbar.navbar-default.navbar-static-top role="navigation"
+  %div.container-fluid
+    %div.navbar-header
+      %button.navbar-toggle type="button" data-toggle="collapse" data-target=".navbar-collapse"
+        %span.sr-only -> Toggle navigation
+        %span.icon-bar
+        %span.icon-bar
+        %span.icon-bar
+      %a.navbar-brand href="@@ref:/" -> dg
+    %div.navbar-collapse.collapse
+      %ul.nav.navbar-nav
         %li -> %a href="https://github.com/pyos/dg" -> GitHub
         %li -> %a href="@@ref:/tutorial/" -> Tutorial
