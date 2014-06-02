@@ -154,23 +154,25 @@ tuple' "Also, another singleton."
 tuple! # And an empty tuple.
 ```
 
-There is no special syntax for lists. Call `list` to make a list
-out of another collection, or `list'` to create one from distinct elements:
+Lists have the same syntax, but with square brackets instead of parentheses.
+(Also, the alias is `list`, not `tuple`. Duh.)
 
 ```dg
+[0, 1, 2, 3, 4]
+[]
+[0,]
 list  (0..5)
 list'  0 1 2 3 4
 ```
 
-Same thing applies to sets and dictionaries. The latter are constructed
-from pairs (i.e. tuples of size 2), though.
+Dictionaries, too. These require each item to be a pair (i.e. a 2-tuple), though.
+The first object is the key, the second is the value.
 
 ```dg
-set  'abcdabc'
-set' 'a' 'd' 'c' 'b'
-
-dict $ list' ('a', 1) ('b', 2)
-dict'        ('a', 1) ('b', 2)
+{('a', 1), ('b', 2)}
+{('a', 1),}
+dict  [('a', 1), ('b', 2)]
+dict'  ('a', 1)  ('b', 2)
 ```
 
 There's a shorthand notation for dictionaries with identifier keys:
@@ -178,6 +180,13 @@ There's a shorthand notation for dictionaries with identifier keys:
 ```dg
 dict  a: 1 b: 2
 dict' a: 1 b: 2
+```
+
+Sets can only be created through an alias. There's no set literal.
+
+```dg
+set  'abcdabc'
+set' 'a' 'd' 'c' 'b'
 ```
 
 ### Parentheses
