@@ -110,3 +110,11 @@ RightBind = subclass Expression where
 Ending = subclass Node where
   __init__ = self @loc @value -> None
   __repr__ = self -> '<Ending: {!r}>'.format @value
+
+
+tuple_into = name -> pos x -> Expression x.loc (Name x.loc True name) *:
+  if
+    x :: Constant   and x.value is None             => ()
+    x :: LeftBind   and x.op == ','                 => x.args
+    x :: Expression and x.op == ','and not x.closed => x.args
+    otherwise => raise $ SyntaxError 'not a comma-separated list' pos

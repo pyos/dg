@@ -37,8 +37,8 @@ Parser = subclass collections.deque where
    |(?P<name>   \w+'*|\*+(?=:))
    |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
    |(?P<eol>    \s*\n(?P<indent>\ *))
-   |(?P<block>  \()
-   |(?P<end>    \))
+   |(?P<block>  [\(\{\[])
+   |(?P<end>    [\)\}\]])
    |(?P<iname>  `(?P<iname_>\w+'*)`)
    |(?P<error>  .)
   '''
@@ -80,14 +80,20 @@ Parser = subclass collections.deque where
   #:
   location = ~> (@filename, @lineno, @charno, @lines !! (@lineno - 1))
 
+  #: A mapping of open parens to close parens.
+  #:
+  #: endof :: dict str str
+  #:
+  endof = dict' ('(', ')') ('{', '}') ('[', ']')
+
   #: Handle a single regex match.
   #:
   #: token :: (str, int, int, str) str MatchObject -> Node
   #:
   token = pos f m ~> if
     f == 'skip'   => next self
-    f == 'block'  => @block pos True $ x -> x :: Ending and x.value == ')'
-    f == 'end'    => Ending   pos ')'
+    f == 'block'  => @block pos m.group! $ x -> x :: Ending and x.value == @endof !! m.group!
+    f == 'end'    => Ending   pos m.group!
     f == 'name'   => Name     pos False $ m.group 'name'
     f == 'infix'  => Name     pos True  $ m.group 'infix'
     f == 'iname'  => Name     pos True  $ m.group 'iname_'
@@ -110,7 +116,7 @@ Parser = subclass collections.deque where
       if level == last @indent => Name pos True '\n'
          level >  last @indent =>
            @indent.append level
-           @block pos False $ x ->
+           @block pos None $ x ->
              x :: Ending => x.value == '\n' or
                # Indented blocks can be ended with close-parens.
                # We have to account for a decrease in indentation, though.
@@ -134,21 +140,31 @@ Parser = subclass collections.deque where
   #:
   #: file :: Node
   #:
-  file = ~> @block @location False $ x ->
+  file = ~> @block @location None $ x ->
     x :: Ending => if
       x.value == '\0' => True
       x.value == '\n' => raise $ SyntaxError 'indentation < 0?'       x.loc
       otherwise       => raise $ SyntaxError 'unexpected close-paren' x.loc
 
+  #: A block kind is defined by a function that creates an empty block
+  #: and a function that takes the contents of a block and returns its AST.
+  #:
+  #: blkinds :: dict (Maybe str) ((Location -> Node) (Node -> Node))
+  #:
+  blkinds = dict'
+    '{',  ((pos -> Constant pos None), tuple_into "dict'")
+    '[',  ((pos -> Constant pos None), tuple_into "list'")
+    '(',  ((pos -> Constant pos tuple!), (ast -> ast))
+    None, ((pos -> Constant pos None),   (ast -> ast))
+
   #: Read tokens until `end` returns True.
   #:
-  #: block :: (str, int, int, str) bool (Node -> bool) -> Node
+  #: block :: (str, int, int, str) (Maybe str) (Node -> bool) -> Node
   #:
-  block = pos closed end ~>
+  block = pos kind end ~>
+    null, one = @blkinds !! kind
     isexpr = False
-    result = Constant pos $ if
-      closed    => tuple!  # Don't write `()` here. It's meaningless.
-      otherwise => None
+    result = null pos
 
     while not $ end (x = next self) => if
       x :: Ending => if
@@ -158,8 +174,9 @@ Parser = subclass collections.deque where
       isexpr    => result = @infix (Name x.loc True '') result x
       x != '\n' => result, isexpr = @special x, True
 
-    result.closed |= closed
-    result.indent  = not closed
+    result = one pos result
+    result.closed |= not $ kind is None
+    result.indent  =       kind is None
     result
 
   #: Combine two parts of a tree with an infix `Name`.
@@ -231,11 +248,11 @@ Parser = subclass collections.deque where
   special = x ~> if
     # These nodes consume everything until the next fat arrow.
     # "f X =>" becomes equivalent to "(X) `f`".
-    x.flags & 1 => @infix x (@block x.loc True ('=>' ==)) (next self)
+    x.flags & 1 => @infix x (@block x.loc '(' ('=>' ==)) (next self)
     # These nodes consume everything until the EOL.
     # "f ...\n" => "f (...)\n".
     x.flags & 2 =>
-      arg = @block x.loc False $ y ->
+      arg = @block x.loc None $ y ->
         y :: Ending or y == '\n' or y.indent =>
           @append y
           True
