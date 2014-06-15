@@ -154,8 +154,8 @@ Parser = subclass collections.deque where
   blkinds = dict'
     '{',  ((pos -> Constant pos None), tuple_into "dict'")
     '[',  ((pos -> Constant pos None), tuple_into "list'")
-    '(',  ((pos -> Constant pos tuple!), (ast -> ast))
-    None, ((pos -> Constant pos None),   (ast -> ast))
+    '(',  ((pos -> Constant pos tuple!), (_ ast -> ast))
+    None, ((pos -> Constant pos None),   (_ ast -> ast))
 
   #: Read tokens until `end` returns True.
   #:
