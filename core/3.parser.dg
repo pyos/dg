@@ -30,7 +30,7 @@ Parser = subclass collections.deque where
     )(?P<isimag>j)?)
    |(?P<string>
       (?P<flags>br|r?b?)
-      (?P<quote>['"]{3}|['"])
+      (?P<quote>'{3}|"{3}|'|")
       (?P<content>(?:[^\\]|\\.)*?)
       \11)  # should point to <quote>
    |(?P<strerr> (?:br|r?b?)['"])
