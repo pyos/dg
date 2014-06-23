@@ -5,12 +5,14 @@ import '/operator'
 import '/functools'
 import '/itertools'
 import '/collections'
+import '/importlib/util'
 import '/importlib/machinery'
 
 
-builtins.otherwise = True  # it's in CONSTANTS, cannot assign to it
-builtins.finally   = True  # not actually used
-builtins.__dict__.update locals! where
+BUILTINS = dict!
+BUILTINS !! 'otherwise' = True  # it's in CONSTANTS, cannot assign to it
+BUILTINS !! 'finally'   = True  # not actually used
+BUILTINS.update locals! where
   set'   = *: xs       -> set  xs
   list'  = *: xs       -> list xs
   dict'  = *: xs **: k -> dict xs **: k
@@ -89,12 +91,20 @@ builtins.__dict__.update locals! where
   InstancePatternError = subclass ValueError where
   ConstantPatternError = subclass ValueError where
 
+globals!.update BUILTINS
+
 
 ModuleLoader = subclass machinery.SourceFileLoader where
   source_to_code = data filename ~> compile (data.decode 'utf-8') filename
+  exec_module = module ~>
+    module.__dict__.update BUILTINS
+    (super ModuleLoader self).exec_module module
 
 # This time we want to add `.dg` to the list of extensions findable
 # by `FileFinder`. Too bad the path hook is not a class, but a closure.
 sys.path_importer_cache.clear!
 sys.path_hooks.append $ machinery.FileFinder.path_hook (ModuleLoader, list' '.dg') *:
   (last (sys.path_hooks.pop -1).__closure__).cell_contents
+# This module is used by runpy to execute modules as `__main__`.
+# It's not imported through `ModuleLoader`, so we'll have to do this:
+(sys.modules !! '__main__').__dict__.update BUILTINS

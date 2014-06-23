@@ -3,6 +3,7 @@ import '/sys'
 import '/types'
 import '/builtins'
 
+import 'BUILTINS'
 import 'Name'
 import 'LeftBind'
 import 'Expression'
@@ -83,15 +84,17 @@ compilerepl = source -> except
 
 runcode = code ->
   md = sys.modules !! '__main__' = types.ModuleType '__main__'
+  md.__dict__.update BUILTINS
   md.__file__ = code.co_filename
   eval code md.__dict__
 
 
 runrepl = fd ->
-  environ   = (sys.modules !! '__main__' = types.ModuleType '__main__').__dict__
   sys.stdin = fd
   sys.ps1   = getattr sys 'ps1' '>>> '
   sys.ps2   = getattr sys 'ps2' '... '
+  environ   = (sys.modules !! '__main__' = types.ModuleType '__main__').__dict__
+  environ.update BUILTINS
 
   rdl = Readline $ Teletype sys.stdin sys.stdout
   rdl.completion_ns = environ

@@ -304,7 +304,7 @@ Compiler = subclass CodeType where
   pushbind = right f arg ~> if
     f.value in @infixl and not right => (@infixl !! f.value) self f arg
     f.value in @infixr and     right => (@infixr !! f.value) self f arg
-    f.value in @prefix and not (f.value in builtins.__dict__) =>
+    f.value in @prefix and not (f.value in BUILTINS) =>
       # Note that partial binding of macros does not actually use
       # runtime functions (as `pushcall` will prefer compile-time ones.)
       # Still, this is a pretty good method of checking if
