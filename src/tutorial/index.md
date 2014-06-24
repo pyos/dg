@@ -308,6 +308,50 @@ import '/doesnotexist/../../sys'  # same as '/sys'
 import '/os' == os
 ```
 
+There are some flags that modify the behavior of `import`. `pure` makes it, well, pure:
+that is, it will not store the module in a variable (but will return it.)
+
+```dg
+# Assuming you haven't imported posixpath yet:
+import '/posixpath' pure  #=> <module posixpath ...>
+posixpath                 #=> NameError
+```
+
+`pure` also allows you to import a module even if you don't know its name until run-time:
+
+```dg
+name  = '/o'
+name += 's'
+import name       #=> SyntaxError
+import name pure  #=> <module os ...>
+```
+
+While `import` normally returns the object that corresponds to the last item of the path,
+`qualified` will make it return the first one instead:
+
+```dg
+import '/os/path' #=> <module somekindofpath ...>
+import '/os/path' qualified #=> <module os ...>
+```
+
+`import` caches modules, meaning when called with the same module name, it will return
+the same object instead of reloading the module every time. `reload` overrides that:
+
+```dg
+import '/os' reload
+# `os.py` is re-evaluated.
+```
+
+(Note that if that's the first time you import a module, `reload` will import it *twice*.)
+
+Obviously, you can combine these flags in one statement:
+
+```dg
+import '/xml/etree/ElementTree' qualified pure reload
+#=> <module xml ...>
+#   Only `ElementTree.py` is re-evaluated, and no variable is created.
+```
+
 ### Assignment
 
 ```dg

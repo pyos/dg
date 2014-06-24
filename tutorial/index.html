@@ -198,6 +198,28 @@ paths, they are normalized automatically.</p><div class="highlight"><pre><span c
 </pre></div>
 <p><code>import</code> returns the object it has imported.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="o">==</span> <span class="n">os</span>
 </pre></div>
+<p>There are some flags that modify the behavior of <code>import</code>. <code>pure</code> makes it, well, pure:
+that is, it will not store the module in a variable (but will return it.)</p><div class="highlight"><pre><span class="c1"># Assuming you haven&#39;t imported posixpath yet:</span>
+<span class="kr">import</span> <span class="s">&#39;/posixpath&#39;</span> <span class="n">pure</span>  <span class="c1">#=&gt; &lt;module posixpath ...&gt;</span>
+<span class="n">posixpath</span>                 <span class="c1">#=&gt; NameError</span>
+</pre></div>
+<p><code>pure</code> also allows you to import a module even if you don't know its name until run-time:</p><div class="highlight"><pre><span class="n">name</span>  <span class="o">=</span> <span class="s">&#39;/o&#39;</span>
+<span class="n">name</span> <span class="o">+=</span> <span class="s">&#39;s&#39;</span>
+<span class="kr">import</span> <span class="n">name</span>       <span class="c1">#=&gt; SyntaxError</span>
+<span class="kr">import</span> <span class="n">name</span> <span class="n">pure</span>  <span class="c1">#=&gt; &lt;module os ...&gt;</span>
+</pre></div>
+<p>While <code>import</code> normally returns the object that corresponds to the last item of the path,
+<code>qualified</code> will make it return the first one instead:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="c1">#=&gt; &lt;module somekindofpath ...&gt;</span>
+<span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="n">qualified</span> <span class="c1">#=&gt; &lt;module os ...&gt;</span>
+</pre></div>
+<p><code>import</code> caches modules, meaning when called with the same module name, it will return
+the same object instead of reloading the module every time. <code>reload</code> overrides that:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="n">reload</span>
+<span class="c1"># `os.py` is re-evaluated.</span>
+</pre></div>
+<p>(Note that if that's the first time you import a module, <code>reload</code> will import it <em>twice</em>.)</p><p>Obviously, you can combine these flags in one statement:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/xml/etree/ElementTree&#39;</span> <span class="n">qualified</span> <span class="n">pure</span> <span class="n">reload</span>
+<span class="c1">#=&gt; &lt;module xml ...&gt;</span>
+<span class="c1">#   Only `ElementTree.py` is re-evaluated, and no variable is created.</span>
+</pre></div>
 <h3>Assignment</h3><div class="highlight"><pre><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
 </pre></div>
 <h5>Q: What is a valid variable name?</h5><p>Any sequence of alphanumeric characters or underscores that does not start with a digit
