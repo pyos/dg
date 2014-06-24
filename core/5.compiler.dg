@@ -610,23 +610,26 @@ Compiler = subclass CodeType where
         for a in @symbols c => yield a
 
     'import', FixedArity 1 ANY $ f (name, *flags) ~>
-      name       :: Constant or Error name 'module names should be known at compile time'
-      name.value :: str      or Error name 'module names are strings'
-      qual  = False
-      macro = False
+      qual   = False
+      pure   = False
+      reload = False
 
       for flag in flags => if
-        flag == 'qualified' => qual = True
+        flag == 'qualified' => qual   = True
+        flag == 'pure'      => pure   = True
+        flag == 'reload'    => reload = True
         otherwise => Error flag 'unsupported import flag'
 
-      parent = 1
-      path   = (posixpath.normpath name.value).split posixpath.sep
-      while path and head path == ''           and not (path.pop 0) => parent  = 0
-      while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
-      while path and head path == posixpath.curdir and  path.pop 0  =>
-      path or Error name 'this resolves to an empty name'
-      yield $ path !! (-not qual)
-      f._impdata = parent, path, qual
+      if
+        name :: Constant and name.value :: str =>
+          parent, path = except
+            err => __dg_parse_import__ name.value
+            err :: ImportError => Error name $ str err
+          yield $ path !! (-not qual)
+          f._impdata = parent, path, qual, pure, reload
+        otherwise =>
+          for a in @symbols name => yield a
+          f._impdata = None, name, qual, pure, reload
 
     # These create new functions. We shouldn't scan them.
     '->',    _ _ ~> ()
@@ -719,12 +722,28 @@ Compiler = subclass CodeType where
     #: import '/os/path' qualified   imports a module named 'os' with a submodule 'path'
     #: import '/dg/addon/fork'       imports 'fork' from package 'dg.addon'
     #: import 'markup'               imports 'markup' from the current package
+    #: import 'smth' pure            imports 'smth', but does not create a new variable
+    #: import 'smth' pure reload     as above, but re-evaluates the module even if it
+    #:                               was previously imported
     #:
     'import', FixedArity 1 ANY $ f (name, *flags) ~>
       hasattr f '_impdata' or Error name "internal error: should've called @symbols first"
-      parent, path, qual = f._impdata
+      parent, path, qual, pure, reload = f._impdata
 
       if
+        parent is None or reload =>
+          # No opcode allows us to reload the module.
+          @pushname '__dg_import__'
+          if not $ parent is None => @pushconst (parent, tuple path)
+             otherwise =>
+               @pushname '__dg_parse_import__'
+               @pushast path
+               @append 'CALL_FUNCTION' 1 delta: -1
+          @pushname  '__package__'
+          @pushconst qual
+          @pushconst reload
+          @append 'CALL_FUNCTION' 4 delta: -4
+
         qual or (parent == 0 and len path == 1) =>
           @pushconst parent
           @pushconst None
@@ -739,8 +758,10 @@ Compiler = subclass CodeType where
           @append    'ROT_TWO'     delta:  0
           @append    'POP_TOP'     delta: -1
 
-      @append 'DUP_TOP' delta: +1
-      @popast $ Name name.loc False $ path !! (-not qual)
+      not pure =>
+        parent is None => Error path 'non-pure imports should be constant'
+        @append 'DUP_TOP' delta: +1
+        @popast $ Name name.loc False $ path !! (-not qual)
 
     #: Local binding.
     #:

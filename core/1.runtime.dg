@@ -5,6 +5,8 @@ import '/operator'
 import '/functools'
 import '/itertools'
 import '/collections'
+import '/posixpath'
+import '/importlib'
 import '/importlib/util'
 import '/importlib/machinery'
 
@@ -87,6 +89,35 @@ BUILTINS.update locals! where
     types.new_class name bases kwds $ ns ->
       ns.update attrs
       ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
+
+  #: Parse a module name, which is a POSIX path relative to the current module.
+  #:
+  #: __dg_parse_import__ :: str -> (int, [str])
+  #:
+  __dg_parse_import__ = info ->
+    parent = 1
+    path   = (posixpath.normpath info).split posixpath.sep
+    while path and head path == ''           and not (path.pop 0) => parent  = 0
+    while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
+    while path and head path == posixpath.curdir and  path.pop 0  =>
+    not path => raise $ ImportError $ '`{}` resolves to an empty name'.format info
+    parent, path
+
+  #: Import a module. Duh.
+  #:
+  #: _ :: (int, [str]) str bool bool -> object
+  #:
+  __dg_import__ = (parent, path) package qual reload ->
+    root = importlib.import_module ('.' * parent + path !! 0) package
+    mod  = root
+    for p in tail path => mod = except
+      err => getattr mod p
+      err :: AttributeError => importlib.import_module ('.' + p) mod.__package__
+    reload => if
+      mod :: types.ModuleType => importlib.reload mod
+      otherwise               => raise $ ImportError $ '`{}` is not a module'.format $ last path
+    if qual      => root
+       otherwise => mod
 
   InstancePatternError = subclass ValueError where
   ConstantPatternError = subclass ValueError where
