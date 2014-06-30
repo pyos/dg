@@ -4,8 +4,8 @@ A (technically) simple language that compiles to CPython bytecode.
 
 ### Requirements
 
-CPython 3.3 or 3.4 or any other Python VM with equivalent bytecode
-(i.e. PyPy, although it does not implement Python 3.3 yet.)
+CPython 3.4 or any other Python VM with equivalent bytecode
+(i.e. PyPy, although it does not implement Python 3.4 yet.)
 
 ### Installation
 
