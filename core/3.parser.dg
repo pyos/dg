@@ -183,7 +183,29 @@ Parser = subclass collections.deque where
   #:
   #: infix :: Name Node Node -> Node
   #:
-  infix = op lhs rhs ~> if
+  infix = op lhs rhs ~>
+   # First, handle custom priorities.
+   # If the expression on the left side is `op ::: (l, r)`, assign it a custom priority.
+   lhs :: Expression and not lhs.closed and lhs.op == ':::' =>
+     not $ len lhs.args == 2 => raise $ SyntaxError '`:::` should have 2 arguments' lhs.loc
+     op, st = lhs.args
+     not $ op :: Name => raise $ SyntaxError 'operator name should be a variable' op.loc
+     lst, rst = if
+       # An integer `x` to the right of `:::` is equivalent to `(x, x)`.
+       st :: Constant and st.value :: int => st.value, st.value
+       st :: Expression and st.op == ',' and len st.args == 2 =>
+         a, b = st.args
+         if a :: Constant and b :: Constant and a.value :: int and b.value :: int => a.value, b.value
+            otherwise => raise $ SyntaxError 'operator priorities should be integers' st.loc
+       otherwise => raise $ SyntaxError 'operator priorities should be (int, int) pairs' st.loc
+     lhs.override = lhs.override.copy!
+     lhs.override !! op = lst, rst
+   # If the expression on the left side has custom priorities defined,
+   # those should be used in this function call AND added to both
+   # `rhs` and the resulting `Expression`.
+   rhs.override = rhs.override.copy!
+   rhs.override.update lhs.override
+   result = if
     # FIXME `special` below uses different end conditions.
     #
     #     [source]    [expected]    [what actually happens]
@@ -200,6 +222,8 @@ Parser = subclass collections.deque where
       op in ('', '\n') => @infix rhs lhs $ next self
       otherwise        => @infix rhs (@infixin op lhs None) $ next self
     otherwise => @infixin op lhs rhs
+   result.override = lhs.override
+   result
 
   #: Recursively descend into `lhs` to apply infix precedence rules.
   #:

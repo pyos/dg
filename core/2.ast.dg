@@ -72,6 +72,9 @@ Node = subclass object where
   varary = False  # :: bool -- whether an `infix` `Name` accepts 3+ arguments
   flags  = 0      # special null denotations
 
+  # Custom operator priorities used when parsing this entity.
+  override = dict!
+
 
 Name = subclass Node where
   __init__ = self @loc infix @value ->
@@ -82,7 +85,10 @@ Name = subclass Node where
     @flags  = FLAGS.get @value 0
     None
 
-  __lt__   = self x -> STRENGTH.get self (13, 13) !! 1 < STRENGTH.get x (13, 13) !! 0
+  __lt__   = self x -> if
+    x :: Node => x.override.get self (STRENGTH.get self (13, 13)) !! 1 <
+      x.override.get x (STRENGTH.get x (13, 13)) !! 0
+    otherwise => STRENGTH.get self (13, 13) !! 1 < STRENGTH.get x (13, 13) !! 0
   __eq__   = self x -> @value == x
   __hash__ = self   -> hash @value
   __repr__ = self   -> if

@@ -696,6 +696,9 @@ Compiler = subclass CodeType where
     '>=',     Comparison
     '>',      Comparison
 
+    # `op ::: (lstrength, rstrength)` is handled by the parser.
+    ':::', FixedArity 2 2 $ f _ ~> @pushconst None
+
     '.', FixedArity 2 2 $ f (x, y) ~>
       y :: Name or Error y 'not an attribute'
       @pushast x
