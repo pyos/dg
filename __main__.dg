@@ -71,10 +71,10 @@ if head sys.argv == '-h' => print USAGE
        this = list $ core.build this tag version  # self-test
      core.save this tag dg.BUNDLE_DIR
 
-   head sys.argv == '-m' => runpy.run_module _arg! None '__main__' True
+   head sys.argv == '-m' => runpy.run_module _arg! dg.BUILTINS '__main__' True
    head sys.argv == '-c' => repl.runcode $ dg.compile _arg! '<string>'
    head sys.argv != '-'  => repl.runfile $ open encoding: 'utf-8' $ head sys.argv
    otherwise             => repl.runfile sys.stdin where if
      sys.flags.ignore_environment =>  # `python -E`
      (fn = os.environ.get 'PYTHONSTARTUPMOD') => importlib.import_module fn
-     (fn = os.environ.get 'PYTHONSTARTUP')    => runpy.run_path fn None '__main__'
+     (fn = os.environ.get 'PYTHONSTARTUP')    => runpy.run_path fn dg.BUILTINS '__main__'
