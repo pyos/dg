@@ -123,6 +123,7 @@ runrepl = fd loop: None ->
 
   rdl = Readline $ Teletype sys.stdin sys.stdout loop: loop
   rdl.completion_ns = environ
+  environ !! '_async_stdio' = rdl.tty
 
   while True => except
     e => x = runasync loop: loop $
