@@ -5,11 +5,11 @@ import '/re'
 #:
 #: Sequence :: Re
 #:
-Sequence = re.compile r'''(?x)\033(?:
+Sequence = re.compile r'''(?sx)(\033(?:
   \[.*?[@-~]     # ANSI CSI: standard escape sequences.
  |\]\d+;.*?\007  # ANSI OSC: e.g. sets the title of an XTerm-like VT.
  |[NO].          # ANSI SS2/SS3: alternate character sets.
-)'''
+)|.)'''
 
 
 Key = subclass object where
@@ -39,10 +39,10 @@ Key = subclass object where
   CONTROL_G = BEL = ALARM    = '\x07'
   CONTROL_H = BS  = DEL_CTRL = '\x08'
   CONTROL_I = TAB            = '\x09'
-  # Control+J = '\n' is unusable due to how `input` works.
+  CONTROL_J = LF  = ENTER    = '\x0a'
   CONTROL_K = VT  = VTAB     = '\x0b'
   CONTROL_L = FF  = NEWPAGE  = '\x0c'
-  # Control+M = '\r' is unusable due to automatic line break conversion.
+  CONTROL_M = CR             = '\x0d'  # normally unusable
   CONTROL_N = SO             = '\x0e'
   CONTROL_O = SI             = '\x0f'
   CONTROL_P = DLE            = '\x10'

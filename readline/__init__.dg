@@ -61,6 +61,7 @@ Readline = subclass object where
   #: bindings :: dict str (ReadlineState -> ReadlineState)
   #:
   bindings = dict'
+    ansi.Key.ENTER,     state -> raise $ StopIteration state.buffer
     ansi.Key.RIGHT,     state -> state.right 1
     ansi.Key.LEFT,      state -> state.left  1
     ansi.Key.END,       state -> state.right $ len state.buffer
@@ -72,7 +73,7 @@ Readline = subclass object where
     ansi.Key.DEL_CTRL,  state -> state.erase $ state.position - 1
     ansi.Key.EOF,       state -> if
       state.buffer => state  # Only works at the beginning of a line.
-      otherwise    => raise EOFError
+      otherwise    => raise $ EOFError state.buffer
 
   #: Whether to enable ^C and ^Z. Disallows the use of `Key.SIGINT` and `Key.SUSPEND`.
   #:
@@ -105,18 +106,19 @@ Readline = subclass object where
   #: If the prompt is a function, it will be called with the current
   #: `ReadlineState` whenever the display is updated.
   #:
-  #: input :: (Either str (ReadlineState -> str)) (Optional float) -> str
+  #: input :: (Either str (ReadlineState -> str)) -> str
   #:
-  input = prompt timeout: 0 ~> state.buffer where
+  input = prompt ~>
     with @tty.raw @enable_jobs @enable_flowctl => except
       error =>
         state = ReadlineState prompt
         @update state
-        for c in @tty.line timeout => @update $
-          state = if
+        while True =>
+          for c in yield from @tty.buffer => state = if
             @bindings.get  c => (@bindings !! c) state
             @tty.printable c => state.insert state.position c
             otherwise        => state  # ignore unrecognized special commands
+          @update state
       finally => @finalize state
 
   #: Write a preview of a line buffer onto a TTY.
@@ -150,7 +152,7 @@ Readline = subclass object where
     # 4. Move to where the caret should be. Note that (0, 0) may be off-screen,
     #    and terminals will truncate offsets.
     @tty.relmove (y - (h - wh `max` 0)) x
-    @tty.flush!
+    @tty.output.flush!
     # The next `update` will use that info.
     state.cache !! 'lastlen'  = prelen + len state.buffer
     state.cache !! 'lastpos'  = prelen + state.position

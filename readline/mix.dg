@@ -43,7 +43,7 @@ History = subclass object where
 
   input = *: args **: kwargs ~> result where
     @history.append ''
-    @history !! -1 = result = (super History self).input *: args **: kwargs
+    @history !! -1 = result = yield from $ (super History self).input *: args **: kwargs
     @history !! -1 or @history !!~ -1
 
 

@@ -1,35 +1,42 @@
 import '/os'
 import '/time'
 import '/fcntl'
+import '/codecs'
 import '/struct'
 import '/select'
+import '/asyncio'
 import '/termios'
 import '/contextlib'
 
 import 'ansi/Sequence'
 
 
-Teletype = subclass object where
+Teletype = subclass asyncio.Protocol where
   #: Various TTY-related functions.
   #:
   #: input  :: TextIOBase -- 'r'-mode TTY.
   #: output :: TextIOBase -- 'w'-mode TTY.
   #:
-  __init__ = @input @output @name: None ~>
+  __init__ = @input @output @name: None loop: None ~>
     not @input .isatty! => raise $ IOError 'input: not a tty'
     not @output.isatty! => raise $ IOError 'output: not a tty'
-    None
+    @_data = ''
+    @_done = False
+    @_task = None
+    @_loop = loop or asyncio.get_event_loop!
+    @_wait = @_loop.connect_read_pipe (-> self) @input
+    @_dec  = (codecs.getincrementaldecoder @input.encoding) 'surrogateescape'
+    (super Teletype self).__init__!
 
-  fileno = ~> @input.fileno
-  read   = ~> @input.read
   write  = ~> @output.write
-  flush  = ~> @output.flush
+  drain  = ~> @output.drain
 
   #: Determine the length of an ANSI-escaped string. ANSI escapes are assumed to be empty.
   #:
   #: ansi_len :: str -> int
   #:
-  ansi_len = classmethod $ data ~> len $ Sequence.sub '' data
+  ansi_len = classmethod $ data ~> sum $
+    where for x in Sequence.findall data => len x == 1 => yield 1
 
   #: Check whether a key's value is printable.
   #:
@@ -39,16 +46,6 @@ Teletype = subclass object where
     len data == 0 => True
     len data >= 2 => False  # only ANSI sequences match this
     otherwise     => 32 <= ord data < 127 or 160 <= ord data
-
-  #: Iterate over keypresses until EOL.
-  #:
-  #: line :: float -> iter str
-  #:
-  line = timeout ~>
-    end = time.time! + timeout
-    while (c = @key $ if
-      timeout   => max 0 $ end - time.time!
-      otherwise => 0) != '\n' => yield c
 
   #: Enter the raw mode of a TTY.
   #:
@@ -73,20 +70,34 @@ Teletype = subclass object where
     #   I sure hope that client emulates UNIX terminals.
     struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
 
-  #: Get a single keypress from this TTY.
+  #: Wait until some data on the terminal.
   #:
-  #: key :: float -> str
+  #: buffer :: str
   #:
-  key = timeout ~> c where
-    timeout => not $ fst $ select.select (@input,) () () timeout => raise BlockingIOError
-    c = @read 1
-    c == '\033' =>
-      c += @read 1  # Assume ANSI escapes appear instantaneously.
-      c == '\033N' => c += @read 1  # alternate character set 1
-      c == '\033O' => c += @read 1  # alternate character set 2
-      c == '\033[' =>  # ANSI CSI
-        c += @read 1
-        while not $ '@' <= last c <= '~' => c += @read 1
+  buffer = ~>
+    @_wait =>
+      yield from @_wait
+      @_wait = None
+    result = if
+      @_task    => raise $ RuntimeError 'already waiting on this input'
+      @_data    => @_data
+      @_done    => @_data
+      otherwise => except
+        _       => yield from (@_task = asyncio.Future loop: @_loop)
+        finally => @_task = None
+    @_data = ''
+    Sequence.findall result
+
+  data_received = buf ~>
+    @_data += @_dec.decode buf
+    @_task => @_task.set_result @_data
+    (super Teletype self).data_received buf
+
+  connection_lost = exc ~>
+    @_done = True
+    @_data += @_dec.decode b'' True
+    @_task => @_task.set_result @_data
+    (super Teletype self).connection_lost exc
 
   #: Move the caret `y` characters down and `x` characters to the right.
   #:

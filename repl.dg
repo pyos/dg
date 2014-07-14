@@ -1,6 +1,8 @@
 import '/re'
 import '/sys'
 import '/types'
+import '/signal'
+import '/asyncio'
 import '/builtins'
 
 import 'BUILTINS'
@@ -17,9 +19,28 @@ except
   _err => import 'readline'
   _err :: ImportError =>
     Teletype = subclass object where __init__ = _ _ ~> None
-    Readline = subclass object where __init__, input = (_ ~> None), builtins.input
+    Readline = subclass object where __init__, input = (,)
+      _ ~> None
+      p ~> raise $ StopIteration $ builtins.input p
+
+    runasync = coro loop: None -> yield from coro
 
   _err is None =>
+    runasync = coro loop: None ->
+      # If an exception, such as KeyboardInterrupt, occurs within the loop
+      # but not in a task, it'll break everything, as finalizers never get executed.
+      loop = loop or asyncio.get_event_loop!
+      task = asyncio.async coro loop: loop
+      task.add_done_callback $ _ -> loop.stop!
+      except
+        err => loop.run_forever!
+        finally => err =>
+          # This will ensure clean finalization.
+          task.cancel!
+          loop.run_forever!
+      task.result!
+
+
     #: Get a set of attributes of an object. `path` should be a dotted name.
     #:
     #: _attributes_of :: str (dict str object) -> set str
@@ -89,22 +110,26 @@ runcode = code ->
   eval code md.__dict__
 
 
-runrepl = fd ->
+runrepl = fd loop: None ->
   sys.stdin = fd
   sys.ps1   = getattr sys 'ps1' '>>> '
   sys.ps2   = getattr sys 'ps2' '... '
   environ   = (sys.modules !! '__main__' = types.ModuleType '__main__').__dict__
   environ.update BUILTINS
 
-  rdl = Readline $ Teletype sys.stdin sys.stdout
+  rdl = Readline $ Teletype sys.stdin sys.stdout loop: loop
   rdl.completion_ns = environ
 
   while True => except
-    e => x = next $ dropwhile not $ map compilerepl $
-             iterate (x -> x + '\n' + rdl.input sys.ps2) $ rdl.input sys.ps1
+    e => x = runasync loop: loop $
+      where
+        i = yield from $ rdl.input sys.ps1
+        while not (x = compilerepl i) =>
+          i += '\n' + yield from (rdl.input sys.ps2)
+        x
     e :: EOFError          => raise SystemExit
     e :: SystemExit        => raise e
-    e :: KeyboardInterrupt => print '' file: sys.stderr
+    e :: KeyboardInterrupt =>
     e :: BaseException     => sys.excepthook (type e) e e.__traceback__
     e is None => except
       e => sys.displayhook $ eval x environ
