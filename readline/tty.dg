@@ -28,8 +28,8 @@ Teletype = subclass asyncio.Protocol where
     @_dec  = (codecs.getincrementaldecoder @input.encoding) 'surrogateescape'
     (super Teletype self).__init__!
 
-  write  = ~> @output.write
-  drain  = ~> @output.drain
+  write = ~> @output.write
+  flush = ~> @output.flush
 
   #: Determine the length of an ANSI-escaped string. ANSI escapes are assumed to be empty.
   #:

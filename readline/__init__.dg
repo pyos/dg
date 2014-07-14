@@ -152,7 +152,7 @@ Readline = subclass object where
     # 4. Move to where the caret should be. Note that (0, 0) may be off-screen,
     #    and terminals will truncate offsets.
     @tty.relmove (y - (h - wh `max` 0)) x
-    @tty.output.flush!
+    @tty.flush!
     # The next `update` will use that info.
     state.cache !! 'lastlen'  = prelen + len state.buffer
     state.cache !! 'lastpos'  = prelen + state.position
