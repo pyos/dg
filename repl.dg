@@ -18,12 +18,16 @@ import 'compileast'
 except
   _err => import 'readline'
   _err :: ImportError =>
-    Teletype = subclass object where __init__ = _ _ ~> None
+    Teletype = subclass object where __init__ = _ _ loop: None ~> None
     Readline = subclass object where __init__, input = (,)
       _ ~> None
-      p ~> raise $ StopIteration $ builtins.input p
+      p ~>
+        False => yield 0
+        builtins.input p
 
-    runasync = coro loop: None -> yield from coro
+    runasync = coro loop: None ->
+      except err => while True => next coro
+             err :: StopIteration => err.args !! 0
 
   _err is None =>
     runasync = coro loop: None ->
