@@ -237,6 +237,21 @@ There's also a reverse pipe operator.
 print $ "> {}: {}".format "Karkat" "Reference something other than Doge"
 ```
 
+##### Q: F# is better than Haskell.
+
+In that case, use `<|` or `|>` instead.
+
+```dg
+print <| 'What' + 'ever.'
+'This is the same thing ' + 'in a different direction.' |> print
+```
+
+Additionally, `something |>.attribute` is the same thing as `(something).attribute`.
+
+```dg
+'     wow     '.lstrip ' ' |>.rstrip ' ' |>.upper!
+```
+
 ##### Q: What if...what if there are NO arguments? At all?
 
 Fear not.
