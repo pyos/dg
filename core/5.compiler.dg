@@ -701,6 +701,11 @@ Compiler = subclass CodeType where
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
+    '|>.', FixedArity 2 2 $ f (x, y) ~>
+      y :: Name or Error y 'not an attribute'
+      @pushast x
+      @append  'LOAD_ATTR' $ @names !! y.value
+
     '!.', FixedArity 2 2 $ f (x, y) ~>
       y :: Name or Error y 'not an attribute'
       @pushcall x
@@ -713,6 +718,14 @@ Compiler = subclass CodeType where
       @pushconst None
 
     '$', FixedArity 2 2 $ f (g, x) ~> if
+      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+      otherwise => @pushcall g x
+
+    '<|', FixedArity 2 2 $ f (g, x) ~> if
+      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+      otherwise => @pushcall g x
+
+    '|>', FixedArity 2 2 $ f (x, g) ~> if
       g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
       otherwise => @pushcall g x
 
