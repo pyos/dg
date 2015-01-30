@@ -1,4 +1,5 @@
 import '/re'
+import '/asyncio'
 import '/collections'
 
 import 'ansi'
@@ -53,7 +54,34 @@ ReadlineState = subclass object where
 
 
 Readline = subclass object where
-  __init__ = @tty ~> None
+  __init__ = @tty ~>
+    @_suspend = None
+    @_restore = None
+
+  #: Temporarily pause `input`, allowing other tasks to print stuff to the teletype
+  #: without it getting mixed with user input. Note that this will halt until
+  #: `input` is suspended; if it's not even running, this will block. No-op if already
+  #: suspended.
+  #:
+  #: suspend :: coroutine None
+  #:
+  suspend = ~>
+    @_suspend is None =>
+      @_suspend = asyncio.Future loop: @tty._loop
+      @tty.data_received b'\r'
+    except err => yield from @_suspend
+           finally => err => @_suspend = None
+
+  #: Unpause a suspended `input` and redraw the prompt. No-op if not suspended.
+  #:
+  #: restore :: coroutine None
+  #:
+  restore = ~>
+    @_suspend =>
+      @_suspend = None
+      @_restore and not @_restore.done! => @_restore.set_result None
+      @tty.data_received b'\r'
+    ()
 
   #: A mapping of keys to state modificators. Note that a key may be
   #: either a character or an ANSI sequence.
@@ -113,12 +141,20 @@ Readline = subclass object where
       error =>
         state = ReadlineState prompt
         @update state
-        while True =>
-          for c in yield from @tty.buffer => state = if
-            @bindings.get  c => (@bindings !! c) state
-            @tty.printable c => state.insert state.position c
-            otherwise        => state  # ignore unrecognized special commands
-          @update state
+        while True => if
+          @_suspend =>
+            @_suspend.done! or @_suspend.set_result None
+            @_restore is None => @_restore = asyncio.Future loop: @tty._loop
+            state = @finalize state
+            except _ => yield from @_restore
+                   finally => @_restore = None
+
+          otherwise =>
+            for c in yield from @tty.buffer => state = if
+              @bindings.get  c => (@bindings !! c) state
+              @tty.printable c => state.insert state.position c
+              otherwise        => state  # ignore unrecognized special commands
+            @update state
       finally => @finalize state
 
   #: Write a preview of a line buffer onto a TTY.
@@ -157,6 +193,7 @@ Readline = subclass object where
     state.cache !! 'lastlen'  = prelen + len state.buffer
     state.cache !! 'lastpos'  = prelen + state.position
     state.cache !! 'termsize' = wh, ww
+    state
 
   #: Move the cursor to the end of the text.
   #: This allows key handlers to print other stuff between prompts.

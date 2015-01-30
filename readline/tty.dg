@@ -90,7 +90,7 @@ Teletype = subclass asyncio.Protocol where
 
   data_received = buf ~>
     @_data += @_dec.decode buf
-    @_task => @_task.set_result @_data
+    @_task and not @_task.done! => @_task.set_result @_data
     (super Teletype self).data_received buf
 
   connection_lost = exc ~>
