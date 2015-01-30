@@ -4,7 +4,7 @@ import '/collections'
 
 import 'ansi'
 import 'mix'
-import 'tty/Teletype'
+import 'tty'
 
 
 ReadlineState = subclass object where
@@ -12,19 +12,19 @@ ReadlineState = subclass object where
   #:
   #: Defines stuff such as the current buffer contents, caret position, etc.
   #:
-  __init__ = @prompt @buffer: '' @position: 0 @cache: dict! ~> None
+  __init__ = @prompt @buffer @position @cache ~> None
 
   #: Move the caret to the right.
   #:
   #: right :: int -> ReadlineState
   #:
-  right = i ~> ReadlineState @prompt @buffer (@position + i `min` len @buffer) @cache.copy!
+  right = i ~> ReadlineState @prompt @buffer (@position + i `min` len @buffer) @cache
 
   #: Move the caret to the left.
   #:
   #: left :: int -> ReadlineState
   #:
-  left = i ~> ReadlineState @prompt @buffer (@position - i `max` 0) @cache.copy!
+  left = i ~> ReadlineState @prompt @buffer (@position - i `max` 0) @cache
 
   #: Insert a string into the buffer, move the caret if necessary.
   #:
@@ -37,7 +37,7 @@ ReadlineState = subclass object where
         @buffer !! slice None i + d
         @buffer !! slice i None
       @position + len d * (i <= @position)
-      @cache.copy!
+      @cache
 
   #: Erase the characters at position `i`, move the caret accordingly.
   #:
@@ -50,38 +50,30 @@ ReadlineState = subclass object where
         @buffer !! slice None i
         @buffer !! slice (i + length) None
       @position - (length `min` @position - i `max` 0)
-      @cache.copy!
+      @cache
 
 
 Readline = subclass object where
-  __init__ = @tty ~>
-    @_suspend = None
-    @_restore = None
+  __init__ = *: args **: kwargs ~>
+    @tty = tty.Teletype *: args **: kwargs
+    @_suspends = 0
+    @_suspend = asyncio.Event loop: @tty.loop
+    @_restore = asyncio.Event loop: @tty.loop
+    None
 
-  #: Temporarily pause `input`, allowing other tasks to print stuff to the teletype
-  #: without it getting mixed with user input. Note that this will halt until
-  #: `input` is suspended; if it's not even running, this will block. No-op if already
-  #: suspended.
+  #: Pause `input` and execute a function while in that paused state. The prompt
+  #: (and everything entered by the user) is temporarily erased from the screen.
   #:
-  #: suspend :: coroutine None
+  #: suspend :: (-> coroutine a) -> coroutine a
   #:
-  suspend = ~>
-    @_suspend is None =>
-      @_suspend = asyncio.Future loop: @tty._loop
-      @tty.data_received b'\r'
-    except err => yield from @_suspend
-           finally => err => @_suspend = None
-
-  #: Unpause a suspended `input` and redraw the prompt. No-op if not suspended.
-  #:
-  #: restore :: coroutine None
-  #:
-  restore = ~>
-    @_suspend =>
-      @_suspend = None
-      @_restore and not @_restore.done! => @_restore.set_result None
-      @tty.data_received b'\r'
-    ()
+  suspend = coro ~>
+    @_suspends += 1
+    @tty.break
+    yield from @_suspend.wait!
+    except _       => yield from (asyncio.coroutine coro)!
+           finally =>
+             @_suspends -= 1
+             @_suspends == 0 => @_restore.set!
 
   #: A mapping of keys to state modificators. Note that a key may be
   #: either a character or an ANSI sequence.
@@ -100,7 +92,7 @@ Readline = subclass object where
     ansi.Key.DEL_ASCII, state -> state.erase $ state.position - 1
     ansi.Key.DEL_CTRL,  state -> state.erase $ state.position - 1
     ansi.Key.EOF,       state -> if
-      state.buffer => state  # Only works at the beginning of a line.
+      state.buffer => state.erase state.position
       otherwise    => raise $ EOFError state.buffer
 
   #: Whether to enable ^C and ^Z. Disallows the use of `Key.SIGINT` and `Key.SUSPEND`.
@@ -139,19 +131,20 @@ Readline = subclass object where
   input = prompt ~>
     with @tty.raw @enable_jobs @enable_flowctl => except
       error =>
-        state = ReadlineState prompt
+        state = ReadlineState prompt '' 0 dict!
         @update state
         while True => if
-          @_suspend =>
-            @_suspend.done! or @_suspend.set_result None
-            @_restore is None => @_restore = asyncio.Future loop: @tty._loop
-            state = @finalize state
-            except _ => yield from @_restore
-                   finally => @_restore = None
+          @_suspends =>
+            @_suspend.set!
+            @erase state
+            yield from @_restore.wait!
+            @update state
+            @_restore.clear!
+            @_suspend.clear!
 
           otherwise =>
             for c in yield from @tty.buffer => state = if
-              @bindings.get  c => (@bindings !! c) state
+              c in @bindings   => (@bindings !! c) state
               @tty.printable c => state.insert state.position c
               otherwise        => state  # ignore unrecognized special commands
             @update state
@@ -166,33 +159,38 @@ Readline = subclass object where
       state.prompt :: collections.Callable => state.prompt state
       otherwise => state.prompt
     prelen = @tty.ansi_len prefix
-
     # We're going to assume the VT handles windows resizing correctly
     # (i.e. rewraps long lines.)
     wh, ww = @tty.size
     h, w = prelen + len state.buffer `divmod` ww
     y, x = prelen + state.position   `divmod` ww
-    # 1. Go to where the last prompt started.
+    # 1. Go to where the last prompt started, overwrite it with new data.
     #    If its start is already off the screen, we'll just go where we can.
-    _h, _w = state.cache.get 'termsize' (0, 1)
-    _y, _x = state.cache.get 'lastpos' 0 `divmod` _w
-    @tty.relmove (-_y) (-_x)
-    # 2. Overwrite it with the new data, erase what can't be overwritten.
+    @erase state
     @tty.write $ prefix + @preprocess state.buffer
-    @tty.erase
-    # 3. Go back to the beginning. Note: if the string fits
+    # 2. Go back to the beginning. Note: if the string fits
     #    exactly on one line and the cursor is still there,
     #    VTs won't create an empty line.
     if w == 0 and (y, x) != (h, w) => @tty.relmove (1 - h) (-ww)
        otherwise => @tty.relmove (-h) (-w)
-    # 4. Move to where the caret should be. Note that (0, 0) may be off-screen,
+    # 3. Move to where the caret should be. Note that (0, 0) may be off-screen,
     #    and terminals will truncate offsets.
     @tty.relmove (y - (h - wh `max` 0)) x
     @tty.flush!
     # The next `update` will use that info.
-    state.cache !! 'lastlen'  = prelen + len state.buffer
     state.cache !! 'lastpos'  = prelen + state.position
     state.cache !! 'termsize' = wh, ww
+    state
+
+  #: Move the cursor to the start of the prompt and erase it.
+  #:
+  #: erase :: ReadlineState -> ReadlineState
+  #:
+  erase = state ~>
+    _h, _w = state.cache.get 'termsize' (0, 1)
+    _y, _x = state.cache.pop 'lastpos' 0 `divmod` _w
+    @tty.relmove (-_y) (-_x)
+    @tty.erase
     state
 
   #: Move the cursor to the end of the text.
@@ -201,9 +199,8 @@ Readline = subclass object where
   #:
   #: finalize :: ReadlineState -> ReadlineState
   #:
-  finalize = state ~> if state.cache.get 'lastlen' 0 =>
+  finalize = state ~>
     @update $ state.right $ len state.buffer - state.position
     @tty.write '\n\r'
-    state.cache.pop 'lastlen' 0
     state.cache.pop 'lastpos' 0
     state

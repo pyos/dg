@@ -18,52 +18,27 @@ import 'compileast'
 except
   _err => import 'readline'
   _err :: ImportError =>
-    Teletype = subclass object where __init__ = _ _ loop: None ~> None
-    Readline = subclass object where __init__, input = (,)
-      _ ~> None
-      p ~>
-        False => yield 0
-        builtins.input p
-
-    runasync = coro loop: None ->
-      except err => while True => next coro
-             err :: StopIteration => err.args !! 0
+    Readline = *: _ **: _ -> subclass object
+    _read    = _ _ prompt -> input prompt
 
   _err is None =>
-    runasync = coro loop: None ->
-      # If an exception, such as KeyboardInterrupt, occurs within the loop
-      # but not in a task, it'll break everything, as finalizers never get executed.
+    _read = rdl loop prompt ->
+      _rethrow = None
       loop = loop or asyncio.get_event_loop!
-      task = asyncio.async coro loop: loop
+      task = asyncio.async loop: loop $ rdl.input prompt
       task.add_done_callback $ _ -> loop.stop!
-      except
+      while not task.done! => except
         err => loop.run_forever!
-        finally => err =>
-          # This will ensure clean finalization.
+        err :: BaseException =>
           task.cancel!
-          loop.run_forever!
-      task.result!
+          _rethrow = err
+      if _rethrow  => raise _rethrow
+         otherwise => task.result!
 
-
-    #: Get a set of attributes of an object. `path` should be a dotted name.
-    #:
-    #: _attributes_of :: str (dict str object) -> set str
-    #:
-    _attributes_of = path ns -> except
-      err =>
-        item = eval (compileast $ parse path) ns
-        if not $ item :: types.ModuleType => dir item
-           # Hide dg built-ins, which are inserted into every global namespace
-           # (because CPython cannot destroy `__builtins__` properly on shutdown.)
-           otherwise =>
-             filter (x -> not $ x in BUILTINS and getattr item x is BUILTINS !! x) $ dir item
-      err :: Exception => set!
-
-    Teletype = subclass readline.Teletype where
     Readline = subclass readline.mix.History readline.mix.Completer readline.Readline where
       # Matches any number of valid dg identifiers separated by dots.
       # (No whitespace!)
-      completion_regex = re.compile r"\w+'*(?:\.\w+'*)*\.?"
+      completion_regex = re.compile r"(?:\w+'*\.)*\w+'*"
 
       # This attribute must be set to the global namespace.
       # Otherwise, variables defined from within the REPL will not be completed.
@@ -75,18 +50,25 @@ except
         (super Readline self).display_completions $
           list $ map (x -> last $ x.split '.') cmps
 
-      # Complete a variable or an attribute name (i.e. `VAR.VAR....[VAR]`.)
+      # Complete a variable or an attribute name (i.e. `(something\.)*something`.)
       # This method simulates `rlcompleter`. (It can even evaluate arbitrary
       # code via `__getattr__`, too. WARNING, I guess.)
       complete_word = word ~>
         path, dot, word = word.rpartition '.'
+
         filter_fn = if
           # Hide private attributes unless an underscore was typed.
           word      => n -> n.startswith word
           otherwise => n -> not $ n.startswith '_'
-        sorted $ map (path + dot +) $ filter filter_fn $
-          if path      => _attributes_of path @completion_ns
-             otherwise => set Compiler.prefix | set builtins.__dict__ | set @completion_ns
+
+        sorted $ map (path + dot +) $ filter filter_fn $ if
+          not path  => set Compiler.prefix | set builtins.__dict__ | set @completion_ns
+          otherwise => except
+            err => obj = foldl (!!) @completion_ns $ path.split '.'
+            err :: KeyError => ()
+            err is None =>
+              # dg inserts its built-ins into global namespaces. Gotta hide these.
+              filter (x -> not $ x in BUILTINS and getattr item x is BUILTINS !! x) $ dir obj
 
 
 compilerepl = source -> except
@@ -125,21 +107,14 @@ runrepl = fd loop: None ->
   environ   = (sys.modules !! '__main__' = types.ModuleType '__main__').__dict__
   environ.update BUILTINS
 
-  rdl = Readline $ Teletype sys.stdin sys.stdout loop: loop
+  rdl = Readline sys.stdin sys.stdout loop
   rdl.completion_ns = environ
-  environ !! '_async_stdio' = rdl.tty
+  line = bind _read rdl loop
 
   while True => except
-    e => x = runasync loop: loop $
-      where
-        i = yield from $ rdl.input sys.ps1
-        while not (x = compilerepl i) =>
-          i += '\n' + yield from (rdl.input sys.ps2)
-        x
+    e => x = next $ filter None $ map compilerepl $ iterate (x -> x + '\n' + line sys.ps2) $ line sys.ps1
     e :: EOFError          => raise SystemExit
-    e :: SystemExit        => raise e
     e :: KeyboardInterrupt =>
-    e :: BaseException     => sys.excepthook (type e) e e.__traceback__
     e is None => except
       e => sys.displayhook $ eval x environ
       e :: SystemExit    => raise e

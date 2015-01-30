@@ -5,11 +5,11 @@ import '/re'
 #:
 #: Sequence :: Re
 #:
-Sequence = re.compile r'''(?sx)(\033(?:
+Sequence = re.compile r'''(?sx)\033(?:
   \[.*?[@-~]     # ANSI CSI: standard escape sequences.
  |\]\d+;.*?\007  # ANSI OSC: e.g. sets the title of an XTerm-like VT.
  |[NO].          # ANSI SS2/SS3: alternate character sets.
-)|.)'''
+)|(.)'''
 
 
 Key = subclass object where

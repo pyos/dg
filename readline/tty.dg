@@ -11,32 +11,54 @@ import '/contextlib'
 import 'ansi/Sequence'
 
 
-Teletype = subclass asyncio.Protocol where
+Protocol = subclass asyncio.Protocol where
+  __init__ = loop encoding ~>
+    @loop = loop
+    @done = False
+    @news = asyncio.Event loop: loop
+    @data = ''
+    @dec  = (codecs.getincrementaldecoder encoding) 'surrogateescape'
+    asyncio.Protocol.__init__ self
+
+  data_received = buf ~>
+    @data += @dec.decode buf
+    @news.set!
+    asyncio.Protocol.data_received self buf
+
+  connection_lost = exc ~>
+    @done = True
+    @data += @dec.decode b'' True
+    @news.set!
+    asyncio.Protocol.connection_lost self exc
+
+  wait = ~>
+    except _       => @data or yield from @news.wait!
+           finally => @done or @news.clear!
+    result, nl, @data = @data.partition '\n'
+    result + nl
+
+
+Teletype = subclass object where
   #: Various TTY-related functions.
   #:
   #: input  :: TextIOBase -- 'r'-mode TTY.
   #: output :: TextIOBase -- 'w'-mode TTY.
   #:
-  __init__ = @input @output @name: None loop: None ~>
+  __init__ = @input @output loop: None @name: None ~>
     not @input .isatty! => raise $ IOError 'input: not a tty'
     not @output.isatty! => raise $ IOError 'output: not a tty'
-    @_data = ''
-    @_done = False
-    @_task = None
-    @_loop = loop or asyncio.get_event_loop!
-    @_wait = @_loop.connect_read_pipe (-> self) @input
-    @_dec  = (codecs.getincrementaldecoder @input.encoding) 'surrogateescape'
-    (super Teletype self).__init__!
+    @loop  = loop or asyncio.get_event_loop!
+    @proto = None
 
   write = ~> @output.write
   flush = ~> @output.flush
+  break = ~> @proto.news.set!
 
   #: Determine the length of an ANSI-escaped string. ANSI escapes are assumed to be empty.
   #:
   #: ansi_len :: str -> int
   #:
-  ansi_len = classmethod $ data ~> sum $
-    where for x in Sequence.findall data => len x == 1 => yield 1
+  ansi_len = classmethod $ data ~> len $ Sequence.sub (m -> m.group 1 or '') data
 
   #: Check whether a key's value is printable.
   #:
@@ -44,8 +66,7 @@ Teletype = subclass asyncio.Protocol where
   #:
   printable = classmethod $ data ~> if
     len data == 0 => True
-    len data >= 2 => False  # only ANSI sequences match this
-    otherwise     => 32 <= ord data < 127 or 160 <= ord data
+    len data == 1 => 32 <= ord data < 127 or 160 <= ord data
 
   #: Enter the raw mode of a TTY.
   #:
@@ -63,41 +84,18 @@ Teletype = subclass asyncio.Protocol where
 
   #: Find out how much stuff this TTY can display at once.
   #:
-  #: size :: (int, int)
+  #: size :: (int, int) -- (height, width) in characters
   #:
-  size = ~>
-    # FIXME what would happen if a Windows SSH client connects to a UNIX server?
-    #   I sure hope that client emulates UNIX terminals.
-    struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
+  size = ~> struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
 
   #: Wait until some data on the terminal.
   #:
-  #: buffer :: str
+  #: buffer :: iter str
   #:
   buffer = ~>
-    @_wait =>
-      yield from @_wait
-      @_wait = None
-    result = if
-      @_task    => raise $ RuntimeError 'already waiting on this input'
-      @_data    => @_data
-      @_done    => @_data
-      otherwise => except
-        _       => yield from (@_task = asyncio.Future loop: @_loop)
-        finally => @_task = None
-    @_data = ''
-    Sequence.findall result
-
-  data_received = buf ~>
-    @_data += @_dec.decode buf
-    @_task and not @_task.done! => @_task.set_result @_data
-    (super Teletype self).data_received buf
-
-  connection_lost = exc ~>
-    @_done = True
-    @_data += @_dec.decode b'' True
-    @_task => @_task.set_result @_data
-    (super Teletype self).connection_lost exc
+    @proto is None =>
+      yield from $ @loop.connect_read_pipe (-> @proto = Protocol @loop @input.encoding) @input
+    map (x -> x.group!) $ Sequence.finditer $ yield from @proto.wait
 
   #: Move the caret `y` characters down and `x` characters to the right.
   #:
