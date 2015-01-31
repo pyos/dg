@@ -52,7 +52,7 @@ Teletype = subclass object where
 
   write = ~> @output.write
   flush = ~> @output.flush
-  break = ~> @proto.news.set!
+  break = ~> @proto and @proto.news.set!
 
   #: Determine the length of an ANSI-escaped string. ANSI escapes are assumed to be empty.
   #:
