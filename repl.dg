@@ -1,5 +1,6 @@
 import '/re'
 import '/sys'
+import '/time'
 import '/types'
 import '/signal'
 import '/asyncio'
@@ -115,6 +116,10 @@ runrepl = fd loop: None ->
     e => x = next $ filter None $ map compilerepl $ iterate (x -> x + '\n' + line sys.ps2) $ line sys.ps1
     e :: EOFError          => raise SystemExit
     e :: KeyboardInterrupt =>
+    e :: BaseException     =>
+      sys.excepthook (type e) e e.__traceback__
+      # Prevent excessive exception spam if the error is in the REPL.
+      time.sleep 0.1  # (At least it won't hang SSH clients and others that way.)
     e is None => except
       e => sys.displayhook $ eval x environ
       e :: SystemExit    => raise e
