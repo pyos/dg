@@ -1,9 +1,21 @@
+#: The set of alphanumeric identifiers that should be nonetheless
+#: treated as infix operators. (Normally, alphanumeric names are prefix
+#: while punctuation is infix.)
 INFIXN = set' 'and' 'in' 'is' 'or' 'where'
+#: The set of operators that accept any no. of arguments, mostly for optimization.
+#: (Normally, an operator is binary.)
 VARARY = set' ',' '\n' ''
-NOLHS  = set' '@' '~'
-NORHS  = set' '!'
-FLAGS  = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
-
+#: The set of operators that should not accept a left-hand expression,
+#: so `a R b` becomes `a (R b)`.
+NOLHS = set' '@' '~'
+#: Different side, same story. `a R b` becomes `(a R) b`.
+NORHS = set' '!'
+#: Operators with these flags behave differently in a null-denotation context.
+#: See the parser (`Parser.special`) for details.
+FLAGS = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
+#: Infix operator binding strength. `a R b Q c` <=> `a R (b Q c)` iff
+#: the left binding strength of `Q` is greater than the right binding strength
+#: of `R`; otherwise, it's `(a R b) Q c`.
 STRENGTH = dict'
   '@',     (22, 22)
   '.',     (21, 21)
@@ -38,6 +50,9 @@ STRENGTH = dict'
   'and',   ( 7,  7)
   'or',    ( 6,  6)
   '$',     ( 6,  5)
+  '<|',    ( 6,  5)
+  '|>',    ( 5,  5)
+  '|>.',   ( 5, 21)
   ',',     ( 4,  4)
   '=',     ( 4,  3)
   ':=',    ( 4,  3)
@@ -66,11 +81,11 @@ Node = subclass object where
   # These are only used by `Name`s.
   closed = False  # :: bool -- whether the node is parenthesized
   indent = False  # :: bool -- whether the node is indented relative to the surroundings
-  infix  = False  # :: bool -- whether the node is an infix `Name`
-  nolhs  = False  # :: bool -- whether an `infix` `Name` can only be right-bound
-  norhs  = False  # :: bool -- whether an `infix` `Name` can only be left-bound
-  varary = False  # :: bool -- whether an `infix` `Name` accepts 3+ arguments
-  flags  = 0      # special null denotations
+  infix  = False  # :: bool -- this and below only make sense for `Name`s.
+  nolhs  = False  # :: bool -- see `NOLHS`
+  norhs  = False  # :: bool -- see `NORHS`
+  varary = False  # :: bool -- see `VARARY`
+  flags  = 0      # :: int  -- see `FLAGS`
 
   # Custom operator priorities used when parsing this entity.
   override = dict!
@@ -119,9 +134,15 @@ Ending = subclass Node where
   __repr__ = self -> '<Ending: {!r}>'.format @value
 
 
+#: Given some expressions joined by infix commas, convert them into expression
+#: joined by infix operator `name`. Intended to be used as a block handler; e.g.
+#: a []-block would use that to convert a tuple into a list at compile-time.
+#: See `Parser.blkinds`.
+#:
+#: tuple_into :: str -> (str, int, int, str) Node -> Node
+#:
 tuple_into = name -> pos x -> Expression x.loc (Name x.loc True name) *:
-  if
-    x :: Constant   and x.value is None             => ()
-    x :: LeftBind   and x.op == ','                 => x.args
-    x :: Expression and x.op == ','and not x.closed => x.args
-    otherwise => raise $ SyntaxError 'not a comma-separated list' pos
+  if x :: Constant   and x.value is None              => ()
+     x :: LeftBind   and x.op == ','                  => x.args
+     x :: Expression and x.op == ',' and not x.closed => x.args
+     otherwise => raise $ SyntaxError 'not a comma-separated list' pos

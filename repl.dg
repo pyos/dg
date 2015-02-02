@@ -27,7 +27,11 @@ except
     _attributes_of = path ns -> except
       err =>
         item = eval (compileast $ parse path) ns
-        (set $ dir item).union *: (map dir $ type.mro item.__class__)
+        if not $ item :: types.ModuleType => dir item
+           # Hide dg built-ins, which are inserted into every global namespace
+           # (because CPython cannot destroy `__builtins__` properly on shutdown.)
+           otherwise =>
+             filter (x -> not $ x in BUILTINS and getattr item x is BUILTINS !! x) $ dir item
       err :: Exception => set!
 
     Teletype = subclass readline.Teletype where

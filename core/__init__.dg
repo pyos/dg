@@ -27,6 +27,10 @@ build = old tag version ->
 #: load :: str str -> [CodeType]
 #:
 load = tag dirname ->
+  # TODO add support for some VM-independent (well, as much as possible) format.
+  #      Pure Python files that create`types.CodeType` objects, maybe? The point is,
+  #      it should be possible to use one VM (e.g. CPython) to create bundles for
+  #      some other VM (e.g. PyPy) that uses an incompatible marshalling protocol.
   with fd = open (os.path.join dirname (tag + '.dgbundle')) 'rb' => marshal.load fd
 
 

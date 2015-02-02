@@ -1,3 +1,5 @@
+# NOTE: the compiler is a bit awful, but it works, and I'm too lazy
+#       to refactor it. Maybe later. Someday.
 import '/importlib'
 import '/itertools'
 import '/posixpath'
@@ -123,7 +125,7 @@ Comparison =      FixedArity 2 2 $ f (a, b) ~>
 
 #: Parse function definition arguments.
 #:
-#: positional1 (positional2, iterable): default_value *: varargs keyword_only **: varkwargs
+#: positional1 (positional2, pattern): default_value *: varargs keyword_only **: varkwargs
 #:
 #: DEFNARGS :: Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
 #:
@@ -147,7 +149,7 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
             otherwise                                          => list' xs
 
   for (i, x) in enumerate data => if
-    x :: Expression and x.op == ':' => if
+    x :: Expression and not x.closed and x.op == ':' => if
       x :: LeftBind  => Error x 'default value missing'
       x :: RightBind => Error x 'argument name missing'
       fst x.args == '*' =>
@@ -206,8 +208,9 @@ Compiler = subclass CodeType where
        otherwise       => raise $ TypeError 'invalid node' $ type x
 
   #: Push some string-object pairs.
-  #:
   #: Used by keyword arguments and annotations.
+  #:
+  #: pushkeys :: [(str, Node)] -> a
   #:
   pushkeys = xs ~> for (k, v) in xs =>
     @pushconst k
@@ -704,6 +707,11 @@ Compiler = subclass CodeType where
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
+    '|>.', FixedArity 2 2 $ f (x, y) ~>
+      y :: Name or Error y 'not an attribute'
+      @pushast x
+      @append  'LOAD_ATTR' $ @names !! y.value
+
     '!.', FixedArity 2 2 $ f (x, y) ~>
       y :: Name or Error y 'not an attribute'
       @pushcall x
@@ -716,6 +724,14 @@ Compiler = subclass CodeType where
       @pushconst None
 
     '$', FixedArity 2 2 $ f (g, x) ~> if
+      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+      otherwise => @pushcall g x
+
+    '<|', FixedArity 2 2 $ f (g, x) ~> if
+      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+      otherwise => @pushcall g x
+
+    '|>', FixedArity 2 2 $ f (x, g) ~> if
       g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
       otherwise => @pushcall g x
 
