@@ -128,8 +128,8 @@ Ending = subclass Node where
   __repr__ = self -> '<Ending: {!r}>'.format @value
 
 
-#: Given some expressions joined by infix commas, convert them into expression
-#: joined by infix operator `name`. Intended to be used as a block handler; e.g.
+#: Given some expressions joined by infix commas, convert them into expressions
+#: joined by the infix operator `name`. Intended to be used as a block handler; e.g.
 #: a []-block would use that to convert a tuple into a list at compile-time.
 #: See `Parser.blkinds`.
 #:

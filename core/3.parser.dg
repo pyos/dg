@@ -18,7 +18,7 @@ parsefd = data filename: '<stream>' -> parse (data.read -1) filename
 
 
 Parser = subclass collections.deque where
-  #: A precompiled regular expression that should match a single lexeme.
+  #: A precompiled regular expression that should match a single token.
   #: Every top-level group must be named; its name is passed to `token`
   #: in order to determine which token is being processed.
   #:
