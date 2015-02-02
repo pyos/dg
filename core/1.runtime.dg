@@ -12,8 +12,8 @@ import '/importlib/machinery'
 
 
 BUILTINS = dict!
-BUILTINS !! 'otherwise' = True  # it's in CONSTANTS, cannot assign to it
-BUILTINS !! 'finally'   = True  # not actually used
+BUILTINS !! 'otherwise' = True
+BUILTINS !! 'finally'   = True  # not actually used by `except`, provided for completeness
 BUILTINS.update locals! where
   set'   = *: xs       -> set  xs
   list'  = *: xs       -> list xs
@@ -73,15 +73,16 @@ BUILTINS.update locals! where
   # FIXME should also define foldr(1) and scanr(1). Probably.
 
   head = xs -> next $ iter xs
-  fst  = xs -> next $ iter xs  # same as `head`, but with a different name
+  fst  = xs -> next $ iter xs  # the different name made sense in Haskell, so whatever.
   snd  = xs -> head $ drop 1 xs
   tail = xs -> list $ drop 1 xs
   init = !! slice None -1
   last = !! -1
 
-  #: A version of __build_class__ that does not use functions.
+  #: A version of __build_class__ that does not use functions. Basically,
+  #: it creates a class given some standard attributes and its namespace.
   #:
-  #: I bet you didn't even know __build_class__ existed.
+  #: (I bet you didn't even know __build_class__ existed.)
   #:
   #: _ :: str (dict str object) (Maybe str) str str *type **(dict str object) -> type
   #:
@@ -91,6 +92,7 @@ BUILTINS.update locals! where
       ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
 
   #: Parse a module name, which is a POSIX path relative to the current module.
+  #: Returns a tuple suitable for passing as the first argument to the function below.
   #:
   #: __dg_parse_import__ :: str -> (int, [str])
   #:
@@ -103,7 +105,13 @@ BUILTINS.update locals! where
     not path => raise $ ImportError $ '`{}` resolves to an empty name'.format info
     parent, path
 
-  #: Import a module. Duh.
+  #: Import a module. `parent` is the same as for `importlib.import_module`,
+  #: while `path` is a list of name components, e.g. `urllib.request.Request`
+  #: should be passed as `['urllib', 'request', 'Request']`.
+  #:
+  #: If `reload` is `True`, `importlib.reload` is also called on the module.
+  #: If `qual` is `True`, the object that corresponds to the first item in `path`
+  #: is returned.
   #:
   #: _ :: (int, [str]) str bool bool -> object
   #:
@@ -136,6 +144,8 @@ ModuleLoader = subclass machinery.SourceFileLoader where
 sys.path_importer_cache.clear!
 sys.path_hooks.append $ machinery.FileFinder.path_hook (ModuleLoader, list' '.dg') *:
   (last (sys.path_hooks.pop -1).__closure__).cell_contents
-# This module is used by runpy to execute modules as `__main__`.
-# It's not imported through `ModuleLoader`, so we'll have to do this:
+# When doing `python -m dg`, instead of actually importing `/__main__.dg`
+# `runpy` attempts to execute it directly in a pre-existing module named `__main__`.
+# Since it wasn't imported through `ModuleLoader`, it lacks the new builtins,
+# which the code may use; so we have to do this:
 (sys.modules !! '__main__').__dict__.update BUILTINS
