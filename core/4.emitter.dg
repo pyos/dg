@@ -9,7 +9,7 @@ import '/collections'
 CONSTANTS = dict True: True False: False None: None otherwise: True
 
 
-#: Calculate the length of a bytecode sequence, in bytes.
+#: Calculate the length of a bytecode sequence given (opcode, argument) pairs, in bytes.
 #:
 #: codelen :: [(int, int)] -> int
 #:
@@ -20,16 +20,15 @@ codelen = seq -> sum $ map
   seq
 
 
-#: An argument to a jump opcode.
-#:
-#: type Jump where
-#:   code     :: CodeType  -- bytecode to insert a jump into.
-#:   start    :: int       -- offset at which the jump object was created.
-#:   op       :: str       -- instruction to insert.
-#:   relative :: bool      -- whether to start counting from `start`.
-#:   reverse  :: bool      -- ask questions first, insert later. Implies `absolute`.
-#:
 Jump = subclass object where
+  #: An argument to a jump opcode.
+  #:
+  #: code     :: CodeType  -- bytecode to insert a jump into.
+  #: start    :: int       -- offset at which the jump object was created.
+  #: op       :: str       -- instruction to insert.
+  #: relative :: bool      -- whether to start counting from `start`.
+  #: reverse  :: bool      -- ask questions first, insert later. Implies `absolute`.
+  #:
   __init__ = @code @reverse @op delta ~>
     @relative = @op == 'JUMP_FORWARD' or @op == 'FOR_ITER' or @op.startswith 'SETUP'
     @start    = len @code.bytecode
@@ -63,53 +62,39 @@ Jump = subclass object where
        otherwise => @code.bytecode !! @start = dis.opmap !! @op, @value
 
 
-#: A mutable version of `types.CodeType`.
-#:
-#: type CodeType where
-#:   cell      :: Maybe Generator -- a parent code object.
-#:   argc      :: int
-#:   kwargc    :: int
-#:   varargs   :: bool -- accepts more than `argc` arguments.
-#:   varkws    :: bool -- accepts keyword arguments not in `varnames[argc:][:kwargc]`.
-#:   function  :: bool -- is a function, not a module.
-#:   generator :: bool -- is a function with `yield`.
-#:   name      :: str
-#:   qualname  :: str
-#:
-#:   var        :: Maybe str -- a string representing the innermost assignment.
-#:   fastlocals :: dict (dict int int) -- maps names from `varnames` to opcode locations.
-#:   consts     :: dict (object, type) int
-#:   varnames   :: dict str int -- array-stored arguments.
-#:   names      :: dict str int -- attributes, globals & module names.
-#:   cellvars   :: dict str int -- local variables used by closures.
-#:   freevars   :: dict str int -- non-local variables.
-#:   enclosed   :: set str -- names that may be added to `freevars`.
-#:   globals    :: set str -- variables in the global namespace.
-#:
-#:   bytecode  :: [(int, int)] -- (opcode, argument) pairs.
-#:   stacksize :: int -- minimum stack depth required for evaluation.
-#:   currstack :: int -- approx. stack depth at this point.
-#:
-#:   filename :: str
-#:   lineno   :: int
-#:   lnotab   :: bytes
-#:   lineoff  :: int -- `lineno` last time `lnotab` was updated.
-#:   byteoff  :: int -- `len bytecode` at the same point.
-#:
 CodeType = subclass object where
-  #: Make the bytecode slightly faster.
-  #: The arguments are: bytecode, constants, names, lnotab.
-  #: Constants are passed as a list to allow further additions.
+  #: A mutable version of `types.CodeType`.
   #:
-  #: optimize :: Maybe (bytes list tuple bytes -> bytes)
+  #: cell      :: Maybe CodeType -- a parent code object.
+  #: argc      :: int
+  #: kwargc    :: int
+  #: varargs   :: bool -- accepts more than `argc` arguments.
+  #: varkws    :: bool -- accepts keyword arguments not in `varnames[argc:][:kwargc]`.
+  #: function  :: bool -- is a function, not a module.
+  #: generator :: bool -- is a function with `yield`.
+  #: name      :: str
+  #: qualname  :: str
   #:
-  optimize = if PY_TAG.startswith 'cpython-' => fn where
-    import '/ctypes/pythonapi'
-    import '/ctypes/py_object'
-    fn = pythonapi.PyCode_Optimize
-    fn.restype  = py_object
-    fn.argtypes = py_object, py_object, py_object, py_object
-
+  #: var        :: Maybe str -- a string representing the innermost assignment.
+  #: fastlocals :: dict (dict int int) -- maps names from `varnames` to opcode locations.
+  #: consts     :: dict (object, type) int
+  #: varnames   :: dict str int -- array-stored arguments.
+  #: names      :: dict str int -- attributes, globals & module names.
+  #: cellvars   :: dict str int -- local variables used by closures.
+  #: freevars   :: dict str int -- non-local variables.
+  #: enclosed   :: set str -- names that may be added to `freevars`.
+  #: globals    :: set str -- variables in the global namespace.
+  #:
+  #: bytecode  :: [(int, int)] -- (opcode, argument) pairs.
+  #: stacksize :: int -- minimum stack depth required for evaluation.
+  #: currstack :: int -- approx. stack depth at this point.
+  #:
+  #: filename :: str
+  #: lineno   :: int
+  #: lnotab   :: bytes
+  #: lineoff  :: int -- `lineno` last time `lnotab` was updated.
+  #: byteoff  :: int -- `len bytecode` at the same point.
+  #:
   __init__ = name a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: None function: False ~>
     @cell      = cell
     @argc      = len a
@@ -151,6 +136,21 @@ CodeType = subclass object where
     @byteoff  = 0
     None
 
+  #: Make the bytecode slightly faster. Only works on CPython, because it has
+  #: a built-in peephole optimizer and writing a new one is hard. PyPy uses
+  #: an AST-based optimizer instead, and we can't use that for obvious reasons.
+  #: The arguments are: bytecode, constants, names, lnotab.
+  #: Constants are passed as a list to allow further additions.
+  #:
+  #: optimize :: Maybe (bytes list tuple bytes -> bytes)
+  #:
+  optimize = if PY_TAG.startswith 'cpython-' => fn where
+    import '/ctypes/pythonapi'
+    import '/ctypes/py_object'
+    fn = pythonapi.PyCode_Optimize
+    fn.restype  = py_object
+    fn.argtypes = py_object, py_object, py_object, py_object
+
   #: Calculated value of CodeType.co_flags.
   #:
   #: flags :: int
@@ -173,7 +173,7 @@ CodeType = subclass object where
     otherwise               => @code (dis.opmap !! 'EXTENDED_ARG', arg >> 16) +
                                struct.pack '<BH' op (arg & 0xffff)
 
-  #: A marshallable code object with info from this generator.
+  #: Convert this object into an immutable version actually suitable for use with `eval`.
   #:
   #: frozen :: types.CodeType
   #:
@@ -187,7 +187,7 @@ CodeType = subclass object where
 
     if @optimize =>
       # Most of the functions are unaffected by the first run, but some
-      # may benefit from two.
+      # may benefit from two. `PyCode_Optimize` is fast, so why not?
       code = @optimize code consts names @lnotab
       code = @optimize code consts names @lnotab
 

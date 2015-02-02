@@ -18,6 +18,12 @@ parsefd = data filename: '<stream>' -> parse (data.read -1) filename
 
 
 Parser = subclass collections.deque where
+  #: A precompiled regular expression that should match a single lexeme.
+  #: Every top-level group must be named; its name is passed to `token`
+  #: in order to determine which token is being processed.
+  #:
+  #: regex :: _SRE
+  #:
   regex = re.compile r'''(?isx)
     (?P<skip>   [^\S\n]+|\s*\#[^\n]*)
    |(?P<number> (?P<realnum>
@@ -32,8 +38,8 @@ Parser = subclass collections.deque where
       (?P<flags>br|r?b?)
       (?P<quote>'{3}|"{3}|'|")
       (?P<content>(?:[^\\]|\\.)*?)
-      \11)  # should point to <quote>
-   |(?P<strerr> (?:br|r?b?)['"])
+      \11)  # should point to <quote>. XXX does this make the regex NP-complete?
+   |(?P<strerr> (?:br|r?b?)['"])  # i.e. a string that has a beginning but no end
    |(?P<name>   \w+'*|\*+(?=:))
    |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
    |(?P<eol>    \s*\n(?P<indent>\ *))
@@ -74,7 +80,7 @@ Parser = subclass collections.deque where
         @token pos match.lastgroup match
       err :: StopIteration => Ending @location '\0'
 
-  #: Current location as a tuple.
+  #: The offset of the next token in the source code as a `SyntaxError`-compatible tuple.
   #:
   #: location :: (str, int, int, str)
   #:
@@ -86,7 +92,7 @@ Parser = subclass collections.deque where
   #:
   endof = dict' ('(', ')') ('{', '}') ('[', ']')
 
-  #: Handle a single regex match.
+  #: Handle a single regex match. (The second argument is the name of its top-level group.)
   #:
   #: token :: (str, int, int, str) str MatchObject -> Node
   #:
@@ -121,7 +127,7 @@ Parser = subclass collections.deque where
                # Indented blocks can be ended with close-parens.
                # We have to account for a decrease in indentation, though.
                @indent.pop!
-               # A parenthesized block will take `x` off the stack.
+               # A parenthesized block will take `x` (a close-paren) off the stack.
                @append x
              x :: Ending
          otherwise =>
@@ -136,7 +142,7 @@ Parser = subclass collections.deque where
     f == 'error'  => raise $ SyntaxError 'invalid character'                  pos
     otherwise     => raise $ KeyError $ 'unhandled group {!r}'.format f
 
-  #: Parse a complete file.
+  #: Parse the whole input, yielding a complete AST.
   #:
   #: file :: Node
   #:
@@ -147,9 +153,9 @@ Parser = subclass collections.deque where
       otherwise       => raise $ SyntaxError 'unexpected close-paren' x.loc
 
   #: A block kind is defined by a function that creates an empty block
-  #: and a function that takes the contents of a block and returns its AST.
+  #: and a function that takes the contents of a block and preprocesses them.
   #:
-  #: blkinds :: dict (Maybe str) ((Location -> Node) (Node -> Node))
+  #: blkinds :: dict (Maybe str) ((Location -> Node), (Location Node -> Node))
   #:
   blkinds = dict'
     '{',  ((pos -> Constant pos None), tuple_into "dict'")
@@ -171,6 +177,9 @@ Parser = subclass collections.deque where
         x.value == '\n' => raise $ SyntaxError 'indentation less than minimum for this block' x.loc
         x.value == '\0' => raise $ SyntaxError 'unexpected EOF (a block was not closed)'      pos
         otherwise       => raise $ SyntaxError 'invalid close-paren'                          x.loc
+      # BTW, a "null denotation" is when a node is at the start of a token group,
+      # like in the last branch. A "left denotation" is when a node is to the right
+      # of some other node, i.e. `isexpr` is `True`. That's Pratt parser teminology.
       isexpr    => result = @infix (Name x.loc True '') result x
       x != '\n' => result, isexpr = @special x, True
 
@@ -192,12 +201,14 @@ Parser = subclass collections.deque where
     #
     rhs :: Ending or op.norhs =>
       @append rhs
-      if op in ('', '\n') => lhs  # these are no-op on one argument
+      if op in ('', '\n') => lhs  # these are no-op on one argument. Optimization!
          otherwise        => @infixin op lhs None
     rhs.infix and not rhs.closed => if
       rhs.nolhs or (op != '' and op < rhs) =>
+        # `a op (b rhs c)`
         @infixin op lhs $ @infix (Name rhs.loc True '') rhs $ next self
-      op in ('', '\n') => @infix rhs lhs $ next self
+      # `(a op b) rhs c`
+      op in ('', '\n') => @infix rhs lhs $ next self  # still no-op.
       otherwise        => @infix rhs (@infixin op lhs None) $ next self
     otherwise => @infixin op lhs rhs
 
@@ -206,25 +217,29 @@ Parser = subclass collections.deque where
   #: infixin :: Name Node (Maybe Node) -> Expression
   #:
   infixin = op lhs rhs ~> if
+    # Right binding strength is lower => descend.
     lhs :: Expression and not lhs.closed and lhs.op < op =>
       lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
       lhs
-
+    # Variadic operator joined with itself => combine argument lists
+    # to create a single expression instead of a double-nesting.
     lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
       rhs is None or
         lhs.args += (@make_call op lhs rhs).args !! slice 1 None
       lhs
-
+    # No right-hand side => create a left infix bind. `x R` <=> `y -> x R y`,
+    # only `x` is evaluated eagerly. Normally. The compiler can override that.
     rhs is None =>
       bind = LeftBind lhs.loc op lhs
       bind.closed = True
       bind
-
+    # Trying to call an infix operator with an argument => that's
+    # actually a right bind, not a function call. `R x` <=> `y -> y R x`. (Normally.)
     op == '' and lhs.infix and not lhs.closed =>
       RightBind lhs.loc lhs $ if
         lhs < ''  => @special rhs
         otherwise => rhs
-
+    # So that's a normal infix expression.
     otherwise => @make_call op lhs rhs
 
   #: Create a simple function call. (Almost) no fancy rules.
@@ -232,11 +247,11 @@ Parser = subclass collections.deque where
   #: make_call :: Name Node Node -> Expression
   #:
   make_call = op lhs rhs ~> if
+    # If a function call is followed by an indented block,
+    # each statement in that block is a separate argument to that call.
     op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' =>
-      # If a function call is followed by an indented block,
-      # each statement is treated as an argument.
       Expression lhs.loc op lhs *: rhs.args
-    op < '' =>
+    op < '' =>  # That means `rhs` is a null denotation.
       Expression lhs.loc op lhs $ @special rhs
     otherwise =>
       Expression lhs.loc op lhs rhs
@@ -247,7 +262,7 @@ Parser = subclass collections.deque where
   #:
   special = x ~> if
     # These nodes consume everything until the next fat arrow.
-    # "f X =>" becomes equivalent to "(X) `f`".
+    # "f X => Y" becomes equivalent to "(X) `f` Y".
     x.flags & 1 => @infix x (@block x.loc '(' ('=>' ==)) (next self)
     # These nodes consume everything until the EOL.
     # "f ...\n" => "f (...)\n".

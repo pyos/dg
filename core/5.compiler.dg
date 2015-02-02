@@ -1,3 +1,5 @@
+# NOTE: the compiler is a bit awful, but it works, and I'm too lazy
+#       to refactor it. Maybe later. Someday.
 import '/importlib'
 import '/itertools'
 import '/posixpath'
@@ -123,7 +125,7 @@ Comparison =      FixedArity 2 2 $ f (a, b) ~>
 
 #: Parse function definition arguments.
 #:
-#: positional1 (positional2, iterable): default_value *: varargs keyword_only **: varkwargs
+#: positional1 (positional2, pattern): default_value *: varargs keyword_only **: varkwargs
 #:
 #: DEFNARGS :: Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
 #:
@@ -206,8 +208,9 @@ Compiler = subclass CodeType where
        otherwise       => raise $ TypeError 'invalid node' $ type x
 
   #: Push some string-object pairs.
-  #:
   #: Used by keyword arguments and annotations.
+  #:
+  #: pushkeys :: [(str, Node)] -> a
   #:
   pushkeys = xs ~> for (k, v) in xs =>
     @pushconst k
