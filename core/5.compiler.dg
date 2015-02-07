@@ -447,7 +447,10 @@ Compiler = subclass CodeType where
   #: popast :: Node -> a
   #:
   popast = x ~> if
-    x :: Name => @popname x.value
+    x :: Name => @popname $ if
+      x == '@'  => 'self'
+      otherwise => x.value
+
     x :: Constant or (x :: Name and x in CONSTANTS) =>
       @asserttop x 'ConstantPatternError' $ ->
         # assert x == top()
@@ -579,7 +582,9 @@ Compiler = subclass CodeType where
       nm.op == ':'  => for x in nm.args => for a in @popast_symscan x => yield a
       nm.op == ''   => for x in tail nm.args => for a in @popast_symscan x => yield a
       otherwise     => for a in @symbols nm => yield a
-    nm :: Name => yield nm.value
+    nm :: Name => if
+      nm == '@' => yield 'self'
+      otherwise => yield nm.value
 
   symscan = dict'
     '',  f args ~> @symbols $ Expression f.loc *: args
