@@ -176,7 +176,8 @@ DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
 Compiler = subclass CodeType where
   __init__ = *: args **: kwargs ~>
     (super Compiler self).__init__ *: args **: kwargs
-    @loops = list!
+    @loops = list!  # Jumps to the beginnings of loops we're currently in. Used by `continue`.
+    @unsafe = set!  # Variables used to store exceptions. May cause reference loops.
     None
 
   #: Push the result of evaluating `x` onto the stack.
@@ -237,6 +238,10 @@ Compiler = subclass CodeType where
   #: pushclosure :: CodeType [Node] (dict str Node) -> a
   #:
   pushclosure = code defaults kwdefaults ~>
+    for (k, i) in code.unsafe => not $ k in code.cellvars =>
+      # Break reference loops caused by variables which may reference this frame.
+      code.pushconst None
+      code.append 'STORE_FAST' i delta: -1
     code.append 'RETURN_VALUE' delta: -1
     const = code.frozen
     @pushkeys  kwdefaults.items!
@@ -389,6 +394,10 @@ Compiler = subclass CodeType where
     @pushconst None
     @pushconst None
     @popast name
+    # Exceptions reference tracebacks which reference frames which reference local
+    # variables which an exception is, causing a reference loop that defers all destructors
+    # until the next GC sweep. We're going to break that loop.
+    name :: Name and name.value in @varnames => @unsafe.add (name.value, @varnames !! name.value)
 
     with @jump 'JUMP_FORWARD' =>
       # Finishing SETUP_EXCEPT with an exception pushes
