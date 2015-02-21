@@ -87,6 +87,16 @@ Node = subclass object where
   varary = False  # :: bool -- see `VARARY`
   flags  = 0      # :: int  -- see `FLAGS`
 
+  #: Construct a SyntaxError at the location of this node.
+  #:
+  #: FIXME if that node is a `Name "print"`, Python may automatically
+  #:       replace the message with "print is now a function" or something.
+  #:       What a weird hack.
+  #:
+  #: invalid :: str -> Exception
+  #:
+  invalid = description ~> SyntaxError description @loc
+
 
 Name = subclass Node where
   __init__ = self @loc infix @value ->

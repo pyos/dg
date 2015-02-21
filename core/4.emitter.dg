@@ -83,7 +83,6 @@ CodeType = subclass object where
   #: cellvars   :: dict str int -- local variables used by closures.
   #: freevars   :: dict str int -- non-local variables.
   #: enclosed   :: set str -- names that may be added to `freevars`.
-  #: globals    :: set str -- variables in the global namespace.
   #:
   #: bytecode  :: [(int, int)] -- (opcode, argument) pairs.
   #: stacksize :: int -- minimum stack depth required for evaluation.
@@ -119,9 +118,6 @@ CodeType = subclass object where
     @freevars   = collections.defaultdict $ -> -1 - len @freevars
     @enclosed   = if
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
-      otherwise => set!
-    @globals    = if
-      cell      => cell.globals
       otherwise => set!
     for v in itertools.chain a kw va vkw => @varnames !! v
 

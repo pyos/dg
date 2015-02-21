@@ -1,202 +1,253 @@
-# NOTE: the compiler is a bit awful, but it works, and I'm too lazy
-#       to refactor it. Maybe later. Someday.
 import '/importlib'
 import '/itertools'
 import '/posixpath'
 
-ANY = float 'inf'
+inf = float 'inf'
 
 
 #: Compile some source code.
 #:
-#: compile :: str (Optional str) (Optional (iter str)) -> types.CodeType
+#: compile :: str (Optional str) -> types.CodeType
 #:
-compile = data filename: '<string>' ns: () -> compileast ns: ns $ parse data filename
+compile = data filename: '<string>' -> compileast $ parse data filename
 
 
 #: Compile the contents of a file-like object.
 #:
-#: compilefd :: TextIOBase (Optional str) (Optional (iter str)) -> types.CodeType
+#: compilefd :: TextIOBase (Optional str) -> types.CodeType
 #:
-compilefd = fd filename: '<stream>' ns: () -> compileast ns: ns $ parsefd fd filename
+compilefd = fd filename: '<stream>' -> compileast $ parsefd fd filename
 
 
 #: Compile an AST into Python bytecode.
 #:
-#: compileast :: Node (Optional (iter str)) -> types.CodeType
+#: compileast :: Node -> types.CodeType
 #:
-compileast = x ns: () ->
-  self = Compiler ''
-  @globals = set ns | set (@symbols x)
-  @pushast x
-  @append 'RETURN_VALUE' delta: -1
+compileast = x ->
+  @ = Compiler ''
+  @symbols x |> exhaust  # Global variables don't need to be tracked (unless
+  @pushast x             # you want some static checks...), but `symbols`
+  @append 'RETURN_VALUE' delta: -1  # may do some preprocessing, too.
   @frozen
-
-
-#: Raise a SyntaxError.
-#:
-#: Error :: Node str -> a
-#:
-Error = at description -> raise $ SyntaxError description at.loc
 
 
 #: Enforce arbitrary argument count limits on a compile-time function.
 #:
-#: `ANY` for `max` means "the function is variadic".
+#: fix :: int int Handler -> Handler
 #:
-#: FixedArity :: int int Handler -> Handler
-#:
-FixedArity = min max h -> f args ~>
-  len args < min => Error f $ 'got {1} arguments, min. {0}'.format min $ len args
-  len args > max => Error f $ 'got {1} arguments, max. {0}'.format max $ len args
+fix = min max h -> f args ~>
+  len args < min => raise $ f.invalid $ 'got {} arguments, min. {}'.format (len args) min
+  len args > max => raise $ f.invalid $ 'got {} arguments, max. {}'.format (len args) max
   h self f args
 
 
 #: Make a handler update its first argument with the result.
+#: Use `fix` to ensure at least one argument!
 #:
-#: Inplace :: Handler -> Handler
+#: inplace :: Handler -> Handler
 #:
-Inplace = h -> f xs ~>
+inplace = h -> f xs ~>
   h self f xs
-  @append 'DUP_TOP' 0 +1
+  @append 'DUP_TOP' delta: +1
   @popast $ head xs
 
 
-#: Turn a function that takes node pairs into one that takes `u => v` nodes.
+#: Turn a handler that accepts pairs or nodes into one that accepts `u => v` nodes.
 #:
-#: ArrowPairs :: (Node [(Node, Node)] -> a) -> Handler
+#: pair_args :: (Node [(Node, Node)] -> a) -> Handler
 #:
-ArrowPairs = h -> f xs ~>
-  not $ getattr f '_handled' False =>
+pair_args = h -> f xs ~>
+  pairs = getattr f '_arrpairs' None
+  pairs is None =>
+    # In `if` and `except` the whole first line is clamped into a single argument,
+    # so `if (1 => 2) (3 => 4)` is the same thing as `if ((1 => 2) (3 => 4))`.
+    # We're gonna treat these as separate argument for a shorthand notation.
     if len xs == 1 and head xs :: Expression and (head xs).op == '' => xs = (head xs).args
-    f._handled  = True
-    f._arrpairs = list
+    # This decorator needs to be applied to both the emitter function
+    # AND the symbol scanner, so we'll cache the result.
+    pairs = f._arrpairs = list
       where for x in xs => yield $ if
-        x :: RightBind  and x.op == '=>' => Error x 'missing expression'
+        x :: RightBind  and x.op == '=>' => raise $ x. invalid 'no `u` in `u => v`'
         x :: LeftBind   and x.op == '=>' => x.args + list' (Constant x.loc None)
         x :: Expression and x.op == '=>' => x.args
-        otherwise => Error x 'expected `u => v`'
+        otherwise => raise $ x.invalid 'expected `u => v`'
   h self f f._arrpairs
 
 
 #: Raise a `SyntaxError` regardless of arguments.
 #:
-#: WithError :: str -> Handler
+#: undefined :: str -> Handler
 #:
-WithError = x -> f xs ~> Error f x
+undefined = x -> f xs ~> raise $ f.invalid x
 
 
-#: Apply a single bytecode instruction to all arguments.
+#: Apply a single bytecode instruction to all arguments. The number of arguments
+#: is passed as an oparg.
 #:
-#: WithOpcode :: str -> Handler
+#: apply_one :: str -> Handler
 #:
-WithOpcode = x -> f xs ~>
-  @pushlist xs
+apply_one = x -> f xs ~>
+  @pushast *: xs
   @append x (len xs) $ 1 - len xs
 
 
-#: Take the first argument that doesn't match a jump condition.
+#: Given two arguments, pick the first iff it matches a jump condition.
 #:
-#: WithJump :: str -> Handler
+#: either :: str -> Handler
 #:
-WithJump   = x -> FixedArity 2 2 $ f (a, b) ~> (@pushast a, with @jump x False -1 => @pushast b)
-Comparison =      FixedArity 2 2 $ f (a, b) ~>
-  chain = list!
-  while a :: Expression and not a.closed and @prefix.get a.op.value is Comparison =>
-    chain.insert 0 (a.op, snd a.args)
-    a = fst a.args
+either = x -> fix 2 2 $ f (a, b) ~>
+  @pushast a
+  with @jump x False -1 => @pushast b
+
+
+#: Given two arguments, return the result of comparing them with a suitable
+#: function. Note that the function must be in `dis.cmp_op`.
+#:
+#: compare :: Handler
+#:
+compare = fix 2 2 $ f (a, b) ~>
+  chain = []
+  # `a R x1 Q x2 ... xn P b` where `R`, `Q`, and so on are comparison operators
+  # is a single chain that is equivalent to `a R x1 and ... and xn P b`.
+  while a :: Expression and not a.closed and @prefix.get a.op.value is compare =>
+    # `chain` should become `[(R, x1), (Q, x2), ...]`.
+    chain.insert 0 (a.op, snd (a, _ = a.args))
 
   @pushast a
-  jumps = list
-    where for (op, arg) in chain => yield $
-      @pushast arg
-      @append  'DUP_TOP'    delta: +1 #=> a, b, b
-      @append  'ROT_THREE'  delta: +0 #=> b, a, b
-      @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index op.value
-      @jump    'JUMP_IF_FALSE_OR_POP' delta: -1
+  jumps = []
+  for (op, arg) in chain =>
+    # Assume the value on top of the stack is what to compare to.
+    # (Let's call that value `prev`.)
+    @pushast arg
+    @append  'DUP_TOP'    delta: +1  #=> prev, arg, arg
+    @append  'ROT_THREE'  delta: +0  #=> arg, prev, arg
+    @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index op.value  #=> arg, bool
+    jumps.append $ @jump 'POP_JUMP_IF_FALSE' delta: -1  #=> arg
   @pushast b
   @append 'COMPARE_OP' delta: -1 $ dis.cmp_op.index f.value
-
+  # If all comparisons returned `True`, we're done and there's `True` on top
+  # of the stack. If comparison with `b` returned `False`, there's `False`
+  # and nothing else. But if one of the other comparisons returned `False`,
+  # we've got an object that is not needed anymore.
   if jumps => with @jump 'JUMP_FORWARD' =>
     for j in jumps => j.set
-    @append 'ROT_TWO'
-    @append 'POP_TOP'  # stack size change was accounted for by @jump
+    @append 'POP_TOP' delta: -1
+    @pushconst False
 
 
-#: Parse function definition arguments.
+#: Parse function definition arguments. They look like this:
 #:
-#: positional1 (positional2, pattern): default_value *: varargs keyword_only **: varkwargs
+#:   positional (positional, pattern): default *: varargs keyword_only **: varkwargs
 #:
-#: DEFNARGS :: Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
+#: parse_defn_args :: Node -> ([str], [str], [Node], {str: Node}, [str], [str], {str: Node})
 #:
-DEFNARGS = xs -> a, kw, da, dkw, va, vkw, add where
-  a    = list!  # positional
-  kw   = list!  # keyword-only
-  da   = list!  # default values
-  dkw  = dict!  # default values for keyword-only arguments
-  va   = list!  # varargs (a singleton)
-  vkw  = list!  # varkwargs (a singleton)
-  add  = dict!  # (name -> pattern) mapping
+parse_defn_args = xs -> a, kw, da, dkw, va, vkw, add where
+  a    = []  # positional
+  kw   = []  # keyword-only
+  da   = []  # default values
+  dkw  = {}  # default values for keyword-only arguments
+  va   = []  # varargs (a singleton)
+  vkw  = []  # varkwargs (a singleton)
+  add  = {}  # (name -> pattern) mapping
 
-  pattern = i x -> if
-    x :: Name => if
-      x in a + kw + va => Error x 'duplicate argument name'
-      x == '_'         => 'ignore:{}'.format i
-      otherwise        => x.value
-    otherwise => name where add !! (name = 'pattern:{}'.format i) = x
+  pattern = x index -> if
+    not $ x :: Name =>
+      name = 'pattern:' + str index
+      add !! name = x
+      name
+    x == '_'         => 'ignore:' + str index
+    # If there are duplicate argument names, CPython will overwrite some locals,
+    # and that's bad. We don't check `vkw` because it should always be the
+    # last item, though.
+    x in a + kw + va => raise $ x.invalid 'duplicate argument name'
+    otherwise        => x.value
 
+  # Imagine `x -> x`. Here `x` is a single argument, thus a single `Node`.
+  # Now imagine `x y -> x`. Here `x y` is, technically, a function call?..
   data = if xs :: Expression and not xs.closed and xs.op == '' => xs.args
-            otherwise                                          => list' xs
+            otherwise => [xs,]
 
   for (i, x) in enumerate data => if
+    vkw => raise $ x.invalid 'all arguments should come before `**: varkwargs`'
+    # Variadic keyword is pretty much a catch-all argument,
+    # so it doesn't make sense to have anything after it.
     x :: Expression and not x.closed and x.op == ':' => if
-      x :: LeftBind  => Error x 'default value missing'
-      x :: RightBind => Error x 'argument name missing'
+      # `k: v` -- argument named `k` with default value `v`
+      x :: LeftBind  => raise $ x.invalid 'default value missing'
+      x :: RightBind => raise $ x.invalid 'argument name missing'
       fst x.args == '*' =>
-        va => Error x 'can only have one `*: x`'
-        va.append $ pattern i $ snd x.args
+        # `*: x` -- function is variadic with argument list `x`.
+        va => raise $ x.invalid 'can only have one `*: x`'
+        va.append $ snd x.args `pattern` i
       fst x.args == '**' =>
-        vkw => Error x 'can only have one `**: x`'
-        vkw.append $ pattern i $ snd x.args
+        # `**: x` -- function is keyword-variadic with keyword mapping `x`.
+        vkw.append $ snd x.args `pattern` i
       va =>
+        # Doesn't make sense to have any positional arguments after `*: varargs`,
+        # either. Anything after it becomes a keyword-only argument.
         k, v = x.args
-        k :: Name or Error k 'keywords should be identifiers'
-        kw.append name where dkw !! (name = pattern i k) = v
+        k :: Name or raise (k.invalid 'keyword-only arguments cannot be patterns')
+        # So what's a keyword argument? When calling a function, you can
+        # pass arguments by position (e.g. `f 1 2 3`) or by name
+        # (e.g. `f c: 3 a: 1 b: 2`). If a function is variadic, at some point
+        # the positional arguments start being added to the list. Any argument
+        # defined after `*: something` can therefore only be passed by name.
+        kw.append (name = k `pattern` i)
+        dkw !! name = v
       otherwise =>
-        a.append $ pattern i $ fst x.args
+        a.append  $ fst x.args `pattern` i
         da.append $ snd x.args
-    va => kw.append $ pattern i x
-    da => Error x 'this argument must have a default value'
-    otherwise => a.append $ pattern i x
-
-  len a  > 255 => Error xs 'too many positional arguments'
-  len kw > 255 => Error xs 'too many keyword arguments'
+    va =>
+      # And, unfortunately, you can't call a function like `f (some, pattern): value`.
+      # So a keyword-only pattern would be unusable.
+      x :: Name or raise (x.invalid 'keyword-only arguments cannot be patterns')
+      # Still have to call `pattern` to ensure uniqueness, though.
+      kw.append $ x `pattern` i
+    # In CPython, it's impossible to have an argument without a default value
+    # follow an argument without one, because default values are stored
+    # as a tuple.
+    da => raise $ x.invalid 'this argument must have a default value'
+    otherwise => a.append $ x `pattern` i
+  # And we hit the limitations of 2-byte opargs. Great.
+  len a  > 255 => raise $ xs.invalid 'too many positional arguments'
+  len kw > 255 => raise $ xs.invalid 'too many keyword arguments'
 
 
 Compiler = subclass CodeType where
   __init__ = *: args **: kwargs ~>
-    (super Compiler self).__init__ *: args **: kwargs
+    CodeType.__init__ self *: args **: kwargs
     @loops = list!  # Jumps to the beginnings of loops we're currently in. Used by `continue`.
     @unsafe = set!  # Variables used to store exceptions. May cause reference loops.
+    # For some reason, CPython requires that `__init__` returns None.
+    # Why can't it simply ignore the return value?
     None
 
-  #: Push the result of evaluating `x` onto the stack.
+  #: Push the results of evaluating some expressions onto the stack.
   #:
-  #: pushast :: Node -> a
+  #: pushast :: Node... -> a
   #:
-  pushast = x ~>
+  pushast = *: xs ~> for x in xs =>
     x.loc => if
       @lineoff == -1 =>
         @filename = x.loc !! 0
         @lineno   = x.loc !! 1
         @lineoff  = x.loc !! 1
       otherwise =>
+        # The offset starts at 0, the line number - at `co_firstlineno`.
+        # To find out the next offset, read two bytes from `co_lnotab`,
+        # Add the first byte to the offset, and the second byte to the line no.
         lineoff = x.loc !! 1 - @lineoff
         lineoff > 0 =>
+          # Every opcode that is in `co_code[offset:next offset]` is assumed to be
+          # a part of some expression on that line.
           byteoff = codelen $ drop @byteoff @bytecode
           byteoff > 0 =>
             @lineoff = x.loc !! 1
             @byteoff = len @bytecode
+            # Naturally, these being bytes, they're limited to increments of 0..255.
+            # They can't go back, too, presenting some problems in `where` and
+            # function calls that span multiple lines, as the traceback will always
+            # point to the last line while the error is actually in the first.
             @lnotab += lineoff // 256 * b'\x00\xff'
             @lnotab += byteoff // 256 * b'\xff\x00'
             @lnotab += bytes (byteoff % 256, lineoff % 256)
@@ -208,20 +259,13 @@ Compiler = subclass CodeType where
        x :: Expression => @pushcall  x.op *: x.args
        otherwise       => raise $ TypeError 'invalid node' $ type x
 
-  #: Push some string-object pairs.
-  #: Used by keyword arguments and annotations.
+  #: Push some string-object pairs. Used by keyword arguments and annotations.
   #:
-  #: pushkeys :: [(str, Node)] -> a
+  #: pushmap :: {str: Node} -> a
   #:
-  pushkeys = xs ~> for (k, v) in xs =>
+  pushmap = xs ~> for (k, v) in xs.items! =>
     @pushconst k
     @pushast   v
-
-  #: Push multiple items in one go.
-  #:
-  #: pushlist :: [Node] -> a
-  #:
-  pushlist = xs ~> for x in xs => @pushast x
 
   #: Evaluate multiple expressions, discarding all results but the last.
   #:
@@ -244,8 +288,8 @@ Compiler = subclass CodeType where
       code.append 'STORE_FAST' i delta: -1
     code.append 'RETURN_VALUE' delta: -1
     const = code.frozen
-    @pushkeys  kwdefaults.items!
-    @pushlist  defaults
+    @pushmap  kwdefaults
+    @pushast *: defaults
     @pushcells const.co_freevars
     @append    'BUILD_TUPLE' (len const.co_freevars) $ 1 - len const.co_freevars
     @pushconst const
@@ -264,7 +308,7 @@ Compiler = subclass CodeType where
     # When using infix operators, varargs and keyword arguments are disabled.
     f.infix and not f.closed =>
       @pushast  f
-      @pushlist args
+      @pushast *: args
       @append 'CALL_FUNCTION' (len args) (-len args)
     otherwise =>
       @pushast f
@@ -277,24 +321,24 @@ Compiler = subclass CodeType where
   #: pushcalltop :: int [Node] -> a
   #:
   pushcalltop = argc argv ~>
-    kw = dict!
+    kw = {}
 
     for x in argv => if
       x :: Expression and x.op == ':' => if
-        x :: LeftBind      => Error x 'keyword without a value'
-        x :: RightBind     => Error x 'keyword missing'
-        fst x.args in kw   => Error x 'keywords should be unique'
+        x :: LeftBind      => raise $ x.invalid 'keyword argument without a value'
+        x :: RightBind     => raise $ x.invalid 'keyword argument without a name'
+        fst x.args in kw   => raise $ x.invalid 'keyword arguments should be unique'
         fst x.args :: Name => kw !! (fst x.args).value = snd x.args
-        otherwise          => Error x 'keywords should be identifiers'
+        otherwise          => raise $ x.invalid 'keyword arguments cannot be patterns'
       otherwise => @pushast x
 
     argc += len argv - len kw
-    argc   > 255 => Error (fst argv) 'too many positional arguments'
-    len kw > 255 => Error (fst argv) 'too many keyword arguments'
     va  = kw.pop '*'  None
     vkw = kw.pop '**' None
+    argc   > 255 => raise $ (head argv).invalid 'too many positional arguments'
+    len kw > 255 => raise $ (head argv).invalid 'too many keyword arguments'
 
-    @pushkeys kw.items!
+    @pushmap kw
     va  => @pushast va
     vkw => @pushast vkw
     @append
@@ -317,7 +361,7 @@ Compiler = subclass CodeType where
       # runtime functions (as `pushcall` will prefer compile-time ones.)
       # Still, this is a pretty good method of checking if
       # someone's attempting to partially bind assignment operators, etc.
-      Error f 'this operator requires both arguments'
+      raise $ f.invalid 'this operator requires both arguments'
     otherwise =>
       c = if right     => @spawn f.value ('<L>',) ('<R>',)
              otherwise => @spawn f.value ('<R>',) ('<L>',)
@@ -329,7 +373,7 @@ Compiler = subclass CodeType where
   #:
   #: pushfunc :: Node Node -> a
   #:
-  pushfunc = args body ~> @pushfunc' body *: (DEFNARGS args)
+  pushfunc = args body ~> @pushfunc' body *: (parse_defn_args args)
 
   #: Create a function with known arguments.
   #:
@@ -338,7 +382,7 @@ Compiler = subclass CodeType where
   pushfunc' = body a kw da dkw va vkw patterns ~>
     g = @spawn '<lambda>' a kw va vkw
     g.regsyms body
-    for (_, v) in patterns.items! => for a in @popast_symscan v => g.varnames !! a
+    for (_, v) in patterns.items! => for a in @symbols' v => g.varnames !! a
     for (k, v) in patterns.items! =>
       g.pushname k
       g.popast   v
@@ -347,10 +391,10 @@ Compiler = subclass CodeType where
 
   #: Create a method (a function with an additional argument named "self".)
   #:
-  #: pushmeth :: Node Node -> a
+  #: pushmethod :: Node Node -> a
   #:
-  pushmeth = args body ~>
-    a, *xs = DEFNARGS args
+  pushmethod = args body ~>
+    a, *xs = parse_defn_args args
     a.insert 0 'self'
     @pushfunc' body a *: xs
 
@@ -436,20 +480,19 @@ Compiler = subclass CodeType where
       @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
       @append 'DELETE_FAST' $ @varnames !! '<except-result>'
 
-  #: Check that a condition for a value on top of the stack is true.
+  #: Check that a binary condition holds for items on top of the stack.
+  #: If not, throw an exception (by name.)
   #:
-  #: asserttop :: Node str (-> b) -> a
+  #: assert2 :: str (-> b) -> a
   #:
-  asserttop = x err check ~>
-    @pushast x
-    @append  'DUP_TOP_TWO' delta: 2
-    check!   # delta: -1
+  assert2 = err check ~>
+    @append 'DUP_TOP_TWO' delta: +2
+    check!              # delta: -1
     with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
       @pushname err
       @append   'ROT_THREE'
-      @append   'CALL_FUNCTION' 2 delta: -2
-      @append   'RAISE_VARARGS' 1 delta: -1
-    @append 'POP_TOP' delta: +1  # offset the -2 from the `with` branch
+      @append   'CALL_FUNCTION' 2 delta: +0  # Technically, it's -2, but that
+      @append   'RAISE_VARARGS' 1 delta: -1  # would bring the total to -2.
 
   #: Pop a value off the stack and store it somewhere.
   #:
@@ -461,9 +504,9 @@ Compiler = subclass CodeType where
       otherwise => x.value
 
     x :: Constant or (x :: Name and x in CONSTANTS) =>
-      @asserttop x 'ConstantPatternError' $ ->
-        # assert x == top()
-        @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index '=='
+      @pushast x
+      @assert2 'ConstantPatternError' $ -> @append 'COMPARE_OP' delta: -1 $ dis.cmp_op.index '=='
+      @append 'POP_TOP' delta: -1
       @append 'POP_TOP' delta: -1
 
     x :: LeftBind => if
@@ -472,67 +515,62 @@ Compiler = subclass CodeType where
         @popast $ fst x.args
 
       x.op == '!' =>
-        @asserttop (fst x.args) 'InstancePatternError' $ ->
+        @pushast $ fst x.args
+        @assert2 'InstancePatternError' $ ->
           @pushname '::'
           @append   'ROT_THREE'
           @append   'CALL_FUNCTION' 2 delta: -2
         @append 'POP_TOP' delta: -1
-      otherwise => Error x 'not something one can assign to'
+        @append 'POP_TOP' delta: -1
+      otherwise => raise $ x.invalid 'not something one can assign to'
 
     x :: RightBind => if
       # A single item prefixed with an at sign is a shorthand
       # for attribute assignment. That is, `self.attribute = ...`.
       x.op == '@' =>
         attr, = x.args
-        attr :: Name or Error attr 'not an attribute'
+        attr :: Name or raise (attr.invalid 'not an attribute')
         @pushname 'self' at: x.loc
         @append   'STORE_ATTR' delta: -2 $ @names !! attr.value
 
       # A single item prefixed with a star.
-      #
       # In a comma-separated list, that is an instruction to put excess
       # items in this variable as a list. When there are no other elements,
       # however, the star does nothing.
-      #
       x.op == '*' => @popast $ head x.args
-      otherwise   => Error x 'not something one can assign to'
+      otherwise   => raise $ x.invalid 'not something one can assign to'
 
     x :: Expression => if
       # T a b c = x
-      #
       # => not $ x :: T => raise PatternError
       #    a, b, c = x
-      #
       x.op == '' =>
-        @asserttop (x.args.pop 0) 'InstancePatternError' $ ->
-          # assert top() :: fst x.args
+        x.op.value = ','
+        @pushast $ x.args.pop 0
+        @assert2 'InstancePatternError' $ ->
           @pushname '::'
           @append   'ROT_THREE'
           @append   'CALL_FUNCTION' 2 delta: -2
-        x.op.value = ','
+        @append 'POP_TOP' delta: -1
         @popast x
 
       # x: y = z
-      #
       # => x = y = z
-      #
       x.op == ':' =>
         @append 'DUP_TOP' delta: 1
         @popast $ fst x.args
         @popast $ snd x.args
 
       # A comma-separated list of assignment targets.
-      #
-      # 1. Assume the value on top of the stack is an iterable.
-      # 2. Split it into separate items.
-      # 3. Store each of them in an assignment target from this list.
-      #
+      #   1. Assume the value on top of the stack is an iterable.
+      #   2. Split it into separate items.
+      #   3. Store each of them in an assignment target from this list.
       x.op == ',' =>
         sz = len x.args
         qs = list (where for (i, q) in enumerate x.args =>
           if q :: RightBind and q.op == '*' => yield i)
 
-        if len qs > 1 => Error (x.args !! (qs !! 1)) 'cannot unpack into more than 1 list'
+        if len qs > 1 => raise $ (x.args !! (qs !! 1)).invalid 'cannot unpack into more than 1 list'
            len qs < 1 => @append delta: (sz - 1) 'UNPACK_SEQUENCE' sz
            otherwise  => @append delta: (sz - 1) 'UNPACK_EX' $ i + 256 * (sz - i - 1) where
              i = head qs
@@ -540,15 +578,15 @@ Compiler = subclass CodeType where
 
       x.op == '.' =>
         item, attr = x.args
-        attr :: Name or Error attr 'not an attribute'
+        attr :: Name or raise (attr.invalid 'not an attribute')
         @pushast item
         @append  'STORE_ATTR' delta: -2 $ @names !! attr.value
 
       x.op == '!!' =>
-        @pushlist x.args
+        @pushast *: x.args
         @append   'STORE_SUBSCR' delta: -3
-      otherwise => Error x 'not something one can assign to'
-    otherwise => Error x 'not something one can assign to'
+      otherwise => raise $ x.invalid 'not something one can assign to'
+    otherwise => raise $ x.invalid 'not something one can assign to'
 
   #: Push something, then store it somewhere.
   #:
@@ -561,92 +599,82 @@ Compiler = subclass CodeType where
     @append 'DUP_TOP' delta: +1
     @popast name
 
-  #: Find all local assignments in an AST.
+  #: Given an AST, find out which local variables it requires.
   #:
-  #: symbols :: object -> [str]
+  #: symbols :: Node... -> iter str
   #:
-  symbols = x ~>
-    x :: Expression => if
-      x.op :: Name and x.op.value in @symscan =>
-        fn = @symscan !! x.op.value
-        for a in fn self x.op x.args => yield a
-      otherwise =>
-        for a in @symbols x.op => yield a
-        for q in x.args => for a in @symbols q => yield a
+  symbols = *: xs ~> for x in xs => x :: Expression => yield from $ if
+    x.op :: Name and x.op.value in @symscan => (@symscan !! x.op.value) self x.op x.args
+    otherwise => @symbols x.op *: x.args
 
-  #: Register all symbols for later use.
+  #: Symbol scanner for `popast`. Returns an iterator of modified variables.
+  #:
+  #: symbols' :: Node... -> iter str
+  #:
+  symbols' = *: xs ~> for x in xs => if
+    x :: Expression => if
+      x.op == ',' => yield from $ @symbols' *: x.args
+      x.op == '*' => yield from $ @symbols' *: x.args
+      x.op == ':' => yield from $ @symbols' *: x.args
+      x.op == ''  => yield from $ @symbols' *: (tail x.args)
+      otherwise   => yield from $ @symbols x
+    x :: Name => if
+      x == '@'  => yield 'self'
+      otherwise => yield x.value
+
+  #: Ensure an AST can have access to all local variables it needs.
   #:
   #: regsyms :: Node -> a
   #:
   regsyms = x ~> for n in @symbols x => @varnames !! n
 
-  #: Symbol scanner for `popast`. Returns an iterator of all changed variables.
-  #:
-  #: popast_symscan :: Node -> iter str
-  #:
-  popast_symscan = nm ~> if
-    nm :: Expression => if
-      nm.op == ','  => for x in nm.args => for a in @popast_symscan x => yield a
-      nm.op == '*'  => for x in nm.args => for a in @popast_symscan x => yield a
-      nm.op == ':'  => for x in nm.args => for a in @popast_symscan x => yield a
-      nm.op == ''   => for x in tail nm.args => for a in @popast_symscan x => yield a
-      otherwise     => for a in @symbols nm => yield a
-    nm :: Name => if
-      nm == '@' => yield 'self'
-      otherwise => yield nm.value
-
   symscan = dict'
-    '',  f args ~> @symbols $ Expression f.loc *: args
+    '', f args ~> @symbols $ Expression f.loc *: args
 
-    '=', FixedArity 2 2 $ f (n, x) ~>
-      for a in @popast_symscan n => yield a
-      for a in @symbols        x => yield a
+    '=', fix 2 2 $ f (n, x) ~>
+      yield from $ @symbols' n
+      yield from $ @symbols  x
 
-    ':=', FixedArity 2 2 $ f (n, x) ~>
-      for a in @popast_symscan n => not $ a in @enclosed => yield a
-      for a in @symbols x        => yield a
+    ':=', fix 2 2 $ f (n, x) ~>
+      yield from $ filter (not <- (in @enclosed)) $ @symbols' n
+      yield from $ @symbols x
 
-    'for', FixedArity 1 2 $ f (var, *body) ~>
-      not $ var :: Expression and var.op == 'in' and len var.args == 2 => Error var $ if
+    'for', fix 1 2 $ f (var, *body) ~>
+      not $ var :: Expression and var.op == 'in' and len var.args == 2 => raise $ var.invalid $ if
         # In Python, `in` has a higher precedence than `,`. That is,
         # if you simply write `a, b in c` you get `a, (b in c)`. `for a, b in c:`
         # is merely a special case in the parser; dg has no such thing.
         var :: Expression and var.op == ',' and not var.closed => 'forgot the parentheses?'
-        otherwise => 'should be `a in b`'
-
+        otherwise => 'should be `for a in b => ...`'
       v, e = var.args
-      for a in @popast_symscan v => yield a
-      for a in @symbols        e => yield a
-      for x in body => for a in @symbols x => yield a
+      yield from $ @symbols' v
+      yield from $ @symbols  e *: body
 
-    'except', FixedArity 1 ANY $ ArrowPairs $ f ((e, x), *y) ~>
-      for a in @popast_symscan e => yield a
-      for a in @symbols        x => yield a
-      for (b, c) in y =>
-        for a in @symbols b => yield a
-        for a in @symbols c => yield a
+    'except', fix 1 inf $ pair_args $ f ((e, x), *y) ~>
+      yield from $ @symbols' e
+      yield from $ @symbols  x
+      for t in y => yield from $ @symbols *: t
 
-    'import', FixedArity 1 ANY $ f (name, *flags) ~>
+    'import', fix 1 inf $ f (name, *flags) ~>
       qual   = False
       pure   = False
       reload = False
+      parent = None
 
       for flag in flags => if
         flag == 'qualified' => qual   = True
         flag == 'pure'      => pure   = True
         flag == 'reload'    => reload = True
-        otherwise => Error flag 'unsupported import flag'
+        otherwise => raise $ flag.invalid 'unsupported `import` modifier'
 
       if
         name :: Constant and name.value :: str =>
-          parent, path = except
+          parent, name = except
             err => __dg_parse_import__ name.value
-            err :: ImportError => Error name $ str err
-          yield $ path !! (-not qual)
-          f._impdata = parent, path, qual, pure, reload
-        otherwise =>
-          for a in @symbols name => yield a
-          f._impdata = None, name, qual, pure, reload
+            err :: ImportError => raise $ name.invalid $ str err
+          yield $ name !! (-not qual)
+        otherwise => yield from $ @symbols name
+      f._impdata = parent, name, qual, pure, reload
 
     # These create new functions. We shouldn't scan them.
     '->',    _ _ ~> ()
@@ -656,93 +684,93 @@ Compiler = subclass CodeType where
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
     '\n',  f xs ~> @pushlast *: xs
-    '=',   FixedArity 2 2 $ f (name, value) ~> @pushpop  name value
-    ':=',  FixedArity 2 2 $ f (name, value) ~> @pushpop  name value
-    '->',  FixedArity 2 2 $ f (args, body)  ~> @pushfunc args body
-    '~>',  FixedArity 2 2 $ f (args, body)  ~> @pushmeth args body
-    '!!~', FixedArity 2 2 $ f (coll, item)  ~>
+    '=',   fix 2 2 $ f (name, value) ~> @pushpop name value
+    ':=',  fix 2 2 $ f (name, value) ~> @pushpop name value
+    '->',  fix 2 2 $ f (args, body)  ~> @pushfunc   args body
+    '~>',  fix 2 2 $ f (args, body)  ~> @pushmethod args body
+    '!!~', fix 2 2 $ f (coll, item)  ~>
       @pushast   coll
       @pushast   item
       @append    'DELETE_SUBSCR' delta: -2
       @pushconst None
 
-    ':',      WithError 'keyword argument to what?'
-    '!',      WithError 'this operator is postfix'
-    '~',      WithError 'this operator is prefix'
-    '@',      WithError 'this operator is prefix'
-    ',',      WithOpcode 'BUILD_TUPLE'
-    "set'",   WithOpcode 'BUILD_SET'
-    "list'",  WithOpcode 'BUILD_LIST'
-    "tuple'", WithOpcode 'BUILD_TUPLE'
-    'or',     WithJump   'JUMP_IF_TRUE_OR_POP'
-    '=>',     WithJump   'JUMP_IF_FALSE_OR_POP'
-    'and',    WithJump   'JUMP_IF_FALSE_OR_POP'
-    'not',    FixedArity 1 1 $ WithOpcode 'UNARY_NOT'
-    '!!',     FixedArity 2 2 $ WithOpcode 'BINARY_SUBSCR'
-    '+',      FixedArity 2 2 $ WithOpcode 'BINARY_ADD'
-    '-',      FixedArity 2 2 $ WithOpcode 'BINARY_SUBTRACT'
-    '*',      FixedArity 2 2 $ WithOpcode 'BINARY_MULTIPLY'
-    '**',     FixedArity 2 2 $ WithOpcode 'BINARY_POWER'
-    '/',      FixedArity 2 2 $ WithOpcode 'BINARY_TRUE_DIVIDE'
-    '//',     FixedArity 2 2 $ WithOpcode 'BINARY_FLOOR_DIVIDE'
-    '%',      FixedArity 2 2 $ WithOpcode 'BINARY_MODULO'
-    '&',      FixedArity 2 2 $ WithOpcode 'BINARY_AND'
-    '^',      FixedArity 2 2 $ WithOpcode 'BINARY_XOR'
-    '|',      FixedArity 2 2 $ WithOpcode 'BINARY_OR'
-    '<<',     FixedArity 2 2 $ WithOpcode 'BINARY_LSHIFT'
-    '>>',     FixedArity 2 2 $ WithOpcode 'BINARY_RSHIFT'
-    '!!=',    FixedArity 2 2 $ Inplace $ WithOpcode 'BINARY_SUBSCR'
-    '+=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_ADD'
-    '-=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_SUBTRACT'
-    '*=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_MULTIPLY'
-    '**=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_POWER'
-    '/=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_TRUE_DIVIDE'
-    '//=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_FLOOR_DIVIDE'
-    '%=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_MODULO'
-    '&=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_AND'
-    '^=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_XOR'
-    '|=',     FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_OR'
-    '<<=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_LSHIFT'
-    '>>=',    FixedArity 2 2 $ Inplace $ WithOpcode 'INPLACE_RSHIFT'
-    'is',     Comparison
-    'in',     Comparison
-    '<',      Comparison
-    '<=',     Comparison
-    '==',     Comparison
-    '!=',     Comparison
-    '>=',     Comparison
-    '>',      Comparison
+    ':',      undefined 'keyword argument to what function?'
+    '!',      undefined 'this operator is postfix'
+    '~',      undefined 'this operator is prefix'
+    '@',      undefined 'this operator is prefix'
+    ',',      apply_one 'BUILD_TUPLE'
+    "set'",   apply_one 'BUILD_SET'
+    "list'",  apply_one 'BUILD_LIST'
+    "tuple'", apply_one 'BUILD_TUPLE'
+    'or',     either 'JUMP_IF_TRUE_OR_POP'
+    '=>',     either 'JUMP_IF_FALSE_OR_POP'
+    'and',    either 'JUMP_IF_FALSE_OR_POP'
+    'not',    fix 1 1 $ apply_one 'UNARY_NOT'
+    '!!',     fix 2 2 $ apply_one 'BINARY_SUBSCR'
+    '+',      fix 2 2 $ apply_one 'BINARY_ADD'
+    '-',      fix 2 2 $ apply_one 'BINARY_SUBTRACT'
+    '*',      fix 2 2 $ apply_one 'BINARY_MULTIPLY'
+    '**',     fix 2 2 $ apply_one 'BINARY_POWER'
+    '/',      fix 2 2 $ apply_one 'BINARY_TRUE_DIVIDE'
+    '//',     fix 2 2 $ apply_one 'BINARY_FLOOR_DIVIDE'
+    '%',      fix 2 2 $ apply_one 'BINARY_MODULO'
+    '&',      fix 2 2 $ apply_one 'BINARY_AND'
+    '^',      fix 2 2 $ apply_one 'BINARY_XOR'
+    '|',      fix 2 2 $ apply_one 'BINARY_OR'
+    '<<',     fix 2 2 $ apply_one 'BINARY_LSHIFT'
+    '>>',     fix 2 2 $ apply_one 'BINARY_RSHIFT'
+    '!!=',    fix 2 2 $ inplace $ apply_one 'BINARY_SUBSCR'
+    '+=',     fix 2 2 $ inplace $ apply_one 'INPLACE_ADD'
+    '-=',     fix 2 2 $ inplace $ apply_one 'INPLACE_SUBTRACT'
+    '*=',     fix 2 2 $ inplace $ apply_one 'INPLACE_MULTIPLY'
+    '**=',    fix 2 2 $ inplace $ apply_one 'INPLACE_POWER'
+    '/=',     fix 2 2 $ inplace $ apply_one 'INPLACE_TRUE_DIVIDE'
+    '//=',    fix 2 2 $ inplace $ apply_one 'INPLACE_FLOOR_DIVIDE'
+    '%=',     fix 2 2 $ inplace $ apply_one 'INPLACE_MODULO'
+    '&=',     fix 2 2 $ inplace $ apply_one 'INPLACE_AND'
+    '^=',     fix 2 2 $ inplace $ apply_one 'INPLACE_XOR'
+    '|=',     fix 2 2 $ inplace $ apply_one 'INPLACE_OR'
+    '<<=',    fix 2 2 $ inplace $ apply_one 'INPLACE_LSHIFT'
+    '>>=',    fix 2 2 $ inplace $ apply_one 'INPLACE_RSHIFT'
+    'is',     compare
+    'in',     compare
+    '<',      compare
+    '<=',     compare
+    '==',     compare
+    '!=',     compare
+    '>=',     compare
+    '>',      compare
 
-    '.', FixedArity 2 2 $ f (x, y) ~>
-      y :: Name or Error y 'not an attribute'
+    '.', fix 2 2 $ f (x, y) ~>
+      y :: Name or raise (y.invalid 'not an attribute')
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
-    '|>.', FixedArity 2 2 $ f (x, y) ~>
-      y :: Name or Error y 'not an attribute'
+    '|>.', fix 2 2 $ f (x, y) ~>
+      y :: Name or raise (y.invalid 'not an attribute')
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
-    '!.', FixedArity 2 2 $ f (x, y) ~>
-      y :: Name or Error y 'not an attribute'
+    '!.', fix 2 2 $ f (x, y) ~>
+      y :: Name or raise (y.invalid 'not an attribute')
       @pushcall x
       @append   'LOAD_ATTR' $ @names !! y.value
 
-    '.~', FixedArity 2 2 $ f (x, y) ~>
-      y :: Name or Error y 'not an attribute'
+    '.~', fix 2 2 $ f (x, y) ~>
+      y :: Name or raise (y.invalid 'not an attribute')
       @pushast   x
       @append    'DELETE_ATTR' delta: -1 $ @names !! y.value
       @pushconst None
 
-    '$', FixedArity 2 2 $ f (g, x) ~> if
+    '$', fix 2 2 $ f (g, x) ~> if
       g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
       otherwise => @pushcall g x
 
-    '<|', FixedArity 2 2 $ f (g, x) ~> if
+    '<|', fix 2 2 $ f (g, x) ~> if
       g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
       otherwise => @pushcall g x
 
-    '|>', FixedArity 2 2 $ f (x, g) ~> if
+    '|>', fix 2 2 $ f (x, g) ~> if
       g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
       otherwise => @pushcall g x
 
@@ -756,8 +784,7 @@ Compiler = subclass CodeType where
     #: import 'smth' pure reload     as above, but re-evaluates the module even if it
     #:                               was previously imported
     #:
-    'import', FixedArity 1 ANY $ f (name, *flags) ~>
-      hasattr f '_impdata' or Error name "internal error: should've called @symbols first"
+    'import', fix 1 inf $ f (name, *flags) ~>
       parent, path, qual, pure, reload = f._impdata
 
       if
@@ -789,7 +816,7 @@ Compiler = subclass CodeType where
           @append    'POP_TOP'     delta: -1
 
       not pure =>
-        parent is None => Error path 'non-pure imports should be constant'
+        parent is None => raise $ path.invalid 'non-pure imports should be constant'
         @append 'DUP_TOP' delta: +1
         @popast $ Name name.loc False $ path !! (-not qual)
 
@@ -797,7 +824,7 @@ Compiler = subclass CodeType where
     #:
     #: I.e. `a where b` makes stuff from `b` only visible in `a`.
     #:
-    'where', FixedArity 2 2 $ f (ret, env) ~>
+    'where', fix 2 2 $ f (ret, env) ~>
       g = @spawn '<lambda>'
       g.regsyms  env
       g.regsyms  ret
@@ -823,7 +850,7 @@ Compiler = subclass CodeType where
     #:
     #: I think it's called IDisposable or something.
     #:
-    'with', FixedArity 2 2 $ f (ctx, body) ~>
+    'with', fix 2 2 $ f (ctx, body) ~>
       var, ctx = if
         ctx :: Expression and len ctx.args == 2 and ctx.op == '=' => ctx.args
         otherwise => Name ctx.loc False '_', ctx
@@ -844,7 +871,7 @@ Compiler = subclass CodeType where
     #:
     #: I wonder if there's a nicer way to write interlinked jumps.
     #:
-    'while', FixedArity 2 2 $ f (cond, body) ~>
+    'while', fix 2 2 $ f (cond, body) ~>
       @pushconst False
       with @jump 'SETUP_LOOP' =>
         restart = @jump 'JUMP_ABSOLUTE' True
@@ -863,7 +890,7 @@ Compiler = subclass CodeType where
     #:
     #: Note that `var` may be any valid assignment target, not only a local variable.
     #:
-    'for', FixedArity 2 2 $ f (var, body) ~>
+    'for', fix 2 2 $ f (var, body) ~>
       # `var` was already syntax-checked in `symscan`.
       @pushconst False
       with @jump 'SETUP_LOOP' =>
@@ -885,34 +912,34 @@ Compiler = subclass CodeType where
     #:
     #: It will also return False.
     #:
-    'break', FixedArity 0 0 $ f _ ~> if
+    'break', fix 0 0 $ f _ ~> if
       @loops    => @append 'BREAK_LOOP'    delta: +1
-      otherwise => Error f '`break` outside of a loop'
+      otherwise => raise $ f.invalid 'no loop to `break` out of'
 
     #: Continue on to the next iteration.
     #:
     #: Does not affect the return value of the loop.
     #:
-    'continue', FixedArity 0 0 $ f _ ~> if
+    'continue', fix 0 0 $ f _ ~> if
       @loops    => (last @loops).set
-      otherwise => Error f '`continue` outside of a loop'
+      otherwise => raise $ f.invalid 'no loop to `continue`'
 
     #: Yield control to the caller.
     #:
     #: Did you know that generators have a `send` method? Look it up.
     #:
-    'yield', FixedArity 1 2 $ f (*flags, it) ~>
+    'yield', fix 1 2 $ f (*flags, it) ~>
       from = False
       for f in flags => if
         f == 'from' => from = True
-        otherwise   => Error f 'unrecognized option'
+        otherwise   => raise $ f.invalid 'unrecognized `yield` modifier'
 
       @generator = True
       @pushast it
       if from      => @append 'GET_ITER', @pushconst None, @append 'YIELD_FROM' delta: -1
          otherwise => @append 'YIELD_VALUE'
 
-    'if', ArrowPairs $ f xs ~>
+    'if', pair_args $ f xs ~>
       jumps = list
         where for (cond, action) in xs => yield $
           @pushast cond
@@ -922,20 +949,20 @@ Compiler = subclass CodeType where
       @pushconst None
       for x in jumps => x.set
 
-    'raise', FixedArity 1 1 $ f (exc,) ~>
+    'raise', fix 1 1 $ f (exc,) ~>
       # TODO __cause__
       @pushast exc
       @append  'RAISE_VARARGS' 1
 
-    'except', FixedArity 1 ANY $ ArrowPairs $ f ((name, try), *xs) ~>
+    'except', fix 1 inf $ pair_args $ f ((name, try), *xs) ~>
       @pushconst None
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
          otherwise                          => @pushexcept  name try xs
 
   infixl = dict'
-    ':', WithError 'keyword argument to what?'
-    '~', WithError 'this operator is prefix'
-    '@', WithError 'this operator is prefix'
+    ':', undefined 'keyword argument to what function?'
+    '~', undefined 'this operator is prefix'
+    '@', undefined 'this operator is prefix'
 
     '!',     f g ~> @pushcall g
     ',',     f x ~> @pushcall f x  # i.e. same as in `prefix`.
@@ -946,9 +973,9 @@ Compiler = subclass CodeType where
     'where', f x ~> @pushcall f x $ Constant f.loc None
 
   infixr = dict'
-    ':', WithError 'keyword argument to what?'
-    '!', WithError 'this operator is postfix'
-    ',', WithError 'this operator is unbindable'
+    ':', undefined 'keyword argument to what function?'
+    '!', undefined 'this operator is postfix'
+    ',', undefined 'this operator is unbindable'
 
     '~',     f x ~> (@pushast x, @append 'UNARY_INVERT')
     '-',     f x ~> (@pushast x, @append 'UNARY_NEGATIVE')
