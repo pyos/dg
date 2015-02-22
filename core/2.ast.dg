@@ -1,18 +1,18 @@
 #: The set of alphanumeric identifiers that should be nonetheless
 #: treated as infix operators. (Normally, alphanumeric names are prefix
 #: while punctuation is infix.)
-INFIXN = set' 'and' 'in' 'is' 'or' 'where'
+INFIXN = 'and', 'in', 'is', 'or', 'where'
 #: The set of operators that accept any no. of arguments, mostly for optimization.
 #: (Normally, an operator is binary.)
-VARARY = set' ',' '\n' ''
+VARARY = ',', '\n', ''
 #: The set of operators that should not accept a left-hand expression,
 #: so `a R b` becomes `a (R b)`.
-NOLHS = set' '@' '~'
+NOLHS = '@', '~'
 #: Different side, same story. `a R b` becomes `(a R) b`.
-NORHS = set' '!'
+NORHS = '!',
 #: Operators with these flags behave differently in a null-denotation context.
 #: See the parser (`Parser.special`) for details.
-FLAGS = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
+FLAGS = dict for: 1 while: 1 with: 1 if: 2 except: 2
 #: Infix operator binding strength. `a R b Q c` <=> `a R (b Q c)` iff
 #: the left binding strength of `Q` is greater than the right binding strength
 #: of `R`; otherwise, it's `(a R b) Q c`.
@@ -99,15 +99,16 @@ Node = subclass object where
 
 
 Name = subclass Node where
-  __init__ = self @loc infix @value ->
-    @infix  = @value in INFIXN or infix
-    @nolhs  = @value in NOLHS
-    @norhs  = @value in NORHS
-    @varary = @value in VARARY
+  __init__ = self @loc infix value ->
+    @value  = value
+    @infix  = value in INFIXN or infix
+    @nolhs  = value in NOLHS
+    @norhs  = value in NORHS
+    @varary = value in VARARY
     @flags  = FLAGS.get @value 0
     None
 
-  __lt__   = self x -> STRENGTH.get self (13, 13) !! 1 < STRENGTH.get x (13, 13) !! 0
+  __lt__   = self x -> STRENGTH.get @value (13, 13) !! 1 < STRENGTH.get x (13, 13) !! 0
   __eq__   = self x -> @value == x
   __hash__ = self   -> hash @value
   __repr__ = self   -> if
@@ -136,17 +137,3 @@ RightBind = subclass Expression where
 Ending = subclass Node where
   __init__ = self @loc @value -> None
   __repr__ = self -> '<Ending: {!r}>'.format @value
-
-
-#: Given some expressions joined by infix commas, convert them into expressions
-#: joined by the infix operator `name`. Intended to be used as a block handler; e.g.
-#: a []-block would use that to convert a tuple into a list at compile-time.
-#: See `Parser.blkinds`.
-#:
-#: tuple_into :: str -> (str, int, int, str) Node -> Node
-#:
-tuple_into = name -> pos x -> Expression x.loc (Name x.loc True name) *:
-  if x :: Constant   and x.value is None              => ()
-     x :: LeftBind   and x.op == ','                  => x.args
-     x :: Expression and x.op == ',' and not x.closed => x.args
-     otherwise => raise $ SyntaxError 'not a comma-separated list' pos

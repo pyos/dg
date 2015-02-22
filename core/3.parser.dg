@@ -17,6 +17,17 @@ parse = data filename: '<string>' -> (Parser data filename).file
 parsefd = data filename: '<stream>' -> parse (data.read -1) filename
 
 
+#: Given a comma-separated list of items, convert it into a call to `name`.
+#:
+#: tuple_into :: str Node -> Node
+#:
+tuple_into = name x -> Expression x.loc (Name x.loc True name) *:
+  if x :: Constant   and x.value is None              => ()
+     x :: LeftBind   and x.op == ','                  => x.args
+     x :: Expression and x.op == ',' and not x.closed => x.args
+     otherwise => (x,)
+
+
 Parser = subclass collections.deque where
   #: A precompiled regular expression that should match a single token.
   #: Every top-level group must be named; its name is passed to `token`
@@ -59,7 +70,7 @@ Parser = subclass collections.deque where
   #:
   __init__ = @data @filename ~>
     @tokens = @regex.finditer @data
-    @indent = collections.deque $ list' 0
+    @indent = collections.deque [0,]
     @lineno = 1
     @charno = 1
     @lines  = @data.split '\n'
@@ -90,7 +101,7 @@ Parser = subclass collections.deque where
   #:
   #: endof :: dict str str
   #:
-  endof = dict' ('(', ')') ('{', '}') ('[', ']')
+  endof = {('(', ')'), ('{', '}'), ('[', ']')}
 
   #: Handle a single regex match. (The second argument is the name of its top-level group.)
   #:
@@ -152,30 +163,21 @@ Parser = subclass collections.deque where
       x.value == '\n' => raise $ SyntaxError 'indentation < 0?'       x.loc
       otherwise       => raise $ SyntaxError 'unexpected close-paren' x.loc
 
-  #: A block kind is defined by a function that creates an empty block
-  #: and a function that takes the contents of a block and preprocesses them.
-  #:
-  #: blkinds :: dict (Maybe str) ((Location -> Node), (Location Node -> Node))
-  #:
-  blkinds = dict'
-    '{',  ((pos -> Constant pos None), tuple_into "dict'")
-    '[',  ((pos -> Constant pos None), tuple_into "list'")
-    '(',  ((pos -> Constant pos tuple!), (_ ast -> ast))
-    None, ((pos -> Constant pos None),   (_ ast -> ast))
-
   #: Read tokens until `end` returns True.
   #:
   #: block :: (str, int, int, str) (Maybe str) (Node -> bool) -> Node
   #:
   block = pos kind end ~>
-    null, one = @blkinds !! kind
     isexpr = False
-    result = null pos
+    result = Constant pos $ if
+      # Do not put `()` here; that'd be a circular definition.
+      kind == '(' => tuple!
+      otherwise   => None
 
     while not $ end (x = next self) => if
       x :: Ending => if
-        x.value == '\n' => raise $ SyntaxError 'indentation less than minimum for this block' x.loc
         x.value == '\0' => raise $ SyntaxError 'unexpected EOF (a block was not closed)'      pos
+        x.value == '\n' => raise $ SyntaxError 'indentation less than minimum for this block' x.loc
         otherwise       => raise $ SyntaxError 'invalid close-paren'                          x.loc
       # BTW, a "null denotation" is when a node is at the start of a token group,
       # like in the last branch. A "left denotation" is when a node is to the right
@@ -183,7 +185,10 @@ Parser = subclass collections.deque where
       isexpr    => result = @infix (Name x.loc True '') result x
       x != '\n' => result, isexpr = @special x, True
 
-    result = one pos result
+    result = if
+      kind == '{' => tuple_into "dict'" result
+      kind == '[' => tuple_into "list'" result
+      otherwise   => result
     result.closed |= not $ kind is None
     result.indent  =       kind is None
     result

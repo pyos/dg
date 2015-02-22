@@ -37,13 +37,10 @@ Jump = subclass object where
 
     if @reverse  => @relative => raise $ SystemError 'cannot make reverse relative jumps'
        otherwise => @code.append @op 0
-
     None
 
-  # Context manager protocol: a `jump-set` statement pair may
-  # be replaced with a `with jump`.
   __enter__ = self        -> self
-  __exit__  = self t v tv -> False where if t is None => @set
+  __exit__  = self t v tv -> @set => False
 
   #: Set the target of a forward jump. Insert the opcode of a reverse jump.
   #:
@@ -103,11 +100,10 @@ CodeType = subclass object where
     @function  = bool function
     @generator = False  # only becomes known during generation
     @name      = str name
-    @qualname  = ''.join $ filter (x -> x) $ list'
-      cell => cell.qualname
-      cell => cell.qualname => '.'
-      cell => cell.function => '<locals>.'
-      function => name
+    @qualname  = ''
+    cell => cell.qualname => @qualname += cell.qualname + '.'
+    cell => cell.function => @qualname += '<locals>.'
+    function => @qualname += name
 
     @var        = None
     @fastlocals = collections.defaultdict dict
@@ -121,7 +117,7 @@ CodeType = subclass object where
       otherwise => set!
     for v in itertools.chain a kw va vkw => @varnames !! v
 
-    @bytecode  = list!
+    @bytecode  = []
     @stacksize = 0
     @currstack = 0
 
@@ -151,12 +147,16 @@ CodeType = subclass object where
   #:
   #: flags :: int
   #:
-  flags = ~> foldl1 (|) $ filter (x -> x) $ list'
-    @function  => 0b000011  # globals != locals & the latter are stored in an array
-    @varargs   => 0b000100
-    @varkws    => 0b001000
-    @generator => 0b100000
-    not @cellvars => not @freevars => 0b1000000
+  flags = ~>
+    # Flags >= 0x1000 are reserved for `__future__` imports. We don't have those.
+    0b1000000 * not (@cellvars or @freevars) |
+     0b100000 * bool @generator |
+     #0b10000 = CO_NESTED -- set iff @freevars not empty; an obsolete `__future__` flag.
+       0b1000 * bool @varkws    |
+        0b100 * bool @varargs   |
+        #0b10 = CO_NEWLOCALS -- do not set `locals()` to the same value as `globals()`
+        # 0b1 = CO_OPTIMIZED -- do not create `locals()` at all, use an array instead
+         0b11 * bool @function
 
   #: Generate a sequence of bytes for an opcode with an argument.
   #:
@@ -175,11 +175,11 @@ CodeType = subclass object where
   #:
   frozen = ~>
     code     = b''.join $ map @code @bytecode
-    consts   = list  $ map fst $ sorted @consts key: (@consts !!)
-    names    = tuple $ sorted @names    key: (@names    !!)
-    varnames = tuple $ sorted @varnames key: (@varnames !!)
-    cellvars = tuple $ sorted @cellvars key: (@cellvars !!)
-    freevars = tuple $ sorted @freevars key: (@freevars !!) reverse: True
+    consts   = list  $ map fst $ sorted @consts key: @consts.__getitem__
+    names    = tuple $ sorted @names    key: @names.__getitem__
+    varnames = tuple $ sorted @varnames key: @varnames.__getitem__
+    cellvars = tuple $ sorted @cellvars key: @cellvars.__getitem__
+    freevars = tuple $ sorted @freevars key: @freevars.__getitem__ reverse: True
 
     if @optimize =>
       # Most of the functions are unaffected by the first run, but some
@@ -204,8 +204,8 @@ CodeType = subclass object where
     @depth delta
     # These indices are used to quickly change all references
     # to an array slot into references to a cell.
-    if name == 'LOAD_FAST'  => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'LOAD_DEREF'
-    if name == 'STORE_FAST' => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'STORE_DEREF'
+    name == 'LOAD_FAST'  => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'LOAD_DEREF'
+    name == 'STORE_FAST' => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'STORE_DEREF'
     @bytecode.append (dis.opmap !! name, arg)
 
   #: Request a permanent change in stack size.
@@ -248,15 +248,14 @@ CodeType = subclass object where
     v in @enclosed => @append 'STORE_DEREF'  delta: -1 $ @freevars !! v
     otherwise      => @append 'STORE_GLOBAL' delta: -1 $ @names    !! v
 
-  #: Load cell objects referencing some names.
-  #:
-  #: Used to create closures.
+  #: Load cell objects referencing some names. Used to create closures.
   #:
   #: pushcells :: [str] -> a
   #:
   pushcells = vs ~> for v in vs =>
     if v in @varnames => for i in @fastlocals !! (@varnames !! v) =>
-      # Note that this affects variables created after the closure in no way.
+      # All previously inserted `*_FAST` references to that name should be
+      # changed to `*_DEREF` to keep the cell contents up-to-date.
       @bytecode !! i = @fastlocals !! (@varnames !! v) !! i, @cellvars !! v
 
     @append 'LOAD_CLOSURE' delta: +1 $ if

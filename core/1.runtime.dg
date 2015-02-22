@@ -26,6 +26,8 @@ globals! !! 'finally'   = True  # and cannot be assigned to directly.
 :+  = a b -> itertools.chain (a,) b
 +:  = a b -> itertools.chain a (b,)
 in  = a b -> a in b
+and = a b -> a and b
+or  = a b -> a or b
 is  = operator.is_
 not = operator.not_
 <   = operator.lt
@@ -67,7 +69,7 @@ scanl1 = f    xs -> itertools.accumulate xs f
 
 head = xs -> next $ iter xs
 fst  = xs -> next $ iter xs  # the different name made sense in Haskell, so whatever.
-snd  = xs -> head $ drop 1 xs
+snd  = xs -> next $ drop 1 xs
 tail = xs -> list $ drop 1 xs
 init = !! slice None -1
 last = !! -1
@@ -141,17 +143,20 @@ import '/collections'
 
 
 ModuleLoader = subclass machinery.SourceFileLoader where
-  source_to_code = data filename ~> compile (data.decode 'utf-8') filename
+  source_to_code = data filename ~>
+    # XXX this method exists only in Python 3.4+
+    compile (data.decode 'utf-8') filename
+
   exec_module = module ~>
     module.__builtins__ = BUILTINS
     machinery.SourceFileLoader.exec_module self module
 
-
+# Import Hooks 2: Electric Boogaloo.
 # This time we want to add `.dg` to the list of extensions findable
 # by `FileFinder`. Too bad the path hook is not a class, but a closure.
 sys.path_importer_cache.clear!
 sys.path_hooks.append $ machinery.FileFinder.path_hook (ModuleLoader, list' '.dg') *:
-  (last (sys.path_hooks.pop -1).__closure__).cell_contents
+  ((sys.path_hooks.pop -1).__closure__ !! -1).cell_contents
 # When doing `python -m dg`, instead of actually importing `/__main__.dg`
 # `runpy` attempts to execute it directly in a pre-existing module named `__main__`.
 # Since it wasn't imported through `ModuleLoader`, it lacks the new builtins,
