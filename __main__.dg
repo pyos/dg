@@ -49,38 +49,33 @@ Environment variables:
   PYTHONVERBOSE              -v
 '''
 
-
 _arg = -> if
   len sys.argv > 1 => sys.argv.pop 1
-  otherwise        => exit $ 'error: {[0]} requires an argument'.format sys.argv
+  otherwise        => exit $ 'error: {} requires an argument'.format mode
 
+sys.argv.pop 0  # `-m`
+sys.argv = mode, *_ = sys.argv or ['-',]
 
-sys.argv.pop 0
-sys.argv = sys.argv or list' '-'
-
-if head sys.argv == '-h' => print USAGE
-   head sys.argv == '-b' =>
+if mode == '-h' => print USAGE
+   mode == '-b' =>
      tag, version = if
        len sys.argv > 2 => sys.argv !! 1, int (sys.argv !! 2) 16
        len sys.argv > 1 => sys.argv !! 1, dg.PY_VERSION
        otherwise        => dg.PY_TAG,     dg.PY_VERSION
-     print '[0] loading the current version'
      this = core.load dg.PY_TAG dg.BUNDLE_DIR
-     print '[1] building a new version...'
      this = list $ core.build this tag version
+     print '[INFO] build 1 (bootstrap) ok'
      if tag != dg.PY_TAG => print '[WARN] building for a different VM; self-testing impossible.'
         otherwise =>
-          print '[2] self-testing the new version and applying its optimizations to itself...'
           this = list $ core.build this tag version
-          print '[3] self-testing the optimized version...'
           this = list $ core.build this tag version
-     print '[4] saving the new version'
+          print '[INFO] builds 2 & 3 (test) ok'
      core.save this tag dg.BUNDLE_DIR
 
-   head sys.argv == '-m' => runpy.run_module _arg! dg.BUILTINS '__main__' True
-   head sys.argv == '-c' => repl.runcode $ dg.compile _arg! '<string>'
-   head sys.argv != '-'  => repl.runfile $ open encoding: 'utf-8' $ head sys.argv
-   otherwise             => repl.runfile sys.stdin where if
+   mode == '-m' => runpy.run_module _arg! (dict __builtins__: dg.BUILTINS) '__main__' True
+   mode == '-c' => repl.runcode $ dg.compile _arg! '<command>'
+   mode != '-'  => repl.runfile $ open encoding: 'utf-8' $ head sys.argv
+   otherwise    => repl.runfile sys.stdin where if
      sys.flags.ignore_environment =>  # `python -E`
      (fn = os.environ.get 'PYTHONSTARTUPMOD') => importlib.import_module fn
-     (fn = os.environ.get 'PYTHONSTARTUP')    => runpy.run_path fn dg.BUILTINS '__main__'
+     (fn = os.environ.get 'PYTHONSTARTUP')    => runpy.run_path fn {} '__main__'

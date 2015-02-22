@@ -20,20 +20,6 @@ except
     Readline = subclass object where __init__, input = (_ ~> None), builtins.input
 
   _err is None =>
-    #: Get a set of attributes of an object. `path` should be a dotted name.
-    #:
-    #: _attributes_of :: str (dict str object) -> set str
-    #:
-    _attributes_of = path ns -> except
-      err =>
-        item = eval (compileast $ parse path) ns
-        if not $ item :: types.ModuleType => dir item
-           # Hide dg built-ins, which are inserted into every global namespace
-           # (because CPython cannot destroy `__builtins__` properly on shutdown.)
-           otherwise =>
-             filter (x -> not $ x in BUILTINS and getattr item x is BUILTINS !! x) $ dir item
-      err :: Exception => set!
-
     Teletype = subclass readline.Teletype where
     Readline = subclass readline.mix.History readline.mix.Completer readline.Readline where
       # Matches any number of valid dg identifiers separated by dots.
@@ -55,13 +41,13 @@ except
       # code via `__getattr__`, too. WARNING, I guess.)
       complete_word = word ~>
         path, dot, word = word.rpartition '.'
-        filter_fn = if
+        sorted $ map (path + dot +) $
           # Hide private attributes unless an underscore was typed.
-          word      => n -> n.startswith word
-          otherwise => n -> not $ n.startswith '_'
-        sorted $ map (path + dot +) $ filter filter_fn $
-          if path      => _attributes_of path @completion_ns
-             otherwise => set Compiler.prefix | set builtins.__dict__ | set @completion_ns
+          filter (w -> w.startswith word and (word or not (w.startswith '_'))) $ if
+            not path  => set Compiler.prefix | set BUILTINS | set @completion_ns
+            otherwise => except
+              err => dir $ eval path @completion_ns
+              err :: Exception => []
 
 
 compilerepl = source -> except
@@ -88,8 +74,8 @@ compilerepl = source -> except
 
 runcode = code ->
   md = sys.modules !! '__main__' = types.ModuleType '__main__'
-  md.__dict__.update BUILTINS
-  md.__file__ = code.co_filename
+  md.__file__     = code.co_filename
+  md.__builtins__ = BUILTINS
   eval code md.__dict__
 
 
@@ -97,11 +83,11 @@ runrepl = fd ->
   sys.stdin = fd
   sys.ps1   = getattr sys 'ps1' '>>> '
   sys.ps2   = getattr sys 'ps2' '... '
-  environ   = (sys.modules !! '__main__' = types.ModuleType '__main__').__dict__
-  environ.update BUILTINS
+  module    = sys.modules !! '__main__' = types.ModuleType '__main__'
+  module.__builtins__ = BUILTINS
 
   rdl = Readline $ Teletype sys.stdin sys.stdout
-  rdl.completion_ns = environ
+  rdl.completion_ns = module.__dict__
 
   while True => except
     e => x = next $ dropwhile not $ map compilerepl $
@@ -111,7 +97,7 @@ runrepl = fd ->
     e :: KeyboardInterrupt => print '' file: sys.stderr
     e :: BaseException     => sys.excepthook (type e) e e.__traceback__
     e is None => except
-      e => sys.displayhook $ eval x environ
+      e => sys.displayhook (module._ = eval x module.__dict__)
       e :: SystemExit    => raise e
       e :: BaseException => sys.excepthook (type e) e e.__traceback__
 
