@@ -108,20 +108,3 @@ Completer = subclass object where
         @tty.write ' '
         @tty.write $ (cmps !! x).ljust maxlen
       @tty.write '\n'
-
-
-Pygments = subclass object where
-  pygments_lexer     = 'text'
-  pygments_formatter = 'terminal'
-
-  preprocess = where except
-    err =>
-      import '/pygments/highlight'
-      import '/pygments/lexers/get_lexer_by_name'
-      import '/pygments/formatters/get_formatter_by_name'
-      x ~>
-        x = highlight x
-          get_lexer_by_name     @pygments_lexer
-          get_formatter_by_name @pygments_formatter
-        x.rstrip '\n'
-    err :: ImportError => x ~> x
