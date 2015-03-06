@@ -30,31 +30,32 @@ Key = subclass object where
   END_ALT   = '\033OF'
 
   # Control sequence = ASCII name [= known name] = value
-  CONTROL_A = SOH            = '\x01'
-  CONTROL_B = STX            = '\x02'
-  CONTROL_C = ETX = SIGINT   = '\x03'  # only usable via `enable_jobs = False`
-  CONTROL_D = EOF            = '\x04'
-  CONTROL_E = ENQ            = '\x05'
-  CONTROL_F = ACK            = '\x06'
-  CONTROL_G = BEL = ALARM    = '\x07'
-  CONTROL_H = BS  = DEL_CTRL = '\x08'
-  CONTROL_I = TAB            = '\x09'
+  CONTROL_A = SOH = HOME_CTRL  = '\x01'
+  CONTROL_B = STX = LEFT_CTRL  = '\x02'
+  CONTROL_C = ETX = SIGINT     = '\x03'  # only usable via `enable_jobs = False`
+  CONTROL_D = EOF              = '\x04'
+  CONTROL_E = ENQ = END_CTRL   = '\x05'
+  CONTROL_F = ACK = RIGHT_CTRL = '\x06'
+  CONTROL_G = BEL = ALARM      = '\x07'
+  CONTROL_H = BS  = DEL_CTRL   = '\x08'
+  CONTROL_I = TAB              = '\x09'
   # Control+J = '\n' is unusable due to how `input` works.
-  CONTROL_K = VT  = VTAB     = '\x0b'
-  CONTROL_L = FF  = NEWPAGE  = '\x0c'
+  CONTROL_K = VT  = CUT_END    = '\x0b'
+  CONTROL_L = FF  = NEWPAGE    = '\x0c'
   # Control+M = '\r' is unusable due to automatic line break conversion.
-  CONTROL_N = SO             = '\x0e'
-  CONTROL_O = SI             = '\x0f'
-  CONTROL_P = DLE            = '\x10'
-  CONTROL_Q = DC1 = XON      = '\x11'  # only usable via `enable_flowctl = False`
-  CONTROL_R = DC2            = '\x12'
-  CONTROL_S = DC3 = XOFF     = '\x13'  # only usable via `enable_flowctl = False`
-  CONTROL_T = DC4            = '\x14'
-  CONTROL_U = NAK            = '\x15'
-  CONTROL_W = ETB            = '\x17'
-  CONTROL_X = CAN = CANCEL   = '\x18'
-  CONTROL_Y = EM             = '\x19'
-  CONTROL_Z = SUB = SUSPEND  = '\x1a'  # only usable via `enable_jobs = False`
+  CONTROL_N = SO  = DOWN_CTRL  = '\x0e'
+  CONTROL_O = SI  = CUT_START  = '\x0f'
+  CONTROL_P = DLE = UP_CTRL    = '\x10'
+  CONTROL_Q = DC1 = XON        = '\x11'  # only usable via `enable_flowctl = False`
+  CONTROL_R = DC2 = SEARCH     = '\x12'
+  CONTROL_S = DC3 = XOFF       = '\x13'  # only usable via `enable_flowctl = False`
+  CONTROL_T = DC4              = '\x14'
+  CONTROL_U = NAK              = '\x15'
+  CONTROL_V = SYN              = '\x16'
+  CONTROL_W = ETB              = '\x17'
+  CONTROL_X = CAN = CANCEL     = '\x18'
+  CONTROL_Y = EM  = PASTE      = '\x19'
+  CONTROL_Z = SUB = SUSPEND    = '\x1a'  # only usable via `enable_jobs = False`
 
 
 Color = subclass object where

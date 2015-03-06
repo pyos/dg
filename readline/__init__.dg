@@ -2,8 +2,9 @@ import '/re'
 import '/collections'
 
 import 'ansi'
-import 'mix'
+import 'ansi/Key'
 import 'tty/Teletype'
+import 'mix'
 
 
 ReadlineState = subclass object where
@@ -61,16 +62,20 @@ Readline = subclass object where
   #: bindings :: dict str (ReadlineState -> ReadlineState)
   #:
   bindings = dict'
-    ansi.Key.RIGHT,     state -> state.right 1
-    ansi.Key.LEFT,      state -> state.left  1
-    ansi.Key.END,       state -> state.right $ len state.buffer
-    ansi.Key.END_ALT,   state -> state.right $ len state.buffer
-    ansi.Key.HOME,      state -> state.left    state.position
-    ansi.Key.HOME_ALT,  state -> state.left    state.position
-    ansi.Key.DEL_ANSI,  state -> state.erase   state.position
-    ansi.Key.DEL_ASCII, state -> state.erase $ state.position - 1
-    ansi.Key.DEL_CTRL,  state -> state.erase $ state.position - 1
-    ansi.Key.EOF,       state -> if
+    Key.RIGHT,      state -> state.right 1
+    Key.RIGHT_CTRL, state -> state.right 1
+    Key.LEFT,       state -> state.left  1
+    Key.LEFT_CTRL,  state -> state.left  1
+    Key.END,        state -> state.right $ len state.buffer
+    Key.END_ALT,    state -> state.right $ len state.buffer
+    Key.END_CTRL,   state -> state.right $ len state.buffer
+    Key.HOME,       state -> state.left    state.position
+    Key.HOME_ALT,   state -> state.left    state.position
+    Key.HOME_CTRL,  state -> state.left    state.position
+    Key.DEL_ANSI,   state -> state.erase   state.position
+    Key.DEL_ASCII,  state -> state.erase $ state.position - 1
+    Key.DEL_CTRL,   state -> state.erase $ state.position - 1
+    Key.EOF,        state -> if
       state.buffer => state  # Only works at the beginning of a line.
       otherwise    => raise EOFError
 

@@ -12,8 +12,11 @@ History = subclass object where
     (super History self).__init__ *: args **: kwargs
     @history  = list!
     @bindings = dict @bindings
-    @bindings !! Key.UP   = @history_prev
-    @bindings !! Key.DOWN = @history_next
+    @bindings.update $ dict'
+      Key.UP,        @history_prev
+      Key.UP_CTRL,   @history_prev
+      Key.DOWN,      @history_next
+      Key.DOWN_CTRL, @history_next
     None
 
   #: Switch to the previous history entry, if any. The contents of the buffer are lost.
