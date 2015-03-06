@@ -16,11 +16,9 @@ import 'compileast'
 except
   _err => import 'readline'
   _err :: ImportError =>
-    Teletype = subclass object where __init__ = _ _ ~> None
-    Readline = subclass object where __init__, input = (_ ~> None), builtins.input
+    Readline = subclass object where __init__, input = (*: _ **: _ ~> None), builtins.input
 
   _err is None =>
-    Teletype = subclass readline.Teletype where
     Readline = subclass readline.mix.History readline.mix.Completer readline.Readline where
       # Matches any number of valid dg identifiers separated by dots.
       # (No whitespace!)
@@ -87,7 +85,7 @@ runrepl = fd ->
   module    = sys.modules !! '__main__' = types.ModuleType '__main__'
   module.__builtins__ = BUILTINS
 
-  rdl = Readline $ Teletype sys.stdin sys.stdout
+  rdl = Readline sys.stdin sys.stdout
   rdl.completion_ns = module.__dict__
 
   while True => except

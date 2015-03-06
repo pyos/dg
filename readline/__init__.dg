@@ -1,9 +1,10 @@
-import '/re'
+import '/time'
 import '/collections'
 
 import 'ansi'
 import 'ansi/Key'
-import 'tty/Teletype'
+import 'ansi/Sequence'
+import 'tty'
 import 'mix'
 
 
@@ -12,19 +13,19 @@ ReadlineState = subclass object where
   #:
   #: Defines stuff such as the current buffer contents, caret position, etc.
   #:
-  __init__ = @prompt @buffer: '' @position: 0 @cache: dict! ~> None
+  __init__ = @prompt @buffer @position @cache ~> None
 
   #: Move the caret to the right.
   #:
   #: right :: int -> ReadlineState
   #:
-  right = i ~> ReadlineState @prompt @buffer (@position + i `min` len @buffer) @cache.copy!
+  right = i ~> ReadlineState @prompt @buffer (@position + i `min` len @buffer) @cache
 
   #: Move the caret to the left.
   #:
   #: left :: int -> ReadlineState
   #:
-  left = i ~> ReadlineState @prompt @buffer (@position - i `max` 0) @cache.copy!
+  left = i ~> ReadlineState @prompt @buffer (@position - i `max` 0) @cache
 
   #: Insert a string into the buffer, move the caret if necessary.
   #:
@@ -37,7 +38,7 @@ ReadlineState = subclass object where
         @buffer !! slice None i + d
         @buffer !! slice i None
       @position + len d * (i <= @position)
-      @cache.copy!
+      @cache
 
   #: Erase the characters at position `i`, move the caret accordingly.
   #:
@@ -50,11 +51,16 @@ ReadlineState = subclass object where
         @buffer !! slice None i
         @buffer !! slice (i + length) None
       @position - (length `min` @position - i `max` 0)
-      @cache.copy!
+      @cache
 
 
 Readline = subclass object where
-  __init__ = @tty ~> None
+  __init__ = *: args **: kwargs ~>
+    @tty = tty.Teletype *: args **: kwargs
+    # In case subclasses decide to override keybindings, make sure
+    # they don't add them to the global mapping.
+    @bindings = @bindings.copy!
+    None
 
   #: A mapping of keys to state modificators. Note that a key may be
   #: either a character or an ANSI sequence.
@@ -62,6 +68,7 @@ Readline = subclass object where
   #: bindings :: dict str (ReadlineState -> ReadlineState)
   #:
   bindings = dict'
+    Key.ENTER,      state -> raise $ StopIteration state.buffer
     Key.RIGHT,      state -> state.right 1
     Key.RIGHT_CTRL, state -> state.right 1
     Key.LEFT,       state -> state.left  1
@@ -76,7 +83,7 @@ Readline = subclass object where
     Key.DEL_ASCII,  state -> state.erase $ state.position - 1
     Key.DEL_CTRL,   state -> state.erase $ state.position - 1
     Key.EOF,        state -> if
-      state.buffer => state  # Only works at the beginning of a line.
+      state.buffer => state.erase state.position
       otherwise    => raise EOFError
 
   #: Whether to enable ^C and ^Z. Disallows the use of `Key.SIGINT` and `Key.SUSPEND`.
@@ -112,16 +119,20 @@ Readline = subclass object where
   #:
   #: input :: (Either str (ReadlineState -> str)) (Optional float) -> str
   #:
-  input = prompt timeout: 0 ~> state.buffer where
-    with @tty.raw @enable_jobs @enable_flowctl => except
-      error =>
-        state = ReadlineState prompt
-        @update state
-        for c in @tty.line timeout => @update $
-          state = if
+  input = prompt timeout: 0 buffer: '' position: 0 ~>
+    with @tty.nonblocking => with @tty.raw @enable_jobs @enable_flowctl => except
+      err =>
+        start = time.time!
+        state = @update $ ReadlineState prompt buffer position {}
+        while True =>
+          passed = min timeout $ time.time! - start
+          passed >= timeout > 0 => raise $ BlockingIOError state
+
+          for c in @tty.buffer (timeout - passed) => state = @update $ if
             @bindings.get  c => (@bindings !! c) state
             @tty.printable c => state.insert state.position c
-            otherwise        => state  # ignore unrecognized special commands
+            otherwise        => state
+      err :: StopIteration => err.value
       finally => @finalize state
 
   #: Write a preview of a line buffer onto a TTY.
@@ -139,27 +150,34 @@ Readline = subclass object where
     wh, ww = @tty.size
     h, w = prelen + len state.buffer `divmod` ww
     y, x = prelen + state.position   `divmod` ww
-    # 1. Go to where the last prompt started.
+    # 1. Go to where the last prompt started, overwrite it with new data.
     #    If its start is already off the screen, we'll just go where we can.
-    _h, _w = state.cache.get 'termsize' (0, 1)
-    _y, _x = state.cache.get 'lastpos' 0 `divmod` _w
-    @tty.relmove (-_y) (-_x)
-    # 2. Overwrite it with the new data, erase what can't be overwritten.
+    @erase state
     @tty.write $ prefix + @preprocess state.buffer
-    @tty.erase
-    # 3. Go back to the beginning. Note: if the string fits
+    # 2. Go back to the beginning. Note: if the string fits
     #    exactly on one line and the cursor is still there,
     #    VTs won't create an empty line.
     if w == 0 and (y, x) != (h, w) => @tty.relmove (1 - h) (-ww)
        otherwise => @tty.relmove (-h) (-w)
-    # 4. Move to where the caret should be. Note that (0, 0) may be off-screen,
+    # 3. Move to where the caret should be. Note that (0, 0) may be off-screen,
     #    and terminals will truncate offsets.
     @tty.relmove (y - (h - wh `max` 0)) x
-    @tty.flush!
+    @tty.flush
     # The next `update` will use that info.
-    state.cache !! 'lastlen'  = prelen + len state.buffer
     state.cache !! 'lastpos'  = prelen + state.position
     state.cache !! 'termsize' = wh, ww
+    state
+
+  #: Move the cursor to the start of the prompt and erase it.
+  #:
+  #: erase :: ReadlineState -> ReadlineState
+  #:
+  erase = state ~>
+    _h, _w = state.cache.get 'termsize' (0, 1)
+    _y, _x = state.cache.pop 'lastpos' 0 `divmod` _w
+    @tty.relmove (-_y) (-_x)
+    @tty.erase
+    state
 
   #: Move the cursor to the end of the text.
   #: This allows key handlers to print other stuff between prompts.
@@ -167,9 +185,8 @@ Readline = subclass object where
   #:
   #: finalize :: ReadlineState -> ReadlineState
   #:
-  finalize = state ~> if state.cache.get 'lastlen' 0 =>
+  finalize = state ~>
     @update $ state.right $ len state.buffer - state.position
     @tty.write '\n\r'
-    state.cache.pop 'lastlen' 0
     state.cache.pop 'lastpos' 0
     state

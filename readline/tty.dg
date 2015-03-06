@@ -1,5 +1,4 @@
 import '/os'
-import '/time'
 import '/fcntl'
 import '/struct'
 import '/select'
@@ -20,16 +19,17 @@ Teletype = subclass object where
     not @output.isatty! => raise $ IOError 'output: not a tty'
     None
 
-  fileno = ~> @input.fileno
-  read   = ~> @input.read
-  write  = ~> @output.write
-  flush  = ~> @output.flush
+  write = ~> @output.write
+  flush = ~> while True => except
+    err => @output.flush!
+    err :: BlockingIOError => select.select [] [@output] []
+    err is None => break!
 
   #: Determine the length of an ANSI-escaped string. ANSI escapes are assumed to be empty.
   #:
   #: ansi_len :: str -> int
   #:
-  ansi_len = classmethod $ data ~> len $ Sequence.sub '' data
+  ansi_len = classmethod $ data ~> len $ Sequence.sub (m -> m.group 1 or '') data
 
   #: Check whether a key's value is printable.
   #:
@@ -37,22 +37,11 @@ Teletype = subclass object where
   #:
   printable = classmethod $ data ~> if
     len data == 0 => True
-    len data >= 2 => False  # only ANSI sequences match this
-    otherwise     => 32 <= ord data < 127 or 160 <= ord data
-
-  #: Iterate over keypresses until EOL.
-  #:
-  #: line :: float -> iter str
-  #:
-  line = timeout ~>
-    end = time.time! + timeout
-    while (c = @key $ if
-      timeout   => max 0 $ end - time.time!
-      otherwise => 0) != '\n' => yield c
+    len data == 1 => 32 <= ord data < 127 or 160 <= ord data
 
   #: Enter the raw mode of a TTY.
   #:
-  #: raw :: bool bool :: Context NoneType
+  #: raw :: bool bool -> context NoneType
   #:
   raw = contextlib.contextmanager $ jobctl flowctl ~>
     old = termios.tcgetattr @input
@@ -61,32 +50,36 @@ Teletype = subclass object where
     new !! 3 &= ~(termios.ECHO   | termios.ICANON | termios.IEXTEN | termios.ISIG)
     if flowctl => new !! 0 |= termios.IXON
     if jobctl  => new !! 3 |= termios.ISIG
-    except error   => yield $ termios.tcsetattr @input termios.TCSADRAIN new
+    except _       => yield $ termios.tcsetattr @input termios.TCSADRAIN new
            finally =>         termios.tcsetattr @input termios.TCSAFLUSH old
+
+  #: Enter the non-blocking mode of a TTY.
+  #:
+  #: nonblocking :: context NoneType
+  #:
+  nonblocking = property $ contextlib.contextmanager $ self ->
+    flags = fcntl.fcntl @input fcntl.F_GETFL
+    except _       => yield $ fcntl.fcntl @input fcntl.F_SETFL (flags | os.O_NONBLOCK)
+           finally =>         fcntl.fcntl @input fcntl.F_SETFL flags
 
   #: Find out how much stuff this TTY can display at once.
   #:
-  #: size :: (int, int)
+  #: size :: (int, int) -- (height, width) in characters
   #:
-  size = ~>
-    # FIXME what would happen if a Windows SSH client connects to a UNIX server?
-    #   I sure hope that client emulates UNIX terminals.
-    struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
+  size = ~> struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
 
-  #: Get a single keypress from this TTY.
+  #: Read at most a line from a TTY (blocking until at least a character is available.)
   #:
-  #: key :: float -> str
+  #: buffer :: float -> iter str
   #:
-  key = timeout ~> c where
-    timeout => not $ fst $ select.select (@input,) () () timeout => raise BlockingIOError
-    c = @read 1
-    c == '\033' =>
-      c += @read 1  # Assume ANSI escapes appear instantaneously.
-      c == '\033N' => c += @read 1  # alternate character set 1
-      c == '\033O' => c += @read 1  # alternate character set 2
-      c == '\033[' =>  # ANSI CSI
-        c += @read 1
-        while not $ '@' <= last c <= '~' => c += @read 1
+  buffer = timeout ~>
+    x = @input.readline!
+    x == '' =>
+      has_data = fst $ if timeout   => select.select [@input] [] [] timeout
+                          otherwise => select.select [@input] [] []
+      x = @input.readline!
+      x == '' and has_data => raise $ IOError 'input channel closed'
+    map (x -> x.group!) $ Sequence.finditer x
 
   #: Move the caret `y` characters down and `x` characters to the right.
   #:

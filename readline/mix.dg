@@ -10,8 +10,7 @@ History = subclass object where
   #:
   __init__ = *: args **: kwargs ~>
     (super History self).__init__ *: args **: kwargs
-    @history  = list!
-    @bindings = dict @bindings
+    @history = list!
     @bindings.update $ dict'
       Key.UP,        @history_prev
       Key.UP_CTRL,   @history_prev
@@ -61,7 +60,6 @@ Completer = subclass object where
   #:
   __init__ = *: args **: kwargs ~>
     (super Completer self).__init__ *: args **: kwargs
-    @bindings = dict @bindings
     for k in @completion_keys => @bindings !! k = @complete_event
     None
 
