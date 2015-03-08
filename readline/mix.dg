@@ -24,10 +24,11 @@ History = subclass object where
   #:
   history_prev = state ~>
     i = state.cache.get 'history' -1
-    i > -len @history =>
-      state = state.erase  0 $ len state.buffer
-      state = state.insert 0 $ @history !! (i - 1)
-      state.cache !! 'history' = i - 1
+    if i <= -len @history => @tty.write Key.ALARM
+       otherwise =>
+         state = state.erase  0 $ len state.buffer
+         state = state.insert 0 $ @history !! (i - 1)
+         state.cache !! 'history' = i - 1
     state
 
   #: Switch to the next history entry, if any. The contents of the buffer are lost.
@@ -36,11 +37,11 @@ History = subclass object where
   #:
   history_next = state ~>
     i = state.cache.get 'history' -1
-    i = state.cache.get 'history' -1
-    i < -1 =>
-      state = state.erase  0 $ len state.buffer
-      state = state.insert 0 $ @history !! (i + 1)
-      state.cache !! 'history' = i + 1
+    if i >= -1   => @tty.write Key.ALARM
+       otherwise =>
+         state = state.erase  0 $ len state.buffer
+         state = state.insert 0 $ @history !! (i + 1)
+         state.cache !! 'history' = i + 1
     state
 
   input = *: args **: kwargs ~> result where
@@ -70,14 +71,12 @@ Completer = subclass object where
   #: complete_event :: ReadlineState -> ReadlineState
   #:
   complete_event = state ~>
+    @tty.write Key.ALARM
     start, length, cmps = @complete_buffer state.buffer state.position
-    cmps => if
-      len cmps == 1 =>
-        state = state.erase  start length
-        state = state.insert start $ head cmps
-      otherwise =>
-        state = @finalize state
-        @display_completions cmps
+    if len cmps == 1 => state = state.erase start length |>.insert start (head cmps)
+       len cmps != 0 =>
+         state = @finalize state
+         @display_completions cmps
     state
 
   #: Find the word to complete and get the list of possible completions.

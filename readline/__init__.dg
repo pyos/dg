@@ -131,7 +131,9 @@ Readline = subclass object where
           for c in @tty.buffer (timeout - passed) => state = @update $ if
             @bindings.get  c => (@bindings !! c) state
             @tty.printable c => state.insert state.position c
-            otherwise        => state
+            otherwise        =>
+              @tty.write Key.ALARM
+              state
       err :: StopIteration => err.value
       finally => @finalize state
 
