@@ -19,7 +19,7 @@ except
     Readline = subclass object where __init__, input = (*: _ **: _ ~> None), builtins.input
 
   _err is None =>
-    Readline = subclass readline.mix.History readline.mix.Completer readline.Readline where
+    Readline = subclass readline.History readline.Completer readline.Readline where
       # Matches any number of valid dg identifiers separated by dots.
       # (No whitespace!)
       completion_regex = re.compile r"\w+'*(?:\.\w+'*)*\.?"
@@ -94,7 +94,7 @@ runrepl = fd ->
     e :: EOFError          => raise SystemExit
     e :: SystemExit        => raise e
     e :: KeyboardInterrupt => print '' file: sys.stderr
-    e :: BaseException     => sys.excepthook (type e) e e.__traceback__
+    #e :: BaseException     => sys.excepthook (type e) e e.__traceback__
     e is None => except
       e =>
         module._ = eval x module.__dict__

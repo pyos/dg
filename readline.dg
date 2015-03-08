@@ -1,0 +1,474 @@
+import '/os'
+import '/re'
+import '/time'
+import '/math'
+import '/fcntl'
+import '/struct'
+import '/select'
+import '/termios'
+import '/contextlib'
+import '/collections'
+
+
+#: ANSI character DFA. Matches either a single character or a complete control sequence.
+#:
+#: Sequence :: Re
+#:
+Sequence = re.compile r'''(?sx)\033(?:
+  \[.*?[@-~]     # ANSI CSI: standard escape sequences.
+ |\]\d+;.*?\007  # ANSI OSC: e.g. sets the title of an XTerm-like VT.
+ |[NO].          # ANSI SS2/SS3: alternate character sets.
+)|(.)'''
+
+
+Key = subclass object where
+  DEL_ASCII = '\x7f'     # This is actually used as Backspace. Probably.
+  DEL_ANSI  = '\033[3~'  # *This* is Delete.
+  INSERT    = '\033[2~'
+  PAGE_UP   = '\033[5~'
+  PAGE_DOWN = '\033[6~'
+  UP        = '\033[A'
+  DOWN      = '\033[B'
+  RIGHT     = '\033[C'
+  LEFT      = '\033[D'
+  HOME      = '\033[H'
+  END       = '\033[F'
+  HOME_ALT  = '\033OH'  # Non-standard sequences?
+  END_ALT   = '\033OF'
+
+  # Control sequence = ASCII name [= known name] = value
+  CONTROL_A = SOH = HOME_CTRL  = '\x01'
+  CONTROL_B = STX = LEFT_CTRL  = '\x02'
+  CONTROL_C = ETX = SIGINT     = '\x03'  # only usable via `enable_jobs = False`
+  CONTROL_D = EOF              = '\x04'
+  CONTROL_E = ENQ = END_CTRL   = '\x05'
+  CONTROL_F = ACK = RIGHT_CTRL = '\x06'
+  CONTROL_G = BEL = ALARM      = '\x07'
+  CONTROL_H = BS  = DEL_CTRL   = '\x08'
+  CONTROL_I = TAB              = '\x09'
+  CONTROL_J = LF  = ENTER      = '\x0a'
+  CONTROL_K = VT  = CUT_END    = '\x0b'
+  CONTROL_L = FF  = NEWPAGE    = '\x0c'
+  # Control+M = '\r' is unusable due to automatic line break conversion.
+  CONTROL_N = SO  = DOWN_CTRL  = '\x0e'
+  CONTROL_O = SI  = CUT_START  = '\x0f'
+  CONTROL_P = DLE = UP_CTRL    = '\x10'
+  CONTROL_Q = DC1 = XON        = '\x11'  # only usable via `enable_flowctl = False`
+  CONTROL_R = DC2 = SEARCH     = '\x12'
+  CONTROL_S = DC3 = XOFF       = '\x13'  # only usable via `enable_flowctl = False`
+  CONTROL_T = DC4              = '\x14'
+  CONTROL_U = NAK              = '\x15'
+  CONTROL_V = SYN              = '\x16'
+  CONTROL_W = ETB              = '\x17'
+  CONTROL_X = CAN = CANCEL     = '\x18'
+  CONTROL_Y = EM  = PASTE      = '\x19'
+  CONTROL_Z = SUB = SUSPEND    = '\x1a'  # only usable via `enable_jobs = False`
+
+
+Color = subclass object where
+  FG = subclass object where
+    black   = '\033[30m{}\033[39m'.format
+    red     = '\033[31m{}\033[39m'.format
+    green   = '\033[32m{}\033[39m'.format
+    yellow  = '\033[33m{}\033[39m'.format
+    blue    = '\033[34m{}\033[39m'.format
+    magenta = '\033[35m{}\033[39m'.format
+    cyan    = '\033[36m{}\033[39m'.format
+    white   = '\033[37m{}\033[39m'.format
+
+  BG = subclass object where
+    black   = '\033[40m{}\033[39m'.format
+    red     = '\033[41m{}\033[39m'.format
+    green   = '\033[42m{}\033[39m'.format
+    yellow  = '\033[43m{}\033[39m'.format
+    blue    = '\033[44m{}\033[39m'.format
+    magenta = '\033[45m{}\033[39m'.format
+    cyan    = '\033[46m{}\033[39m'.format
+    white   = '\033[47m{}\033[39m'.format
+
+
+Teletype = subclass object where
+  #: Various TTY-related functions.
+  #:
+  #: input  :: TextIOBase -- 'r'-mode TTY.
+  #: output :: TextIOBase -- 'w'-mode TTY.
+  #:
+  __init__ = @input @output @name: None ~>
+    not @input .isatty! => raise $ IOError 'input: not a tty'
+    not @output.isatty! => raise $ IOError 'output: not a tty'
+    None
+
+  read  = ~> @input.read
+  write = ~> @output.write
+  flush = ~> while True => except
+    # For some reason stdout can switch into non-blocking mode when stdin does.
+    err => @output.flush!
+    err :: BlockingIOError => select.select [] [@output] []
+    err is None => break!
+
+  #: Return true iff input is a single non-control character.
+  #:
+  #: printable :: str -> bool
+  #:
+  printable = classmethod $ data ~> if
+    len data == 0 => True
+    len data == 1 => 32 <= ord data < 127 or 160 <= ord data
+
+  #: Enter the raw mode of a TTY: disable buffering, echo, etc.
+  #:
+  #:   * `jobctl`: whether to enable Ctrl+C (SIGINT) and Ctrl+Z (SIGSTOP).
+  #:   * `flowctl`: whether to enable Ctrl+S (XOFF) and Ctrl+Q (XON).
+  #:
+  #: where "enable" means the default behavior. That is, pass `False` to bind your
+  #: own actions on these combos. Otherwise, they won't even reach the application.
+  #:
+  #: raw :: bool bool -> context NoneType
+  #:
+  raw = contextlib.contextmanager $ jobctl flowctl ~>
+    old = termios.tcgetattr @input
+    new = termios.tcgetattr @input
+    new !! 0 &= ~(termios.ISTRIP | termios.IXON)
+    new !! 3 &= ~(termios.ECHO   | termios.ICANON | termios.IEXTEN | termios.ISIG)
+    if flowctl => new !! 0 |= termios.IXON
+    if jobctl  => new !! 3 |= termios.ISIG
+    except _       => yield $ termios.tcsetattr @input termios.TCSADRAIN new
+           finally =>         termios.tcsetattr @input termios.TCSAFLUSH old
+
+  #: Make all `read`s return immediately.
+  #:
+  #: nonblocking :: context NoneType
+  #:
+  nonblocking = property $ contextlib.contextmanager $ self ->
+    flags = fcntl.fcntl @input fcntl.F_GETFL
+    except _       => yield $ fcntl.fcntl @input fcntl.F_SETFL (flags | os.O_NONBLOCK)
+           finally =>         fcntl.fcntl @input fcntl.F_SETFL  flags
+
+  #: Find out how much stuff this TTY can display at once.
+  #:
+  #: size :: (int, int) -- (height, width) in characters
+  #:
+  size = ~> struct.unpack 'hh' $ fcntl.ioctl @output termios.TIOCGWINSZ '1234'
+
+  #: Read at most a line from a TTY (blocking until at least a character is available.)
+  #:
+  #: buffer :: float -> iter str
+  #:
+  buffer = timeout ~>
+    x = @input.readline!
+    x == '' =>
+      has_data = fst $ if timeout   => select.select [@input] [] [] timeout
+                          otherwise => select.select [@input] [] []
+      x = @input.readline!
+      x == '' and has_data => raise $ IOError 'input channel closed'
+    map (x -> x.group!) $ Sequence.finditer x
+
+  #: Move the caret `y` characters down and `x` characters to the right.
+  #:
+  #: relmove :: int int -> a
+  #:
+  relmove = y x ~> @write $ (+)
+    if y > 0     => '\033[{}B'.format y
+       y < 0     => '\033[{}A'.format (-y)
+       otherwise => ''  # If `y` is 0, terminals might assume 1.
+    if x > 0     => '\033[{}C'.format x
+       x < 0     => '\033[{}D'.format (-x)
+       otherwise => ''
+
+  #: Erase everything from the cursor to the end of the screen.
+  #:
+  #: erase :: a
+  #:
+  erase = ~> @write '\033[J'
+
+
+ReadlineState = subclass object where
+  #: A readline input state.
+  #:
+  #: Defines stuff such as the current buffer contents, caret position, etc.
+  #:
+  __init__ = @prompt @buffer @position @cache ~> None
+
+  #: Move the caret to the right.
+  #:
+  #: right :: int -> ReadlineState
+  #:
+  right = i ~> ReadlineState @prompt @buffer (@position + i `min` len @buffer) @cache
+
+  #: Move the caret to the left.
+  #:
+  #: left :: int -> ReadlineState
+  #:
+  left = i ~> ReadlineState @prompt @buffer (@position - i `max` 0) @cache
+
+  #: Insert a string into the buffer, move the caret if necessary.
+  #:
+  #: insert :: int str -> ReadlineState
+  #:
+  insert = i d ~> if
+    i < 0     => @insert 0 $ d !! slice (-i) None
+    otherwise => ReadlineState @prompt
+      (+)
+        @buffer !! slice None i + d
+        @buffer !! slice i None
+      @position + len d * (i <= @position)
+      @cache
+
+  #: Erase the characters at position `i`, move the caret accordingly.
+  #:
+  #: erase :: int (Optional int) -> ReadlineState
+  #:
+  erase = i length: 1 ~> if
+    i < 0     => @erase 0 $ length + i
+    otherwise => ReadlineState @prompt
+      (+)
+        @buffer !! slice None i
+        @buffer !! slice (i + length) None
+      @position - (length `min` @position - i `max` 0)
+      @cache
+
+
+Readline = subclass object where
+  __init__ = *: args **: kwargs ~>
+    @tty = Teletype *: args **: kwargs
+    # In case subclasses decide to override keybindings, make sure
+    # they don't add them to the global mapping.
+    @bindings = @bindings.copy!
+    None
+
+  #: A mapping of keys to state modificators. Note that a key may be
+  #: either a character or an ANSI sequence.
+  #:
+  #: bindings :: dict str (ReadlineState -> ReadlineState)
+  #:
+  bindings = dict'
+    Key.ENTER,      state -> raise $ StopIteration state.buffer
+    Key.RIGHT,      state -> state.right 1
+    Key.RIGHT_CTRL, state -> state.right 1
+    Key.LEFT,       state -> state.left  1
+    Key.LEFT_CTRL,  state -> state.left  1
+    Key.END,        state -> state.right $ len state.buffer
+    Key.END_ALT,    state -> state.right $ len state.buffer
+    Key.END_CTRL,   state -> state.right $ len state.buffer
+    Key.HOME,       state -> state.left    state.position
+    Key.HOME_ALT,   state -> state.left    state.position
+    Key.HOME_CTRL,  state -> state.left    state.position
+    Key.DEL_ANSI,   state -> state.erase   state.position
+    Key.DEL_ASCII,  state -> state.erase $ state.position - 1
+    Key.DEL_CTRL,   state -> state.erase $ state.position - 1
+    Key.EOF,        state -> if
+      state.buffer => state.erase state.position
+      otherwise    => raise EOFError
+
+  #: Whether to enable ^C and ^Z. Disallows the use of `Key.SIGINT` and `Key.SUSPEND`.
+  #:
+  #: enable_jobs :: bool
+  #:
+  enable_jobs = True
+
+  #: Whether to enable XON/XOFF, whatever that means. Disables `Key.XON` and `Key.XOFF`.
+  #:
+  #: enable_flowctl :: bool
+  #:
+  enable_flowctl = False
+
+  #: Default line preprocessor. Does nothing.
+  #:
+  #: This method is called whenever an updated display is required.
+  #: Its only argument is the buffer, and the return value should
+  #: be an ANSI-escaped string to display. This could be used,
+  #: for example, to implement syntax highlighting.
+  #:
+  #: NOTE: this method must NOT change the apparent length of a string.
+  #:   Otherwise, the caret will appear in the wrong position.
+  #:
+  #: preprocess :: str -> str
+  #:
+  preprocess = ln ~> ln
+
+  #: Read a line from a TTY while displaying a preview on another TTY.
+  #:
+  #: If the prompt is a function, it will be called with the current
+  #: `ReadlineState` whenever the display is updated.
+  #:
+  #: input :: (Either str (ReadlineState -> str)) (Optional float) -> str
+  #:
+  input = prompt timeout: 0 buffer: '' position: 0 ~>
+    with @tty.nonblocking => with @tty.raw @enable_jobs @enable_flowctl => except
+      err =>
+        start = time.time!
+        state = @update $ ReadlineState prompt buffer position {}
+        while True =>
+          passed = min timeout $ time.time! - start
+          passed >= timeout > 0 => raise $ BlockingIOError state
+
+          for c in @tty.buffer (timeout - passed) => state = @update $ if
+            @bindings.get  c => (@bindings !! c) state
+            @tty.printable c => state.insert state.position c
+            otherwise        =>
+              @tty.write Key.ALARM
+              state
+      err :: StopIteration => err.value
+      finally => @finalize state
+
+  #: Write a preview of a line buffer onto a TTY.
+  #:
+  #: update :: ReadlineState -> ReadlineState
+  #:
+  update = state ~>
+    prefix = if
+      state.prompt :: collections.Callable => state.prompt state
+      otherwise => state.prompt
+    prelen = len $ Sequence.sub (m -> m.group 1 or '') prefix
+
+    # We're going to assume the VT handles windows resizing correctly
+    # (i.e. rewraps long lines.)
+    wh, ww = @tty.size
+    h, w = prelen + len state.buffer `divmod` ww
+    y, x = prelen + state.position   `divmod` ww
+    # 1. Go to where the last prompt started, overwrite it with new data.
+    #    If its start is already off the screen, we'll just go where we can.
+    @erase state
+    @tty.write $ prefix + @preprocess state.buffer
+    # 2. Go back to the beginning. Note: if the string fits
+    #    exactly on one line and the cursor is still there,
+    #    VTs won't create an empty line.
+    if w == 0 and (y, x) != (h, w) => @tty.relmove (1 - h) (-ww)
+       otherwise => @tty.relmove (-h) (-w)
+    # 3. Move to where the caret should be. Note that (0, 0) may be off-screen,
+    #    and terminals will truncate offsets.
+    @tty.relmove (y - (h - wh `max` 0)) x
+    @tty.flush
+    # The next `update` will use that info.
+    state.cache !! 'lastpos'  = prelen + state.position
+    state.cache !! 'termsize' = wh, ww
+    state
+
+  #: Move the cursor to the start of the prompt and erase it.
+  #:
+  #: erase :: ReadlineState -> ReadlineState
+  #:
+  erase = state ~>
+    _h, _w = state.cache.get 'termsize' (0, 1)
+    _y, _x = state.cache.pop 'lastpos' 0 `divmod` _w
+    @tty.relmove (-_y) (-_x)
+    @tty.erase
+    state
+
+  #: Move the cursor to the end of the text.
+  #: This allows key handlers to print other stuff between prompts.
+  #: Don't forget to call `update` later.
+  #:
+  #: finalize :: ReadlineState -> ReadlineState
+  #:
+  finalize = state ~>
+    @update $ state.right $ len state.buffer - state.position
+    @tty.write '\n\r'
+    state.cache.pop 'lastpos' 0
+    state
+
+
+History = subclass Readline where
+  #: A mix-in that enables history navigation with up and down arrows.
+  #:
+  #: history :: [str] -- a list of previously entered lines
+  #:
+  __init__ = *: args **: kwargs ~>
+    (super History self).__init__ *: args **: kwargs
+    @history = list!
+    @bindings.update $ dict'
+      Key.UP,        @history_prev
+      Key.UP_CTRL,   @history_prev
+      Key.DOWN,      @history_next
+      Key.DOWN_CTRL, @history_next
+    None
+
+  #: Switch to the previous history entry, if any. The contents of the buffer are lost.
+  #:
+  #: history_prev :: ReadlineState -> ReadlineState
+  #:
+  history_prev = state ~>
+    i = state.cache.get 'history' -1
+    if i <= -len @history => @tty.write Key.ALARM
+       otherwise =>
+         state = state.erase  0 $ len state.buffer
+         state = state.insert 0 $ @history !! (i - 1)
+         state.cache !! 'history' = i - 1
+    state
+
+  #: Switch to the next history entry, if any. The contents of the buffer are lost.
+  #:
+  #: history_next :: ReadlineState -> ReadlineState
+  #:
+  history_next = state ~>
+    i = state.cache.get 'history' -1
+    if i >= -1   => @tty.write Key.ALARM
+       otherwise =>
+         state = state.erase  0 $ len state.buffer
+         state = state.insert 0 $ @history !! (i + 1)
+         state.cache !! 'history' = i + 1
+    state
+
+  input = *: args **: kwargs ~> result where
+    @history.append ''
+    @history !! -1 = result = (super History self).input *: args **: kwargs
+    @history !! -1 or @history !!~ -1
+
+
+Completer = subclass Readline where
+  completion_keys  = [Key.TAB]
+  completion_regex = re.compile r'\w+'
+
+  #: A mix-in that enables basic completion.
+  #:
+  #: completion_key :: str -- the key on which to trigger completion.
+  #: completion_sep :: Re  -- a regex that matches all word separators.
+  #:
+  __init__ = *: args **: kwargs ~>
+    (super Completer self).__init__ *: args **: kwargs
+    for k in @completion_keys => @bindings !! k = @complete_event
+    None
+
+  #: Handle a completion event. Default implementation calls `complete_buffer`
+  #: and either substitutes the incomplete word for a result or outputs the list
+  #: with `display_completions`.
+  #:
+  #: complete_event :: ReadlineState -> ReadlineState
+  #:
+  complete_event = state ~>
+    @tty.write Key.ALARM
+    start, length, cmps = @complete_buffer state.buffer state.position
+    if len cmps == 1 => state = state.erase start length |>.insert start (head cmps)
+       len cmps != 0 =>
+         state = @finalize state
+         @display_completions cmps
+    state
+
+  #: Find the word to complete and get the list of possible completions.
+  #: Returns a (start index, length, completions) tuple.
+  #:
+  #: complete_buffer :: str int -> (int, int, [str])
+  #:
+  complete_buffer = buf at ~> except
+    err => m = next $ filter (m -> m.start! <= at <= m.end!) $ @completion_regex.finditer buf
+    err is None => m.start!, m.end! - m.start!, @complete_word m.group!
+    err :: StopIteration => 0, 0, []
+
+  #: Fetch the list of possible completions for a word.
+  #:
+  #: complete_word :: str -> [str]
+  #:
+  complete_word = word ~> ["Completer.complete_word", "not", "implemented"]
+
+  #: Format and display a list of multiple possible completions.
+  #:
+  #: display_completions :: [str] -> a
+  #:
+  display_completions = cmps ~>
+    maxlen = max $ map len cmps
+    width  = @tty.size !! 1 // (maxlen + 1)
+    height = math.ceil $ len cmps / width
+    for y in range height =>
+      for x in range y (len cmps `min` y + width * height) height =>
+        @tty.write ' '
+        @tty.write $ (cmps !! x).ljust maxlen
+      @tty.write '\n'
