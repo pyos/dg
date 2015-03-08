@@ -100,11 +100,7 @@ Teletype = subclass object where
 
   read  = ~> @input.read
   write = ~> @output.write
-  flush = ~> while True => except
-    # For some reason stdout can switch into non-blocking mode when stdin does.
-    err => @output.flush!
-    err :: BlockingIOError => select.select [] [@output] []
-    err is None => break!
+  flush = ~> @output.flush!
 
   #: Return true iff input is a single non-control character.
   #:
@@ -114,7 +110,7 @@ Teletype = subclass object where
     len data == 0 => True
     len data == 1 => 32 <= ord data < 127 or 160 <= ord data
 
-  #: Enter the raw mode of a TTY: disable buffering, echo, etc.
+  #: Enter the raw mode of a TTY: disable line buffering, echo, etc.
   #:
   #:   * `jobctl`: whether to enable Ctrl+C (SIGINT) and Ctrl+Z (SIGSTOP).
   #:   * `flowctl`: whether to enable Ctrl+S (XOFF) and Ctrl+Q (XON).
@@ -129,19 +125,12 @@ Teletype = subclass object where
     new = termios.tcgetattr @input
     new !! 0 &= ~(termios.ISTRIP | termios.IXON)
     new !! 3 &= ~(termios.ECHO   | termios.ICANON | termios.IEXTEN | termios.ISIG)
+    new !! 6 !! termios.VMIN  = 0  # This makes `read` non-blocking.
+    new !! 6 !! termios.VTIME = 0
     if flowctl => new !! 0 |= termios.IXON
     if jobctl  => new !! 3 |= termios.ISIG
     except _       => yield $ termios.tcsetattr @input termios.TCSADRAIN new
            finally =>         termios.tcsetattr @input termios.TCSAFLUSH old
-
-  #: Make all `read`s return immediately.
-  #:
-  #: nonblocking :: context NoneType
-  #:
-  nonblocking = property $ contextlib.contextmanager $ self ->
-    flags = fcntl.fcntl @input fcntl.F_GETFL
-    except _       => yield $ fcntl.fcntl @input fcntl.F_SETFL (flags | os.O_NONBLOCK)
-           finally =>         fcntl.fcntl @input fcntl.F_SETFL  flags
 
   #: Find out how much stuff this TTY can display at once.
   #:
@@ -293,7 +282,7 @@ Readline = subclass object where
   #: input :: (Either str (ReadlineState -> str)) (Optional float) -> str
   #:
   input = prompt timeout: 0 buffer: '' position: 0 ~>
-    with @tty.nonblocking => with @tty.raw @enable_jobs @enable_flowctl => except
+    with @tty.raw @enable_jobs @enable_flowctl => except
       err =>
         start = time.time!
         state = @update $ ReadlineState prompt buffer position {}
