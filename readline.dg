@@ -298,53 +298,73 @@ Readline = subclass object where
       err :: StopIteration => err.value
       finally => @finalize state
 
-  #: Write a preview of a line buffer onto a TTY.
+  #: Write a preview of a line buffer onto a TTY. Writing stuff to output afterwards
+  #: will mess with the prompt; call `erase` or `finalize` first.
   #:
   #: update :: ReadlineState -> ReadlineState
   #:
   update = state ~>
+    @erase state
     prefix = if
       state.prompt :: collections.Callable => state.prompt state
       otherwise => state.prompt
     prelen = len $ Sequence.sub (m -> m.group 1 or '') prefix
-
     wh, ww = @tty.size
     h, w = prelen + len state.buffer `divmod` ww
     y, x = prelen + state.position   `divmod` ww
-    @erase state
-    @tty.write $ prefix + @preprocess state.buffer
+    @tty.write $ if
+      h < wh    => prefix + @preprocess state.buffer
+      otherwise => ''.join
+        where
+          # Not enough lines to display everything, let's try another approach.
+          # We'll only show the `ww - 1` characters closest to the cursor.
+          offset = prelen + state.position
+          start = max (offset - (ww - 1 >> 1)) 0
+          end   = min (offset + (ww - 1 >> 1)) (prelen + len state.buffer)
+          # And again, to ensure that we show `ww - 1` characters
+          # even if the cursor is at either end of the buffer.
+          end   = min (max end $ start + ww - 1) (prelen + len state.buffer)
+          start = max (min start $ end - ww + 1) 0
+          y, x := 0, offset - start
+          h, w := 0, end    - start
+          c = 0
+          for m in Sequence.finditer (prefix + @preprocess state.buffer) => if
+            m.group 1 => start < (c += 1) <= end => yield $ m.group 0
+            # Include all ANSI escapes in the output to ensure that
+            # all resets work as intended.
+            otherwise => yield $ m.group 0
     # Some TTYs don't create a new line if the output fits the window exactly;
     # the problem is, we still have to show the cursor, but there's no space.
-    # So we need to create a new line to put it on.
-    w == 0 => @tty.write '\n\r'
-    @tty.relmove (y - (h - wh `max` 0) - h) (x - w)
+    # So we need to create a new line to put it on manually.
+    h != 0 and w == 0 => @tty.write '\n\r'
+    @tty.relmove (y - h) (x - w)
     @tty.flush
-    # The next `update` will use that info.
-    state.cache !! 'lastpos'  = prelen + state.position
-    state.cache !! 'termsize' = wh, ww
+    # `erase` will use that info to locate the start of the buffer.
+    # FIXME this value may become invalid if the terminal rewraps on resize.
+    state.cache !! 'offset' = y, x
     state
 
-  #: Move the cursor to the start of the prompt and erase it.
+  #: Completely erase the prompt and the input buffer from the screen.
   #:
   #: erase :: ReadlineState -> ReadlineState
   #:
   erase = state ~>
-    h, w = state.cache.get 'termsize' (0, 1)
-    y, x = state.cache.pop 'lastpos' 0 `divmod` w
+    y, x = state.cache.pop 'offset' (0, 0)
     @tty.relmove (-y) (-x)
     @tty.erase
     state
 
-  #: Move the cursor to the end of the text.
-  #: This allows key handlers to print other stuff between prompts.
-  #: Don't forget to call `update` later.
+  #: Make sure the prompt does not interfere with further output to the TTY.
   #:
   #: finalize :: ReadlineState -> ReadlineState
   #:
   finalize = state ~>
-    @update $ state.right $ len state.buffer - state.position
-    @tty.write '\n\r'
-    state.cache.pop 'lastpos' 0
+    @erase state
+    prefix = if
+      state.prompt :: collections.Callable => state.prompt state
+      otherwise => state.prompt
+    @tty.write $ prefix + @preprocess state.buffer + '\n\r'
+    @tty.flush
     state
 
 
