@@ -421,8 +421,8 @@ Completer = subclass Readline where
 
   #: A mix-in that enables basic completion.
   #:
-  #: completion_key :: str -- the key on which to trigger completion.
-  #: completion_sep :: Re  -- a regex that matches all word separators.
+  #: completion_keys  :: [str] -- the keys on which to trigger completion.
+  #: completion_regex :: Re  -- a regex that matches all completable words.
   #:
   __init__ = *: args **: kwargs ~>
     (super Completer self).__init__ *: args **: kwargs
