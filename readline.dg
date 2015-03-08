@@ -285,17 +285,16 @@ Readline = subclass object where
     with @tty.raw @enable_jobs @enable_flowctl => except
       err =>
         start = time.time!
-        state = @update $ ReadlineState prompt buffer position {}
+        state = ReadlineState prompt buffer position {}
         while True =>
           passed = min timeout $ time.time! - start
           passed >= timeout > 0 => raise $ BlockingIOError state
+          @update state
 
-          for c in @tty.buffer (timeout - passed) => state = @update $ if
-            @bindings.get  c => (@bindings !! c) state
-            @tty.printable c => state.insert state.position c
-            otherwise        =>
-              @tty.write Key.ALARM
-              state
+          for c in @tty.buffer (timeout - passed) => if
+            @bindings.get  c => state = (@bindings !! c) state
+            @tty.printable c => state = state.insert state.position c
+            otherwise        => @tty.write Key.ALARM
       err :: StopIteration => err.value
       finally => @finalize state
 
@@ -309,23 +308,16 @@ Readline = subclass object where
       otherwise => state.prompt
     prelen = len $ Sequence.sub (m -> m.group 1 or '') prefix
 
-    # We're going to assume the VT handles windows resizing correctly
-    # (i.e. rewraps long lines.)
     wh, ww = @tty.size
     h, w = prelen + len state.buffer `divmod` ww
     y, x = prelen + state.position   `divmod` ww
-    # 1. Go to where the last prompt started, overwrite it with new data.
-    #    If its start is already off the screen, we'll just go where we can.
     @erase state
     @tty.write $ prefix + @preprocess state.buffer
-    # 2. Go back to the beginning. Note: if the string fits
-    #    exactly on one line and the cursor is still there,
-    #    VTs won't create an empty line.
-    if w == 0 and (y, x) != (h, w) => @tty.relmove (1 - h) (-ww)
-       otherwise => @tty.relmove (-h) (-w)
-    # 3. Move to where the caret should be. Note that (0, 0) may be off-screen,
-    #    and terminals will truncate offsets.
-    @tty.relmove (y - (h - wh `max` 0)) x
+    # Some TTYs don't create a new line if the output fits the window exactly;
+    # the problem is, we still have to show the cursor, but there's no space.
+    # So we need to create a new line to put it on.
+    w == 0 => @tty.write '\n\r'
+    @tty.relmove (y - (h - wh `max` 0) - h) (x - w)
     @tty.flush
     # The next `update` will use that info.
     state.cache !! 'lastpos'  = prelen + state.position
@@ -337,9 +329,9 @@ Readline = subclass object where
   #: erase :: ReadlineState -> ReadlineState
   #:
   erase = state ~>
-    _h, _w = state.cache.get 'termsize' (0, 1)
-    _y, _x = state.cache.pop 'lastpos' 0 `divmod` _w
-    @tty.relmove (-_y) (-_x)
+    h, w = state.cache.get 'termsize' (0, 1)
+    y, x = state.cache.pop 'lastpos' 0 `divmod` w
+    @tty.relmove (-y) (-x)
     @tty.erase
     state
 
