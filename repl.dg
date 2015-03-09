@@ -1,5 +1,6 @@
 import '/re'
 import '/sys'
+import '/time'
 import '/types'
 import '/builtins'
 
@@ -94,7 +95,7 @@ runrepl = fd ->
     e :: EOFError          => raise SystemExit
     e :: SystemExit        => raise e
     e :: KeyboardInterrupt => print '' file: sys.stderr
-    e :: BaseException     => sys.excepthook (type e) e e.__traceback__
+    e :: BaseException     => sys.excepthook (type e) e e.__traceback__, time.sleep 0.1
     e is None => except
       e =>
         module._ = eval x module.__dict__
