@@ -52,6 +52,12 @@ not = operator.not_
 !!  = operator.getitem
 !!~ = operator.delitem
 
+#: Throw an exception, in first-class function form.
+#:
+#: raise :: Exception -> a
+#:
+raise = e -> raise e
+
 take      = n xs -> itertools.islice xs None n
 drop      = n xs -> itertools.islice xs n None
 takewhile = f xs -> itertools.takewhile f xs
