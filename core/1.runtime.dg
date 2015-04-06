@@ -89,6 +89,12 @@ __dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
 # NOTE: do NOT put classes before this comment. `subclass` requires
 #       the above function to be defined first.
 
+
+# A hidden copy of `super`. This ensures `@@` does not break when `super`
+# is redefined.
+__dg_super__ = builtins.super
+
+
 #: Parse a module name, which is a POSIX path relative to the current module.
 #: Returns a tuple suitable for passing as the first argument to the function below.
 #:

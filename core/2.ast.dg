@@ -7,7 +7,7 @@ INFIXN = 'and', 'in', 'is', 'or', 'where'
 VARARY = ',', '\n', ''
 #: The set of operators that should not accept a left-hand expression,
 #: so `a R b` becomes `a (R b)`.
-NOLHS = '@', '~'
+NOLHS = '@', '@@', '~'
 #: Different side, same story. `a R b` becomes `(a R) b`.
 NORHS = '!',
 #: Operators with these flags behave differently in a null-denotation context.
@@ -17,6 +17,7 @@ FLAGS = dict for: 1 while: 1 with: 1 if: 2 except: 2
 #: the left binding strength of `Q` is greater than the right binding strength
 #: of `R`; otherwise, it's `(a R b) Q c`.
 STRENGTH = dict'
+  '@@',    (22, 22)
   '@',     (22, 22)
   '.',     (21, 21)
   '!.',    (21, 21)

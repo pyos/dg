@@ -508,6 +508,7 @@ Compiler = subclass CodeType where
   popast = x ~> if
     x :: Name => @popname $ if
       x == '@'  => 'self'
+      x == '@@' => raise $ x.invalid 'cannot assign to superclass'
       otherwise => x.value
 
     x :: Constant or (x :: Name and x in CONSTANTS) =>
@@ -539,6 +540,8 @@ Compiler = subclass CodeType where
         attr :: Name or raise (attr.invalid 'not an attribute')
         @pushname 'self' at: x.loc
         @append   'STORE_ATTR' delta: -2 $ @names !! attr.value
+
+      x.op == '@@' => raise $ x.invalid 'cannot assign superclass attributes'
 
       # A single item prefixed with a star.
       # In a comma-separated list, that is an instruction to put excess
@@ -627,6 +630,7 @@ Compiler = subclass CodeType where
       otherwise   => yield from $ @symbols x
     x :: Name => if
       x == '@'  => yield 'self'
+      x == '@@' => yield 'self'
       otherwise => yield x.value
 
   #: Ensure an AST can have access to all local variables it needs.
@@ -705,6 +709,7 @@ Compiler = subclass CodeType where
     '!',      undefined 'this operator is postfix'
     '~',      undefined 'this operator is prefix'
     '@',      undefined 'this operator is prefix'
+    '@@',     undefined 'this operator is prefix'
     ',',      apply_one 'BUILD_TUPLE'
     "set'",   apply_one 'BUILD_SET'
     "list'",  apply_one 'BUILD_LIST'
@@ -970,9 +975,10 @@ Compiler = subclass CodeType where
          otherwise                          => @pushexcept  name try xs
 
   infixl = dict'
-    ':', undefined 'keyword argument to what function?'
-    '~', undefined 'this operator is prefix'
-    '@', undefined 'this operator is prefix'
+    ':',  undefined 'keyword argument to what function?'
+    '~',  undefined 'this operator is prefix'
+    '@',  undefined 'this operator is prefix'
+    '@@', undefined 'this operator is prefix'
 
     '!',     f g ~> @pushcall g
     ',',     f x ~> @pushcall f x  # i.e. same as in `prefix`.
@@ -990,7 +996,8 @@ Compiler = subclass CodeType where
     '~',     f x ~> (@pushast x, @append 'UNARY_INVERT')
     '-',     f x ~> (@pushast x, @append 'UNARY_NEGATIVE')
     'where', f x ~>  @pushcall f x $ Constant f.loc None
-    '@',     f x ~>  @pushcall (Name f.loc True '.') (Name f.loc False 'self') x
+    '@',     f x ~>  @pushcall (Name f.loc True '.')  (Name f.loc False 'self')  x
+    '@@',    f x ~>  @pushcall (Name f.loc True '!.') (Name f.loc False '__dg_super__') x
 
     '->', f body ~> @pushfunc' body () () () dict! () () dict!
     '~>', f body ~>
