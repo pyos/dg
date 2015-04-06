@@ -134,16 +134,16 @@ nothing like Python docstrings. Sphinx users may recognise this, though.</p><div
 <span class="nb">tuple</span><span class="o">!</span> <span class="c1"># And an empty tuple.</span>
 </pre></div>
 <p>Lists have the same syntax, but with square brackets instead of parentheses.
-(Also, the alias is <code>list</code>, not <code>tuple</code>. Duh.)</p><div class="highlight"><pre><span class="p">[</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">]</span>
-<span class="p">[]</span>
-<span class="p">[</span><span class="mi">0</span><span class="o">,</span><span class="p">]</span>
+(Also, the alias is <code>list</code>, not <code>tuple</code>. Duh.)</p><div class="highlight"><pre><span class="err">[</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="err">]</span>
+<span class="err">[]</span>
+<span class="err">[</span><span class="mi">0</span><span class="o">,</span><span class="err">]</span>
 <span class="nb">list</span>  <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">5</span><span class="p">)</span>
 <span class="nb">list&#39;</span>  <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">4</span>
 </pre></div>
 <p>Dictionaries, too. These require each item to be a pair (i.e. a 2-tuple), though.
-The first object is the key, the second is the value.</p><div class="highlight"><pre><span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)}</span>
-<span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span><span class="p">}</span>
-<span class="nb">dict</span>  <span class="p">[(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)]</span>
+The first object is the key, the second is the value.</p><div class="highlight"><pre><span class="err">{</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span><span class="err">}</span>
+<span class="err">{</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span><span class="err">}</span>
+<span class="nb">dict</span>  <span class="err">[</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span><span class="err">]</span>
 <span class="nb">dict&#39;</span>  <span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span>
 </pre></div>
 <p>There's a shorthand notation for dictionaries with identifier keys:</p><div class="highlight"><pre><span class="nb">dict</span>  <span class="n">a</span><span class="o">:</span> <span class="mi">1</span> <span class="n">b</span><span class="o">:</span> <span class="mi">2</span>
@@ -447,25 +447,36 @@ can only be changed with <code>:=</code> (as if it were a function.)</p><h3>What
 is exactly what <code>where</code> creates. Its arguments are base classes. The <code>metaclass</code>
 keyword argument is optional.</p><div class="highlight"><pre><span class="kt">ShibaInu</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span> <span class="n">metaclass</span><span class="o">:</span> <span class="nb">type</span> <span class="ow">where</span>
   <span class="n">cuteness</span> <span class="o">=</span> <span class="mi">80</span>
-  
+
   <span class="n">__init__</span> <span class="o">=</span> <span class="bp">self</span> <span class="n">name</span> <span class="o">-&gt;</span>
+    <span class="c1"># Don&#39;t forget to call the same method of the next base class.</span>
+    <span class="c1"># Unless you completely override its behaviour, of course.</span>
+    <span class="nb">super</span><span class="o">!.</span><span class="n">__init__</span><span class="o">!</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
     <span class="c1"># __init__ must always return None.</span>
     <span class="c1"># CPython limitation, not mine.</span>
     <span class="bp">None</span>
 </pre></div>
-<p>If you ever get tired of writing <code>self</code>, change <code>-&gt;</code> to <code>~&gt;</code> and <code>self.</code> to <code>@</code>.
-A method with no arguments created with <code>~&gt;</code> is automatically converted into a property.</p><div class="highlight"><pre><span class="kt">Doge</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="kt">ShibaInu</span> <span class="ow">where</span>
+<p>If you ever get tired of writing <code>self</code>, change <code>-&gt;</code> to <code>~&gt;</code>, <code>self.</code> to <code>@</code>,
+and <code>super!.</code> to <code>@@</code>. A method with no arguments created with <code>~&gt;</code> is automatically
+converted into a property by calling <code>property</code> (so assigning something else to
+<code>property</code> will change the behavior of <code>~&gt;</code>).</p><div class="highlight"><pre><span class="kt">Doge</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="kt">ShibaInu</span> <span class="ow">where</span>
+  <span class="n">__init__</span> <span class="o">=</span> <span class="n">name</span> <span class="o">~&gt;</span>
+    <span class="o">@@</span><span class="n">__init__</span> <span class="n">name</span>
+    <span class="o">@</span><span class="n">theOneAndOnly</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="c1"># `__init__` still has to return `None`.</span>
+    <span class="bp">None</span>
+
   <span class="n">cuteness</span> <span class="o">=</span> <span class="o">~&gt;</span> <span class="kt">ShibaInu</span><span class="o">.</span><span class="n">cuteness</span> <span class="o">+</span> <span class="mi">10</span>
   <span class="n">post</span> <span class="o">=</span> <span class="n">message</span> <span class="o">~&gt;</span> <span class="n">twitter</span><span class="o">.</span><span class="n">send</span> <span class="o">@</span><span class="n">name</span> <span class="n">message</span>
 </pre></div>
 <p>Create an instance of a class by calling it.</p><div class="highlight"><pre><span class="n">dawg</span> <span class="o">=</span> <span class="kt">Doge</span> <span class="s">&#39;@DogeTheDog&#39;</span>
 <span class="n">dawg</span><span class="o">.</span><span class="n">cuteness</span> <span class="o">==</span> <span class="mi">90</span>
 </pre></div>
-<h3>New built-ins</h3><p><code>foldl</code> (and <code>foldl1</code>) is a left fold. Look it up.</p><div class="highlight"><pre><span class="nb">sum</span>     <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="nb">foldl</span>  <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="n">xs</span>
-<span class="n">product</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="nb">foldl1</span> <span class="p">(</span><span class="o">*</span><span class="p">)</span>   <span class="n">xs</span>  <span class="c1"># same thing, but no starting value</span>
+<h3>New built-ins</h3><p><code>foldl</code> (and <code>foldl1</code>) is a left fold. Look it up.</p><div class="highlight"><pre><span class="nb">sum</span>     <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">foldl</span>  <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="n">xs</span>
+<span class="n">product</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">foldl1</span> <span class="p">(</span><span class="o">*</span><span class="p">)</span>   <span class="n">xs</span>  <span class="c1"># same thing, but no starting value</span>
 </pre></div>
-<p><code>scanl</code> and <code>scanl1</code> are similar, but also yield intermediate values.</p><div class="highlight"><pre><span class="n">accumulate</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="nb">scanl1</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="n">xs</span>
+<p><code>scanl</code> and <code>scanl1</code> are similar, but also yield intermediate values.</p><div class="highlight"><pre><span class="n">accumulate</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">scanl1</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="n">xs</span>
 <span class="n">accumulate</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1">#=&gt; 1, 3, 6, 10</span>
 </pre></div>
 <p><code>bind</code> is <code>functools.partial</code>:</p><div class="highlight"><pre><span class="n">greet</span> <span class="o">=</span> <span class="nb">bind</span> <span class="nb">print</span> <span class="s">&#39;Hello&#39;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;, &#39;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&#39;!</span><span class="se">\n</span><span class="s">&#39;</span>

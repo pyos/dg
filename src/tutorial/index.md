@@ -754,19 +754,30 @@ keyword argument is optional.
 ```dg
 ShibaInu = subclass object metaclass: type where
   cuteness = 80
-  
+
   __init__ = self name ->
+    # Don't forget to call the same method of the next base class.
+    # Unless you completely override its behaviour, of course.
+    super!.__init__!
     self.name = name
     # __init__ must always return None.
     # CPython limitation, not mine.
     None
 ```
 
-If you ever get tired of writing `self`, change `->` to `~>` and `self.` to `@`.
-A method with no arguments created with `~>` is automatically converted into a property.
+If you ever get tired of writing `self`, change `->` to `~>`, `self.` to `@`,
+and `super!.` to `@@`. A method with no arguments created with `~>` is automatically
+converted into a property by calling `property` (so assigning something else to
+`property` will change the behavior of `~>`).
 
 ```dg
 Doge = subclass ShibaInu where
+  __init__ = name ~>
+    @@__init__ name
+    @theOneAndOnly = True
+    # `__init__` still has to return `None`.
+    None
+
   cuteness = ~> ShibaInu.cuteness + 10
   post = message ~> twitter.send @name message
 ```
