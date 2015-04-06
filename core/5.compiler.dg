@@ -382,6 +382,13 @@ Compiler = subclass CodeType where
   pushfunc' = body a kw da dkw va vkw patterns ~>
     g = @spawn '<lambda>' a kw va vkw
     g.regsyms body
+    a and a !! 0 == 'self' =>
+      # This is most likely a method, and methods can use `super`.
+      # To determine which class we're looking for the superclass of,
+      # `super` uses a hidden free variable named `__class__` which is initialized
+      # with the class object.
+      g.freevars !! '__class__'
+      @cellvars  !! '__class__'
     for (_, v) in patterns.items! => for a in @symbols' v => g.varnames !! a
     for (k, v) in patterns.items! =>
       g.pushname k
@@ -845,6 +852,9 @@ Compiler = subclass CodeType where
       @pushconst @qualname
       @pushconst @name
       @pushcalltop 5 args
+      # `super` uses this hidden cell variable to determine which class to look at.
+      @append 'DUP_TOP' delta: +1
+      @append 'STORE_DEREF' (@cellvars !! '__class__') delta: -1
 
     #: Automatic context managing.
     #:
