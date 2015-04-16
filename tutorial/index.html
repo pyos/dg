@@ -134,16 +134,16 @@ nothing like Python docstrings. Sphinx users may recognise this, though.</p><div
 <span class="nb">tuple</span><span class="o">!</span> <span class="c1"># And an empty tuple.</span>
 </pre></div>
 <p>Lists have the same syntax, but with square brackets instead of parentheses.
-(Also, the alias is <code>list</code>, not <code>tuple</code>. Duh.)</p><div class="highlight"><pre><span class="err">[</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="err">]</span>
-<span class="err">[]</span>
-<span class="err">[</span><span class="mi">0</span><span class="o">,</span><span class="err">]</span>
+(Also, the alias is <code>list</code>, not <code>tuple</code>. Duh.)</p><div class="highlight"><pre><span class="p">[</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="p">[]</span>
+<span class="p">[</span><span class="mi">0</span><span class="o">,</span><span class="p">]</span>
 <span class="nb">list</span>  <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">5</span><span class="p">)</span>
 <span class="nb">list&#39;</span>  <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">4</span>
 </pre></div>
 <p>Dictionaries, too. These require each item to be a pair (i.e. a 2-tuple), though.
-The first object is the key, the second is the value.</p><div class="highlight"><pre><span class="err">{</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span><span class="err">}</span>
-<span class="err">{</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span><span class="err">}</span>
-<span class="nb">dict</span>  <span class="err">[</span><span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span><span class="err">]</span>
+The first object is the key, the second is the value.</p><div class="highlight"><pre><span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)}</span>
+<span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span><span class="p">}</span>
+<span class="nb">dict</span>  <span class="p">[(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)]</span>
 <span class="nb">dict&#39;</span>  <span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span>
 </pre></div>
 <p>There's a shorthand notation for dictionaries with identifier keys:</p><div class="highlight"><pre><span class="nb">dict</span>  <span class="n">a</span><span class="o">:</span> <span class="mi">1</span> <span class="n">b</span><span class="o">:</span> <span class="mi">2</span>
