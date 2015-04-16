@@ -218,6 +218,7 @@ Compiler = subclass CodeType where
     CodeType.__init__ self *: args **: kwargs
     @loops = list!  # Jumps to the beginnings of loops we're currently in. Used by `continue`.
     @unsafe = set!  # Variables used to store exceptions. May cause reference loops.
+    @docstr = None  # The docstring to attach to the next function.
     # For some reason, CPython requires that `__init__` returns None.
     # Why can't it simply ignore the return value?
     None
@@ -252,12 +253,14 @@ Compiler = subclass CodeType where
             @lnotab += byteoff // 256 * b'\xff\x00'
             @lnotab += bytes (byteoff % 256, lineoff % 256)
 
+    x.doc => @docstr = x.doc
     if x :: Name       => @pushname  x.value at: x.loc
        x :: Constant   => @pushconst x.value
        x :: LeftBind   => @pushbind  False x.op *: x.args
        x :: RightBind  => @pushbind  True  x.op *: x.args
        x :: Expression => @pushcall  x.op *: x.args
        otherwise       => raise $ TypeError 'invalid node' $ type x
+    x.doc => @docstr = None
 
   #: Push some string-object pairs. Used by keyword arguments and annotations.
   #:
@@ -381,6 +384,7 @@ Compiler = subclass CodeType where
   #:
   pushfunc' = body a kw da dkw va vkw patterns ~>
     g = @spawn '<lambda>' a kw va vkw
+    g.consts !! (@docstr, type @docstr)
     g.regsyms body
     a and a !! 0 == 'self' =>
       # This is most likely a method, and methods can use `super`.

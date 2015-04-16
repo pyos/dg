@@ -36,7 +36,6 @@ python -m dg <<< "print 'Hello, World!'"
 
 ### To-do
 
- * Actual docstrings as advertised on gh-pages.
  * String interpolation: `i"{expression #flags}"` == `"{:flags}".format expression`
  * Tools for easy AST manipulation.
  * Compiler extension API.

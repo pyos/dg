@@ -87,6 +87,7 @@ Node = subclass object where
   norhs  = False  # :: bool -- see `NORHS`
   varary = False  # :: bool -- see `VARARY`
   flags  = 0      # :: int  -- see `FLAGS`
+  doc    = None   # :: Maybe str -- the `#:` comment that precedes the expression.
 
   #: Construct a SyntaxError at the location of this node.
   #:
@@ -118,7 +119,12 @@ Name = subclass Node where
 
 
 Expression = subclass Node where
-  __init__ = self @loc @op *: args -> None where @args = list args
+  __init__ = self @loc @op *: args ->
+    @args = list args
+    # Inherit docstring from LHS.
+    @doc  = if args      => (head args).doc
+               otherwise => None
+    None
   __repr__ = self -> '(' + (repr @op or ' ').join (map repr @args) + ')'
 
 
