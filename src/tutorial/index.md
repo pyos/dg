@@ -93,10 +93,6 @@ nothing like Python docstrings. Sphinx users may recognise this, though.
 function = argument -> something_absolutely_different
 ```
 
-##### Q: That docstring syntax doesn't seem to work.
-
-Not implemented yet.
-
 ### Literals
 
 ```dg
