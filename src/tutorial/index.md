@@ -1,9 +1,21 @@
 ### Installation
 
-Freaking easy:
+Easy!
 
-1. download the compiler (why don't you look at the [index page](@@ref:/) for that?);
-2. put the "dg" directory somewhere in `$PYTHONPATH`, or `/usr/lib/python3.*/site-packages/`, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.
+```bash
+pip3 install git+https://github.com/pyos/dg
+```
+
+Alternatively, you can run
+
+```bash
+git clone https://github.com/pyos/dg
+```
+
+then move the repository to some directory that is in `$PYTHONPATH`. Or
+to `/usr/lib/python3.*/site-packages/`, or a virtual environment. In fact,
+if you don't want to install it system-wide, just leave it alone:
+Python always scans the current working directory for modules.
 
 ### Usage
 

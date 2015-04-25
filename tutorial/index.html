@@ -39,7 +39,14 @@
     <div class="container container-narrow">
       <div class="row">
         <div class="col-sm-12 col-md-10 col-md-offset-1 markdown">
-          <h3>Installation</h3><p>Freaking easy:</p><ol><li>download the compiler (why don't you look at the <a href="..">index page</a> for that?);</li><li>put the "dg" directory somewhere in <code>$PYTHONPATH</code>, or <code>/usr/lib/python3.*/site-packages/</code>, or a virtual environment. In fact, if you don't want to install it system-wide, just leave it alone: Python always scans the current working directory for modules.</li></ol><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre>python3 -m dg  <span class="c"># REPL!</span>
+          <h3>Installation</h3><p>Easy!</p><div class="highlight"><pre>pip3 install git+https://github.com/pyos/dg
+</pre></div>
+<p>Alternatively, you can run</p><div class="highlight"><pre>git clone https://github.com/pyos/dg
+</pre></div>
+<p>then move the repository to some directory that is in <code>$PYTHONPATH</code>. Or
+to <code>/usr/lib/python3.*/site-packages/</code>, or a virtual environment. In fact,
+if you don't want to install it system-wide, just leave it alone:
+Python always scans the current working directory for modules.</p><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre>python3 -m dg  <span class="c"># REPL!</span>
 python3 -m dg file.dg --do-something-useful-this-time  <span class="c"># Script!</span>
 python3 -m dg -m module  <span class="c"># Module! (Or package!)</span>
 python3 -m dg -c <span class="s1">&#39;print &quot;Command!&quot;&#39;</span>

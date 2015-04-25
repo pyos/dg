@@ -80,11 +80,7 @@
       %div.row.text-center
         %div.col-md-12
           %h2 -> Just download the damn thing already.
-          %p
-            %code -> git clone https://github.com/pyos/dg.git
-            or get
-            %a href="https://github.com/pyos/dg/archive/master.zip" -> this zip archive
-
+          %p -> %code -> pip3 install git+https://github.com/pyos/dg
           %h2 -> %a href="@@ref:/tutorial/" class="btn btn-success btn-lg" -> Ready to learn!
 
     %div.footer.text-muted
