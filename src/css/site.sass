@@ -1,3 +1,6 @@
+@import url(http://fonts.googleapis.com/css?family=Lora|Montserrat)
+@import code
+
 @mixin narrow-on-big-screens($medium, $big)
   margin-left: auto
   margin-right: auto
@@ -8,13 +11,16 @@
   @media (min-width: 992px)
     width: $big
 
+body
+  overflow-x: hidden
 
 a
   cursor: pointer
 
 pre
-  background: #fafafa
-  border-color: #f0f0f0
+  background: none
+  border: none
+  padding: 20px
 
 .text-muted
   color: rgba(0, 0, 0, 0.3)
@@ -22,23 +28,35 @@ pre
 .navbar
   // `.container` has a 15px padding
   @include narrow-on-big-screens(720px, 810px)
+  border: none
+  background: none
+  margin-bottom: 0
 
-  @media (min-width: 768px)
-    margin-bottom: 0
-    background: white
-    border-color: white
-    box-shadow: none
-    -webkit-box-shadow: none
+  @media (max-width: 767px)
+    display: none
 
-.container
+.icon-bar
+  border-top: 2px solid rgba(128, 128, 128, 0.7)
+
+.container-narrow
   @include narrow-on-big-screens(750px, 970px)
-
-  &.container-narrow
-    @include narrow-on-big-screens(750px, 840px)
 
 .footer
   background: #f0f0f0
-  padding-top: 15px
+  padding: 15px
+  margin-top: 20px
+
+.jumbotron
+  background: None
+
+.marketing
+  text-align: center
+
+  h4
+    font-family: 'Montserrat', 'Helvetica Neue', sans-serif
+
+  h5
+    font-size: 52px
 
 .markdown
   h3
@@ -56,44 +74,94 @@ pre
       margin-left: -15px
 
 .fun-dawg
-  background: url(../images/doge.jpg) no-repeat right #c39f53
-  margin-bottom: 10px
+  background: #ab883e
+  padding-bottom: 20px
+  margin-bottom: 20px
+  color: white
+
+  a, a:hover, a:focus, a:active
+    color: #fff
+    text-decoration: underline
+
+  .text-muted
+    color: rgba(255, 255, 255, 0.5)
 
   .jumbotron
-    color: white
-    background: none
+    font-family: 'Montserrat', 'Helvetica Neue', sans-serif
 
-    .text-muted
-      color: rgba(255, 255, 255, 0.5)
+  .jumbotron, .row
+    position: relative
+    z-index: 5
 
-  @media (min-width: 768px)
-    .navbar
-      border: none
-      background: none
+  .hexagon
+    &:before, &:after
+      width: 0
+      content: ''
+      display: block
+      border-left:  0.5em solid transparent
+      border-right: 0.5em solid transparent
+      position: relative
 
-      .navbar-brand,
-      .navbar-text,
-      .navbar-nav > li > a
-        color: rgba(255, 255, 255, 0.7)
-        text-shadow: none
+    &:before
+      border-bottom: 0.29em solid transparent
+      top: -0.285em
 
-        &:hover, &:focus
-          color: #ffffff
-          background: none
+    &:after
+      border-top: 0.29em solid transparent
+      top: 0.285em
+
+    width:  1em
+    height: 0.575em
+    margin: 0.285em 0
+    z-index: 2
+
+    @mixin hexagon-props($color, $x, $y)
+      &:before
+        border-bottom-color: $color
+      &:after
+        border-top-color: $color
+      background-color: $color
+      top: $y
+      right: $x
+
+    &:nth-child(1)
+      @include hexagon-props(#B69348, 0.66em + 1em, 0.066em)
+    &:nth-child(2)
+      @include hexagon-props(#AE8C42, 0.66em + 0.5em, 0.066em + 0.575em + 0.285em)
+    &:nth-child(3)
+      @include hexagon-props(#B08E45, 0.66em - 0.5em, 0.066em + 0.575em + 0.285em)
+    &:nth-child(4)
+      @include hexagon-props(#B5934C, 0.66em - 1em, 0.066em)
+    &:nth-child(5)
+      @include hexagon-props(#BE9A4E, 0.66em - 0.5em, 0.066em - 0.575em - 0.285em)
+    &:nth-child(6)
+      @include hexagon-props(#BA9850, 0.66em + 0.5em, 0.066em - 0.575em - 0.285em)
+
+  .fun-dawgs-face, .hexagon
+    font-size: 300px
+    position: absolute
+
+    @media (max-width: 767px)
+      font-size: 150px
+
+  .fun-dawgs-face
+    background: url(../images/doge.jpg) no-repeat center #c39f53
+    background-size: contain
+    width:  1em
+    height: 0.575em + 0.285em * 2
+    right: 0.66em
+    top: 0.066em
+    z-index: 1
 
 .serious-dawg
-  width: 381px
+  max-width: 381px
   margin: auto
   padding-top: 339px
   background: url(../images/seriousdawg.jpg) no-repeat top center #ffffff
 
-  @media (max-width: 425px)
-    // Doesn't really fit on the screen at that size
-    display: none
-
   h3
     background: #0058a2
-    font-family: "URW Bookman L", "Times New Roman", Times, serif
+    font-family: "Lora", "URW Bookman L", serif
     font-size: 54px
     color: white
     margin: 0
@@ -104,5 +172,3 @@ pre
 
     .accent
       color: #0058a2
-
-@import code

@@ -5,46 +5,72 @@
     %title -> dg — it's a Python! No, it's a Haskell!
   %body
     %div.fun-dawg
-      @@include:/navbar.hamlike
+      %div.container
+        %div.hexagon
+        %div.hexagon
+        %div.hexagon
+        %div.hexagon
+        %div.hexagon
+        %div.hexagon
+        %div.fun-dawgs-face
 
-      %div.container.container-narrow
         %div.jumbotron
           %h1 -> d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.
+          %p.lead.text-muted -> Much improved. So 2.0. Very wow.
+
+        %div.row.marketing
+          %div.col-sm-4
+            %h5.fa-stack
+              %span.fa.fa-stack-1x.fa-gavel
+              %span.fa.fa-stack-2x.fa-ban.text-muted
+            %h4 -> Overthrow the oppressive dictatorship!
+            %p
+              Guido rejecting your awesome syntactic proposals? He's not in charge anymore.
+
+          %div.col-sm-4
+            %h5.fa-stack
+              %span.fa.fa-stack-1x.fa-comments-o
+            %h4 -> Annoy advocates of the category theory!
+            %p
+              With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
+              system, dg is the best way to make fans of static typing shut up already.
+
+          %div.col-sm-4
+            %h5.fa-stack
+              %span.fa.fa-stack-1x.fa-thumbs-up
+            %h4 -> Be on the verge of progress!
+            %p
+              Syntactic sugar is the most important thing nowadays.
+              And don't let those Java guys tell you otherwise.
+
+        %div.row.marketing
+          %div.col-sm-4
+            %h5.fa-stack
+              %span.fa.fa-stack-1x.fa-graduation-cap
+            %h4 -> Add one more language to your résumé!
+            %p
+              Read <a href="@@ref:/tutorial/">this awesome tutorial</a> and tell everyone
+              how impossibly smart you are.
+
+          %div.col-sm-4
+            %h5.fa-stack
+              %span.fa.fa-stack-1x.fa-magic
+            %h4 -> It even runs on PyPy!
+            %p
+              Got to wait for a JIT-enabled PyPy 3.3 first, though.
+
+          %div.col-sm-4
+            %h5.fa-stack
+              %span.fa.fa-stack-1x.fa-question
+              %span.fa.fa-stack-2x.fa-question.text-muted
+            %h4 -> Seriously, what IS this?
+            %p
+              A programming language that compiles to CPython bytecode, much
+              like Scala compiles to JVM's. That essentially means that
+              dg is an alternative syntax for Python 3. It allows you to use
+              all of the existing libraries, too.
 
     %div.container.container-narrow
-      %div.row.marketing
-        %div.col-sm-6
-          %h4 -> Overthrow the oppressive dictatorship!
-          %p
-            Guido rejecting your awesome syntactic proposals? He's not in charge anymore.
-
-          %h4 -> Annoy advocates of the category theory!
-          %p
-            With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
-            system, dg is the best way to make fans of static typing shut up already.
-
-          %h4 -> Be on the verge of progress!
-          %p
-            Syntactic sugar is the most important thing nowadays.
-            And don't let those Java guys tell you otherwise.
-
-        %div.col-sm-6
-          %h4 -> Add one more language to your résumé!
-          %p
-            Read <a href="@@ref:/tutorial/">this awesome tutorial</a> and tell everyone
-            how impossibly smart you are.
-
-          %h4 -> It even runs on PyPy!
-          %p
-            Got to wait for a JIT-enabled PyPy 3.3 first, though.
-
-          %h4 -> Seriously, what IS this?
-          %p
-            A programming language that compiles to CPython bytecode, much
-            like Scala compiles to JVM's. That essentially means that
-            dg is an alternative syntax for Python 3. It allows you to use
-            all of the existing libraries, too.
-
       %div.row
         %div.col-md-8.col-md-offset-2.col-sm-10.col-sm-offset-1
           %h2.text-center -> Still not convinced?
@@ -58,8 +84,10 @@
             or get
             %a href="https://github.com/pyos/dg/archive/master.zip" -> this zip archive
 
+          %h2 -> %a href="@@ref:/tutorial/" class="btn btn-success btn-lg" -> Ready to learn!
+
     %div.footer.text-muted
-      %div.container.container-narrow
+      %div.container
         %p
           Totally made by <a href="https://github.com/pyos">@pyos</a>.
           "pyos" means "dog", by the way.

@@ -1,4 +1,4 @@
-%div.navbar.navbar-default.navbar-static-top role="navigation"
+%div.navbar.navbar-static-top role="navigation"
   %div.container-fluid
     %div.navbar-header
       %button.navbar-toggle type="button" data-toggle="collapse" data-target=".navbar-collapse"

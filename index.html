@@ -3,10 +3,13 @@
   <head>
     <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+
+<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
 <link rel="stylesheet" href="css/site.gen.css">
+
 <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
-<script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 <!--[if lt IE 9]>
   <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
   <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
@@ -15,59 +18,72 @@
     <title>dg — it's a Python! No, it's a Haskell!</title></head>
   <body>
     <div class="fun-dawg">
-      <div role="navigation" class="navbar navbar-default navbar-static-top">
-  <div class="container-fluid">
-    <div class="navbar-header">
-      <button type="button" data-toggle="collapse" data-target=".navbar-collapse" class="navbar-toggle">
-        <span class="sr-only">Toggle navigation</span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span></button>
-      <a href="." class="navbar-brand">dg</a></div>
-    <div class="navbar-collapse collapse">
-      <ul class="nav navbar-nav">
-        <li><a href="https://github.com/pyos/dg">GitHub</a></li>
-        <li><a href="tutorial">Tutorial</a></li></ul></div></div></div>
+      <div class="container">
+        <div class="hexagon"></div>
+        <div class="hexagon"></div>
+        <div class="hexagon"></div>
+        <div class="hexagon"></div>
+        <div class="hexagon"></div>
+        <div class="hexagon"></div>
+        <div class="fun-dawgs-face"></div>
 
-
-      <div class="container container-narrow">
         <div class="jumbotron">
-          <h1>d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.</h1></div></div></div>
+          <h1>d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.</h1>
+          <p class="lead text-muted">Much improved. So 2.0. Very wow.</p></div>
+
+        <div class="row marketing">
+          <div class="col-sm-4">
+            <h5 class="fa-stack">
+              <span class="fa fa-stack-1x fa-gavel"></span>
+              <span class="fa fa-stack-2x fa-ban text-muted"></span></h5>
+            <h4>Overthrow the oppressive dictatorship!</h4>
+            <p>
+              Guido rejecting your awesome syntactic proposals? He's not in charge anymore.</p></div>
+
+          <div class="col-sm-4">
+            <h5 class="fa-stack">
+              <span class="fa fa-stack-1x fa-comments-o"></span></h5>
+            <h4>Annoy advocates of the category theory!</h4>
+            <p>
+              With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
+              system, dg is the best way to make fans of static typing shut up already.</p></div>
+
+          <div class="col-sm-4">
+            <h5 class="fa-stack">
+              <span class="fa fa-stack-1x fa-thumbs-up"></span></h5>
+            <h4>Be on the verge of progress!</h4>
+            <p>
+              Syntactic sugar is the most important thing nowadays.
+              And don't let those Java guys tell you otherwise.</p></div></div>
+
+        <div class="row marketing">
+          <div class="col-sm-4">
+            <h5 class="fa-stack">
+              <span class="fa fa-stack-1x fa-graduation-cap"></span></h5>
+            <h4>Add one more language to your résumé!</h4>
+            <p>
+              Read <a href="tutorial">this awesome tutorial</a> and tell everyone
+              how impossibly smart you are.</p></div>
+
+          <div class="col-sm-4">
+            <h5 class="fa-stack">
+              <span class="fa fa-stack-1x fa-magic"></span></h5>
+            <h4>It even runs on PyPy!</h4>
+            <p>
+              Got to wait for a JIT-enabled PyPy 3.3 first, though.</p></div>
+
+          <div class="col-sm-4">
+            <h5 class="fa-stack">
+              <span class="fa fa-stack-1x fa-question"></span>
+              <span class="fa fa-stack-2x fa-question text-muted"></span></h5>
+            <h4>Seriously, what IS this?</h4>
+            <p>
+              A programming language that compiles to CPython bytecode, much
+              like Scala compiles to JVM's. That essentially means that
+              dg is an alternative syntax for Python 3. It allows you to use
+              all of the existing libraries, too.</p></div></div></div></div>
 
     <div class="container container-narrow">
-      <div class="row marketing">
-        <div class="col-sm-6">
-          <h4>Overthrow the oppressive dictatorship!</h4>
-          <p>
-            Guido rejecting your awesome syntactic proposals? He's not in charge anymore.</p>
-
-          <h4>Annoy advocates of the category theory!</h4>
-          <p>
-            With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
-            system, dg is the best way to make fans of static typing shut up already.</p>
-
-          <h4>Be on the verge of progress!</h4>
-          <p>
-            Syntactic sugar is the most important thing nowadays.
-            And don't let those Java guys tell you otherwise.</p></div>
-
-        <div class="col-sm-6">
-          <h4>Add one more language to your résumé!</h4>
-          <p>
-            Read <a href="tutorial">this awesome tutorial</a> and tell everyone
-            how impossibly smart you are.</p>
-
-          <h4>It even runs on PyPy!</h4>
-          <p>
-            Got to wait for a JIT-enabled PyPy 3.3 first, though.</p>
-
-          <h4>Seriously, what IS this?</h4>
-          <p>
-            A programming language that compiles to CPython bytecode, much
-            like Scala compiles to JVM's. That essentially means that
-            dg is an alternative syntax for Python 3. It allows you to use
-            all of the existing libraries, too.</p></div></div>
-
       <div class="row">
         <div class="col-md-8 col-md-offset-2 col-sm-10 col-sm-offset-1">
           <h2 class="text-center">Still not convinced?</h2>
@@ -96,10 +112,12 @@
           <p>
             <code>git clone https://github.com/pyos/dg.git</code>
             or get
-            <a href="https://github.com/pyos/dg/archive/master.zip">this zip archive</a></p></div></div></div>
+            <a href="https://github.com/pyos/dg/archive/master.zip">this zip archive</a></p>
+
+          <h2><a href="tutorial" class="btn btn-success btn-lg">Ready to learn!</a></h2></div></div></div>
 
     <div class="footer text-muted">
-      <div class="container container-narrow">
+      <div class="container">
         <p>
           Totally made by <a href="https://github.com/pyos">@pyos</a>.
           "pyos" means "dog", by the way.</p>

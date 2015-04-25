@@ -6,16 +6,16 @@
   %body
     @@include:/navbar.hamlike
 
-    %div.container
-      %div.header.serious-dawg
-        %h3.text-center -> Learning dg
-        %h4.text-left   -> NOT<span class="accent">'</span>REALLY®
+    %div.header.serious-dawg
+      %h3.text-center -> Learning dg
+      %h4.text-left   -> NOT<span class="accent">'</span>REALLY®
 
+    %div.container.container-narrow
       %div.row
         %div.col-sm-12.col-md-10.col-md-offset-1.markdown
           @@include:index.md
 
     %div.footer.text-muted
-      %div.container
+      %div.container.container-narrow
         %p -> ^D Interrupted by EOF
         %p -> Totally made by <a href="https://github.com/pyos">@pyos</a>
