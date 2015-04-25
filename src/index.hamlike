@@ -6,13 +6,14 @@
   %body
     %div.fun-dawg
       %div.container
-        %div.hexagon
-        %div.hexagon
-        %div.hexagon
-        %div.hexagon
-        %div.hexagon
-        %div.hexagon
-        %div.fun-dawgs-face
+        %div.hexacontainer-inner
+          %div.fun-dawgs-face
+          %div.hexagon.left-upper
+          %div.hexagon.left
+          %div.hexagon.left-lower
+          %div.hexagon.right-lower
+          %div.hexagon.right
+          %div.hexagon.right-upper
 
         %div.jumbotron
           %h1 -> d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.

@@ -11,9 +11,6 @@
   @media (min-width: 992px)
     width: $big
 
-body
-  overflow-x: hidden
-
 a
   cursor: pointer
 
@@ -74,6 +71,7 @@ pre
       margin-left: -15px
 
 .fun-dawg
+  overflow: hidden
   background: #ab883e
   padding-bottom: 20px
   margin-bottom: 20px
@@ -88,32 +86,49 @@ pre
 
   .jumbotron
     font-family: 'Montserrat', 'Helvetica Neue', sans-serif
-
-  .jumbotron, .row
     position: relative
-    z-index: 5
+    z-index: 10
+
+  .container
+    position: relative
+
+  $hexagon-minor:  0.29em
+  $hexagon-major:  0.58em
+  $hexagon-width:  1em
+  $hexagon-height: $hexagon-major + $hexagon-minor * 2
+  $hexagon-semi:   $hexagon-major + $hexagon-minor
+
+  .hexacontainer-inner
+    position: absolute
+    right: 25%
+    top:   0.66em
+
+    font-size: 300px
+
+    @media (max-width: 767px)
+      font-size: 150px
+
 
   .hexagon
     &:before, &:after
       width: 0
       content: ''
       display: block
-      border-left:  0.5em solid transparent
-      border-right: 0.5em solid transparent
+      border-left:  ($hexagon-width / 2) solid transparent
+      border-right: ($hexagon-width / 2) solid transparent
       position: relative
 
     &:before
-      border-bottom: 0.29em solid transparent
-      top: -0.285em
+      border-bottom: $hexagon_minor solid transparent
+      top: -$hexagon-minor
 
     &:after
-      border-top: 0.29em solid transparent
-      top: 0.285em
+      border-top: $hexagon_minor solid transparent
+      top: $hexagon-minor
 
     width:  1em
-    height: 0.575em
-    margin: 0.285em 0
-    z-index: 2
+    height: $hexagon-major
+    margin: (-$hexagon-major / 2) 0 0 (-$hexagon-width / 2)
 
     @mixin hexagon-props($color, $x, $y)
       &:before
@@ -121,37 +136,33 @@ pre
       &:after
         border-top-color: $color
       background-color: $color
-      top: $y
-      right: $x
+      top:  $y
+      left: $x
 
-    &:nth-child(1)
-      @include hexagon-props(#B69348, 0.66em + 1em, 0.066em)
-    &:nth-child(2)
-      @include hexagon-props(#AE8C42, 0.66em + 0.5em, 0.066em + 0.575em + 0.285em)
-    &:nth-child(3)
-      @include hexagon-props(#B08E45, 0.66em - 0.5em, 0.066em + 0.575em + 0.285em)
-    &:nth-child(4)
-      @include hexagon-props(#B5934C, 0.66em - 1em, 0.066em)
-    &:nth-child(5)
-      @include hexagon-props(#BE9A4E, 0.66em - 0.5em, 0.066em - 0.575em - 0.285em)
-    &:nth-child(6)
-      @include hexagon-props(#BA9850, 0.66em + 0.5em, 0.066em - 0.575em - 0.285em)
+    &.left-upper
+      @include hexagon-props(#BA9850, $hexagon-width / -2, -$hexagon-semi)
+    &.left
+      @include hexagon-props(#B69348, $hexagon-width / -1, 0)
+    &.left-lower
+      @include hexagon-props(#AE8C42, $hexagon-width / -2, $hexagon-semi)
+    &.right-lower
+      @include hexagon-props(#B08E45, $hexagon-width / +2, $hexagon-semi)
+    &.right
+      @include hexagon-props(#B5934C, $hexagon-width / +1, 0)
+    &.right-upper
+      @include hexagon-props(#BE9A4E, $hexagon-width / +2, -$hexagon-semi)
 
   .fun-dawgs-face, .hexagon
-    font-size: 300px
     position: absolute
-
-    @media (max-width: 767px)
-      font-size: 150px
 
   .fun-dawgs-face
     background: url(../images/doge.jpg) no-repeat center #c39f53
     background-size: contain
-    width:  1em
-    height: 0.575em + 0.285em * 2
-    right: 0.66em
-    top: 0.066em
-    z-index: 1
+    width:  $hexagon-width
+    height: $hexagon-height
+    margin: (-$hexagon-height / 2) 0 0 (-$hexagon-width / 2)
+    top:  0
+    left: 0
 
 .serious-dawg
   max-width: 381px
