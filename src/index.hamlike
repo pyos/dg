@@ -3,8 +3,18 @@
   %head
     @@include:/head.hamlike
     %title -> dg — it's a Python! No, it's a Haskell!
+
+    %link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.1.1/gh-fork-ribbon.min.css"
+    <!--[if lt IE 9]>
+      %link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.1.1/gh-fork-ribbon.ie.min.css"
+    <![endif]-->
   %body
     %div.fun-dawg
+      %div.github-fork-ribbon-wrapper.right
+        %div.github-fork-ribbon
+          %a href="https://github.com/pyos/dg"
+            Fork on GitHub
+
       %div.container
         %div.hexacontainer-inner
           %div.fun-dawgs-face
