@@ -437,26 +437,24 @@ Completer = subclass Readline where
   #:
   complete_event = state ~>
     @tty.write Key.ALARM
-    start, length, original, cmps = @complete_buffer state.buffer state.position
+    start, length, cmps = @complete_buffer state.buffer state.position
     if len cmps == 1 => state = state.erase start length |>.insert start (head cmps)
        len cmps != 0 =>
-         state = @finalize state
          prefix = ''.join $ map fst $ takewhile (cs -> len (set cs) == 1) $ zip *: cmps
-         prefix != original =>
-           # e.g. if all possible completions for `a` are `abc1`, `abc2`, and `abc3`,
-           #      this will automatically insert `abc` after displaying the list.
-           state = state.erase start length |>.insert start prefix
+         # e.g. if all possible completions for `a` are `abc1`, `abc2`, and `abc3`,
+         #      this will automatically insert `abc` after displaying the list.
+         state = @finalize state |>.erase start length |>.insert start prefix
          @display_completions cmps
     state
 
   #: Find the word to complete and get the list of possible completions.
-  #: Returns a (start index, length, word part, completions) tuple.
+  #: Returns a (start index, length, completions) tuple.
   #:
-  #: complete_buffer :: str int -> (int, int, str, [str])
+  #: complete_buffer :: str int -> (int, int, [str])
   #:
   complete_buffer = buf at ~> except
     err => m = next $ filter (m -> m.start! <= at <= m.end!) $ @completion_regex.finditer buf
-    err is None => m.start!, m.end! - m.start!, m.group!, @complete_word m.group!
+    err is None => m.start!, m.end! - m.start!, @complete_word m.group!
     err :: StopIteration => 0, 0, []
 
   #: Fetch the list of possible completions for a word.
