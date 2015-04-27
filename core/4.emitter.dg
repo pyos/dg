@@ -71,6 +71,7 @@ CodeType = subclass object where
   #: generator :: bool -- is a function with `yield`.
   #: name      :: str
   #: qualname  :: str
+  #: docstring :: str
   #:
   #: var        :: Maybe str -- a string representing the innermost assignment.
   #: fastlocals :: dict (dict int int) -- maps names from `varnames` to opcode locations.
@@ -91,7 +92,7 @@ CodeType = subclass object where
   #: lineoff  :: int -- `lineno` last time `lnotab` was updated.
   #: byteoff  :: int -- `len bytecode` at the same point.
   #:
-  __init__ = name a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: None function: False ~>
+  __init__ = name a: tuple! kw: tuple! va: tuple! vkw: tuple! cell: None function: False doc: None ~>
     @cell      = cell
     @argc      = len a
     @kwargc    = len kw
@@ -100,6 +101,7 @@ CodeType = subclass object where
     @function  = bool function
     @generator = False  # only becomes known during generation
     @name      = str name
+    @docstring = doc
     @qualname  = ''
     cell => cell.qualname => @qualname += cell.qualname + '.'
     cell => cell.function => @qualname += '<locals>.'
@@ -116,6 +118,10 @@ CodeType = subclass object where
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       otherwise => set!
     for v in itertools.chain a kw va vkw => @varnames !! v
+    # First constant in a code object is always its docstring.
+    # Except if this is a class/module, in which case an additional manual
+    # assignment to `__doc__` is necessary.
+    @consts !! (doc, type doc)
 
     @bytecode  = []
     @stacksize = 0
