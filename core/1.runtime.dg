@@ -59,7 +59,7 @@ BUILTINS = locals! where
   #:
   #: dict' :: (object, object)... -> dict object object
   #:
-  dict'  = *: xs **: k -> dict xs **: k
+  dict' = *: xs **: k -> dict xs **: k
 
   #: Construct a tuple from distinct elements.
   #:
@@ -214,19 +214,13 @@ BUILTINS = locals! where
   scanl1 = f xs -> itertools.accumulate xs f
   # FIXME should also define foldr(1) and scanr(1). Probably.
 
-  #: A version of __build_class__ that does not use functions. Basically,
-  #: it creates a class given some standard attributes and its namespace.
-  #:
-  #: (I bet you didn't even know __build_class__ existed.)
-  #:
+  __dg_super__  = super
+  __dg_locals__ = locals
+
   __dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
     types.new_class name bases kwds $ ns ->
       ns.update attrs
       ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
-
-  # A hidden copy of `super`. This ensures `@@` does not break when `super`
-  # is redefined.
-  __dg_super__ = builtins.super
 
   #: Parse a module name, which is a POSIX path relative to the current module.
   #: Returns a tuple suitable for passing as the first argument to `__dg_import__`.
@@ -272,9 +266,10 @@ BUILTINS = locals! where
   InstancePatternError = subclass ValueError where
 
 
-# These two are considered compile-time constants and cannot be created with `=`.
-BUILTINS !! 'otherwise' = True
+# These two are compile-time constants, so we can't just do `otherwise = True`.
+# That's a no-op constant pattern comparison.
 BUILTINS !! 'finally'   = True
+BUILTINS !! 'otherwise' = True
 # Overriding `__builtins__` after the code has already started running
 # does nothing. We'll have to dump builtins into the global namespace.
 globals!.update BUILTINS

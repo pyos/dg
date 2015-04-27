@@ -852,9 +852,9 @@ Compiler = subclass CodeType where
     #: Duplicate the local namespace and turn it into a type. `where` is useful here.
     #:
     'subclass', f args ~>
-      @pushname  '__dg_build_class__'  # Note: these may have been redefined
-      @pushname  '__name__'            # in this namespace. Watch the syntax highlighting.
-      @pushname  'locals'              # (And don't name methods __dg_build_class__.)
+      @pushname  '__dg_build_class__'
+      @pushname  '__name__'
+      @pushname  '__dg_locals__'
       @append    'CALL_FUNCTION' 0
       @pushconst @docstring
       @pushconst @qualname
