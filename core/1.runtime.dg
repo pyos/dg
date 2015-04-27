@@ -2,150 +2,6 @@ import '/sys'
 import '/types'
 import '/builtins'
 import '/operator'
-
-# NOTE: do NOT put other imports here. Everything until `BUILTINS = ...`
-#       will be exported into every dg module ever.
-set'   = *: xs       -> set  xs
-list'  = *: xs       -> list xs
-dict'  = *: xs **: k -> dict xs **: k
-tuple' = , = *: xs -> xs
-
-flip  = f -> x y -> f y x
-bind  = f *: a **: k -> *: ae **: ke -> f *: (a + ae) **: (dict k **: ke)
-! = $ = f *: a **: k -> f *: a **: k
-<-    = f g -> *: a **: k -> f $ g *: a **: k
-
-globals! !! 'otherwise' = True  # These two are considered compile-time constants
-globals! !! 'finally'   = True  # and cannot be assigned to directly.
-
-..  = range
-... = Ellipsis
-::  = isinstance
-->  = -> None
-~>  = ~> None
-:+  = a b -> itertools.chain (a,) b
-+:  = a b -> itertools.chain a (b,)
-in  = a b -> a in b
-and = a b -> a and b
-or  = a b -> a or b
-is  = operator.is_
-not = operator.not_
-<   = operator.lt
-<=  = operator.le
-==  = operator.eq
-!=  = operator.ne
->=  = operator.ge
->   = operator.gt
-~   = operator.invert
-+   = operator.add
--   = operator.sub
-*   = operator.mul
-**  = operator.pow
-/   = operator.truediv
-//  = operator.floordiv
-%   = operator.mod
-&   = operator.and_
-^   = operator.xor
-|   = operator.or_
-<<  = operator.lshift
->>  = operator.rshift
-!!  = operator.getitem
-!!~ = operator.delitem
-
-#: Throw an exception, in first-class function form.
-#:
-#: raise :: Exception -> a
-#:
-raise = e -> raise e
-
-take      = n xs -> itertools.islice xs None n
-drop      = n xs -> itertools.islice xs n None
-takewhile = f xs -> itertools.takewhile f xs
-dropwhile = f xs -> itertools.dropwhile f xs
-exhaust   = x -> collections.deque x maxlen: 0
-iterate   = f x -> while True =>
-  yield x
-  x = f x
-
-foldl  = f st xs -> functools.reduce f xs st
-foldl1 = f    xs -> functools.reduce f xs
-scanl  = f st xs -> itertools.accumulate (st:+xs) f
-scanl1 = f    xs -> itertools.accumulate xs f
-# FIXME should also define foldr(1) and scanr(1). Probably.
-
-head = xs -> next $ iter xs
-fst  = xs -> next $ iter xs  # the different name made sense in Haskell, so whatever.
-snd  = xs -> next $ drop 1 xs
-tail = xs -> list $ drop 1 xs
-init = !! slice None -1
-last = !! -1
-
-#: A version of __build_class__ that does not use functions. Basically,
-#: it creates a class given some standard attributes and its namespace.
-#:
-#: (I bet you didn't even know __build_class__ existed.)
-#:
-#: _ :: str (dict str object) (Maybe str) str str *type **(dict str object) -> type
-#:
-__dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
-  types.new_class name bases kwds $ ns ->
-    ns.update attrs
-    ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
-
-# NOTE: do NOT put classes before this comment. `subclass` requires
-#       the above function to be defined first.
-
-
-# A hidden copy of `super`. This ensures `@@` does not break when `super`
-# is redefined.
-__dg_super__ = builtins.super
-
-
-#: Parse a module name, which is a POSIX path relative to the current module.
-#: Returns a tuple suitable for passing as the first argument to the function below.
-#:
-#: __dg_parse_import__ :: str -> (int, [str])
-#:
-__dg_parse_import__ = info ->
-  parent = 1
-  path   = (posixpath.normpath info).split posixpath.sep
-  while path and head path == ''           and not (path.pop 0) => parent  = 0
-  while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
-  while path and head path == posixpath.curdir and  path.pop 0  =>
-  not path => raise $ ImportError $ '`{}` resolves to an empty name'.format info
-  parent, path
-
-#: Import a module. `parent` is the same as for `importlib.import_module`,
-#: while `path` is a list of name components, e.g. `urllib.request.Request`
-#: should be passed as `['urllib', 'request', 'Request']`.
-#:
-#: If `reload` is `True`, `importlib.reload` is also called on the module.
-#: If `qual` is `True`, the object that corresponds to the first item in `path`
-#: is returned.
-#:
-#: _ :: (int, [str]) str bool bool -> object
-#:
-__dg_import__ = (parent, path) package qual reload ->
-  root = importlib.import_module ('.' * parent + path !! 0) package
-  mod  = root
-  for p in tail path => mod = except
-    err => getattr mod p
-    err :: AttributeError => importlib.import_module ('.' + p) mod.__package__
-  reload => if
-    mod :: types.ModuleType => importlib.reload mod
-    otherwise               => raise $ ImportError $ '`{}` is not a module'.format $ last path
-  if qual      => root
-     otherwise => mod
-
-InstancePatternError = subclass ValueError where
-ConstantPatternError = subclass ValueError where
-
-BUILTINS = globals!.copy!
-BUILTINS !!~ '__builtins__'
-BUILTINS.update builtins.__dict__
-
-# Can start putting random crap into the namespace, including stuff
-# required by functions defined above.
 import '/functools'
 import '/itertools'
 import '/posixpath'
@@ -154,25 +10,304 @@ import '/importlib/machinery'
 import '/collections'
 
 
+BUILTINS = locals! where
+  ..  = range
+  ... = Ellipsis
+  ::  = isinstance
+  ->  = -> None
+  ~>  = ~> None
+  in  = a b -> a in b
+  and = a b -> a and b
+  or  = a b -> a or b
+  is  = operator.is_
+  not = operator.not_
+  <   = operator.lt
+  <=  = operator.le
+  ==  = operator.eq
+  !=  = operator.ne
+  >=  = operator.ge
+  >   = operator.gt
+  ~   = operator.invert
+  +   = operator.add
+  -   = operator.sub
+  *   = operator.mul
+  **  = operator.pow
+  /   = operator.truediv
+  //  = operator.floordiv
+  %   = operator.mod
+  &   = operator.and_
+  ^   = operator.xor
+  |   = operator.or_
+  <<  = operator.lshift
+  >>  = operator.rshift
+  !!  = operator.getitem
+  !!~ = operator.delitem
+
+  #: Construct a set from distinct elements.
+  #:
+  #: set' :: object... -> set object
+  #:
+  set' = *: xs -> set xs
+
+  #: Construct a list from distinct elements.
+  #:
+  #: list' :: object... -> [object]
+  #:
+  list' = *: xs -> list xs
+
+  #: Construct a dictionary from key-value pairs.
+  #:
+  #: dict' :: (object, object)... -> dict object object
+  #:
+  dict'  = *: xs **: k -> dict xs **: k
+
+  #: Construct a tuple from distinct elements.
+  #:
+  #: tuple' :: object... -> (object...)
+  #:
+  tuple' = , = *: xs -> xs
+
+  #: Fully apply (call) a function.
+  #:
+  #: ($) :: (object... -> a) object... -> a
+  #:
+  ! = $ = f *: a **: k -> f *: a **: k
+
+  #: Compose two functions.
+  #:
+  #: (<-) :: (a -> b) (object... -> a) -> (object... -> b)
+  #:
+  <- = f g -> *: a **: k -> f $ g *: a **: k
+
+  #: Partially apply a function.
+  #:
+  #: bind :: (object... -> a) object... -> (object... -> a)
+  #:
+  bind = f *: a **: k -> *: ae **: ke -> f *: (a + ae) **: (dict k **: ke)
+
+  #: Flip the order of arguments of a binary function.
+  #:
+  #: flip :: (a b -> c) -> (b a -> c)
+  #:
+  flip = f -> x y -> f y x
+
+  #: Throw an exception, in first-class function form.
+  #:
+  #: raise :: Exception -> a
+  #:
+  raise = e -> raise e
+
+  #: Stop an iterator after n items.
+  #:
+  #: take :: int (iter a) -> iter a
+  #:
+  take = n xs -> itertools.islice xs None n
+
+  #: Ignore the first n items of an iterator.
+  #:
+  #: drop :: int (iter a) -> iter a
+  #:
+  drop = n xs -> itertools.islice xs n None
+
+  #: Stop an iterator once an item fails a predicate.
+  #:
+  #: takewhile :: (a -> bool) (iter a) -> iter a
+  #:
+  takewhile = f xs -> itertools.takewhile f xs
+
+  #: Ignore items from an iterator until the first one that fails a predicate.
+  #:
+  #: dropwhile :: (a -> bool) (iter a) -> iter a
+  #:
+  dropwhile = f xs -> itertools.dropwhile f xs
+
+  #: Attach an item to the beginning of an iterator.
+  #:
+  #: (:+) :: a (iter a) -> iter a
+  #:
+  :+ = a b -> itertools.chain (a,) b
+
+  #: Attach an item to the end of an iterator.
+  #:
+  #: (+:) :: (iter a) a -> iter a
+  #:
+  +: = a b -> itertools.chain a (b,)
+
+  #: Return the first item of a tuple.
+  #:
+  #: fst :: (a...) -> a
+  #:
+  fst  = xs -> next $ iter xs
+
+  #: Return the second item of a tuple.
+  #:
+  #: snd :: (a...) -> a
+  #:
+  snd  = xs -> next $ drop 1 xs
+
+  #: Return the first item of an iterator.
+  #:
+  #: head :: (iter a) -> a
+  #:
+  head = xs -> next $ iter xs
+
+  #: Drop one item from an iterator.
+  #:
+  #: tail :: (iter a) -> a
+  #:
+  tail = xs -> list $ drop 1 xs
+
+  #: Drop the last item of a collection.
+  #:
+  #: init :: (Collection a) -> Collection a
+  #:
+  init = !! slice None -1
+
+  #: Return the last item of a collection.
+  #:
+  #: last :: (Collection a) -> Collection a
+  #:
+  last = !! -1
+
+  #: Consume the whole iterator to ensure its side effects are visible.
+  #:
+  #: exhaust :: (iter a) -> b
+  #:
+  exhaust = x -> collections.deque x maxlen: 0
+
+  #: Repeatedly apply a function to an element.
+  #:
+  #: iterate :: (a -> a) a -> iter a
+  #:
+  iterate = f x -> while True =>
+    yield x
+    x = f x
+
+  #: Left fold with starting value.
+  #:
+  #:   foldl f a [b, c, d] = f (f (f a b) c) d
+  #:
+  #: foldl :: (a b -> a) a (iter b) -> a
+  #:
+  foldl  = f st xs -> functools.reduce f xs st
+
+  #: Left fold without starting value. Raises an exception if the input is empty.
+  #:
+  #:   foldl1 f [b, c, d] = f (f b c) d
+  #:
+  #: foldl1 :: (a a -> a) (iter a) -> a
+  #:
+  foldl1 = f xs -> functools.reduce f xs
+
+  #: Like `foldl`, but yields intermediate values too.
+  #:
+  #:   scanl f a [b, c, d] = [a, f a b, f (f a b) c, f (f (f a b) c) d]
+  #:
+  #: scanl :: (a b -> a) a (iter b) -> iter a
+  #:
+  scanl  = f st xs -> itertools.accumulate (st:+xs) f
+
+  #: Left scan without a starting value. Returns an empty list if the input is empty.
+  #:
+  #: scanl1 :: (a a -> a) (iter a) -> iter a
+  #:
+  scanl1 = f xs -> itertools.accumulate xs f
+  # FIXME should also define foldr(1) and scanr(1). Probably.
+
+  #: A version of __build_class__ that does not use functions. Basically,
+  #: it creates a class given some standard attributes and its namespace.
+  #:
+  #: (I bet you didn't even know __build_class__ existed.)
+  #:
+  __dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
+    types.new_class name bases kwds $ ns ->
+      ns.update attrs
+      ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
+
+  # A hidden copy of `super`. This ensures `@@` does not break when `super`
+  # is redefined.
+  __dg_super__ = builtins.super
+
+  #: Parse a module name, which is a POSIX path relative to the current module.
+  #: Returns a tuple suitable for passing as the first argument to `__dg_import__`.
+  __dg_parse_import__ = info ->
+    parent = 1
+    path   = (posixpath.normpath info).split posixpath.sep
+    while path and head path == ''           and not (path.pop 0) => parent  = 0
+    while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
+    while path and head path == posixpath.curdir and  path.pop 0  =>
+    not path => raise $ ImportError $ '`{}` resolves to an empty name'.format info
+    parent, path
+
+  #: Import a module. `parent` is the same as for `importlib.import_module`,
+  #: while `path` is a list of name components, e.g. `urllib.request.Request`
+  #: should be passed as `['urllib', 'request', 'Request']`.
+  #:
+  #: If `reload` is `True`, `importlib.reload` is also called on the module.
+  #: If `qual` is `True`, the object that corresponds to the first item in `path`
+  #: is returned.
+  #:
+  __dg_import__ = (parent, path) package qual reload ->
+    root = importlib.import_module ('.' * parent + path !! 0) package
+    mod  = root
+    for p in tail path => mod = except
+      err => getattr mod p
+      err :: AttributeError => importlib.import_module ('.' + p) mod.__package__
+    reload => if
+      mod :: types.ModuleType => importlib.reload mod
+      otherwise               => raise $ ImportError $ '`{}` is not a module'.format $ last path
+    if qual      => root
+       otherwise => mod
+
+  #: An exception thrown when a constant pattern fails to match.
+  #:
+  #:   5 = 4  #=> ConstantPatternError
+  #:
+  ConstantPatternError = subclass ValueError where
+
+  #: An exception thrown when an ADT instance pattern fails to match.
+  #:
+  #:  Something a b c = SomethingElse a b c  #=> InstancePatternError
+  #:
+  InstancePatternError = subclass ValueError where
+
+
+# These two are considered compile-time constants and cannot be created with `=`.
+BUILTINS !! 'otherwise' = True
+BUILTINS !! 'finally'   = True
+# Overriding `__builtins__` after the code has already started running
+# does nothing. We'll have to dump builtins into the global namespace.
+globals!.update BUILTINS
+BUILTINS.update __builtins__
+
+
 ModuleLoader = subclass machinery.SourceFileLoader where
   source_to_code = data filename ~>
-    # XXX this method exists only in Python 3.4+
+    # XXX This method exists only in Python >= 3.4.
+    #     Also, importlib in Python <= 3.2 is kinda-sorta broken anyway.
+    # TODO Allow to specify another encoding in the source code.
     compile (data.decode 'utf-8') filename
 
   exec_module = module ~>
     module.__builtins__ = BUILTINS
     machinery.SourceFileLoader.exec_module self module
 
-# So we want to add `.dg` to the list of extensions findable
-# by `FileFinder`. Too bad the path hook is not a class, but a closure.
+
 sys.path_importer_cache.clear!
 sys.path_hooks.append $ machinery.FileFinder.path_hook *:
+  #  * Python >= 3.3 uses importlib for everything.
+  #  * Its default import behavior is implemented as a path hook that
+  #    chooses a module loader by looking at the extension.
+  #  * Once a path hook is chosen, it can't fall back to another one,
+  #    so we have to extend the default hook, not add our own.
+  #  * A path hook is a function, not a class, so we have to look into its
+  #    free variables to find out the original set of module loaders.
   where for r:(_, exts) in ((sys.path_hooks.pop -1).__closure__ !! -1).cell_contents => if
-    '.dg' in exts =>  # remove the old hook
+    '.dg' in exts => # Remove the old version of the hook on `import reload`.
     '.py' in exts => yield (ModuleLoader, ['.dg']), yield r
-    otherwise     => yield r
-# When doing `python -m dg`, instead of actually importing `/__main__.dg`
-# `runpy` attempts to execute it directly in a pre-existing module named `__main__`.
-# Since it wasn't imported through `ModuleLoader`, it lacks the new builtins,
-# which the code may use; so we have to do this:
+    otherwise     => yield r  # ^-- put our hook right before the default hook.
+
+# When doing `python -m ...`, instead of actually importing `__main__.dg` `runpy`
+# attempts to execute it directly in a pre-existing module named `__main__`. Since
+# it wasn't imported through `ModuleLoader`, it lacks the new builtins, which is bad.
 (sys.modules !! '__main__').__builtins__ = BUILTINS
