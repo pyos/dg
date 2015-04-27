@@ -3,15 +3,6 @@ import '/collections'
 import '/ast/literal_eval'
 
 
-SyntaxError = subclass SyntaxError where
-  msg = ~> head @args
-  # Standard SyntaxError contains a hack that completely breaks error messages
-  # when the line contains the word "print" not followed by an open-paren.
-  #   $ SyntaxError "something" ('file', 1, 1, 'print stuff') |>.msg
-  #   = "Missing parentheses in call to 'print'"
-  __str__ = self -> head @args
-
-
 #: Parse an input string.
 #:
 #: parse :: str (Optional str) -> Node
