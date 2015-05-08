@@ -1,6 +1,5 @@
 import '/re'
 import '/collections'
-import '/ast/literal_eval'
 
 
 #: Parse an input string.
@@ -32,26 +31,26 @@ Parser = subclass collections.deque where
   #: A precompiled regular expression that should match a single token.
   #: Every top-level group must be named; its name is passed to `token`
   #: in order to determine which token is being processed.
-  #:
-  #: regex :: _SRE
-  #:
   regex = re.compile r'''(?ismx)
     (?P<skip>   [^\S\n]+|\s*\#(?:[^:\n][^\n]*|$))
    |(?P<docstr> \s*\#:(?P<docstrcontent>[^\n]*))
-   |(?P<number> (?P<realnum>
+   |(?P<number>
       [+-]?(?:
-        (?P<isbin>0b[0-1]   +)
-       |(?P<isoct>0o[0-7]   +)
-       |(?P<ishex>0x[0-9a-f]+)
-       |(?:[0-9]+ (?P<isfloat> (?:\.[0-9]+)? (?:e[+-]?[0-9]+)?))
+        (?P<isbin>0b)[01]+
+       |(?P<isoct>0o)[0-7]+
+       |(?P<ishex>0x)[0-9a-f]+
+       |[0-9]+ (?P<isfloat> (?:\.[0-9]+)? (?:e[+-]?[0-9]+)?) (?P<isimag> j)?
       )
-    )(?P<isimag>j)?)
+    )
    |(?P<string>
       (?P<flags>br|r?b?)
       (?P<quote>'{3}|"{3}|'|")
       (?P<content>(?:[^\\]|\\.)*?)
-      \13)  # should point to <quote>. XXX does this make the regex NP-complete?
-   |(?P<strerr> (?:br|r?b?)['"])  # i.e. a string that has a beginning but no end
+      \12)  # should point to <quote>
+   # If a string that has a beginning but no end:
+   |(?P<strerr> (?:br|r?b?)['"])
+   # This "asterisks followed by a colon" thing is a hack to make `f *: xs`
+   # and `f **: xs` parse as `f ((*) : xs)` instead of `f * (: xs)`.
    |(?P<name>   \w+'*|\*+(?=:))
    |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
    |(?P<eol>    \s*\n(?P<indent>[\ \t]*))
@@ -120,18 +119,20 @@ Parser = subclass collections.deque where
     f == 'name'   => Name     pos False $ m.group 'name'
     f == 'infix'  => Name     pos True  $ m.group 'infix'
     f == 'iname'  => Name     pos True  $ m.group 'iname_'
-    f == 'string' => Constant pos $ literal_eval $
+    f == 'string' => Constant pos $ eval $
       q = 3 * m.group 'quote' !! 0
+      # String escapes are complex and the `unicodeescape` codec is broken.
+      # These are constants, though, so `eval`ing them is no more dangerous
+      # than `eval`ing the rest of the code, which we'll probably do later.
       m.group 'flags' + q + m.group 'content' + q
 
-    f == 'number' => Constant pos $ (*)
-      if m.group 'isimag' => 1j
-         otherwise        => 1
-      if m.group 'isfloat' => float (m.group 'realnum')
-         m.group 'isbin'   => int   (m.group 'realnum') 2
-         m.group 'isoct'   => int   (m.group 'realnum') 8
-         m.group 'ishex'   => int   (m.group 'realnum') 16
-         otherwise         => int   (m.group 'realnum') 10
+    f == 'number' => Constant pos $ if
+      m.group 'isimag'  => complex (m.group 'number')
+      m.group 'isfloat' => float   (m.group 'number')
+      m.group 'isbin'   => int     (m.group 'number') 2
+      m.group 'isoct'   => int     (m.group 'number') 8
+      m.group 'ishex'   => int     (m.group 'number') 16
+      otherwise         => int     (m.group 'number') 10
 
     f == 'eol' =>
       '\t' in m.group 'indent' =>
@@ -274,15 +275,12 @@ Parser = subclass collections.deque where
   #:
   #: make_call :: Name Node Node -> Expression
   #:
-  make_call = op lhs rhs ~> if
+  make_call = op lhs rhs ~> Expression lhs.loc op lhs *:
     # If a function call is followed by an indented block,
     # each statement in that block is a separate argument to that call.
-    op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' =>
-      Expression lhs.loc op lhs *: rhs.args
-    op < '' =>  # That means `rhs` is a null denotation.
-      Expression lhs.loc op lhs $ @special rhs
-    otherwise =>
-      Expression lhs.loc op lhs rhs
+    if op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' => rhs.args
+       op <  ''  => [@special rhs]  # That means `rhs` is a null denotation.
+       otherwise => [rhs]
 
   #: Handle a couple of fancy syntactic constructs.
   #:
