@@ -219,7 +219,7 @@ BUILTINS = locals! where
 
   __dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
     types.new_class name bases kwds $ ns ->
-      ns.update attrs
+      for (k, v) in attrs.items! => ns !! k = v
       ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
 
   #: Parse a module name, which is a POSIX path relative to the current module.
