@@ -68,7 +68,7 @@ pair_args = h -> f xs ~>
     pairs = f._arrpairs = list
       where for x in xs => yield $ if
         x :: RightBind  and x.op == '=>' => raise $ x. invalid 'no `u` in `u => v`'
-        x :: LeftBind   and x.op == '=>' => x.args + list' (Constant x.loc None)
+        x :: LeftBind   and x.op == '=>' => x.args + [Constant x.loc None]
         x :: Expression and x.op == '=>' => x.args
         otherwise => raise $ x.invalid 'expected `u => v`'
   h self f f._arrpairs
@@ -98,6 +98,13 @@ apply_one = x -> f xs ~>
 either = x -> fix 2 2 $ f (a, b) ~>
   @pushast a
   with @jump x False -1 => @pushast b
+
+
+#: Infix bind handler: assume the omitted side is `None`.
+#:
+#: default_to_none :: Handler
+#:
+default_to_none = f (x,) ~> @pushcall f x $ Constant f.loc None
 
 
 #: Given two arguments, return the result of comparing them with a suitable
@@ -357,8 +364,8 @@ Compiler = subclass CodeType where
   #: pushbind :: bool Node Node -> a
   #:
   pushbind = right f arg ~> if
-    f.value in @infixl and not right => (@infixl !! f.value) self f arg
-    f.value in @infixr and     right => (@infixr !! f.value) self f arg
+    f.value in @infixl and not right => (@infixl !! f.value) self f [arg]
+    f.value in @infixr and     right => (@infixr !! f.value) self f [arg]
     f.value in @prefix and not (f.value in BUILTINS) =>
       # Note that partial binding of macros does not actually use
       # runtime functions (as `pushcall` will prefer compile-time ones.)
@@ -992,27 +999,35 @@ Compiler = subclass CodeType where
     '@',  undefined 'this operator is prefix'
     '@@', undefined 'this operator is prefix'
 
-    '!',     f g ~> @pushcall g
-    ',',     f x ~> @pushcall f x  # i.e. same as in `prefix`.
-    '->',    f x ~> @pushcall f x $ Constant f.loc None  # `x R` => `x R None`
-    '~>',    f x ~> @pushcall f x $ Constant f.loc None
-    'while', f x ~> @pushcall f x $ Constant f.loc None
-    'for',   f x ~> @pushcall f x $ Constant f.loc None
-    'where', f x ~> @pushcall f x $ Constant f.loc None
+    '!',     f xs ~> @pushcall *: xs
+    ',',     apply_one 'BUILD_TUPLE'
+    '->',    default_to_none
+    '~>',    default_to_none
+    'while', default_to_none
+    'for',   default_to_none
+    'where', default_to_none
 
   infixr = dict'
     ':', undefined 'keyword argument to what function?'
     '!', undefined 'this operator is postfix'
     ',', undefined 'this operator is unbindable'
+    '~', apply_one 'UNARY_INVERT'
+    '-', apply_one 'UNARY_NEGATIVE'
 
-    '~',     f x ~> (@pushast x, @append 'UNARY_INVERT')
-    '-',     f x ~> (@pushast x, @append 'UNARY_NEGATIVE')
-    'where', f x ~>  @pushcall f x $ Constant f.loc None
-    '@',     f x ~>  @pushcall (Name f.loc True '.')  (Name f.loc False 'self')  x
-    '@@',    f x ~>  @pushcall (Name f.loc True '!.') (Name f.loc False '__dg_super__') x
+    '@', f (x,) ~>
+      x :: Name or raise (x.invalid 'not an attribute')
+      @pushname 'self'
+      @append 'LOAD_ATTR' $ @names !! x.value
 
-    '->', f body ~> @pushfunc' body () () () dict! () () dict!
-    '~>', f body ~>
+    '@@', f (x,) ~>
+      x :: Name or raise (x.invalid 'not an attribute')
+      @pushname '__dg_super__'
+      @append 'CALL_FUNCTION' 0
+      @append 'LOAD_ATTR' $ @names !! x.value
+
+    'where', f (body,) ~> @pushcall f (Constant f.loc None) body
+    '->',    f (body,) ~> @pushfunc' body () () () {} () () {}
+    '~>',    f (body,) ~>
       @pushname 'property'
-      @pushfunc' body ('self',) () () dict! () () dict!
+      @pushfunc' body ('self',) () () {} () () {}
       @append 'CALL_FUNCTION' 1 delta: -1
