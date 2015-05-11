@@ -976,6 +976,11 @@ Compiler = subclass CodeType where
          otherwise   => @pushcall *: xs
       @append  'RAISE_VARARGS' 1
 
+    'return', fix 1 inf $ f xs ~>
+      if len xs == 1 => @pushast $ head xs
+         otherwise   => @pushcall *: xs
+      @append  'RETURN_VALUE'
+
     'except', fix 1 inf $ pair_args $ f ((name, try), *xs) ~>
       @pushconst None
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
