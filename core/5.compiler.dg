@@ -162,17 +162,17 @@ parse_defn_args = xs -> a, kw, da, dkw, va, vkw, add where
     x in a + kw + va => raise $ x.invalid 'duplicate argument name'
     otherwise        => x.value
 
-  # Imagine `x -> x`. Here `x` is a single argument, thus a single `Node`.
-  # Now imagine `x y -> x`. Here `x y` is, technically, a function call?..
+  # Consider `x -> x`. Here `x` is a single argument, thus a single `Node`.
+  # Now consider `x y -> x`. Here `x y` is, technically, a function call?..
   data = if xs :: Expression and not xs.closed and xs.op == '' => xs.args
             otherwise => [xs,]
 
   for (i, x) in enumerate data => if
-    vkw => raise $ x.invalid 'all arguments should come before `**: varkwargs`'
     # Variadic keyword is pretty much a catch-all argument,
     # so it doesn't make sense to have anything after it.
+    vkw => raise $ x.invalid 'all arguments should come before `**: varkwargs`'
+    # `k: v` -- argument named `k` with default value `v`
     x :: Expression and not x.closed and x.op == ':' => if
-      # `k: v` -- argument named `k` with default value `v`
       x :: LeftBind  => raise $ x.invalid 'default value missing'
       x :: RightBind => raise $ x.invalid 'argument name missing'
       fst x.args == '*' =>
@@ -215,7 +215,7 @@ parse_defn_args = xs -> a, kw, da, dkw, va, vkw, add where
 
 Compiler = subclass CodeType where
   __init__ = *: args **: kwargs ~>
-    CodeType.__init__ self *: args **: kwargs
+    @@__init__ *: args **: kwargs
     @loops = list!  # Jumps to the beginnings of loops we're currently in. Used by `continue`.
     @unsafe = set!  # Variables used to store exceptions. May cause reference loops.
     @docstr = None  # The docstring to attach to the next function.
@@ -612,13 +612,18 @@ Compiler = subclass CodeType where
     @append 'DUP_TOP' delta: +1
     @popast name
 
-  #: Given an AST, find out which local variables it requires.
+  #: Given an AST, find out which local variables it creates.
   #:
   #: symbols :: Node... -> iter str
   #:
-  symbols = *: xs ~> for x in xs => x :: Expression => yield from $ if
-    x.op :: Name and x.op.value in @symscan => (@symscan !! x.op.value) self x.op x.args
-    otherwise => @symbols x.op *: x.args
+  symbols = *: xs ~> for x in xs =>
+    # Only expressions may create variables.
+    x :: Expression => yield from $ if
+      # Compile-time macros may override symbol scans in a way similar to using `prefix`
+      # (see below.)
+      x.op :: Name and x.op.value in @symscan => (@symscan !! x.op.value) self x.op x.args
+      # Default behavior is to push the function, then push the arguments, so we scan them.
+      otherwise => @symbols x.op *: x.args
 
   #: Symbol scanner for `popast`. Returns an iterator of modified variables.
   #:
@@ -644,6 +649,9 @@ Compiler = subclass CodeType where
 
   symscan = dict'
     '', f args ~> @symbols $ Expression f.loc *: args
+    '->',    _ _ ~> ()  # These operators create new functions, with brand new
+    '~>',    _ _ ~> ()  # local namespaces. They will call `symscan` on their own.
+    'where', _ _ ~> ()
 
     '=', fix 2 2 $ f (n, x) ~>
       yield from $ @symbols' n
@@ -689,11 +697,6 @@ Compiler = subclass CodeType where
           yield $ name !! (-not qual)
         otherwise => yield from $ @symbols name
       f._impdata = parent, name, qual, pure, reload
-
-    # These create new functions. We shouldn't scan them.
-    '->',    _ _ ~> ()
-    '~>',    _ _ ~> ()
-    'where', _ _ ~> ()
 
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
