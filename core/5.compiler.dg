@@ -949,14 +949,14 @@ Compiler = subclass CodeType where
     #:
     #: Did you know that generators have a `send` method? Look it up.
     #:
-    'yield', fix 1 2 $ f (*flags, it) ~>
-      from = False
-      for f in flags => if
-        f == 'from' => from = True
-        otherwise   => raise $ f.invalid 'unrecognized `yield` modifier'
+    'yield', fix 1 inf $ f xs ~>
+      xs = list xs
+      from = head xs == 'from'
+      from => xs.pop 0
 
       @generator = True
-      @pushast it
+      if len xs == 1 => @pushast $ head xs
+         otherwise   => @pushcall *: xs
       if from      => @append 'GET_ITER', @pushconst None, @append 'YIELD_FROM' delta: -1
          otherwise => @append 'YIELD_VALUE'
 
@@ -970,9 +970,10 @@ Compiler = subclass CodeType where
       @pushconst None
       for x in jumps => x.set
 
-    'raise', fix 1 1 $ f (exc,) ~>
+    'raise', fix 1 inf $ f xs ~>
       # TODO __cause__
-      @pushast exc
+      if len xs == 1 => @pushast $ head xs
+         otherwise   => @pushcall *: xs
       @append  'RAISE_VARARGS' 1
 
     'except', fix 1 inf $ pair_args $ f ((name, try), *xs) ~>
