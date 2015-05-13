@@ -204,6 +204,12 @@ parse_defn_args = xs -> a, kw, da, dkw, va, vkw, add where
       otherwise =>
         a.append  $ fst x.args `pattern` i
         da.append $ snd x.args
+    x == '**' => raise $ x.invalid 'to ignore variadic kwargs use `**: _`'
+    x == '*'  =>
+      va => raise $ x.invalid 'can only have one `*`'
+      # `*` without a name separates positional arguments from keyword-only
+      # arguments without making the function variadic.
+      va.append None
     va =>
       # And, unfortunately, you can't call a function like `f (some, pattern): value`.
       # So a keyword-only pattern would be unusable.
@@ -218,6 +224,7 @@ parse_defn_args = xs -> a, kw, da, dkw, va, vkw, add where
   # And we hit the limitations of 2-byte opargs. Great.
   len a  > 255 => raise $ xs.invalid 'too many positional arguments'
   len kw > 255 => raise $ xs.invalid 'too many keyword arguments'
+  va == [None] => va = []
 
 
 Compiler = subclass CodeType where
