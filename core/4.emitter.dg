@@ -8,6 +8,10 @@ import '/collections'
 #: FIXME what if one of them is redefined in a global namespace?
 CONSTANTS = dict True: True False: False None: None otherwise: True
 
+# Allow cross-compiling for CPython 3.5 on CPython 3.4:
+dis.opmap.setdefault 'WITH_CLEANUP_START'  81
+dis.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
+
 
 #: Calculate the length of a bytecode sequence given (opcode, argument) pairs, in bytes.
 #:

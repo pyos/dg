@@ -369,9 +369,19 @@ Compiler = subclass CodeType where
     argc   > 255 => raise $ (head argv).invalid 'too many positional arguments'
     len kw > 255 => raise $ (head argv).invalid 'too many keyword arguments'
 
-    @pushmap kw
-    va  => @pushast va
-    vkw => @pushast vkw
+    if # NOTE 3.5 allows multiple varargs and varkwargs.
+       PY_VERSION < 0x030500a4 =>
+         @pushmap kw
+         va  => @pushast va
+         vkw => @pushast vkw
+       otherwise =>
+         va => @pushast va
+         # push more varargs lists...
+         # @append 'BUILD_LIST_UNPACK' number_of_lists delta: (1 - number_of_lists)
+         @pushmap kw
+         vkw => @pushast vkw
+         # No idea what this opcode does, it has a weird-looking argument:
+         # @append 'BUILD_MAP_UNPACK_WITH_CALL' ??? delta: ???
     @append
       'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
       0 + argc + 256 * len kw
@@ -752,6 +762,11 @@ Compiler = subclass CodeType where
     "set'",   apply_one 'BUILD_SET'
     "list'",  apply_one 'BUILD_LIST'
     "tuple'", apply_one 'BUILD_TUPLE'
+    # XXX Python 3.5 allows packing multiple lists into one.
+    #     For example, [a_1, a_2, ..., *xs_1, b_1, ..., *xs_2, ...]
+    #     first pushes [a_1, a_2, ...], then xs_1, then [b_1, ...], then xs_2, etc.,
+    #     before finally joining them with BUILD_LIST_UNPACK(no_of_lists).
+    #     Same with tuples (BUILD_TUPLE_UNPACK) and dicts (BUILD_MAP_UNPACK).
     'or',     either 'JUMP_IF_TRUE_OR_POP'
     '=>',     either 'JUMP_IF_FALSE_OR_POP'
     'and',    either 'JUMP_IF_FALSE_OR_POP'
@@ -917,7 +932,12 @@ Compiler = subclass CodeType where
         @append    'ROT_TWO'   delta: +0
         @append    'POP_BLOCK' delta: -1     #=> return value, __exit__
         @pushconst None                      # this is for END_FINALLY
-      @append 'WITH_CLEANUP' delta: -1
+      if # XXX CPython 3.5 split this opcode into two for some reason. `async with`?
+         PY_VERSION < 0x030500a4 =>
+           @append 'WITH_CLEANUP' delta: -1
+         otherwise =>
+           @append 'WITH_CLEANUP_START'
+           @append 'WITH_CLEANUP_FINISH' delta: -1
       @append 'END_FINALLY'  delta: -8
 
     #: Repeat while a condition is true.
