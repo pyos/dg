@@ -96,6 +96,7 @@ Node = subclass object where
   norhs  = False  # :: bool -- see `NORHS`
   varary = False  # :: bool -- see `VARARY`
   flags  = 0      # :: int  -- see `FLAGS`
+  async  = False  # :: bool -- whether this is an operator of expression wrapped in `async`
   doc    = None   # :: Maybe str -- the `#:` comment that precedes the expression.
 
   #: Construct a SyntaxError at the location of this node.

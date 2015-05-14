@@ -104,6 +104,7 @@ CodeType = subclass object where
     @varkws    = bool vkw
     @function  = bool function
     @generator = False  # only becomes known during generation
+    @coroutine = False
     @name      = str name
     @docstring = doc
     @qualname  = ''
@@ -161,15 +162,19 @@ CodeType = subclass object where
   #: flags :: int
   #:
   flags = ~>
+    f = 0
+    # 0x1 = CO_OPTIMIZED -- do not create `locals()` at all, use an array instead
+    # 0x2 = CO_NEWLOCALS -- do not set `locals()` to the same value as `globals()`
+    @function => f |= 0x3
+    @varargs  => f |= 0x4
+    @varkws   => f |= 0x8
+    # 0x10 = CO_NESTED -- set iff @freevars not empty; an obsolete `__future__` flag.
+    not $ @cellvars or @freevars => f |= 0x40
+    @generator => f |= 0x20
+    @coroutine => f |= 0xA0  # every coroutine is a generator
+    # 0x100 = CO_ITERATORCOROUTINE; set by `asyncio.coroutine`.
     # Flags >= 0x1000 are reserved for `__future__` imports. We don't have those.
-    0b1000000 * not (@cellvars or @freevars) |
-     0b100000 * bool @generator |
-     #0b10000 = CO_NESTED -- set iff @freevars not empty; an obsolete `__future__` flag.
-       0b1000 * bool @varkws    |
-        0b100 * bool @varargs   |
-        #0b10 = CO_NEWLOCALS -- do not set `locals()` to the same value as `globals()`
-        # 0b1 = CO_OPTIMIZED -- do not create `locals()` at all, use an array instead
-         0b11 * bool @function
+    f
 
   #: Generate a sequence of bytes for an opcode with an argument.
   #:

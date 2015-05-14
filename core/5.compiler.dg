@@ -418,15 +418,16 @@ Compiler = subclass CodeType where
   #:
   #: pushfunc :: Node Node -> a
   #:
-  pushfunc = args body ~> @pushfunc' body *: (parse_defn_args args)
+  pushfunc = async args body ~> @pushfunc' async body *: (parse_defn_args args)
 
   #: Create a function with known arguments.
   #:
   #: pushfunc' :: Node [str] [str] [Node] (dict str Node) [str] [str] (dict str Node) -> a
   #:
-  pushfunc' = body a kw da dkw va vkw patterns ~>
+  pushfunc' = async body a kw da dkw va vkw patterns ~>
     g = @spawn '<lambda>' a kw va vkw doc: @docstr
     g.regsyms body
+    g.coroutine = async
     a and a !! 0 == 'self' =>
       # This is most likely a method, and methods can use `super`.
       # To determine which class we're looking for the superclass of,
@@ -445,10 +446,10 @@ Compiler = subclass CodeType where
   #:
   #: pushmethod :: Node Node -> a
   #:
-  pushmethod = args body ~>
+  pushmethod = async args body ~>
     a, *xs = parse_defn_args args
     a.insert 0 'self'
-    @pushfunc' body a *: xs
+    @pushfunc' async body a *: xs
 
   #: Push a result of try-except-finally onto the stack.
   #:
@@ -531,6 +532,32 @@ Compiler = subclass CodeType where
       @append 'POP_TOP'  # There goes the result of the try clause.
       @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
       @append 'DELETE_FAST' $ @varnames !! '<except-result>'
+
+  #: `await` on the value on top of the stack.
+  #:
+  #: Possible opcodes:
+  #:   GET_AITER      --  calls __aiter__
+  #:   GET_ANEXT      --  calls __anext__
+  #:   GET_AWAITABLE  --  calls __await__
+  #:
+  #: On CPython < 3.4, all of these are simulated.
+  #:   GET_AITER     = GET_ITER
+  #:   GET_ANEXT     = GET_NEXT
+  #:   GET_AWAITABLE = GET_ITER
+  #:
+  #: The second argument is what should be marked as a syntax error if this
+  #: code object isn't a coroutine.
+  #:
+  #: awaittop :: str Node -> a
+  #:
+  awaittop = opcode errnode ~>
+    @coroutine or raise (errnode.invalid 'cannot use `async` in a non-`async` function')
+    @append $ if
+      PY_VERSION >= 0x030500a4 => opcode
+      opcode == 'GET_ANEXT'    => 'GET_NEXT'
+      otherwise                => 'GET_ITER'
+    @pushconst None
+    @append 'YIELD_FROM'
 
   #: Check that a binary condition holds for items on top of the stack.
   #: If not, throw an exception (by name.)
@@ -745,8 +772,8 @@ Compiler = subclass CodeType where
     '\n',  f xs ~> @pushlast *: xs
     '=',   fix 2 2 $ f (name, value) ~> @pushpop name value
     ':=',  fix 2 2 $ f (name, value) ~> @pushpop name value
-    '->',  fix 2 2 $ f (args, body)  ~> @pushfunc   args body
-    '~>',  fix 2 2 $ f (args, body)  ~> @pushmethod args body
+    '->',  fix 2 2 $ f (args, body)  ~> @pushfunc   f.async args body
+    '~>',  fix 2 2 $ f (args, body)  ~> @pushmethod f.async args body
     '!!~', fix 2 2 $ f (coll, item)  ~>
       @pushast   coll
       @pushast   item
@@ -891,6 +918,7 @@ Compiler = subclass CodeType where
     #:
     'where', fix 2 2 $ f (ret, env) ~>
       g = @spawn '<lambda>' doc: @docstr
+      g.coroutine = f.async
       g.regsyms  env
       g.regsyms  ret
       g.pushlast env ret
@@ -914,6 +942,27 @@ Compiler = subclass CodeType where
       @append 'DUP_TOP' delta: +1
       @append 'STORE_DEREF' (@cellvars !! '__class__') delta: -1
 
+    #: Mark an operation as async.
+    #:
+    #: This is only supported by a few objects. `for` loops, `with` contexts,
+    #: `where` clauses and new functions can be async.
+    #:
+    'async', fix 1 1 $ f (x,) ~> if
+      x :: Expression and @getinternal x.op.value in @asyncs =>
+        x.op.async = True
+        @pushast x
+      otherwise =>
+        raise $ f.invalid 'this cannot be async'
+
+    #: Await until an async operation is complete.
+    #:
+    #: Note that async `for` and `with` do not have to be awaited on.
+    #:
+    'await', fix 1 inf $ f (x, *xs) ~>
+      if xs        => @pushcall x *: xs
+         otherwise => @pushast x
+      @awaittop 'GET_AWAITABLE' f
+
     #: Automatic context managing.
     #:
     #: I think it's called IDisposable or something.
@@ -923,20 +972,32 @@ Compiler = subclass CodeType where
         ctx :: Expression and len ctx.args == 2 and ctx.op == '=' => ctx.args
         otherwise => Name ctx.loc False '_', ctx
 
+      opcode = 'SETUP_WITH'
       @pushconst None  # reserve space for a return value
       @pushast   ctx
-      with @jump 'SETUP_WITH' delta: +8 =>  #=> None, __exit__, return value of __enter__
-        @popast    var                      #=> None, __exit__
-        @pushast   body                     #=> None, __exit__, return value
+
+      f.async => if
+        # XXX CPython 3.5: `async with`
+        PY_VERSION >= 0x030500a4 =>
+          @append 'BEFORE_ASYNC_WITH'  # `delta` accounted for by 'SETUP_WITH'
+          @awaittop 'GET_AWAITABLE' f
+          opcode = 'SETUP_ASYNC_WITH'
+        # XXX CPython 3.4: simulate as `with var = yield from ctx => body`
+        otherwise => @awaittop 'GET_AWAITABLE' f
+
+      with @jump opcode delta: +8 =>  #=> None, __exit__, return value of __enter__
+        @popast    var                #=> None, __exit__
+        @pushast   body               #=> None, __exit__, return value
         @append    'ROT_THREE' delta: +0
         @append    'ROT_TWO'   delta: +0
         @append    'POP_BLOCK' delta: -1     #=> return value, __exit__
         @pushconst None                      # this is for END_FINALLY
-      if # XXX CPython 3.5 split this opcode into two for some reason. `async with`?
+      if # XXX CPython 3.4: `__exit__` always synchronous.
          PY_VERSION < 0x030500a4 =>
            @append 'WITH_CLEANUP' delta: -1
          otherwise =>
            @append 'WITH_CLEANUP_START'
+           f.async => @awaittop 'GET_AWAITABLE' f
            @append 'WITH_CLEANUP_FINISH' delta: -1
       @append 'END_FINALLY'  delta: -8
 
@@ -967,6 +1028,38 @@ Compiler = subclass CodeType where
       # `var` was already syntax-checked in `symscan`.
       @pushconst False
       with @jump 'SETUP_LOOP' =>
+        f.async => raise $ f.invalid 'async for not yet implemented'
+        # XXX CPython 3.5: `async for x in y: z else: w` is literally
+        #     simulated with `while` and `try`.
+        #
+        #   ... push y ...
+        #   GET_AITER
+        #   ... await on TOS ...
+        #   SETUP_EXCEPT
+        #   | GET_ANEXT
+        #   | ... await on TOS ...
+        #   | ... pop x ...
+        #   | POP_BLOCK
+        #   \ JUMP --------------------------------\ [no exception]
+        #   ... check for StopAsyncIteration...    |
+        #   POP_JUMP_IF_FALSE --------------\      |
+        #   POP_TOP                         |      |
+        #   POP_TOP                         |      |
+        #   POP_TOP                         |      |
+        #   POP_EXCEPT                      |      |
+        #   POP_BLOCK                       |      |
+        #   ... jump to `else` ...          |      |
+        #   END_FINALLY  <------------------/      |
+        #   ... push z ... <-----------------------/
+        #   POP_TOP
+        #   ... jump back to SETUP_EXCEPT ...
+        #   POP_BLOCK
+        #   ... jump over `else` ...
+        #   ... push `else` ...
+        #   POP_TOP
+        #
+        # Looks like reordering blocks might make this a little better.
+        #
         @pushast $ snd var.args
         @append    'GET_ITER'
         restart = @jump 'JUMP_ABSOLUTE' True
@@ -1006,6 +1099,7 @@ Compiler = subclass CodeType where
       from = head xs == 'from'
       from => xs.pop 0
 
+      @coroutine => raise $ f.invalid 'cannot use `yield` in a coroutine; use `async` instead'
       @generator = True
       if len xs == 1 => @pushast $ head xs
          otherwise   => @pushcall *: xs
@@ -1037,6 +1131,13 @@ Compiler = subclass CodeType where
       @pushconst None
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
          otherwise                          => @pushexcept  name try xs
+
+  asyncs = set $ map (prefix !!) $
+    # Functions that handle `async` qualifier on their own.
+    # Instead of awaiting on a value returned by these functions,
+    # `async` will simply mark the node that corresponds to the name
+    # as `.async = True`.
+    '->', '~>', 'for', 'with', 'where'
 
   infixl = dict'
     ':',  undefined 'keyword argument to what function?'
@@ -1071,8 +1172,8 @@ Compiler = subclass CodeType where
       @append 'LOAD_ATTR' $ @names !! x.value
 
     'where', f (body,) ~> @pushcall f (Constant f.loc None) body
-    '->',    f (body,) ~> @pushfunc' body () () () {} () () {}
+    '->',    f (body,) ~> @pushfunc' f.async body () () () {} () () {}
     '~>',    f (body,) ~>
       @pushname 'property'
-      @pushfunc' body ('self',) () () {} () () {}
+      @pushfunc' f.async body ('self',) () () {} () () {}
       @append 'CALL_FUNCTION' 1 delta: -1
