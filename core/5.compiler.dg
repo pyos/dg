@@ -9,25 +9,25 @@ inf = float 'inf'
 #:
 #: compile :: str (Optional str) -> types.CodeType
 #:
-compile = data filename: '<string>' -> compileast $ parse data filename
+compile = data filename: '<string>' globals: () -> compileast (parse data filename)
 
 
 #: Compile the contents of a file-like object.
 #:
-#: compilefd :: TextIOBase (Optional str) -> types.CodeType
+#: compilefd :: TextIOBase (Optional str) (Optional (iter str)) -> types.CodeType
 #:
-compilefd = fd filename: '<stream>' -> compileast $ parsefd fd filename
+compilefd = fd filename: '<stream>' globals: () -> compileast (parsefd fd filename) globals
 
 
 #: Compile an AST into Python bytecode.
 #:
-#: compileast :: Node -> types.CodeType
+#: compileast :: Node (Optional (iter str)) -> types.CodeType
 #:
-compileast = x ->
+compileast = x globals: () ->
   @ = Compiler ''
-  @symbols x |> exhaust  # Global variables don't need to be tracked (unless
-  @pushast x             # you want some static checks...), but `symbols`
-  @append 'RETURN_VALUE' delta: -1  # may do some preprocessing, too.
+  @globals = set globals | set (@symbols x)
+  @pushast x
+  @append 'RETURN_VALUE' delta: -1
   @frozen
 
 
@@ -116,7 +116,7 @@ compare = fix 2 2 $ f (a, b) ~>
   chain = []
   # `a R x1 Q x2 ... xn P b` where `R`, `Q`, and so on are comparison operators
   # is a single chain that is equivalent to `a R x1 and ... and xn P b`.
-  while a :: Expression and not a.closed and @prefix.get a.op.value is compare =>
+  while a :: Expression and not a.closed and @getinternal a.op.value is compare =>
     # `chain` should become `[(R, x1), (Q, x2), ...]`.
     chain.insert 0 (a.op, snd (a, _ = a.args))
 
@@ -315,12 +315,26 @@ Compiler = subclass CodeType where
       0 + len defaults + 256 * len kwdefaults
       0 - len defaults - 2   * len kwdefaults - 2
 
+  #: If a function is compiler-defined, return its implementation.
+  #:
+  #: getinternal :: str -> Maybe Handler
+  #:
+  getinternal = name ~>
+    f = @prefix.get name None
+    if not f => None
+       # Since the symbol scanner has already finished, this function
+       # is expected to be compile-time.
+       name in @symscan => f
+       # Local variables override compile-time builtins.
+       name in @varnames or name in @enclosed or name in @globals => None
+       otherwise => f
+
   #: Push the result of calling `f` with `args` onto the value stack.
   #:
   #: pushcall :: Node *Node -> a
   #:
   pushcall = f *: args ~> if
-    f :: Name and f.value in @prefix => (@prefix !! f.value) self f args
+    f :: Name and (g = @getinternal f.value) => g self f args
     # Infix functions don't get fancy syntax.
     # When using infix operators, varargs and keyword arguments are disabled.
     f.infix and not f.closed =>
@@ -368,23 +382,27 @@ Compiler = subclass CodeType where
   #: `x R` <=> `y -> x R y`
   #: `R x` <=> `y -> y R x`
   #:
-  #: pushbind :: bool Node Node -> a
+  #: pushbind :: bool Name Node -> a
   #:
-  pushbind = right f arg ~> if
-    f.value in @infixl and not right => (@infixl !! f.value) self f [arg]
-    f.value in @infixr and     right => (@infixr !! f.value) self f [arg]
-    f.value in @prefix and not (f.value in BUILTINS) =>
-      # Note that partial binding of macros does not actually use
-      # runtime functions (as `pushcall` will prefer compile-time ones.)
-      # Still, this is a pretty good method of checking if
-      # someone's attempting to partially bind assignment operators, etc.
-      raise $ f.invalid 'this operator requires both arguments'
-    otherwise =>
-      c = if right     => @spawn f.value ('<L>',) ('<R>',)
-             otherwise => @spawn f.value ('<R>',) ('<L>',)
-      c.pushcall f (Name f.loc False '<L>') (Name f.loc False '<R>')
-      @pushclosure c tuple! $ dict' $ if right     => '<R>', arg
-                                         otherwise => '<L>', arg
+  pushbind = right f arg ~>
+    g = @getinternal f.value
+    if # Makes to sense to use compile-time partial bindings if the function itself
+       # has no non-standard compile-time definition.
+       g and f.value in @infixl and not right => (@infixl !! f.value) self f [arg]
+       g and f.value in @infixr and     right => (@infixr !! f.value) self f [arg]
+       g and not (f.value in BUILTINS) =>
+         # Note that partial binding of macros does not actually use
+         # runtime functions (as `pushcall` will prefer compile-time ones.)
+         # Still, this is a pretty good method of checking if
+         # someone's attempting to partially bind assignment operators, etc.
+         raise $ f.invalid 'this operator requires both arguments'
+       # Default binding: `x R` -> `y -> x R y`; `R x` -> `y -> y R x`.
+       otherwise =>
+         c = if right     => @spawn f.value ('<L>',) ('<R>',)
+                otherwise => @spawn f.value ('<R>',) ('<L>',)
+         c.pushcall f (Name f.loc False '<L>') (Name f.loc False '<R>')
+         @pushclosure c tuple! $ dict' $ if right     => '<R>', arg
+                                            otherwise => '<L>', arg
 
   #: Create a function.
   #:

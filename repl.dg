@@ -49,7 +49,7 @@ except
               err :: Exception => []
 
 
-compilerepl = source -> except
+compilerepl = source globals: () -> except
   e =>
     tree = parse source '<input>'
     expr = next $ dropwhile (x -> x :: Expression and not x.closed) $
@@ -66,7 +66,7 @@ compilerepl = source -> except
           # 3. the last line of the code is indented.
           (last $ source.rsplit '\n' 1).startswith ' '
 
-    if done      => compileast tree, (tree :: Expression and tree.op == '=')
+    if done      => compileast tree globals, (tree :: Expression and tree.op == '=')
        otherwise => None, False
   # Open strings or blocks may be continued, too. (Tapping `Return` won't help.)
   e :: SyntaxError and (head e.args).startswith 'unexpected EOF' => None, False
@@ -90,7 +90,8 @@ runrepl = fd ->
   rdl.completion_ns = module.__dict__
 
   while True => except
-    e => x, assignment = next $ dropwhile (not <- fst) $ map compilerepl $
+    e => x, assignment = next $ dropwhile (not <- fst) $
+           map (x -> compilerepl x module.__dict__) $
              iterate (x -> x + '\n' + rdl.input sys.ps2) $ rdl.input sys.ps1
     e :: EOFError          => raise SystemExit
     e :: SystemExit        => raise e
