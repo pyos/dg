@@ -10,15 +10,32 @@ import '/importlib/machinery'
 import '/collections'
 
 
-BUILTINS = locals! where
+# Self-referential operators go here in `(name): (fn)` form.
+# Declaring them as `name = fn` would create an infinite loop
+# because the compiler would assume `name` is redeclared and therefore
+# isn't compiler-defined anymore.
+BUILTINS = dict
+  raise : (e   -> raise e)
+  (in)  : (a b -> a in  b)
+  (and) : (a b -> a and b)
+  (or)  : (a b -> a or  b)
+  (->)  : (-> None)
+  (~>)  : (~> None)
+  # These are compile-time constants and cannot be assigned to.
+  finally   : True
+  otherwise : True
+  # While these operators are not self-referential, redeclaring them would
+  # break the call to `locals`.
+  (!) : (f *: args **: kwargs -> f *: args **: kwargs)
+  ($) : (f *: args **: kwargs -> f *: args **: kwargs)
+
+
+# Part 2: compiler-defined functions that can be redefined without
+# referencing each other.
+BUILTINS.update locals! where
   ..  = range
   ... = Ellipsis
   ::  = isinstance
-  ->  = -> None
-  ~>  = ~> None
-  in  = a b -> a in b
-  and = a b -> a and b
-  or  = a b -> a or b
   is  = operator.is_
   not = operator.not_
   <   = operator.lt
@@ -67,12 +84,6 @@ BUILTINS = locals! where
   #:
   tuple' = , = *: xs -> xs
 
-  #: Fully apply (call) a function.
-  #:
-  #: ($) :: (object... -> a) object... -> a
-  #:
-  ! = $ = f *: a **: k -> f *: a **: k
-
   #: Compose two functions.
   #:
   #: (<-) :: (a -> b) (object... -> a) -> (object... -> b)
@@ -91,12 +102,9 @@ BUILTINS = locals! where
   #:
   flip = f -> x y -> f y x
 
-  #: Throw an exception, in first-class function form.
-  #:
-  #: raise :: Exception -> a
-  #:
-  raise = e -> raise e
 
+# Part 3: pure runtime functions.
+BUILTINS.update locals! where
   #: Stop an iterator after n items.
   #:
   #: take :: int (iter a) -> iter a
@@ -137,13 +145,13 @@ BUILTINS = locals! where
   #:
   #: fst :: (a...) -> a
   #:
-  fst  = xs -> next $ iter xs
+  fst = xs -> next $ iter xs
 
   #: Return the second item of a tuple.
   #:
   #: snd :: (a...) -> a
   #:
-  snd  = xs -> next $ drop 1 xs
+  snd = xs -> next $ drop 1 xs
 
   #: Return the first item of an iterator.
   #:
@@ -189,7 +197,7 @@ BUILTINS = locals! where
   #:
   #: foldl :: (a b -> a) a (iter b) -> a
   #:
-  foldl  = f st xs -> functools.reduce f xs st
+  foldl = f st xs -> functools.reduce f xs st
 
   #: Left fold without starting value. Raises an exception if the input is empty.
   #:
@@ -205,7 +213,7 @@ BUILTINS = locals! where
   #:
   #: scanl :: (a b -> a) a (iter b) -> iter a
   #:
-  scanl  = f st xs -> itertools.accumulate (st:+xs) f
+  scanl = f st xs -> itertools.accumulate (st:+xs) f
 
   #: Left scan without a starting value. Returns an empty list if the input is empty.
   #:
@@ -266,10 +274,6 @@ BUILTINS = locals! where
   InstancePatternError = subclass ValueError where
 
 
-# These two are compile-time constants, so we can't just do `otherwise = True`.
-# That's a no-op constant pattern comparison.
-BUILTINS !! 'finally'   = True
-BUILTINS !! 'otherwise' = True
 # Overriding `__builtins__` after the code has already started running
 # does nothing. We'll have to dump builtins into the global namespace.
 globals!.update BUILTINS
