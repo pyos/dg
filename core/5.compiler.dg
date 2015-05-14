@@ -550,9 +550,9 @@ Compiler = subclass CodeType where
   #:
   #: awaittop :: str Node -> a
   #:
-  awaittop = opcode errnode ~>
+  awaittop = opcode errnode delta: 0 ~>
     @coroutine or raise (errnode.invalid 'cannot use `async` in a non-`async` function')
-    @append $ if
+    @append delta: delta $ if
       PY_VERSION >= 0x030500a4 => opcode
       opcode == 'GET_ANEXT'    => 'GET_NEXT'
       otherwise                => 'GET_ITER'
@@ -1028,47 +1028,43 @@ Compiler = subclass CodeType where
       # `var` was already syntax-checked in `symscan`.
       @pushconst False
       with @jump 'SETUP_LOOP' =>
-        f.async => raise $ f.invalid 'async for not yet implemented'
-        # XXX CPython 3.5: `async for x in y: z else: w` is literally
-        #     simulated with `while` and `try`.
-        #
-        #   ... push y ...
-        #   GET_AITER
-        #   ... await on TOS ...
-        #   SETUP_EXCEPT
-        #   | GET_ANEXT
-        #   | ... await on TOS ...
-        #   | ... pop x ...
-        #   | POP_BLOCK
-        #   \ JUMP --------------------------------\ [no exception]
-        #   ... check for StopAsyncIteration...    |
-        #   POP_JUMP_IF_FALSE --------------\      |
-        #   POP_TOP                         |      |
-        #   POP_TOP                         |      |
-        #   POP_TOP                         |      |
-        #   POP_EXCEPT                      |      |
-        #   POP_BLOCK                       |      |
-        #   ... jump to `else` ...          |      |
-        #   END_FINALLY  <------------------/      |
-        #   ... push z ... <-----------------------/
-        #   POP_TOP
-        #   ... jump back to SETUP_EXCEPT ...
-        #   POP_BLOCK
-        #   ... jump over `else` ...
-        #   ... push `else` ...
-        #   POP_TOP
-        #
-        # Looks like reordering blocks might make this a little better.
-        #
         @pushast $ snd var.args
-        @append    'GET_ITER'
+        if f.async   => @awaittop 'GET_AITER' f
+           otherwise => @append   'GET_ITER'
+
         restart = @jump 'JUMP_ABSOLUTE' True
         @loops.append $ @jump 'CONTINUE_LOOP' reverse: True
-        with @jump 'FOR_ITER' delta: +1 =>
-          @popast $ fst var.args
-          @pushast  body
-          @append   'POP_TOP'   delta: -1
-          restart.set
+
+        if # TODO find a way to implement this in 3.4.
+           f.async and PY_VERSION < 0x030500a4 =>
+             raise $ f.invalid 'no single asynchronous iteration convention in Python < 3.5'
+           f.async =>
+             with @jump 'SETUP_EXCEPT' delta: +7 =>
+               # 1. Await for next item.
+               @awaittop 'GET_ANEXT' f delta: +1
+               @popast $ fst var.args
+               @append 'POP_BLOCK'
+               # 2. No exception occurred; we have our item.
+               @pushast body
+               @append 'POP_TOP' delta: -1
+               restart.set
+             # 3. An exception *did* occur; either iteration has ended,
+             #    or iterator is buggy.
+             @pushname 'StopAsyncIteration'
+             @append 'COMPARE_OP' delta: -1 $ dis.cmp_op.index 'exception match'
+             with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
+               # Rethrow everything other than `StopAsyncIteration`.
+               @append 'END_FINALLY' -3
+             # Ignore `StopAsyncIteration`.
+             @append 'POP_EXCEPT' delta: -3
+
+           otherwise =>
+             with @jump 'FOR_ITER' delta: +1 =>
+               @popast $ fst var.args
+               @pushast  body
+               @append   'POP_TOP' delta: -1
+               restart.set
+
         @loops.pop -1
         @append 'POP_BLOCK' delta: -1
         @append 'POP_TOP'   delta: -1
