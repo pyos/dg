@@ -117,6 +117,9 @@ CodeType = subclass object where
     @enclosed   = if
       cell      => dict.keys cell.varnames | cell.cellvars | cell.enclosed
       otherwise => set!
+    @globals    = if
+      cell      => cell.globals
+      otherwise => set!
     for v in itertools.chain a kw va vkw => @varnames !! v
     # First constant in a code object is always its docstring.
     # Except if this is a class/module, in which case an additional manual
