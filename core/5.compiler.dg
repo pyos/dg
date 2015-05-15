@@ -1123,7 +1123,7 @@ Compiler = subclass CodeType where
       @append 'CALL_FUNCTION' 0
       @append 'LOAD_ATTR' $ @names !! x.value
 
-    'where', f (body,) ~> @pushcall f (Constant f.loc None) body
+    'where', default_to_none
     '->',    f (body,) ~> @pushfunc' f.async body () () () {} () () {}
     '~>',    f (body,) ~>
       @pushname 'property'
