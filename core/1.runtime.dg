@@ -129,6 +129,12 @@ BUILTINS.update locals! where
   #:
   dropwhile = f xs -> itertools.dropwhile f xs
 
+  #: Concatenate multiple iterators.
+  #:
+  #: chain :: *(iter a) -> iter a
+  #:
+  chain = itertools.chain
+
   #: Attach an item to the beginning of an iterator.
   #:
   #: (:+) :: a (iter a) -> iter a
