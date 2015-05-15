@@ -237,32 +237,12 @@ the same object instead of reloading the module every time. <code>reload</code> 
 </pre></div>
 <h3>Assignment</h3><div class="highlight"><pre><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
 </pre></div>
-<h5>Q: What is a valid variable name?</h5><p>Any sequence of alphanumeric characters or underscores that does not start with a digit
+<p>Any sequence of alphanumeric characters or underscores that does not start with a digit
 and may end with an arbitrary amount of apostrophes.</p><div class="highlight"><pre><span class="n">__im_a_1337_VARIABLE&#39;&#39;&#39;&#39;&#39;</span>
-</pre></div>
-<h5>Q: Is there any pattern-matching available?</h5><p>Assigning to a constant works like an assertion of sorts: if the value to the right
-is not equal to that constant, <code>ConstantPatternError</code> (a subclass of <code>ValueError</code>) is raised.</p><div class="highlight"><pre><span class="mi">4</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>  <span class="c1">#=&gt; does nothing</span>
-<span class="mi">5</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>  <span class="c1">#=&gt; raises ConstantPatternError</span>
 </pre></div>
 <p>If the value on the right side is a collection, it can be unpacked.</p><div class="highlight"><pre><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
 </pre></div>
-<p>Collections can be type-checked, too. <code>Something a b c = x</code> is the same as
-<code>a, b, c = x</code> iff x is an instance of Something; if not, it raises <code>InstancePatternError</code>.</p><div class="highlight"><pre><span class="c1"># Assuming Dawg is a namedtuple with fields &#39;name&#39; and &#39;cuteness&#39;:</span>
-<span class="n">x</span> <span class="o">=</span> <span class="kt">Dawg</span> <span class="s">&#39;Doge&#39;</span> <span class="mi">90</span>
-<span class="c1"># Variable names do not have to match field names, of course.</span>
-<span class="c1"># Only the order is important.</span>
-<span class="kt">Dawg</span> <span class="n">name</span> <span class="n">cuteness_value</span> <span class="o">=</span> <span class="n">x</span>
-<span class="c1">#=&gt; name = &#39;Doge&#39;</span>
-<span class="c1">#   cuteness_value = 90</span>
-</pre></div>
-<p>And finally, <code>a:b = c</code> assigns <code>c</code> to both <code>a</code> and <code>b</code>. How is this useful?
-Well, patterns can be arbitrarily nested.</p><div class="highlight"><pre><span class="c1"># Assuming DawgPack is a namedtuple with fields &#39;leader&#39; and &#39;others&#39;:</span>
-<span class="n">pack</span> <span class="o">=</span> <span class="kt">DawgPack</span> <span class="n">x</span> <span class="p">(</span><span class="kt">Dawg</span> <span class="s">&#39;Alice&#39;</span> <span class="mi">80</span><span class="o">,</span> <span class="kt">Dawg</span> <span class="s">&#39;Bob&#39;</span> <span class="mi">70</span><span class="o">,</span> <span class="kt">Dawg</span> <span class="s">&#39;Charlie&#39;</span> <span class="mi">74</span><span class="p">)</span>
-
-<span class="kt">DawgPack</span> <span class="n">leader</span><span class="o">:</span><span class="p">(</span><span class="kt">Dawg</span> <span class="s">&#39;Doge&#39;</span> <span class="n">_</span><span class="p">)</span> <span class="p">(</span><span class="n">alice</span><span class="o">,</span> <span class="o">*</span><span class="n">others</span><span class="p">)</span> <span class="o">=</span> <span class="n">pack</span>
-<span class="c1">#=&gt; leader = Dawg &#39;Doge&#39; 90</span>
-<span class="c1">#   alice  = Dawg &#39;Alice&#39; 80</span>
-<span class="c1">#   others = (Dawg &#39;Bob&#39; 70, Dawg &#39;Charlie&#39; 74)</span>
+<p>Assignment is right-associative, so you can assign the same thing to many variables at once.</p><div class="highlight"><pre><span class="n">x</span> <span class="o">=</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">1</span>
 </pre></div>
 <h5>Q: How do I modify variables defined in outside scopes? <code>=</code> seems to create a new local one.</h5><p>Use <code>:=</code> instead.</p><div class="highlight"><pre><span class="n">outer_function</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
   <span class="n">inner_function</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
@@ -280,7 +260,7 @@ Well, patterns can be arbitrarily nested.</p><div class="highlight"><pre><span c
 
 <span class="n">outer_function</span> <span class="mi">5</span>  <span class="c1">#=&gt; 6</span>
 </pre></div>
-<p>Note that this does not work with global variables.</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
+<p>Note that this does not work with global variables. (For now, at least.)</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
 <span class="c1">#:</span>
 <span class="c1">#: It has some positional arguments!</span>
 <span class="c1">#:</span>
@@ -304,11 +284,8 @@ Well, patterns can be arbitrarily nested.</p><div class="highlight"><pre><span c
 
 <span class="n">another_function</span> <span class="s">&quot;Do something&quot;</span> <span class="s">&quot;too&quot;</span> <span class="n">keyword</span><span class="o">:</span> <span class="s">&#39;argument&#39;</span>
 </pre></div>
-<p>Anything that is valid to the left of <code>=</code> is also valid as an argument name.
-This includes patterns:</p><div class="highlight"><pre><span class="n">get_dawgs_name</span> <span class="o">=</span> <span class="p">(</span><span class="kt">Dawg</span> <span class="n">name</span> <span class="n">_</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">name</span>
-
-<span class="n">get_dawgs_name</span> <span class="o">$</span> <span class="kt">Dawg</span> <span class="s">&#39;Doge&#39;</span> <span class="mi">90</span>  <span class="c1">#=&gt; &#39;Doge&#39;</span>
-<span class="n">get_dawgs_name</span> <span class="s">&#39;totally_a_dawg&#39;</span>  <span class="c1">#=&gt; InstancePatternError</span>
+<p>Anything that is valid to the left of <code>=</code> is also valid as an argument name.</p><div class="highlight"><pre><span class="nb">snd</span> <span class="o">=</span> <span class="p">(</span><span class="n">whole_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">b</span>
+<span class="nb">snd</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c1">#=&gt; 2</span>
 </pre></div>
 <p>No arguments, no problem.</p><div class="highlight"><pre><span class="n">useless_function</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&quot;Really useless.&quot;</span>
 </pre></div>

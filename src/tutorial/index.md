@@ -381,23 +381,11 @@ import '/xml/etree/ElementTree' qualified pure reload
 such_variable = "much_constant"
 ```
 
-##### Q: What is a valid variable name?
-
 Any sequence of alphanumeric characters or underscores that does not start with a digit
 and may end with an arbitrary amount of apostrophes.
 
 ```dg
 __im_a_1337_VARIABLE'''''
-```
-
-##### Q: Is there any pattern-matching available?
-
-Assigning to a constant works like an assertion of sorts: if the value to the right
-is not equal to that constant, `ConstantPatternError` (a subclass of `ValueError`) is raised.
-
-```dg
-4 = 2 + 2  #=> does nothing
-5 = 2 + 2  #=> raises ConstantPatternError
 ```
 
 If the value on the right side is a collection, it can be unpacked.
@@ -406,30 +394,10 @@ If the value on the right side is a collection, it can be unpacked.
 very_pattern, so_two_items, *rest = 3 * 'wow', 5 * 'sleep', 1 * 'eat', 2 * 'woof'
 ```
 
-Collections can be type-checked, too. `Something a b c = x` is the same as
-`a, b, c = x` iff x is an instance of Something; if not, it raises `InstancePatternError`.
+Assignment is right-associative, so you can assign the same thing to many variables at once.
 
 ```dg
-# Assuming Dawg is a namedtuple with fields 'name' and 'cuteness':
-x = Dawg 'Doge' 90
-# Variable names do not have to match field names, of course.
-# Only the order is important.
-Dawg name cuteness_value = x
-#=> name = 'Doge'
-#   cuteness_value = 90
-```
-
-And finally, `a:b = c` assigns `c` to both `a` and `b`. How is this useful?
-Well, patterns can be arbitrarily nested.
-
-```dg
-# Assuming DawgPack is a namedtuple with fields 'leader' and 'others':
-pack = DawgPack x (Dawg 'Alice' 80, Dawg 'Bob' 70, Dawg 'Charlie' 74)
-
-DawgPack leader:(Dawg 'Doge' _) (alice, *others) = pack
-#=> leader = Dawg 'Doge' 90
-#   alice  = Dawg 'Alice' 80
-#   others = (Dawg 'Bob' 70, Dawg 'Charlie' 74)
+x = y = 1
 ```
 
 ##### Q: How do I modify variables defined in outside scopes? `=` seems to create a new local one.
@@ -456,7 +424,7 @@ outer_function = a ->
 outer_function 5  #=> 6
 ```
 
-Note that this does not work with global variables.
+Note that this does not work with global variables. (For now, at least.)
 
 ### Creating functions
 
@@ -497,13 +465,10 @@ another_function "Do something" "too" keyword: 'argument'
 ```
 
 Anything that is valid to the left of `=` is also valid as an argument name.
-This includes patterns:
 
 ```dg
-get_dawgs_name = (Dawg name _) -> name
-
-get_dawgs_name $ Dawg 'Doge' 90  #=> 'Doge'
-get_dawgs_name 'totally_a_dawg'  #=> InstancePatternError
+snd = (whole_tuple = (a, b)) -> b
+snd (1, 2) #=> 2
 ```
 
 No arguments, no problem.
