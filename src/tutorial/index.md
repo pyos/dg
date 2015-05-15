@@ -394,6 +394,16 @@ If the value on the right side is a collection, it can be unpacked.
 very_pattern, so_two_items, *rest = 3 * 'wow', 5 * 'sleep', 1 * 'eat', 2 * 'woof'
 ```
 
+List syntax can be used, too. It means the exact same thing.
+
+```dg
+[a, b, *c, d] = 1, 2, 3, 4, 5
+#=> a = 1
+#   b = 2
+#   c = [3, 4]
+#   d = 5
+```
+
 Assignment is right-associative, so you can assign the same thing to many variables at once.
 
 ```dg
@@ -405,26 +415,25 @@ x = y = 1
 Use `:=` instead.
 
 ```dg
-outer_function = a ->
-  inner_function = x ->
-    a = x
-  inner_function (a + 1)
+outer = a ->
+  inner = x -> (a = x)
+  inner (a + 1)
   a
 
-outer_function 5  #=> 5
+outer  #=> 5
 ```
 
 ```dg
-outer_function = a ->
-  inner_function = x ->
-    a := x
-  inner_function (a + 1)
+outer = a ->
+  inner = x -> (a := x)
+  inner (a + 1)
   a
 
-outer_function 5  #=> 6
+outer 5  #=> 6
 ```
 
-Note that this does not work with global variables. (For now, at least.)
+This will change the value of the variable in the innermost scope it was defined with `=` in.
+If there is no such scope, it is assumed to be global.
 
 ### Creating functions
 
