@@ -12,7 +12,7 @@ NOLHS = '@', '@@', '~'
 NORHS = '!',
 #: Operators with these flags behave differently in a null-denotation context.
 #: See the parser (`Parser.special`) for details.
-FLAGS = dict for: 1 while: 1 with: 1 if: 2 except: 2
+FLAGS = dict' ('for', 1) ('while', 1) ('with', 1) ('if', 2) ('except', 2)
 #: Infix operator binding strength. `a R b Q c` <=> `a R (b Q c)` iff
 #: the left binding strength of `Q` is greater than the right binding strength
 #: of `R`; otherwise, it's `(a R b) Q c`.
@@ -23,7 +23,7 @@ STRENGTH  = dict'       # Per-operator overrides.
   '.',     (210, 210)
   '!.',    (210, 210)
   '!',     (210, 200)
-  ':',     (210, 200)
+  ':',     (210, 190)
   '',      (190, 190)
   '->',    (180,  20)
   '~>',    (180,  20)
@@ -97,6 +97,7 @@ Node = subclass object where
   varary = False  # :: bool -- see `VARARY`
   flags  = 0      # :: int  -- see `FLAGS`
   async  = False  # :: bool -- whether this is an operator of expression wrapped in `async`
+  weak   = False  # :: bool -- whether this infix name should have a low right strength.
   doc    = None   # :: Maybe str -- the `#:` comment that precedes the expression.
 
   #: Construct a SyntaxError at the location of this node.
@@ -114,9 +115,11 @@ Name = subclass Node where
     @norhs  = value in NORHS
     @varary = value in VARARY
     @flags  = FLAGS.get @value 0
+    @left, @right = STRENGTH.get @value STRENGTH'
     None
 
-  __lt__   = self x -> STRENGTH.get @value STRENGTH' !! 1 < STRENGTH.get x STRENGTH' !! 0
+  __lt__   = self x -> @right <  STRENGTH.get x STRENGTH' !! 0
+  __le__   = self x -> @right <= STRENGTH.get x STRENGTH' !! 0
   __eq__   = self x -> @value == x
   __hash__ = self   -> hash @value
   __repr__ = self   -> if

@@ -248,13 +248,19 @@ Parser = subclass collections.deque where
   infixin = op lhs rhs ~> if
     # Right binding strength is lower => descend.
     lhs :: Expression and not lhs.closed and lhs.op < op =>
-      lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
+      exp = lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
+      exp.op.weak =>
+        # To have that make any effect, this operator must also be weak.
+        lhs.op.weak  = True
+        lhs.op.right = exp.op.right
       lhs
     # Variadic operator joined with itself => combine argument lists
     # to create a single expression instead of a double-nesting.
     lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
       rhs is None or
-        lhs.args += (@make_call op lhs rhs).args !! slice 1 None
+        exp = @make_call op lhs rhs
+        lhs.args += tail exp.args
+        lhs.op    = exp.op  # might have been converted into `WeakName`
       lhs
     # No right-hand side => create a left infix bind. `x R` <=> `y -> x R y`,
     # only `x` is evaluated eagerly. Normally. The compiler can override that.
@@ -266,7 +272,7 @@ Parser = subclass collections.deque where
     # actually a right bind, not a function call. `R x` <=> `y -> y R x`. (Normally.)
     op == '' and lhs.infix and not lhs.closed =>
       RightBind lhs.loc lhs $ if
-        lhs < ''  => @special rhs
+        lhs <= '' => @special rhs
         otherwise => rhs
     # So that's a normal infix expression.
     otherwise => @make_call op lhs rhs
@@ -275,12 +281,20 @@ Parser = subclass collections.deque where
   #:
   #: make_call :: Name Node Node -> Expression
   #:
-  make_call = op lhs rhs ~> Expression lhs.loc op lhs *:
-    # If a function call is followed by an indented block,
-    # each statement in that block is a separate argument to that call.
-    if op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' => rhs.args
-       op <  ''  => [@special rhs]  # That means `rhs` is a null denotation.
-       otherwise => [rhs]
+  make_call = op lhs rhs ~>
+    arg = rhs
+    exp = Expression lhs.loc op lhs *:
+      # If a function call is followed by an indented block,
+      # each statement in that block is a separate argument to that call.
+      if op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' => rhs.args
+         op <= ''  => [arg = @special rhs]  # That means `rhs` is a null denotation.
+         otherwise => [rhs]
+    not $ arg is rhs =>
+      # `@special` has overriden the RHS. If other operators follow, they
+      # should be stronger than this operator to make them bind with the new RHS.
+      exp.op.right = 10
+      exp.op.weak  = True
+    exp
 
   #: Handle a couple of fancy syntactic constructs.
   #:
