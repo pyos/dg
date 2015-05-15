@@ -268,7 +268,7 @@ Compiler = subclass CodeType where
             @lnotab += bytes (byteoff % 256, lineoff % 256)
 
     x.doc => @docstr = x.doc
-    if x :: Name       => @pushname  x.value at: x.loc
+    if x :: Name       => @pushname  x.value
        x :: Constant   => @pushconst x.value
        x :: LeftBind   => @pushbind  False x.op *: x.args
        x :: RightBind  => @pushbind  True  x.op *: x.args
@@ -566,7 +566,7 @@ Compiler = subclass CodeType where
   popast = x ~> if
     x :: Name => @popname $ if
       x == '@'  => 'self'
-      x == '@@' => raise $ x.invalid 'cannot assign to superclass'
+      x == '@@' => raise $ x.invalid 'cannot change superclass'
       otherwise => x.value
 
     x :: LeftBind => if
@@ -576,15 +576,14 @@ Compiler = subclass CodeType where
       otherwise => raise $ x.invalid 'not something one can assign to'
 
     x :: RightBind => if
-      # A single item prefixed with an at sign is a shorthand
-      # for attribute assignment. That is, `self.attribute = ...`.
-      x.op == '@' =>
+      # `@@x` returns `super!.x` => `@@x = y` is invalid
+      # `@x`  returns `self.x`   => `@x = y` is `self.x = y`
+      x.op == '@@' => raise $ x.invalid 'cannot modify attributes of superclass'
+      x.op == '@'  =>
         attr, = x.args
         attr :: Name or raise (attr.invalid 'not an attribute')
-        @pushname 'self' at: x.loc
+        @pushname 'self'
         @append   'STORE_ATTR' delta: -2 $ @names !! attr.value
-
-      x.op == '@@' => raise $ x.invalid 'cannot assign superclass attributes'
 
       # A single item prefixed with a star.
       # In a comma-separated list, that is an instruction to put excess
@@ -605,7 +604,9 @@ Compiler = subclass CodeType where
       #   1. Assume the value on top of the stack is an iterable.
       #   2. Split it into separate items.
       #   3. Store each of them in an assignment target from this list.
-      x.op == ',' =>
+      # Some objects joined with an infix `list'` is what `[a, b, c, ...]` compiles to;
+      # we'll handle that as well.
+      x.op == ',' or x.op == "list'" =>
         sz = len x.args
         qs = list (where for (i, q) in enumerate x.args =>
           if q :: RightBind and q.op == '*' => yield i)
@@ -658,11 +659,8 @@ Compiler = subclass CodeType where
   #:
   symbols' = *: xs ~> for x in xs => if
     x :: Expression => if
-      x.op == ',' => yield from $ @symbols' *: x.args
-      x.op == '*' => yield from $ @symbols' *: x.args
-      x.op == ':' => yield from $ @symbols' *: x.args
-      x.op == ''  => yield from $ @symbols' *: (tail x.args)
-      otherwise   => yield from $ @symbols x
+      x.op in (',', '*', ':', "list'") => yield from $ @symbols' *: x.args
+      otherwise => yield from $ @symbols x
     x :: Name => if
       x == '@'  => yield 'self'
       x == '@@' => yield 'self'

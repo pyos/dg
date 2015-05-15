@@ -245,9 +245,9 @@ CodeType = subclass object where
 
   #: Push the value assigned to some name onto the value stack.
   #:
-  #: pushname :: str (Optional (str, int, int, str)) -> a
+  #: pushname :: str -> a
   #:
-  pushname = v at: None ~> if
+  pushname = v ~> if
     v in @cellvars   => @append 'LOAD_DEREF'  delta: +1 $ @cellvars !! v
     v in @varnames   => @append 'LOAD_FAST'   delta: +1 $ @varnames !! v
     v in @enclosed   => @append 'LOAD_DEREF'  delta: +1 $ @freevars !! v
@@ -257,9 +257,9 @@ CodeType = subclass object where
 
   #: Pop the value from the top of the stack, assign it to a name.
   #:
-  #: popname :: str (Optional bool) -> a
+  #: popname :: str -> a
   #:
-  popname = v free: False ~> if
+  popname = v ~> if
     v in @cellvars => @append 'STORE_DEREF'  delta: -1 $ @cellvars !! v
     v in @varnames => @append 'STORE_FAST'   delta: -1 $ @varnames !! v
     v in @enclosed => @append 'STORE_DEREF'  delta: -1 $ @freevars !! v
