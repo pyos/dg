@@ -3,11 +3,6 @@ import '/types'
 import '/struct'
 import '/collections'
 
-#: These constants, unless redefined in a function, will
-#: be loaded with LOAD_CONST, not LOAD_GLOBAL.
-#: FIXME what if one of them is redefined in a global namespace?
-CONSTANTS = dict True: True False: False None: None otherwise: True
-
 # Allow cross-compiling for CPython 3.5 on CPython 3.4:
 dis.opmap.setdefault 'WITH_CLEANUP_START'  81
 dis.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
@@ -142,6 +137,9 @@ CodeType = subclass object where
     @byteoff  = 0
     None
 
+  #: These constants, unless redefined, be loaded with LOAD_CONST, not LOAD_GLOBAL.
+  constnames = dict True: True False: False None: None otherwise: True
+
   #: Make the bytecode slightly faster. Only works on CPython, because it has
   #: a built-in peephole optimizer and writing a new one is hard. PyPy uses
   #: an AST-based optimizer instead, and we can't use that for obvious reasons.
@@ -250,11 +248,12 @@ CodeType = subclass object where
   #: pushname :: str (Optional (str, int, int, str)) -> a
   #:
   pushname = v at: None ~> if
-    v in @cellvars => @append 'LOAD_DEREF'  delta: +1 $ @cellvars !! v
-    v in @varnames => @append 'LOAD_FAST'   delta: +1 $ @varnames !! v
-    v in @enclosed => @append 'LOAD_DEREF'  delta: +1 $ @freevars !! v
-    v in CONSTANTS => @pushconst $ CONSTANTS !! v
-    otherwise      => @append 'LOAD_GLOBAL' delta: +1 $ @names !! v
+    v in @cellvars   => @append 'LOAD_DEREF'  delta: +1 $ @cellvars !! v
+    v in @varnames   => @append 'LOAD_FAST'   delta: +1 $ @varnames !! v
+    v in @enclosed   => @append 'LOAD_DEREF'  delta: +1 $ @freevars !! v
+    v in @globals    => @append 'LOAD_GLOBAL' delta: +1 $ @names !! v
+    v in @constnames => @pushconst $ @constnames !! v
+    otherwise        => @append 'LOAD_GLOBAL' delta: +1 $ @names !! v
 
   #: Pop the value from the top of the stack, assign it to a name.
   #:
