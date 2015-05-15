@@ -1,11 +1,11 @@
-import '/dis'
 import '/types'
+import '/opcode'
 import '/struct'
 import '/collections'
 
 # Allow cross-compiling for CPython 3.5 on CPython 3.4:
-dis.opmap.setdefault 'WITH_CLEANUP_START'  81
-dis.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
+opcode.opmap.setdefault 'WITH_CLEANUP_START'  81
+opcode.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
 
 
 #: Calculate the length of a bytecode sequence given (opcode, argument) pairs, in bytes.
@@ -14,8 +14,8 @@ dis.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
 #:
 codelen = seq -> sum $ map
   (c, v) -> if
-    c < dis.HAVE_ARGUMENT => 1
-    otherwise             => 3 * (1 + abs (v.bit_length! - 1) // 16)
+    c < opcode.HAVE_ARGUMENT => 1
+    otherwise                => 3 * (1 + abs (v.bit_length! - 1) // 16)
   seq
 
 
@@ -55,7 +55,7 @@ Jump = subclass object where
         while @value >> i => @value, i = @value + 3, i + 16
 
     if @reverse  => @code.append @op @value
-       otherwise => @code.bytecode !! @start = dis.opmap !! @op, @value
+       otherwise => @code.bytecode !! @start = opcode.opmap !! @op, @value
 
 
 CodeType = subclass object where
@@ -179,11 +179,11 @@ CodeType = subclass object where
   #: code :: (int, int) -> bytes
   #:
   code = (op, arg) ~> if
-    op  < dis.HAVE_ARGUMENT => struct.pack '<B'  op
-    arg < 0                 => @code (op, len @cellvars - arg - 1)
-    arg < 0x10000           => struct.pack '<BH' op arg
-    otherwise               => @code (dis.opmap !! 'EXTENDED_ARG', arg >> 16) +
-                               struct.pack '<BH' op (arg & 0xffff)
+    op  < opcode.HAVE_ARGUMENT => struct.pack '<B'  op
+    arg < 0                    => @code (op, len @cellvars - arg - 1)
+    arg < 0x10000              => struct.pack '<BH' op arg
+    otherwise                  => @code (opcode.opmap !! 'EXTENDED_ARG', arg >> 16) +
+                                  struct.pack '<BH' op (arg & 0xffff)
 
   #: Convert this object into an immutable version actually suitable for use with `eval`.
   #:
@@ -220,9 +220,9 @@ CodeType = subclass object where
     @depth delta
     # These indices are used to quickly change all references
     # to an array slot into references to a cell.
-    name == 'LOAD_FAST'  => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'LOAD_DEREF'
-    name == 'STORE_FAST' => @fastlocals !! arg !! len @bytecode = dis.opmap !! 'STORE_DEREF'
-    @bytecode.append (dis.opmap !! name, arg)
+    name == 'LOAD_FAST'  => @fastlocals !! arg !! len @bytecode = opcode.opmap !! 'LOAD_DEREF'
+    name == 'STORE_FAST' => @fastlocals !! arg !! len @bytecode = opcode.opmap !! 'STORE_DEREF'
+    @bytecode.append (opcode.opmap !! name, arg)
 
   #: Request a permanent change in stack size.
   #:

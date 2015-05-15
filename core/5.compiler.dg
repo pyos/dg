@@ -31,7 +31,18 @@ compileast = x globals: () ->
   @frozen
 
 
-#: Enforce arbitrary argument count limits on a compile-time function.
+#: Raise a `SyntaxError` regardless of arguments.
+#:
+#: undefined :: str -> Handler
+#:
+#:   where Handler = Compiler Node [Node] -> a
+#:      -- a compiler-defined function. First argument is function name,
+#:         second argument is the list of arguments.
+#:
+undefined = x -> f args ~> raise $ f.invalid x
+
+
+#: Enforce argument count limits on a compile-time function.
 #:
 #: fix :: int int Handler -> Handler
 #:
@@ -41,8 +52,16 @@ fix = min max h -> f args ~>
   h self f args
 
 
-#: Make a handler update its first argument with the result.
-#: Use `fix` to ensure at least one argument!
+#: Push all arguments, apply a single instruction, pass the number of items as the argument.
+#:
+#: apply_one :: str -> Handler
+#:
+apply_one = x -> f xs ~>
+  @pushast *: xs
+  @append x (len xs) $ 1 - len xs
+
+
+#: After evaluating bytecode, store the result in the variable referenced by the first argument.
 #:
 #: inplace :: Handler -> Handler
 #:
@@ -52,16 +71,41 @@ inplace = h -> f xs ~>
   @popast $ head xs
 
 
+#: Accept 1+ arguments, but make `f a b c ...` same as `f (a b c ...)`.
+#:
+#: autocall :: Handler -> Handler
+#:
+autocall = h -> fix 1 inf $ f xs ~> h self f $ if
+  len xs > 1 => [Expression f.loc *: xs]
+  otherwise  => xs
+
+
+#: Infix bind handler: turn `x R` or `R x` into `x R None`.
+#:
+#: default_to_none :: Handler
+#:
+default_to_none = f [x] ~> @pushcall f x $ Constant f.loc None
+
+
+#: Given two arguments, pick the first iff it matches a jump condition.
+#:
+#: shortcircuit :: str -> Handler
+#:
+shortcircuit = x -> fix 2 2 $ f [a, b] ~>
+  @pushast a
+  with @jump x False -1 => @pushast b
+
+
 #: Turn a handler that accepts pairs or nodes into one that accepts `u => v` nodes.
 #:
-#: pair_args :: (Node [(Node, Node)] -> a) -> Handler
+#: pair_args :: (Compiler Node [(Node, Node)] -> a) -> Handler
 #:
 pair_args = h -> f xs ~>
   pairs = getattr f '_arrpairs' None
   pairs is None =>
     # In `if` and `except` the whole first line is clamped into a single argument,
     # so `if (1 => 2) (3 => 4)` is the same thing as `if ((1 => 2) (3 => 4))`.
-    # We're gonna treat these as separate argument for a shorthand notation.
+    # We'll treat these as separate arguments for a shorthand notation.
     if len xs == 1 and head xs :: Expression and (head xs).op == '' => xs = (head xs).args
     # This decorator needs to be applied to both the emitter function
     # AND the symbol scanner, so we'll cache the result.
@@ -74,45 +118,12 @@ pair_args = h -> f xs ~>
   h self f f._arrpairs
 
 
-#: Raise a `SyntaxError` regardless of arguments.
-#:
-#: undefined :: str -> Handler
-#:
-undefined = x -> f xs ~> raise $ f.invalid x
-
-
-#: Apply a single bytecode instruction to all arguments. The number of arguments
-#: is passed as an oparg.
-#:
-#: apply_one :: str -> Handler
-#:
-apply_one = x -> f xs ~>
-  @pushast *: xs
-  @append x (len xs) $ 1 - len xs
-
-
-#: Given two arguments, pick the first iff it matches a jump condition.
-#:
-#: either :: str -> Handler
-#:
-either = x -> fix 2 2 $ f (a, b) ~>
-  @pushast a
-  with @jump x False -1 => @pushast b
-
-
-#: Infix bind handler: assume the omitted side is `None`.
-#:
-#: default_to_none :: Handler
-#:
-default_to_none = f (x,) ~> @pushcall f x $ Constant f.loc None
-
-
 #: Given two arguments, return the result of comparing them with a suitable
-#: function. Note that the function must be in `dis.cmp_op`.
+#: function. Note that the function name must be in `opcode.cmp_op`.
 #:
 #: compare :: Handler
 #:
-compare = fix 2 2 $ f (a, b) ~>
+compare = fix 2 2 $ f [a, b] ~>
   chain = []
   # `a R x1 Q x2 ... xn P b` where `R`, `Q`, and so on are comparison operators
   # is a single chain that is equivalent to `a R x1 and ... and xn P b`.
@@ -128,10 +139,10 @@ compare = fix 2 2 $ f (a, b) ~>
     @pushast arg
     @append  'DUP_TOP'    delta: +1  #=> prev, arg, arg
     @append  'ROT_THREE'  delta: +0  #=> arg, prev, arg
-    @append  'COMPARE_OP' delta: -1 $ dis.cmp_op.index op.value  #=> arg, bool
+    @append  'COMPARE_OP' delta: -1 $ opcode.cmp_op.index op.value  #=> arg, bool
     jumps.append $ @jump 'POP_JUMP_IF_FALSE' delta: -1  #=> arg
   @pushast b
-  @append 'COMPARE_OP' delta: -1 $ dis.cmp_op.index f.value
+  @append 'COMPARE_OP' delta: -1 $ opcode.cmp_op.index f.value
   # If all comparisons returned `True`, we're done and there's `True` on top
   # of the stack. If comparison with `b` returned `False`, there's `False`
   # and nothing else. But if one of the other comparisons returned `False`,
@@ -231,10 +242,8 @@ Compiler = subclass CodeType where
   __init__ = *: args **: kwargs ~>
     @@__init__ *: args **: kwargs
     @loops = list!  # Jumps to the beginnings of loops we're currently in. Used by `continue`.
-    @unsafe = set!  # Variables used to store exceptions. May cause reference loops.
+    @unsafe = set!  # Variables used to store exceptions. These may cause reference loops.
     @docstr = None  # The docstring to attach to the next function.
-    # For some reason, CPython requires that `__init__` returns None.
-    # Why can't it simply ignore the return value?
     None
 
   #: Push the results of evaluating some expressions onto the stack.
@@ -263,9 +272,8 @@ Compiler = subclass CodeType where
             # They can't go back, too, presenting some problems in `where` and
             # function calls that span multiple lines, as the traceback will always
             # point to the last line while the error is actually in the first.
-            @lnotab += lineoff // 256 * b'\x00\xff'
-            @lnotab += byteoff // 256 * b'\xff\x00'
-            @lnotab += bytes (byteoff % 256, lineoff % 256)
+            @lnotab += lineoff // 256 * b'\x00\xff' +
+                       byteoff // 256 * b'\xff\x00' + bytes (byteoff % 256, lineoff % 256)
 
     x.doc => @docstr = x.doc
     if x :: Name       => @pushname  x.value
@@ -376,12 +384,12 @@ Compiler = subclass CodeType where
          vkw => @pushast vkw
        otherwise =>
          va => @pushast va
-         # push more varargs lists...
-         # @append 'BUILD_LIST_UNPACK' number_of_lists delta: (1 - number_of_lists)
+         # XXX CPython 3.5: push more varargs lists, then
+         # @append 'BUILD_LIST_UNPACK' (len va) delta: (1 - len va)
          @pushmap kw
          vkw => @pushast vkw
-         # No idea what this opcode does, it has a weird-looking argument:
-         # @append 'BUILD_MAP_UNPACK_WITH_CALL' ??? delta: ???
+         # push more varkwargs, then let k = argc + 2 * len kw + len va + len vkw in
+         # @append 'BUILD_MAP_UNPACK_WITH_CALL' (k * 256 + len vkw) delta: (1 - len vkw)
     @append
       'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
       0 + argc + 256 * len kw
@@ -396,8 +404,8 @@ Compiler = subclass CodeType where
   #:
   pushbind = right f arg ~>
     g = @getinternal f.value
-    if # Makes to sense to use compile-time partial bindings if the function itself
-       # has no non-standard compile-time definition.
+    if # Makes tno sense to use compile-time partial bindings if the function itself
+       # has no compile-time definition.
        g and f.value in @infixl and not right => (@infixl !! f.value) self f [arg]
        g and f.value in @infixr and     right => (@infixr !! f.value) self f [arg]
        g and not (f.value in BUILTINS) =>
@@ -406,7 +414,7 @@ Compiler = subclass CodeType where
          # Still, this is a pretty good method of checking if
          # someone's attempting to partially bind assignment operators, etc.
          raise $ f.invalid 'this operator requires both arguments'
-       # Default binding: `x R` -> `y -> x R y`; `R x` -> `y -> y R x`.
+       # Default binding: `x R` -> `y -> x R y`; `R y` -> `x -> x R y`.
        otherwise =>
          c = if right     => @spawn f.value ('<L>',) ('<R>',)
                 otherwise => @spawn f.value ('<R>',) ('<L>',)
@@ -674,7 +682,7 @@ Compiler = subclass CodeType where
   symscan = dict'
     '', f args ~> @symbols $ Expression f.loc *: args
     '->',    _ _ ~> ()  # These operators create new functions, with brand new
-    '~>',    _ _ ~> ()  # local namespaces. They will call `symscan` on their own.
+    '~>',    _ _ ~> ()  # local namespaces. They will call `symbols` on their own.
     'where', _ _ ~> ()
 
     '=', fix 2 2 $ f (n, x) ~>
@@ -745,9 +753,9 @@ Compiler = subclass CodeType where
     #     first pushes [a_1, a_2, ...], then xs_1, then [b_1, ...], then xs_2, etc.,
     #     before finally joining them with BUILD_LIST_UNPACK(no_of_lists).
     #     Same with tuples (BUILD_TUPLE_UNPACK) and dicts (BUILD_MAP_UNPACK).
-    'or',     either 'JUMP_IF_TRUE_OR_POP'
-    '=>',     either 'JUMP_IF_FALSE_OR_POP'
-    'and',    either 'JUMP_IF_FALSE_OR_POP'
+    'or',     shortcircuit 'JUMP_IF_TRUE_OR_POP'
+    '=>',     shortcircuit 'JUMP_IF_FALSE_OR_POP'
+    'and',    shortcircuit 'JUMP_IF_FALSE_OR_POP'
     'not',    fix 1 1 $ apply_one 'UNARY_NOT'
     '!!',     fix 2 2 $ apply_one 'BINARY_SUBSCR'
     '+',      fix 2 2 $ apply_one 'BINARY_ADD'
@@ -873,7 +881,7 @@ Compiler = subclass CodeType where
       g.regsyms  env
       g.regsyms  ret
       g.pushlast env ret
-      @pushclosure g tuple! dict!
+      @pushclosure g () {}
       @append 'CALL_FUNCTION' 0
 
     #: Type creation.
@@ -898,7 +906,7 @@ Compiler = subclass CodeType where
     #: This is only supported by a few objects. `for` loops, `with` contexts,
     #: `where` clauses and new functions can be async.
     #:
-    'async', fix 1 1 $ f (x,) ~> if
+    'async', fix 1 1 $ f [x] ~> if
       x :: Expression and @getinternal x.op.value in @asyncs =>
         x.op.async = True
         @pushast x
@@ -909,10 +917,12 @@ Compiler = subclass CodeType where
     #:
     #: Note that async `for` and `with` do not have to be awaited on.
     #:
-    'await', fix 1 inf $ f (x, *xs) ~>
-      if xs        => @pushcall x *: xs
-         otherwise => @pushast x
+    'await', autocall $ f [x] ~>
+      @pushast x
       @awaittop 'GET_AWAITABLE' f
+
+    'raise',  autocall $ apply_one 'RAISE_VARARGS'  # TODO __cause__
+    'return', autocall $ apply_one 'RETURN_VALUE'
 
     #: Automatic context managing.
     #:
@@ -971,12 +981,12 @@ Compiler = subclass CodeType where
         @append 'POP_TOP'   delta: -1
         @pushconst True
 
-    #: Iterate over a...iterator, duh.
+    #: Iterate over something. Something may be asynchronous.
     #:
     #: Note that `var` may be any valid assignment target, not only a local variable.
     #:
     'for', fix 2 2 $ f (var, body) ~>
-      # `var` was already syntax-checked in `symscan`.
+      # `var` was already syntax-checked in `symbols`.
       @pushconst False
       with @jump 'SETUP_LOOP' =>
         @pushast $ snd var.args
@@ -1002,7 +1012,7 @@ Compiler = subclass CodeType where
              # 3. An exception *did* occur; either iteration has ended,
              #    or iterator is buggy.
              @pushname 'StopAsyncIteration'
-             @append 'COMPARE_OP' delta: -1 $ dis.cmp_op.index 'exception match'
+             @append 'COMPARE_OP' delta: -1 $ opcode.cmp_op.index 'exception match'
              with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
                # Rethrow everything other than `StopAsyncIteration`.
                @append 'END_FINALLY' -3
@@ -1021,9 +1031,9 @@ Compiler = subclass CodeType where
         @append 'POP_TOP'   delta: -1
         @pushconst True
 
-    #: Stop the loop immediately.
+    #: Stop the loop immediately. The loop will return `False`.
     #:
-    #: It will also return False.
+    #:   xs_is_empty = for x in xs => break!
     #:
     'break', fix 0 0 $ f _ ~> if
       @loops    => @append 'BREAK_LOOP'    delta: +1
@@ -1031,15 +1041,18 @@ Compiler = subclass CodeType where
 
     #: Continue on to the next iteration.
     #:
-    #: Does not affect the return value of the loop.
+    #:   for x in xs => continue!
     #:
     'continue', fix 0 0 $ f _ ~> if
       @loops    => (last @loops).set
       otherwise => raise $ f.invalid 'no loop to `continue`'
 
-    #: Yield control to the caller.
+    #: Yield control to the caller. Enforces a generator context.
     #:
-    #: Did you know that generators have a `send` method? Look it up.
+    #:   yield x
+    #:   yield f a b c
+    #:   yield from x  # `x` must be another generator
+    #:   yield from f a b c
     #:
     'yield', fix 1 inf $ f xs ~>
       xs = list xs
@@ -1053,6 +1066,13 @@ Compiler = subclass CodeType where
       if from      => @append 'GET_ITER', @pushconst None, @append 'YIELD_FROM' delta: -1
          otherwise => @append 'YIELD_VALUE'
 
+    #: Conditional branching.
+    #:
+    #:   if
+    #:     condition1 => action1  # only one of these is executed
+    #:     condition2 => action2
+    #:     ...
+    #:
     'if', pair_args $ f xs ~>
       jumps = list
         where for (cond, action) in xs => yield $
@@ -1063,64 +1083,81 @@ Compiler = subclass CodeType where
       @pushconst None
       for x in jumps => x.set
 
-    'raise', fix 1 inf $ f xs ~>
-      # TODO __cause__
-      if len xs == 1 => @pushast $ head xs
-         otherwise   => @pushcall *: xs
-      @append  'RAISE_VARARGS' 1
-
-    'return', fix 1 inf $ f xs ~>
-      if len xs == 1 => @pushast $ head xs
-         otherwise   => @pushcall *: xs
-      @append  'RETURN_VALUE'
-
-    'except', fix 1 inf $ pair_args $ f ((name, try), *xs) ~>
-      @pushconst None
+    #: Catch exceptions, handle some, rethrow others.
+    #:
+    #:   except
+    #:     var => unsafe code
+    #:     condition1 => action1  # exception, if it occurred, was handled
+    #:     condition2 => action2
+    #:     ...
+    #:     finally => something  # will be executed even if exception is going to be rethrown
+    #:
+    'except', fix 1 inf $ pair_args $ f [(name, try), *xs] ~>
+      @pushconst None  # Reserve space under the block for return value.
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
          otherwise                          => @pushexcept  name try xs
 
-  asyncs = set $ map (prefix !!) $
-    # Functions that handle `async` qualifier on their own.
-    # Instead of awaiting on a value returned by these functions,
-    # `async` will simply mark the node that corresponds to the name
-    # as `.async = True`.
-    '->', '~>', 'for', 'with', 'where'
+  #: Functions that handle `async` qualifier on their own.
+  #: Instead of awaiting on a value returned by these functions,
+  #: `async` will simply mark the node that corresponds to the name
+  #: as `.async = True`.
+  asyncs = set $ map (prefix !!) ['->', '~>', 'for', 'with', 'where']
 
+  #: Left infix bind overrides. Unless infix operator `R` is redefined,
+  #: these handlers process expressions of kind `x R`.
   infixl = dict'
-    ':',  undefined 'keyword argument to what function?'
-    '~',  undefined 'this operator is prefix'
-    '@',  undefined 'this operator is prefix'
-    '@@', undefined 'this operator is prefix'
-
     '!',     f xs ~> @pushcall *: xs
     ',',     apply_one 'BUILD_TUPLE'
+    ':',     undefined 'keyword argument to what function?'
+    '~',     undefined 'this operator is prefix'
+    '@',     undefined 'this operator is prefix'
+    '@@',    undefined 'this operator is prefix'
     '->',    default_to_none
     '~>',    default_to_none
-    'while', default_to_none
     'for',   default_to_none
+    'while', default_to_none
     'where', default_to_none
 
+  #: Right infix bind overrides. Unless infix operator `R` is redefined,
+  #: these handlers process expressions that look like `R x`.
   infixr = dict'
-    ':', undefined 'keyword argument to what function?'
-    '!', undefined 'this operator is postfix'
-    ',', undefined 'this operator is unbindable'
-    '~', apply_one 'UNARY_INVERT'
-    '-', apply_one 'UNARY_NEGATIVE'
+    '~',     apply_one 'UNARY_INVERT'
+    '-',     apply_one 'UNARY_NEGATIVE'
+    ':',     undefined 'keyword argument to what function?'
+    '!',     undefined 'this operator is postfix'
+    ',',     undefined 'this operator is unbindable'
+    'where', default_to_none
 
-    '@', f (x,) ~>
-      x :: Name or raise (x.invalid 'not an attribute')
+    #: Retrieve an attribute of current instance.
+    #:
+    #:   @x   <=> self.x
+    #:
+    '@', f [x] ~>
+      x :: Name or raise x.invalid 'not an attribute'
       @pushname 'self'
       @append 'LOAD_ATTR' $ @names !! x.value
 
-    '@@', f (x,) ~>
-      x :: Name or raise (x.invalid 'not an attribute')
+    #: Retrieve an attribute of superclass bound to current instance.
+    #:
+    #:   @@x    <=>    super!.x
+    #:
+    '@@', f [x] ~>
+      x :: Name or raise x.invalid 'not an attribute'
       @pushname '__dg_super__'
       @append 'CALL_FUNCTION' 0
       @append 'LOAD_ATTR' $ @names !! x.value
 
-    'where', default_to_none
-    '->',    f (body,) ~> @pushfunc' f.async body () () () {} () () {}
-    '~>',    f (body,) ~>
+    #: Construct a function with no arguments.
+    #:
+    #:   -> x
+    #:
+    '->', f [body] ~> @pushfunc' f.async body () () () {} () () {}
+
+    #: Construct a property.
+    #:
+    #:   ~> x
+    #:
+    '~>', f [body] ~>
       @pushname 'property'
       @pushfunc' f.async body ('self',) () () {} () () {}
       @append 'CALL_FUNCTION' 1 delta: -1
