@@ -187,7 +187,7 @@ BUILTINS.update locals! where
   #:
   #: exhaust :: (iter a) -> b
   #:
-  exhaust = x -> collections.deque x maxlen: 0
+  exhaust = x -> collections.deque x 0
 
   #: Repeatedly apply a function to an element.
   #:
@@ -266,18 +266,6 @@ BUILTINS.update locals! where
       otherwise               => raise $ ImportError $ '`{}` is not a module'.format $ last path
     if qual      => root
        otherwise => mod
-
-  #: An exception thrown when a constant pattern fails to match.
-  #:
-  #:   5 = 4  #=> ConstantPatternError
-  #:
-  ConstantPatternError = subclass ValueError where
-
-  #: An exception thrown when an ADT instance pattern fails to match.
-  #:
-  #:  Something a b c = SomethingElse a b c  #=> InstancePatternError
-  #:
-  InstancePatternError = subclass ValueError where
 
 
 # Overriding `__builtins__` after the code has already started running
