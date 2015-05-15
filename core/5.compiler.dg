@@ -647,9 +647,8 @@ Compiler = subclass CodeType where
   symbols = *: xs ~> for x in xs =>
     # Only expressions may create variables.
     x :: Expression => yield from $ if
-      # Compile-time macros may override symbol scans in a way similar to using `prefix`
-      # (see below.)
-      x.op :: Name and x.op.value in @symscan => (@symscan !! x.op.value) self x.op x.args
+      # Compile-time macros may override symbol scans in a way similar to using `prefix`.
+      x.op :: Name and (fn = @symscan.get x.op.value) => fn self x.op x.args
       # Default behavior is to push the function, then push the arguments, so we scan them.
       otherwise => @symbols x.op *: x.args
 
@@ -660,10 +659,10 @@ Compiler = subclass CodeType where
   symbols' = *: xs ~> for x in xs => if
     x :: Expression => if
       x.op in (',', '*', ':', "list'") => yield from $ @symbols' *: x.args
+      # Assignments to anything else do not create new variables.
       otherwise => yield from $ @symbols x
     x :: Name => if
       x == '@'  => yield 'self'
-      x == '@@' => yield 'self'
       otherwise => yield x.value
 
   #: Ensure an AST can have access to all local variables it needs.
@@ -681,10 +680,6 @@ Compiler = subclass CodeType where
     '=', fix 2 2 $ f (n, x) ~>
       yield from $ @symbols' n
       yield from $ @symbols  x
-
-    ':=', fix 2 2 $ f (n, x) ~>
-      yield from $ filter (not <- (in @enclosed)) $ @symbols' n
-      yield from $ @symbols x
 
     'for', fix 1 2 $ f (var, *body) ~>
       not $ var :: Expression and var.op == 'in' and len var.args == 2 => raise $ var.invalid $ if
