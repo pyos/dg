@@ -12,11 +12,10 @@ opcode.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
 #:
 #: codelen :: [(int, int)] -> int
 #:
-codelen = seq -> sum $ map
-  (c, v) -> if
+codelen = seq -> sum
+  where for (c, v) in seq => yield $ if
     c < opcode.HAVE_ARGUMENT => 1
     otherwise                => 3 * (1 + abs (v.bit_length! - 1) // 16)
-  seq
 
 
 Jump = subclass object where
@@ -138,7 +137,7 @@ CodeType = subclass object where
     None
 
   #: These constants, unless redefined, be loaded with LOAD_CONST, not LOAD_GLOBAL.
-  constnames = dict True: True False: False None: None otherwise: True
+  constnames = dict True: True False: False None: None otherwise: True (...): Ellipsis
 
   #: Make the bytecode slightly faster. Only works on CPython, because it has
   #: a built-in peephole optimizer and writing a new one is hard. PyPy uses

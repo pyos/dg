@@ -1,14 +1,12 @@
-#: The set of alphanumeric identifiers that should be nonetheless
-#: treated as infix operators. (Normally, alphanumeric names are prefix
-#: while punctuation is infix.)
-INFIXN = 'and', 'in', 'is', 'or', 'where'
+#: Non-infix names that should be parsed as infix, and infix names
+#: that should be parsed as non-infix.
+INVERT = 'and', 'in', 'is', 'or', 'where', '...'
 #: The set of operators that accept any no. of arguments, mostly for optimization.
 #: (Normally, an operator is binary.)
 VARARY = ',', '\n', ''
-#: The set of operators that should not accept a left-hand expression,
-#: so `a R b` becomes `a (R b)`.
-NOLHS = '@', '@@', '~'
-#: Different side, same story. `a R b` becomes `(a R) b`.
+#: The set of operators that should not accept a left-hand (right-hand) expression,
+#: so `a R b` becomes `a (R b)` (`(a R) b`).
+NOLHS = '@', '@@', '~',
 NORHS = '!',
 #: Operators with these flags behave differently in a null-denotation context.
 #: See the parser (`Parser.special`) for details.
@@ -95,10 +93,10 @@ Node = subclass object where
   nolhs  = False  # :: bool -- see `NOLHS`
   norhs  = False  # :: bool -- see `NORHS`
   varary = False  # :: bool -- see `VARARY`
-  flags  = 0      # :: int  -- see `FLAGS`
   async  = False  # :: bool -- whether this is an operator of expression wrapped in `async`
   weak   = False  # :: bool -- whether this infix name should have a low right strength.
   doc    = None   # :: Maybe str -- the `#:` comment that precedes the expression.
+  flags  = 0      # :: int  -- see `FLAGS`
 
   #: Construct a SyntaxError at the location of this node.
   #:
@@ -110,12 +108,12 @@ Node = subclass object where
 Name = subclass Node where
   __init__ = self @loc infix value ->
     @value  = value
-    @infix  = value in INFIXN or infix
+    @infix  = value in INVERT ^ infix
     @nolhs  = value in NOLHS
     @norhs  = value in NORHS
     @varary = value in VARARY
-    @flags  = FLAGS.get @value 0
-    @left, @right = STRENGTH.get @value STRENGTH'
+    @weak = @flags = FLAGS.get @value 0
+    @left,  @right = STRENGTH.get @value STRENGTH'
     None
 
   __lt__   = self x -> @right <  STRENGTH.get x STRENGTH' !! 0
@@ -130,9 +128,9 @@ Name = subclass Node where
 Expression = subclass Node where
   __init__ = self @loc @op *: args ->
     @args = list args
-    @args => @doc = (head args).doc
+    @args => @doc = (args !! 0).doc
     None
-
+  # FIXME this repr looks awful.
   __repr__ = self -> '(' + (repr @op or ' ').join (map repr @args) + ')'
 
 
@@ -142,6 +140,7 @@ Constant = subclass Node where
 
 
 LeftBind = subclass Expression where
+  closed = True  # Left binds have no RHS and therefore cannot be extended.
   __repr__ = self -> '({[0]!r} {!r})'.format @args @op
 
 

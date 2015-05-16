@@ -1,4 +1,5 @@
 import '/re'
+import '/sys'
 import '/collections'
 
 
@@ -6,7 +7,7 @@ import '/collections'
 #:
 #: parse :: str (Optional str) -> Node
 #:
-parse = data filename: '<string>' -> (Parser data filename).file
+parse = data filename: '<string>' -> Parser data filename |>.file
 
 
 #: Parse the contents of a file-like object opened in text mode.
@@ -31,9 +32,8 @@ Parser = subclass collections.deque where
   #: A precompiled regular expression that should match a single token.
   #: Every top-level group must be named; its name is passed to `token`
   #: in order to determine which token is being processed.
-  regex = re.compile r'''(?ismx)
-    (?P<skip>   [^\S\n]+|\s*\#(?:[^:\n][^\n]*|$))
-   |(?P<docstr> \s*\#:(?P<docstrcontent>[^\n]*))
+  regex = re.compile r'''(?isx)
+    (?P<skip> [^\S\n]+ | \s*\# (?: :(?P<docstr>[^\n]*) | [^\n]* ))
    |(?P<number>
       [+-]?(?:
         (?P<isbin>0b)[01]+
@@ -46,7 +46,7 @@ Parser = subclass collections.deque where
       (?P<flags>br|r?b?)
       (?P<quote>'{3}|"{3}|'|")
       (?P<content>(?:[^\\]|\\.)*?)
-      \12)  # should point to <quote>
+      \11)  # should point to <quote>
    # If a string that has a beginning but no end:
    |(?P<strerr> (?:br|r?b?)['"])
    # This "asterisks followed by a colon" thing is a hack to make `f *: xs`
@@ -55,7 +55,7 @@ Parser = subclass collections.deque where
    |(?P<infix>  [!$%&*+\--/:<-@\\^|~;]+|,)
    |(?P<eol>    \s*\n(?P<indent>[\ \t]*))
    |(?P<block>  [\(\{\[])
-   |(?P<end>    [\)\}\]])
+   |(?P<end>    [\)\}\]] | $)
    |(?P<iname>  `(?P<iname_>\w+'*)`)
    |(?P<error>  .)
   '''
@@ -70,27 +70,27 @@ Parser = subclass collections.deque where
   #:
   __init__ = @data @filename ~>
     @tokens = @regex.finditer @data
-    @indent = collections.deque [0,]
+    @indent = collections.deque [0]
     @lineno = 1
     @charno = 1
     @lines  = @data.split '\n'
     @docstr = ''
     None
 
+  __repr__ = self -> object.__repr__ self
   __iter__ = self -> self
   __next__ = self -> if
     self      => @pop!
-    otherwise => except
-      err =>
-        match = next @tokens
-        text  = match.group 0
-        pos   = @location
+    otherwise =>
+      match = next @tokens
+      text  = match.group 0
+      pos   = @location
 
-        '\n' in text => @charno = -text.rfind '\n'
-        @charno += len text
+      '\n' in text =>
         @lineno += text.count '\n'
-        @token pos match.lastgroup match
-      err :: StopIteration => Ending @location '\0'
+        @charno = -text.rfind '\n'
+      @charno += len text
+      @token pos match.lastgroup match
 
   #: The offset of the next token in the source code as a `SyntaxError`-compatible tuple.
   #:
@@ -104,29 +104,29 @@ Parser = subclass collections.deque where
   #:
   endof = {('(', ')'), ('{', '}'), ('[', ']')}
 
-  #: Handle a single regex match. (The second argument is the name of its top-level group.)
+  #: Handle a single regex match.
   #:
   #: token :: (str, int, int, str) str MatchObject -> Node
   #:
-  token = pos f m ~> if
-    f == 'skip'   => next self
-    f == 'block'  => @block pos m.group! $ x -> x :: Ending and x.value == @endof !! m.group!
-    f == 'docstr' =>
-      @docstr += '\n' + m.group 'docstrcontent'
-      # The above string will be attached to the next `\n` name.
+  token = pos kind m ~> if
+    kind == 'skip' =>
+      doc = m.group 'docstr'  # This will be attached to the next `\n` name.
+      doc => @docstr += '\n' + doc
       next self
-    f == 'end'    => Ending   pos m.group!
-    f == 'name'   => Name     pos False $ m.group 'name'
-    f == 'infix'  => Name     pos True  $ m.group 'infix'
-    f == 'iname'  => Name     pos True  $ m.group 'iname_'
-    f == 'string' => Constant pos $ eval $
+
+    kind == 'block'  => @block   pos m.group! $ x -> x :: Ending and x.value == @endof !! m.group!
+    kind == 'end'    => Ending   pos m.group!
+    kind == 'name'   => Name     pos False $ m.group 'name'
+    kind == 'infix'  => Name     pos True  $ m.group 'infix'
+    kind == 'iname'  => Name     pos True  $ m.group 'iname_'
+    kind == 'string' => Constant pos $ eval $
       q = 3 * m.group 'quote' !! 0
       # String escapes are complex and the `unicodeescape` codec is broken.
       # These are constants, though, so `eval`ing them is no more dangerous
       # than `eval`ing the rest of the code, which we'll probably do later.
       m.group 'flags' + q + m.group 'content' + q
 
-    f == 'number' => Constant pos $ if
+    kind == 'number' => Constant pos $ if
       m.group 'isimag'  => complex (m.group 'number')
       m.group 'isfloat' => float   (m.group 'number')
       m.group 'isbin'   => int     (m.group 'number') 2
@@ -134,7 +134,7 @@ Parser = subclass collections.deque where
       m.group 'ishex'   => int     (m.group 'number') 16
       otherwise         => int     (m.group 'number') 10
 
-    f == 'eol' =>
+    kind == 'eol' =>
       '\t' in m.group 'indent' =>
         raise $ SyntaxError 'tabs are not allowed in indentation' @location
       level = len $ m.group 'indent'
@@ -158,14 +158,14 @@ Parser = subclass collections.deque where
          otherwise =>
            @append name
            while level != @indent.pop! =>
-             @indent or raise (SyntaxError 'no matching indentation level' @location)
+             @indent or raise SyntaxError 'no matching indentation level' @location
              @append $ Ending @location '\n'
            @indent.append level
            @pop!
 
-    f == 'strerr' => raise $ SyntaxError 'unexpected EOF in a string literal' pos
-    f == 'error'  => raise $ SyntaxError 'invalid character'                  pos
-    otherwise     => raise $ KeyError $ 'unhandled group {!r}'.format f
+    kind == 'strerr' => raise SyntaxError 'unexpected EOF in a string literal' pos
+    kind == 'error'  => raise SyntaxError 'invalid character'                  pos
+    otherwise        => raise KeyError $ 'unhandled group {!r}'.format f
 
   #: Parse the whole input, yielding a complete AST.
   #:
@@ -173,9 +173,9 @@ Parser = subclass collections.deque where
   #:
   file = ~> @block @location None $ x ->
     x :: Ending => if
-      x.value == '\0' => True
-      x.value == '\n' => raise $ SyntaxError 'indentation < 0?'       x.loc
-      otherwise       => raise $ SyntaxError 'unexpected close-paren' x.loc
+      x.value == ''   => True
+      x.value == '\n' => raise SyntaxError 'indentation < 0?'       x.loc
+      otherwise       => raise SyntaxError 'unexpected close-paren' x.loc
 
   #: Read tokens until `end` returns True.
   #:
@@ -184,8 +184,7 @@ Parser = subclass collections.deque where
   block = pos kind end ~>
     isexpr = False
     result = Constant pos $ if
-      # Do not put `()` here; that'd be a circular definition.
-      kind == '(' => tuple!
+      kind == '(' => tuple!  # `=> ()`, heh. That'd be tautology, though.
       otherwise   => None
     # Docstrings are attached to line breaks, not meaningful nodes.
     # `infix` will carry the docstring from a `\n` to its RHS, but if the `\n`
@@ -194,9 +193,9 @@ Parser = subclass collections.deque where
 
     while not $ end (x = next self) => if
       x :: Ending => if
-        x.value == '\0' => raise $ SyntaxError 'unexpected EOF (a block was not closed)'      pos
-        x.value == '\n' => raise $ SyntaxError 'indentation less than minimum for this block' x.loc
-        otherwise       => raise $ SyntaxError 'invalid close-paren'                          x.loc
+        x.value == ''   => raise SyntaxError 'unexpected EOF (a block was not closed)'      pos
+        x.value == '\n' => raise SyntaxError 'indentation less than minimum for this block' x.loc
+        otherwise       => raise SyntaxError 'invalid close-paren'                          x.loc
       # BTW, a "null denotation" is when a node is at the start of a token group,
       # like in the last branch. A "left denotation" is when a node is to the right
       # of some other node, i.e. `isexpr` is `True`. That's Pratt parser teminology.
@@ -219,21 +218,19 @@ Parser = subclass collections.deque where
   #: infix :: Name Node Node -> Node
   #:
   infix = op lhs rhs ~> if
-    # FIXME `special` below uses different end conditions.
-    #
-    #     [source]    [expected]    [what actually happens]
-    #     if x =>     if (x =>)     if (x => # no Ending here, we consume the next token!
-    #        y => z      (y => z)      (y => z))  # (which is the indented block)
-    #
     rhs :: Ending or op.norhs =>
       @append rhs
       if op in ('', '\n') => lhs  # these are no-op on one argument. Optimization!
          otherwise        => @infixin op lhs None
+    # FIXME `special` tries to read until the next line break, but if there's an indented
+    #       block following an infix operator, this method will consume both.
+    #       That's why   if x =>     is parsed as   if (x =>       and not   if (x =>)
+    #                       y => z                     (y => z))                (y => z)
     rhs.infix and not rhs.closed => if
+      # `lhs op (rhs next)`:
       rhs.nolhs or (op != '' and op < rhs) =>
-        # `a op (b rhs c)`
         @infixin op lhs $ @infix (Name rhs.loc True '') rhs $ next self
-      # `(a op b) rhs c`
+      # `(lhs op) rhs next`:
       op in ('', '\n') => @infix rhs lhs $ next self  # still no-op.
       otherwise        => @infix rhs (@infixin op lhs None) $ next self
     otherwise =>
@@ -245,56 +242,44 @@ Parser = subclass collections.deque where
   #:
   #: infixin :: Name Node (Maybe Node) -> Expression
   #:
-  infixin = op lhs rhs ~> if
-    # Right binding strength is lower => descend.
-    lhs :: Expression and not lhs.closed and lhs.op < op =>
-      exp = lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
-      exp.op.weak =>
-        # To have that make any effect, this operator must also be weak.
-        lhs.op.weak  = True
-        lhs.op.right = exp.op.right
-      lhs
-    # Variadic operator joined with itself => combine argument lists
-    # to create a single expression instead of a double-nesting.
-    lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
-      rhs is None or
-        exp = @make_call op lhs rhs
-        lhs.args += tail exp.args
-        lhs.op    = exp.op  # might have been converted into `WeakName`
-      lhs
-    # No right-hand side => create a left infix bind. `x R` <=> `y -> x R y`,
-    # only `x` is evaluated eagerly. Normally. The compiler can override that.
-    rhs is None =>
-      bind = LeftBind lhs.loc op lhs
-      bind.closed = True
-      bind
-    # Trying to call an infix operator with an argument => that's
-    # actually a right bind, not a function call. `R x` <=> `y -> y R x`. (Normally.)
-    op == '' and lhs.infix and not lhs.closed =>
-      RightBind lhs.loc lhs $ if
-        lhs <= '' => @special rhs
-        otherwise => rhs
-    # So that's a normal infix expression.
-    otherwise => @make_call op lhs rhs
+  infixin = op lhs rhs ~>
+    res = if
+      # Right binding strength is lower => descend.
+      lhs :: Expression and not lhs.closed and lhs.op < op =>
+        lhs.args !! -1 = @infixin op (lhs.args !! -1) rhs
+        lhs
+      # Variadic operator joined with itself => combine argument lists
+      # to create a single expression instead of a double-nesting.
+      lhs :: Expression and not lhs.closed and op.varary and op == lhs.op =>
+        lhs.args += @unwrap_rhs op rhs
+        lhs
+      # No right-hand side => create a left infix bind. `x R` <=> `y -> x R y`,
+      # only `x` is evaluated eagerly. Normally. The compiler can override that.
+      rhs is None => LeftBind lhs.loc op lhs
+      # Trying to call an infix operator with an argument => that's
+      # actually a right bind, not a function call. `R x` <=> `y -> y R x`. (Normally.)
+      op == '' and lhs.infix and not lhs.closed =>
+        RightBind lhs.loc lhs *: (@unwrap_rhs lhs rhs)
+      otherwise => Expression lhs.loc op lhs *: (@unwrap_rhs op rhs)
+    arg = res.args !! -1
+    arg :: Expression and not arg.closed and arg.op.weak =>
+      # This operator must also be weak. Otherwise, next node might not have
+      # higher priority than this operator and won't reach the real "weak" one.
+      res.op.weak  = True
+      res.op.right = arg.op.right
+    res
 
-  #: Create a simple function call. (Almost) no fancy rules.
+  #: Given an operator and its RHS, return the list of operands (excluding LHS).
   #:
-  #: make_call :: Name Node Node -> Expression
+  #: unwrap_rhs :: Name Node -> [Node]
   #:
-  make_call = op lhs rhs ~>
-    arg = rhs
-    exp = Expression lhs.loc op lhs *:
-      # If a function call is followed by an indented block,
-      # each statement in that block is a separate argument to that call.
-      if op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' => rhs.args
-         op <= ''  => [arg = @special rhs]  # That means `rhs` is a null denotation.
-         otherwise => [rhs]
-    not $ arg is rhs =>
-      # `@special` has overriden the RHS. If other operators follow, they
-      # should be stronger than this operator to make them bind with the new RHS.
-      exp.op.right = 10
-      exp.op.weak  = True
-    exp
+  unwrap_rhs = op rhs ~> if
+    rhs is None => ()
+    # If a function call is followed by an indented block,
+    # each statement in that block is a separate argument to that call.
+    op == '' and not rhs.closed and rhs :: Expression and rhs.op == '\n' => rhs.args
+    op <= ''  => @special rhs,
+    otherwise => rhs,
 
   #: Handle a couple of fancy syntactic constructs.
   #:

@@ -10,29 +10,23 @@ import '/importlib/machinery'
 import '/collections'
 
 
-# Self-referential operators go here in `(name): (fn)` form.
-# Declaring them as `name = fn` would create an infinite loop
-# because the compiler would assume `name` is redeclared and therefore
-# isn't compiler-defined anymore.
 BUILTINS = dict
-  raise : (e   -> raise e)
-  (in)  : (a b -> a in  b)
-  (and) : (a b -> a and b)
-  (or)  : (a b -> a or  b)
-  (->)  : (-> None)
-  (~>)  : (~> None)
-  # These are compile-time constants and cannot be assigned to.
-  finally   : True
-  otherwise : True
-  # While these operators are not self-referential, redeclaring them would
-  # break the call to `locals`.
-  (!) : (f *: args **: kwargs -> f *: args **: kwargs)
-  ($) : (f *: args **: kwargs -> f *: args **: kwargs)
+  # Self-referential operators need to be declared like this. If one was to write
+  # `raise = e -> raise e`, the compiler would not use its own `raise` because
+  # it would assume the intention was to call the newly defined function.
+  (raise) : (e   -> raise e)
+  (in)    : (a b -> a in  b)
+  (and)   : (a b -> a and b)
+  (or)    : (a b -> a or  b)
+  (!)     : (f *: xs **: ys -> f *: xs **: ys)
+  ($)     : (f *: xs **: ys -> f *: xs **: ys)
+  (->)    : (-> None)
+  (~>)    : (~> None)
 
 
-# Part 2: compiler-defined functions that can be redefined without
-# referencing each other.
 BUILTINS.update locals! where
+  # The rest of the compiler-defined functions can be given runtime equivalents here,
+  # but they should preferably not reference each other to avoid slowdown.
   ..  = range
   ... = Ellipsis
   ::  = isinstance
@@ -44,7 +38,7 @@ BUILTINS.update locals! where
   !=  = operator.ne
   >=  = operator.ge
   >   = operator.gt
-  ~   = operator.invert
+  ~   = operator.inv
   +   = operator.add
   -   = operator.sub
   *   = operator.mul
@@ -59,6 +53,8 @@ BUILTINS.update locals! where
   >>  = operator.rshift
   !!  = operator.getitem
   !!~ = operator.delitem
+  finally   = True
+  otherwise = True
 
   #: Construct a set from distinct elements.
   #:
@@ -84,6 +80,8 @@ BUILTINS.update locals! where
   #:
   tuple' = , = *: xs -> xs
 
+
+BUILTINS.update locals! where
   #: Compose two functions.
   #:
   #: (<-) :: (a -> b) (object... -> a) -> (object... -> b)
@@ -102,9 +100,6 @@ BUILTINS.update locals! where
   #:
   flip = f -> x y -> f y x
 
-
-# Part 3: pure runtime functions.
-BUILTINS.update locals! where
   #: Stop an iterator after n items.
   #:
   #: take :: int (iter a) -> iter a
