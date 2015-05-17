@@ -559,7 +559,8 @@ Compiler = subclass CodeType where
   #: awaittop :: str Node -> a
   #:
   awaittop = opcode errnode delta: 0 ~>
-    @coroutine or raise errnode.invalid 'cannot use `async` in a non-`async` function'
+    @generator => raise errnode.invalid 'cannot use `async`/`await` in a generator'
+    @coroutine = True
     @append delta: delta $ if
       PY_VERSION >= 0x030500a4 => opcode
       opcode == 'GET_ANEXT'    => 'GET_NEXT'
@@ -909,8 +910,8 @@ Compiler = subclass CodeType where
     #: This is only supported by a few objects. `for` loops, `with` contexts,
     #: `where` clauses and new functions can be async.
     #:
-    'async', fix 1 1 $ f [x] ~> if
-      x :: Expression and @getinternal x.op.value in @asyncs =>
+    'async', autocall $ f [x] ~> if
+      x :: Expression and x.op :: Name and @getinternal x.op.value in @asyncs =>
         x.op.async = True
         @pushast x
       otherwise =>
