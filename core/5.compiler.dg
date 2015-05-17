@@ -813,17 +813,20 @@ Compiler = subclass CodeType where
       @append    'DELETE_ATTR' delta: -1 $ @names !! y.value
       @pushconst None
 
-    '$', fix 2 2 $ f (g, x) ~> if
-      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
-      otherwise => @pushcall g x
+    '$', fix 2 2 $ f (g, x) ~>
+      x.closed = True
+      if g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+         otherwise => @pushcall g x
 
-    '<|', fix 2 2 $ f (g, x) ~> if
-      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
-      otherwise => @pushcall g x
+    '<|', fix 2 2 $ f (g, x) ~>
+      x.closed = True
+      if g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+         otherwise => @pushcall g x
 
-    '|>', fix 2 2 $ f (x, g) ~> if
-      g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
-      otherwise => @pushcall g x
+    '|>', fix 2 2 $ f (x, g) ~>
+      x.closed = True
+      if g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
+         otherwise => @pushcall g x
 
     #: Import a module given a POSIX-style path.
     #:
@@ -1056,7 +1059,7 @@ Compiler = subclass CodeType where
     #:
     'yield', fix 1 inf $ f xs ~>
       xs = list xs
-      from = head xs == 'from'
+      from = head xs == 'from' and not (head xs).closed
       from => xs.pop 0
 
       @coroutine => raise f.invalid 'cannot use `yield` in a coroutine; use `async` instead'
