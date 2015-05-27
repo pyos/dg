@@ -183,9 +183,9 @@ Parser = subclass collections.deque where
   #:
   block = pos kind end ~>
     isexpr = False
-    result = Constant pos $ if
-      kind == '(' => tuple!  # `=> ()`, heh. That'd be tautology, though.
-      otherwise   => None
+    result = if
+      kind == '(' => Expression pos $ Name pos True ","
+      otherwise   => Constant pos None
     # Docstrings are attached to line breaks, not meaningful nodes.
     # `infix` will carry the docstring from a `\n` to its RHS, but if the `\n`
     # is in a null denotation, this method should handle it.
