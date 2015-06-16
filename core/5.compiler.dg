@@ -1015,13 +1015,14 @@ Compiler = subclass CodeType where
                restart.set
              # 3. An exception *did* occur; either iteration has ended,
              #    or iterator is buggy.
+             @append 'DUP_TOP' delta: +1
              @pushname 'StopAsyncIteration'
              @append 'COMPARE_OP' delta: -1 $ opcode.cmp_op.index 'exception match'
              with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
                # Rethrow everything other than `StopAsyncIteration`.
                @append 'END_FINALLY' -3
              # Ignore `StopAsyncIteration`.
-             @append 'POP_EXCEPT' delta: -3
+             @append 'POP_EXCEPT' delta: -4
 
            otherwise =>
              with @jump 'FOR_ITER' delta: +1 =>
