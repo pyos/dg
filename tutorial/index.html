@@ -237,30 +237,35 @@ the same object instead of reloading the module every time. <code>reload</code> 
 </pre></div>
 <h3>Assignment</h3><div class="highlight"><pre><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
 </pre></div>
-<p>Any sequence of alphanumeric characters or underscores that does not start with a digit
+<h5>Q: Where <code>such_variable</code> is?..</h5><p>Any sequence of alphanumeric characters or underscores that does not start with a digit
 and may end with an arbitrary amount of apostrophes.</p><div class="highlight"><pre><span class="n">__im_a_1337_VARIABLE&#39;&#39;&#39;&#39;&#39;</span>
 </pre></div>
 <p>If the value on the right side is a collection, it can be unpacked.</p><div class="highlight"><pre><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
 </pre></div>
+<p>List syntax can be used, too. It means the exact same thing.</p><div class="highlight"><pre><span class="p">[</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">,</span> <span class="o">*</span><span class="n">c</span><span class="o">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span>
+<span class="c1">#=&gt; a = 1</span>
+<span class="c1">#   b = 2</span>
+<span class="c1">#   c = [3, 4]</span>
+<span class="c1">#   d = 5</span>
+</pre></div>
 <p>Assignment is right-associative, so you can assign the same thing to many variables at once.</p><div class="highlight"><pre><span class="n">x</span> <span class="o">=</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">1</span>
 </pre></div>
-<h5>Q: How do I modify variables defined in outside scopes? <code>=</code> seems to create a new local one.</h5><p>Use <code>:=</code> instead.</p><div class="highlight"><pre><span class="n">outer_function</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
-  <span class="n">inner_function</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="n">x</span>
-  <span class="n">inner_function</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+<h5>Q: How do I modify variables defined in outside scopes? <code>=</code> seems to create a new local one.</h5><p>Use <code>:=</code> instead.</p><div class="highlight"><pre><span class="n">outer</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
+  <span class="n">inner</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="n">x</span><span class="p">)</span>
+  <span class="n">inner</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
   <span class="n">a</span>
 
-<span class="n">outer_function</span> <span class="mi">5</span>  <span class="c1">#=&gt; 5</span>
+<span class="n">outer</span>  <span class="c1">#=&gt; 5</span>
 </pre></div>
-<div class="highlight"><pre><span class="n">outer_function</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
-  <span class="n">inner_function</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
-    <span class="n">a</span> <span class="o">:=</span> <span class="n">x</span>
-  <span class="n">inner_function</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+<div class="highlight"><pre><span class="n">outer</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
+  <span class="n">inner</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">a</span> <span class="o">:=</span> <span class="n">x</span><span class="p">)</span>
+  <span class="n">inner</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
   <span class="n">a</span>
 
-<span class="n">outer_function</span> <span class="mi">5</span>  <span class="c1">#=&gt; 6</span>
+<span class="n">outer</span> <span class="mi">5</span>  <span class="c1">#=&gt; 6</span>
 </pre></div>
-<p>Note that this does not work with global variables. (For now, at least.)</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
+<p>This will change the value of the variable in the innermost scope it was defined with <code>=</code> in.
+If there is no such scope, it is assumed to be global.</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
 <span class="c1">#:</span>
 <span class="c1">#: It has some positional arguments!</span>
 <span class="c1">#:</span>

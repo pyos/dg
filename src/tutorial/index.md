@@ -381,6 +381,8 @@ import '/xml/etree/ElementTree' qualified pure reload
 such_variable = "much_constant"
 ```
 
+##### Q: Where `such_variable` is?..
+
 Any sequence of alphanumeric characters or underscores that does not start with a digit
 and may end with an arbitrary amount of apostrophes.
 
