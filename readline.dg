@@ -77,14 +77,14 @@ Color = subclass object where
     white   = '\033[37m{}\033[39m'.format
 
   BG = subclass object where
-    black   = '\033[40m{}\033[39m'.format
-    red     = '\033[41m{}\033[39m'.format
-    green   = '\033[42m{}\033[39m'.format
-    yellow  = '\033[43m{}\033[39m'.format
-    blue    = '\033[44m{}\033[39m'.format
-    magenta = '\033[45m{}\033[39m'.format
-    cyan    = '\033[46m{}\033[39m'.format
-    white   = '\033[47m{}\033[39m'.format
+    black   = '\033[40m{}\033[49m'.format
+    red     = '\033[41m{}\033[49m'.format
+    green   = '\033[42m{}\033[49m'.format
+    yellow  = '\033[43m{}\033[49m'.format
+    blue    = '\033[44m{}\033[49m'.format
+    magenta = '\033[45m{}\033[49m'.format
+    cyan    = '\033[46m{}\033[49m'.format
+    white   = '\033[47m{}\033[49m'.format
 
 
 Teletype = subclass object where
