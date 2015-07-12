@@ -9,7 +9,7 @@ inf = float 'inf'
 #:
 #: compile :: str (Optional str) -> types.CodeType
 #:
-compile = data filename: '<string>' globals: () -> compileast (parse data filename)
+compile = data filename: '<string>' globals: () -> compileast (parse data filename) globals
 
 
 #: Compile the contents of a file-like object.
@@ -96,7 +96,7 @@ shortcircuit = x -> fix 2 2 $ f [a, b] ~>
   with @jump x False -1 => @pushast b
 
 
-#: Turn a handler that accepts pairs or nodes into one that accepts `u => v` nodes.
+#: Turn a handler that accepts pairs of nodes into one that accepts `u => v` nodes.
 #:
 #: pair_args :: (Compiler Node [(Node, Node)] -> a) -> Handler
 #:
