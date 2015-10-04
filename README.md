@@ -10,11 +10,8 @@ CPython 3.4 or any other Python VM with equivalent bytecode
 ### Installation
 
 ```sh
-git clone https://github.com/pyos/dg.git
+pip3 install git+https://github.com/pyos/dg
 ```
-
-Then move the `dg` directory wherever Python looks for modules (site-packages,
-`$PYTHONPATH`, a virtual environment, the current working directory, etc.)
 
 ### Usage
 
