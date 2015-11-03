@@ -92,7 +92,7 @@ default_to_none = f [x] ~> @pushcall f x $ Constant f.loc None
 #: shortcircuit :: str -> Handler
 #:
 shortcircuit = x -> fix 2 2 $ f [a, b] ~>
-  @pushast a
+  @pushcond a
   with @jump x False -1 => @pushast b
 
 
@@ -517,7 +517,7 @@ Compiler = subclass CodeType where
 
     jumps = list
       where for (cond, action) in cases =>
-        @pushast cond
+        @pushcond cond
         with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
           @pushast action
           yield $ @jump 'JUMP_FORWARD' delta: -1
@@ -567,6 +567,42 @@ Compiler = subclass CodeType where
       otherwise                => 'GET_ITER'
     @pushconst None
     @append 'YIELD_FROM'
+
+  #: Push an `if` condition onto the stack.
+  #:
+  #: This is the same thing as `pushast`, except if the condition is an assignment
+  #: that unpacks an iterable, errors during unpacking are treated as `False`,
+  #: while a successful unpacking is True (even if the iterable is empty.)
+  #:
+  #: pushcond :: Node -> a
+  #:
+  pushcond = x ~> if
+    x :: Expression and x.op == '=' and x.op.infix =>
+      a, b = x.args
+      if a :: LeftBind   and a.op in (',', "list'") => @pushcond' a b
+         a :: Expression and a.op in (',', "list'") => @pushcond' a b
+         otherwise => @pushast x
+    otherwise => @pushast x
+
+  #: Attempt to unpack `y` into variables in `x` (which should be an unpacking
+  #: assigment target), push True is succeeded or False if not.
+  #:
+  #: pushcond' :: [Node] Node -> a
+  #:
+  pushcond' = x y ~>
+    # If any item in `xs is prefixed with a star, need to check the lower bound only.
+    starred = any (where for q in x.args => yield $ q :: RightBind and q.op == '*')
+    @pushname '__dg_check_length__'
+    @pushast y
+    if starred   => @pushconst (len x.args - 1), @pushconst (float 'inf')
+       otherwise => @pushconst (len x.args),     @pushconst (len x.args)
+    @append 'CALL_FUNCTION' 3 delta: -3
+    @append 'DUP_TOP' delta: +1
+    with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+      @pushconst 1
+      @append 'BINARY_SUBSCR' delta: -1
+      @popast x
+      @pushconst True
 
   #: Pop a value off the stack and store it somewhere.
   #:
@@ -1081,7 +1117,7 @@ Compiler = subclass CodeType where
     'if', pair_args $ f xs ~>
       jumps = list
         where for (cond, action) in xs =>
-          @pushast cond
+          @pushcond cond
           yield with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
             @pushast action
             @jump 'JUMP_FORWARD' delta: -1

@@ -226,6 +226,14 @@ BUILTINS.update locals! where
   __dg_super__  = super
   __dg_locals__ = locals
 
+  __dg_check_length__ = it low high ->
+    except
+      err => it = list it
+      err :: TypeError => False
+      err is None => if
+        low <= len it <= high => True, it
+        otherwise             => False
+
   __dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
     types.new_class name bases kwds $ ns ->
       for (k, v) in attrs.items! => ns !! k = v
