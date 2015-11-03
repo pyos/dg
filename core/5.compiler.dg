@@ -578,31 +578,40 @@ Compiler = subclass CodeType where
   #:
   pushcond = x ~> if
     x :: Expression and x.op == '=' and x.op.infix =>
-      a, b = x.args
-      if a :: LeftBind   and a.op in (',', "list'") => @pushcond' a b
-         a :: Expression and a.op in (',', "list'") => @pushcond' a b
-         otherwise => @pushast x
-    otherwise => @pushast x
+      x, y = x.args
+      @varnames !! '<packed>'
+      @varnames !! '<error>'
 
-  #: Attempt to unpack `y` into variables in `x` (which should be an unpacking
-  #: assigment target), push True if succeeded or False if not.
-  #:
-  #: pushcond' :: [Node] Node -> a
-  #:
-  pushcond' = x y ~>
-    # If any item in `xs is prefixed with a star, need to check the lower bound only.
-    starred = any (where for q in x.args => yield $ q :: RightBind and q.op == '*')
-    @pushname '__dg_check_length__'
-    @pushast y
-    if starred   => @pushconst (len x.args - 1), @pushconst (float 'inf')
-       otherwise => @pushconst (len x.args),     @pushconst (len x.args)
-    @append 'CALL_FUNCTION' 3 delta: -3
-    @append 'DUP_TOP' delta: +1
-    with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
-      @pushconst 1
-      @append 'BINARY_SUBSCR' delta: -1
-      @popast x
-      @pushconst True
+      @pushast y
+      @popast $ Name x.loc False '<packed>'
+      @pushast
+        Expression x.loc
+          Name x.loc False 'except'
+          Expression x.loc
+            Name x.loc True  '=>'
+            Name x.loc False '<error>'
+            Expression x.loc
+              Name x.loc True '='
+              x
+              Name x.loc False '<packed>'
+          Expression x.loc
+            Name x.loc True  '=>'
+            Expression x.loc
+              Name x.loc True  '::'
+              Name x.loc False '<error>'
+              Expression x.loc
+                Name x.loc True  ','
+                Name x.loc False 'ValueError'
+                Name x.loc False 'TypeError'
+            Constant x.loc False
+          Expression x.loc
+            Name x.loc True  '=>'
+            Expression x.loc
+              Name x.loc True  'is'
+              Name x.loc False '<error>'
+              Constant x.loc None
+            Constant x.loc True
+    otherwise => @pushast x
 
   #: Pop a value off the stack and store it somewhere.
   #:
