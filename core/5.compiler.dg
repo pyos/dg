@@ -585,7 +585,7 @@ Compiler = subclass CodeType where
     otherwise => @pushast x
 
   #: Attempt to unpack `y` into variables in `x` (which should be an unpacking
-  #: assigment target), push True is succeeded or False if not.
+  #: assigment target), push True if succeeded or False if not.
   #:
   #: pushcond' :: [Node] Node -> a
   #:
