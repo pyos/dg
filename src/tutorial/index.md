@@ -357,22 +357,11 @@ import '/os/path' #=> <module somekindofpath ...>
 import '/os/path' qualified #=> <module os ...>
 ```
 
-`import` caches modules, meaning when called with the same module name, it will return
-the same object instead of reloading the module every time. `reload` overrides that:
-
-```dg
-import '/os' reload
-# `os.py` is re-evaluated.
-```
-
-(Note that if that's the first time you import a module, `reload` will import it *twice*.)
-
 Obviously, you can combine these flags in one statement:
 
 ```dg
-import '/xml/etree/ElementTree' qualified pure reload
-#=> <module xml ...>
-#   Only `ElementTree.py` is re-evaluated, and no variable is created.
+import '/xml/etree/ElementTree' qualified pure
+#=> <module xml ...>, no variable is created
 ```
 
 ### Assignment

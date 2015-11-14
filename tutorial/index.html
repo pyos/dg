@@ -227,13 +227,8 @@ that is, it will not store the module in a variable (but will return it.)</p><di
 <code>qualified</code> will make it return the first one instead:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="c1">#=&gt; &lt;module somekindofpath ...&gt;</span>
 <span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="n">qualified</span> <span class="c1">#=&gt; &lt;module os ...&gt;</span>
 </pre></div>
-<p><code>import</code> caches modules, meaning when called with the same module name, it will return
-the same object instead of reloading the module every time. <code>reload</code> overrides that:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="n">reload</span>
-<span class="c1"># `os.py` is re-evaluated.</span>
-</pre></div>
-<p>(Note that if that's the first time you import a module, <code>reload</code> will import it <em>twice</em>.)</p><p>Obviously, you can combine these flags in one statement:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/xml/etree/ElementTree&#39;</span> <span class="n">qualified</span> <span class="n">pure</span> <span class="n">reload</span>
-<span class="c1">#=&gt; &lt;module xml ...&gt;</span>
-<span class="c1">#   Only `ElementTree.py` is re-evaluated, and no variable is created.</span>
+<p>Obviously, you can combine these flags in one statement:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/xml/etree/ElementTree&#39;</span> <span class="n">qualified</span> <span class="n">pure</span>
+<span class="c1">#=&gt; &lt;module xml ...&gt;, no variable is created</span>
 </pre></div>
 <h3>Assignment</h3><div class="highlight"><pre><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
 </pre></div>
