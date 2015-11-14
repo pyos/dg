@@ -752,25 +752,26 @@ Compiler = subclass CodeType where
       for t in y => yield from $ @symbols *: t
 
     'import', fix 1 inf $ f (name, *flags) ~>
-      qual   = False
-      pure   = False
-      reload = False
-      parent = None
+      qual  = False
+      pure  = False
+      const = name :: Constant and name.value :: str
 
       for flag in flags => if
-        flag == 'qualified' => qual   = True
-        flag == 'pure'      => pure   = True
-        flag == 'reload'    => reload = True
-        otherwise => raise flag.invalid 'unsupported `import` modifier'
+        flag == 'qualified' => qual = True
+        flag == 'pure'      => pure = True
+        otherwise => raise flag.invalid 'unsupported import modifier'
 
-      if
-        name :: Constant and name.value :: str =>
-          parent, name = except
-            err => __dg_parse_import__ name.value
+      f._impdata = const, qual, pure, if
+        not const => yield from @symbols name
+        otherwise =>
+          parent, h, t = except
+            err => (BUILTINS !! '!importname') name.value
             err :: ImportError => raise name.invalid $ str err
-          yield $ name !! (-not qual)
-        otherwise => yield from $ @symbols name
-      f._impdata = parent, name, qual, pure, reload
+
+          var = if qual or not t => h
+                   otherwise     => last t
+          yield var
+          parent, [h] + t, var
 
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
@@ -880,35 +881,31 @@ Compiler = subclass CodeType where
     #: import '/os/path' qualified   imports a module named 'os' with a submodule 'path'
     #: import '/dg/addon/fork'       imports 'fork' from package 'dg.addon'
     #: import 'markup'               imports 'markup' from the current package
-    #: import 'smth' pure            imports 'smth', but does not create a new variable
-    #: import 'smth' pure reload     as above, but re-evaluates the module even if it
-    #:                               was previously imported
+    #: import '../smth' pure         imports 'smth' from the parent package, returns it
+    #:                               but does not create a variable
     #:
     'import', fix 1 inf $ f (name, *flags) ~>
-      parent, path, qual, pure, reload = f._impdata
+      const, qual, pure, parsed = f._impdata
 
       if
-        parent is None or reload =>
-          # No opcode allows us to reload the module.
-          @pushname '__dg_import__'
-          if not $ parent is None => @pushconst (parent, tuple path)
-             otherwise =>
-               @pushname '__dg_parse_import__'
-               @pushast path
-               @append 'CALL_FUNCTION' 1 delta: -1
+        not const =>
+          not pure => raise path.invalid 'side-effecting imports should be constant'
+          @pushname  '!import'
+          @pushname  '!importname'
+          @pushast   name
+          @append    'CALL_FUNCTION' 1 delta: -1
           @pushname  '__package__'
           @pushconst qual
-          @pushconst reload
-          @append 'CALL_FUNCTION' 4 delta: -4
+          @append    'CALL_FUNCTION' 4 delta: -4
 
-        qual or (parent == 0 and len path == 1) =>
-          @pushconst parent
+        qual or (parsed !! 0 == 0 and len (parsed !! 1) == 1) =>
+          @pushconst $ parsed !! 0
           @pushconst None
-          @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join path
+          @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join (parsed !! 1)
 
         otherwise =>
-          *dir, file = path
-          @pushconst parent
+          *dir, file = parsed !! 1
+          @pushconst $ parsed !! 0
           @pushconst (file,)
           @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join dir
           @append    'IMPORT_FROM' delta:  1 $ @names !! file
@@ -916,9 +913,8 @@ Compiler = subclass CodeType where
           @append    'POP_TOP'     delta: -1
 
       not pure =>
-        parent is None => raise path.invalid 'non-pure imports should be constant'
         @append 'DUP_TOP' delta: +1
-        @popast $ Name name.loc False $ path !! (-not qual)
+        @popname $ parsed !! 2
 
     #: Local binding.
     #:
@@ -938,13 +934,13 @@ Compiler = subclass CodeType where
     #: Duplicate the local namespace and turn it into a type. `where` is useful here.
     #:
     'subclass', f args ~>
-      @pushname  '__dg_build_class__'
-      @pushname  '__name__'
-      @pushname  '__dg_locals__'
+      @pushname  '!subclass'
+      @pushname  '!locals'
       @append    'CALL_FUNCTION' 0
       @pushconst @docstring
       @pushconst @qualname
       @pushconst @name
+      @pushname  '__name__'
       @pushcalltop 5 args
       # `super` uses this hidden cell variable to determine which class to look at.
       @append 'DUP_TOP' delta: +1
@@ -1193,7 +1189,7 @@ Compiler = subclass CodeType where
     #:
     '@@', f [x] ~>
       x :: Name or raise x.invalid 'not an attribute'
-      @pushname '__dg_super__'
+      @pushname '!super'
       @append 'CALL_FUNCTION' 0
       @append 'LOAD_ATTR' $ @names !! x.value
 

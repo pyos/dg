@@ -81,7 +81,45 @@ BUILTINS.update locals! where
   tuple' = , = *: xs -> xs
 
 
+BUILTINS.update $ (*: xs -> dict xs)
+  # Runtime functions and Python builtins used by language constructs.
+  # (The builtins are copied because compiled code may overshadow them.)
+  '!super',  super
+  '!locals', locals
+
+  '!subclass', attrs doc qualname name module *: bases **: kwds ->
+    types.new_class name bases kwds $ ns ->
+      for (k, v) in attrs.items! => ns !! k = v
+      ns !! '__doc__'      = doc
+      ns !! '__module__'   = module
+      ns !! '__qualname__' = qualname
+
+  '!importname', info ->
+    parent = 1
+    path   = posixpath.normpath info |>.split '/'
+    while True =>
+      if not  path => raise ImportError $ '`{}` resolves to an empty name'.format info
+         head path == ''   => parent  = 0
+         head path == '..' => parent += 1
+         head path == '.'  =>
+         otherwise => break!
+      path.pop 0
+    parent, path.pop 0, path
+
+  '!import', (parent, h, t) package qualified _import: importlib._bootstrap._gcd_import ->
+    root = node = _import h package parent
+
+    for p in t =>
+      node = except err => getattr node p
+                    err :: AttributeError => _import p node.__package__ 1
+
+    if qualified => root
+       otherwise => node
+
+
 BUILTINS.update locals! where
+  # Other runtime functions with no compile-time equivalents.
+
   #: Compose two functions.
   #:
   #: (<-) :: (a -> b) (object... -> a) -> (object... -> b)
@@ -223,45 +261,6 @@ BUILTINS.update locals! where
   scanl1 = f xs -> itertools.accumulate xs f
   # FIXME should also define foldr(1) and scanr(1). Probably.
 
-  __dg_super__  = super
-  __dg_locals__ = locals
-
-  __dg_build_class__ = module attrs doc qualname name *: bases **: kwds ->
-    types.new_class name bases kwds $ ns ->
-      for (k, v) in attrs.items! => ns !! k = v
-      ns.update $ dict __doc__: doc __qualname__: qualname __module__: module
-
-  #: Parse a module name, which is a POSIX path relative to the current module.
-  #: Returns a tuple suitable for passing as the first argument to `__dg_import__`.
-  __dg_parse_import__ = info ->
-    parent = 1
-    path   = (posixpath.normpath info).split posixpath.sep
-    while path and head path == ''           and not (path.pop 0) => parent  = 0
-    while path and head path == posixpath.pardir and  path.pop 0  => parent += 1
-    while path and head path == posixpath.curdir and  path.pop 0  =>
-    not path => raise $ ImportError $ '`{}` resolves to an empty name'.format info
-    parent, path
-
-  #: Import a module. `parent` is the same as for `importlib.import_module`,
-  #: while `path` is a list of name components, e.g. `urllib.request.Request`
-  #: should be passed as `['urllib', 'request', 'Request']`.
-  #:
-  #: If `reload` is `True`, `importlib.reload` is also called on the module.
-  #: If `qual` is `True`, the object that corresponds to the first item in `path`
-  #: is returned.
-  #:
-  __dg_import__ = (parent, path) package qual reload ->
-    root = importlib.import_module ('.' * parent + path !! 0) package
-    mod  = root
-    for p in tail path => mod = except
-      err => getattr mod p
-      err :: AttributeError => importlib.import_module ('.' + p) mod.__package__
-    reload => if
-      mod :: types.ModuleType => importlib.reload mod
-      otherwise               => raise $ ImportError $ '`{}` is not a module'.format $ last path
-    if qual      => root
-       otherwise => mod
-
 
 # Overriding `__builtins__` after the code has already started running
 # does nothing. We'll have to dump builtins into the global namespace.
@@ -271,9 +270,6 @@ BUILTINS.update __builtins__
 
 ModuleLoader = subclass machinery.SourceFileLoader where
   source_to_code = data filename ~>
-    # XXX This method exists only in Python >= 3.4.
-    #     Also, importlib in Python <= 3.2 is kinda-sorta broken anyway.
-    # TODO Allow to specify another encoding in the source code.
     compile (data.decode 'utf-8') filename
 
   exec_module = module ~>
