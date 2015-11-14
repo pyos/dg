@@ -41,22 +41,26 @@ pre
 .container-narrow
   @include narrow-on-big-screens(750px, 970px)
 
+.carousel-indicators li
+  border-color: #222
+
+  &.active
+    background: #222
+
+.carousel-inner > .item > .container
+  margin-bottom: 60px
+
 .footer
-  background: #f0f0f0
   padding: 15px
-  margin-top: 20px
+
+  a
+    color: #86A5BF
 
 .jumbotron
-  background: None
+  background: none
 
-.marketing
-  text-align: center
-
-  h4
-    font-family: 'Montserrat', 'Helvetica Neue', sans-serif
-
-  h5
-    font-size: 52px
+.row
+  margin-bottom: 30px
 
 .markdown
   h3
@@ -73,99 +77,29 @@ pre
       // There's at least 18+15 px available due to `width` and `padding` of `.container`.
       margin-left: -15px
 
-.fun-dawg
-  overflow: hidden
-  background: #ab883e
-  padding-bottom: 20px
-  margin-bottom: 20px
-  color: white
+.marketing h4, .jumbotron
+  font-family: 'Montserrat', 'Helvetica Neue', sans-serif
 
-  a, a:hover, a:focus, a:active
-    color: #fff
-    text-decoration: underline
+.marketing p
+  font-size: 16px
 
-  .text-muted
-    color: rgba(255, 255, 255, 0.5)
+.marketing
+  line-height: 26px
 
-  .jumbotron
-    font-family: 'Montserrat', 'Helvetica Neue', sans-serif
-    position: relative
-    z-index: 10
+.dogesym-before
+  display: inline-block
+  vertical-align: middle
 
-  .container
-    position: relative
+.dogesym-outer
+  margin-right: -100px
 
-  $hexagon-minor:  0.29em
-  $hexagon-major:  0.58em
-  $hexagon-width:  1em
-  $hexagon-height: $hexagon-major + $hexagon-minor * 2
-  $hexagon-semi:   $hexagon-major + $hexagon-minor
-
-  .hexacontainer-inner
-    position: absolute
-    right: 25%
-    top:   0.66em
-
-    font-size: 300px
-
-    @media (max-width: 767px)
-      font-size: 150px
-
-
-  .hexagon
-    &:before, &:after
-      width: 0
-      content: ''
-      display: block
-      border-left:  ($hexagon-width / 2) solid transparent
-      border-right: ($hexagon-width / 2) solid transparent
-      position: relative
-
-    &:before
-      border-bottom: $hexagon_minor solid transparent
-      top: -$hexagon-minor
-
-    &:after
-      border-top: $hexagon_minor solid transparent
-      top: $hexagon-minor
-
-    width:  1em
-    height: $hexagon-major
-    margin: (-$hexagon-major / 2) 0 0 (-$hexagon-width / 2)
-
-    @mixin hexagon-props($color, $x, $y)
-      &:before
-        border-bottom-color: $color
-      &:after
-        border-top-color: $color
-      background-color: $color
-      top:  $y
-      left: $x
-
-    &.left-upper
-      @include hexagon-props(#BA9850, $hexagon-width / -2, -$hexagon-semi)
-    &.left
-      @include hexagon-props(#B69348, $hexagon-width / -1, 0)
-    &.left-lower
-      @include hexagon-props(#AE8C42, $hexagon-width / -2, $hexagon-semi)
-    &.right-lower
-      @include hexagon-props(#B08E45, $hexagon-width / +2, $hexagon-semi)
-    &.right
-      @include hexagon-props(#B5934C, $hexagon-width / +1, 0)
-    &.right-upper
-      @include hexagon-props(#BE9A4E, $hexagon-width / +2, -$hexagon-semi)
-
-  .fun-dawgs-face, .hexagon
-    position: absolute
-
-  .fun-dawgs-face
-    background: url(../images/doge.jpg) no-repeat center #c39f53
-    background-size: contain
-    width:  $hexagon-width
-    height: $hexagon-height
-    margin: (-$hexagon-height / 2) 0 0 (-$hexagon-width / 2)
-    top:  0
-    left: 0
+.dogesym
+  background: url(../images/doge.png) no-repeat top right #ffffff
+  background-size: contain
+  vertical-align: middle
+  display: inline-block
+  width: 200px
+  height: 200px
 
 .serious-dawg
   max-width: 381px

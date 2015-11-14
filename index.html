@@ -22,113 +22,151 @@
       <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.1.1/gh-fork-ribbon.ie.min.css">
     <![endif]--></head>
   <body>
-    <div class="fun-dawg">
-      <div class="github-fork-ribbon-wrapper right">
-        <div class="github-fork-ribbon">
-          <a href="https://github.com/pyos/dg">
-            Fork on GitHub</a></div></div>
-
-      <div class="container">
-        <div class="hexacontainer-inner">
-          <div class="fun-dawgs-face"></div>
-          <div class="hexagon left-upper"></div>
-          <div class="hexagon left"></div>
-          <div class="hexagon left-lower"></div>
-          <div class="hexagon right-lower"></div>
-          <div class="hexagon right"></div>
-          <div class="hexagon right-upper"></div></div>
-
-        <div class="jumbotron">
-          <h1>d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.</h1>
-          <p class="lead text-muted">Much improved. So 2.0. Very wow.</p></div>
-
-        <div class="row marketing">
-          <div class="col-sm-4">
-            <h5 class="fa-stack">
-              <span class="fa fa-stack-1x fa-gavel"></span>
-              <span class="fa fa-stack-2x fa-ban text-muted"></span></h5>
-            <h4>Overthrow the oppressive dictatorship!</h4>
-            <p>
-              Guido rejecting your awesome syntactic proposals? He's not in charge anymore.</p></div>
-
-          <div class="col-sm-4">
-            <h5 class="fa-stack">
-              <span class="fa fa-stack-1x fa-comments-o"></span></h5>
-            <h4>Annoy advocates of the category theory!</h4>
-            <p>
-              With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
-              system, dg is the best way to make fans of static typing shut up already.</p></div>
-
-          <div class="col-sm-4">
-            <h5 class="fa-stack">
-              <span class="fa fa-stack-1x fa-thumbs-up"></span></h5>
-            <h4>Be on the verge of progress!</h4>
-            <p>
-              Syntactic sugar is the most important thing nowadays.
-              And don't let those Java guys tell you otherwise.</p></div></div>
-
-        <div class="row marketing">
-          <div class="col-sm-4">
-            <h5 class="fa-stack">
-              <span class="fa fa-stack-1x fa-graduation-cap"></span></h5>
-            <h4>Add one more language to your résumé!</h4>
-            <p>
-              Read <a href="tutorial">this awesome tutorial</a> and tell everyone
-              how impossibly smart you are.</p></div>
-
-          <div class="col-sm-4">
-            <h5 class="fa-stack">
-              <span class="fa fa-stack-1x fa-magic"></span></h5>
-            <h4>It even runs on PyPy!</h4>
-            <p>
-              Got to wait for a JIT-enabled PyPy 3.3 first, though.</p></div>
-
-          <div class="col-sm-4">
-            <h5 class="fa-stack">
-              <span class="fa fa-stack-1x fa-question"></span>
-              <span class="fa fa-stack-2x fa-question text-muted"></span></h5>
-            <h4>Seriously, what IS this?</h4>
-            <p>
-              A programming language that compiles to CPython bytecode, much
-              like Scala compiles to JVM's. That essentially means that
-              dg is an alternative syntax for Python 3. It allows you to use
-              all of the existing libraries, too.</p></div></div></div></div>
+    <div class="github-fork-ribbon-wrapper left">
+      <div class="github-fork-ribbon">
+        <a href="https://github.com/pyos/dg">
+          Fork on GitHub</a></div></div>
 
     <div class="container container-narrow">
+      <div class="jumbotron dogesym-outer text-center">
+        <div class="dogesym-before">
+          <h1>dg. <small class="text-muted">(dogelang)</small></h1>
+          <p class="lead text-muted">Slow. Stupid. Absolutely adorable.</p></div>
+        <div class="dogesym"></div></div>
+
+      <div class="row marketing">
+        <div class="col-sm-4">
+          <h4>Overthrow the oppressive dictatorship!</h4>
+          <p>
+            Guido rejecting your awesome syntactic proposals? He's not in charge anymore.</p></div>
+
+        <div class="col-sm-4">
+          <h4>Annoy advocates of the category theory!</h4>
+          <p>
+            With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
+            system, dg is the best way to make fans of static typing shut up already.</p></div>
+
+        <div class="col-sm-4">
+          <h4>Be on the verge of progress!</h4>
+          <p>
+            Syntactic sugar is the most important thing nowadays.
+            And don't let those Java guys tell you otherwise.</p></div></div>
+
+      <div class="row marketing">
+        <div class="col-sm-4">
+          <h4>Add one more language to your résumé!</h4>
+          <p>
+            Read <a href="tutorial">this awesome tutorial</a> and tell everyone
+            how impossibly smart you are.</p></div>
+
+        <div class="col-sm-4">
+          <h4>It even runs on PyPy!</h4>
+          <p>
+            Got to wait for a JIT-enabled PyPy 3.3 first, though.</p></div>
+
+        <div class="col-sm-4">
+          <h4>Seriously, what IS this?</h4>
+          <p>
+            A programming language that compiles to CPython bytecode, much
+            like Scala compiles to JVM's. That essentially means that
+            dg is an alternative syntax for Python 3. It allows you to use
+            all of the existing libraries, too.</p></div></div>
+
       <div class="row">
-        <div class="col-md-8 col-md-offset-2 col-sm-10 col-sm-offset-1">
-          <h2 class="text-center">Still not convinced?</h2>
-          <div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/sys/stdin&#39;</span>
+        <h2 class="text-center">Check out all these awesome features</h2></div></div>
 
-<span class="kt">IOTools</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span> <span class="ow">where</span>
-  <span class="c1">#: Compute the average line length of a file.</span>
-  <span class="c1">#:</span>
-  <span class="c1">#: avglen :: TextIOBase -&gt; NoneType</span>
-  <span class="c1">#:</span>
-  <span class="n">avglen</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="o">$</span> <span class="n">fd</span> <span class="o">-&gt;</span>
-    <span class="n">lengths</span> <span class="o">=</span> <span class="nb">list</span> <span class="o">$</span> <span class="nb">map</span> <span class="nb">len</span> <span class="n">fd</span>
-    <span class="n">count</span>   <span class="o">=</span> <span class="nb">len</span> <span class="n">lengths</span>
-    <span class="n">total</span>   <span class="o">=</span> <span class="nb">sum</span> <span class="n">lengths</span>
-    <span class="nb">print</span> <span class="s">&#39;Average line length:&#39;</span> <span class="o">$</span> <span class="kr">if</span>
-      <span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">=&gt;</span> <span class="n">total</span> <span class="o">/</span> <span class="n">count</span>
-      <span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="mi">0</span>
+    <div id="examples" class="carousel slide">
+      <ol class="carousel-indicators">
+        <li data-target="#examples" data-slide-to="0" class="active"></li>
+        <li data-target="#examples" data-slide-to="1"></li>
+        <li data-target="#examples" data-slide-to="2"></li></ol>
 
-<span class="kt">IOTools</span><span class="o">.</span><span class="n">avglen</span> <span class="n">stdin</span>
+      <div role="listbox" class="carousel-inner">
+        <div class="item active">
+          <div class="container container-narrow marketing">
+            <div class="col-sm-7"><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/asyncio&#39;</span>
+
+<span class="n">main</span> <span class="o">=</span> <span class="n">async</span> <span class="o">$</span> <span class="n">loop</span> <span class="o">-&gt;</span>
+  <span class="n">task</span> <span class="o">=</span> <span class="s">&quot;Hello, {}!&quot;</span><span class="o">.</span><span class="n">format</span> <span class="n">whatever</span> <span class="ow">where</span>
+    <span class="n">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span> <span class="mi">1</span>
+    <span class="n">whatever</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
+
+  <span class="n">await</span> <span class="n">task</span>
+
+<span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="o">!</span>
+<span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span> <span class="o">$</span> <span class="n">main</span> <span class="n">loop</span>
 </pre></div>
-</div></div>
+</div>
+            <div class="col-sm-5">
+              <h4>dgprocedures&trade;!</h4>
+              <p>
+                A $100% original feature that will redefine how you
+                approach heavily concurrent code. No comparable alternative
+                in any other language. Honest.</p>
+              <p>
+                (No "pipes" though. You'll have to make do with boring
+                <a href="https://docs.python.org/3/library/asyncio-queue.html">blocking queues.</a>
+                Sorry!)</p></div></div></div>
 
+        <div class="item">
+          <div class="container container-narrow marketing">
+            <div class="col-sm-7"><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="kr">raise</span> <span class="kr">if</span>
+  <span class="n">x</span> <span class="o">::</span> <span class="nb">int</span>  <span class="o">=&gt;</span> <span class="ne">IndexError</span> <span class="n">x</span>
+  <span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="ne">ValueError</span> <span class="n">x</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="kr">except</span>
+  <span class="n">err</span> <span class="o">=&gt;</span> <span class="n">f</span> <span class="n">x</span>
+  <span class="n">err</span> <span class="o">::</span> <span class="ne">IndexError</span> <span class="o">=&gt;</span> <span class="mi">0</span>
+
+<span class="kr">except</span>
+  <span class="n">err</span> <span class="o">=&gt;</span> <span class="n">g</span> <span class="mi">0</span>
+  <span class="n">err</span> <span class="o">::</span> <span class="ne">ValueError</span> <span class="o">=&gt;</span> <span class="mi">1</span>
+</pre></div>
+</div>
+            <div class="col-sm-5">
+              <h4>Proper error handling!</h4>
+              <p>
+                Remember that time you tried to write something in C? How your code
+                was a mess of <code>if</code>-s that check whether the last call
+                actually succeeded? No more! With an exception&trade; system, you
+                no longer have to do that by hand. Only handle what you can, and
+                let the code above do the rest!</p></div></div></div>
+
+        <div class="item">
+          <div class="container container-narrow marketing">
+            <div class="col-sm-7"><div class="highlight"><pre><span class="o">&gt;&gt;&gt;</span> <span class="kr">import</span> <span class="s">&#39;/dg/Compiler&#39;</span>
+<span class="o">&gt;&gt;&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="p">(</span><span class="kt">Compiler</span><span class="o">.</span><span class="n">prefix</span> <span class="o">!!</span> <span class="s">&#39;such_if&#39;</span> <span class="o">=</span>
+<span class="o">...</span>  <span class="kt">Compiler</span><span class="o">.</span><span class="n">prefix</span> <span class="o">!!</span> <span class="s">&#39;if&#39;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kt">Compiler</span><span class="o">.</span><span class="n">constnames</span> <span class="o">!!</span> <span class="s">&#39;much_else&#39;</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="o">&gt;&gt;&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">such_if</span>
+<span class="o">...</span>   <span class="s">&#39;wow&#39;</span>     <span class="o">=&gt;</span> <span class="s">&#39;doge&#39;</span>
+<span class="o">...</span>   <span class="n">much_else</span> <span class="o">=&gt;</span> <span class="s">&#39;lang&#39;</span>
+<span class="o">...</span>
+<span class="s">&#39;doge&#39;</span>
+</pre></div>
+</div>
+            <div class="col-sm-5">
+              <h4>Extensible!</h4>
+              <p>
+                Just when you thought dynamic typing was enough, we introduce:
+                dynamic compilation! Why complain about a language if you can make it
+                whatever you want it to be?</p></div></div></div></div></div>
+
+    <script>$('#examples').carousel({ interval: 10000 });</script>
+
+    <div class="container container-narrow">
       <div class="row text-center">
         <div class="col-md-12">
-          <h2>Just download the damn thing already.</h2>
+          <h2>Download the damn thing already</h2>
           <p><code>pip3 install git+https://github.com/pyos/dg</code></p>
           <h2><a href="tutorial" class="btn btn-success btn-lg">Ready to learn!</a></h2></div></div></div>
 
     <div class="footer text-muted">
       <div class="container">
         <p>
-          Totally made by <a href="https://github.com/pyos">@pyos</a>.
-          "pyos" means "dog", by the way.</p>
-        <p>
-          Thanks to <a href="http://reddit.com/user/kurtbdudley">@kurtbdudley</a> for
-          <a href="http://r2.reddit.com/r/doge/comments/1pnmaz/i_couldnt_find_a_high_res_image_of_doge_for_my/">
-            this awesome image.</a></p></div></div></body></html>
+          Made by <a href="https://github.com/pyos">@pyos</a>.
+          Except for the picture, which is by
+          <a href="http://alithographica.deviantart.com/art/Shiba-inu-377402502">@alithographica</a>.
+          I wish I could draw.</p></div></div></body></html>

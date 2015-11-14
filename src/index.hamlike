@@ -9,96 +9,115 @@
       %link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.1.1/gh-fork-ribbon.ie.min.css"
     <![endif]-->
   %body
-    %div.fun-dawg
-      %div.github-fork-ribbon-wrapper.right
-        %div.github-fork-ribbon
-          %a href="https://github.com/pyos/dg"
-            Fork on GitHub
-
-      %div.container
-        %div.hexacontainer-inner
-          %div.fun-dawgs-face
-          %div.hexagon.left-upper
-          %div.hexagon.left
-          %div.hexagon.left-lower
-          %div.hexagon.right-lower
-          %div.hexagon.right
-          %div.hexagon.right-upper
-
-        %div.jumbotron
-          %h1 -> d<span class="text-muted">o</span>g<span class="text-muted">elang</span>.
-          %p.lead.text-muted -> Much improved. So 2.0. Very wow.
-
-        %div.row.marketing
-          %div.col-sm-4
-            %h5.fa-stack
-              %span.fa.fa-stack-1x.fa-gavel
-              %span.fa.fa-stack-2x.fa-ban.text-muted
-            %h4 -> Overthrow the oppressive dictatorship!
-            %p
-              Guido rejecting your awesome syntactic proposals? He's not in charge anymore.
-
-          %div.col-sm-4
-            %h5.fa-stack
-              %span.fa.fa-stack-1x.fa-comments-o
-            %h4 -> Annoy advocates of the category theory!
-            %p
-              With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
-              system, dg is the best way to make fans of static typing shut up already.
-
-          %div.col-sm-4
-            %h5.fa-stack
-              %span.fa.fa-stack-1x.fa-thumbs-up
-            %h4 -> Be on the verge of progress!
-            %p
-              Syntactic sugar is the most important thing nowadays.
-              And don't let those Java guys tell you otherwise.
-
-        %div.row.marketing
-          %div.col-sm-4
-            %h5.fa-stack
-              %span.fa.fa-stack-1x.fa-graduation-cap
-            %h4 -> Add one more language to your résumé!
-            %p
-              Read <a href="@@ref:/tutorial/">this awesome tutorial</a> and tell everyone
-              how impossibly smart you are.
-
-          %div.col-sm-4
-            %h5.fa-stack
-              %span.fa.fa-stack-1x.fa-magic
-            %h4 -> It even runs on PyPy!
-            %p
-              Got to wait for a JIT-enabled PyPy 3.3 first, though.
-
-          %div.col-sm-4
-            %h5.fa-stack
-              %span.fa.fa-stack-1x.fa-question
-              %span.fa.fa-stack-2x.fa-question.text-muted
-            %h4 -> Seriously, what IS this?
-            %p
-              A programming language that compiles to CPython bytecode, much
-              like Scala compiles to JVM's. That essentially means that
-              dg is an alternative syntax for Python 3. It allows you to use
-              all of the existing libraries, too.
+    %div.github-fork-ribbon-wrapper.left
+      %div.github-fork-ribbon
+        %a href="https://github.com/pyos/dg"
+          Fork on GitHub
 
     %div.container.container-narrow
-      %div.row
-        %div.col-md-8.col-md-offset-2.col-sm-10.col-sm-offset-1
-          %h2.text-center -> Still not convinced?
-          @@include:/index.md
+      %div.jumbotron.dogesym-outer.text-center
+        %div.dogesym-before
+          %h1 -> dg. <small class="text-muted">(dogelang)</small>
+          %p.lead.text-muted -> Slow. Stupid. Absolutely adorable.
+        %div.dogesym
 
+      %div.row.marketing
+        %div.col-sm-4
+          %h4 -> Overthrow the oppressive dictatorship!
+          %p
+            Guido rejecting your awesome syntactic proposals? He's not in charge anymore.
+
+        %div.col-sm-4
+          %h4 -> Annoy advocates of the category theory!
+          %p
+            With <a href="http://www.haskell.org/">Haskell</a>'s syntax but none of its type
+            system, dg is the best way to make fans of static typing shut up already.
+
+        %div.col-sm-4
+          %h4 -> Be on the verge of progress!
+          %p
+            Syntactic sugar is the most important thing nowadays.
+            And don't let those Java guys tell you otherwise.
+
+      %div.row.marketing
+        %div.col-sm-4
+          %h4 -> Add one more language to your résumé!
+          %p
+            Read <a href="@@ref:/tutorial/">this awesome tutorial</a> and tell everyone
+            how impossibly smart you are.
+
+        %div.col-sm-4
+          %h4 -> It even runs on PyPy!
+          %p
+            Got to wait for a JIT-enabled PyPy 3.3 first, though.
+
+        %div.col-sm-4
+          %h4 -> Seriously, what IS this?
+          %p
+            A programming language that compiles to CPython bytecode, much
+            like Scala compiles to JVM's. That essentially means that
+            dg is an alternative syntax for Python 3. It allows you to use
+            all of the existing libraries, too.
+
+      %div.row
+        %h2.text-center -> Check out all these awesome features
+
+    %div.carousel.slide id="examples"
+      %ol.carousel-indicators
+        %li data-target="#examples" data-slide-to="0" class="active"
+        %li data-target="#examples" data-slide-to="1"
+        %li data-target="#examples" data-slide-to="2"
+
+      %div.carousel-inner role="listbox"
+        %div.item.active
+          %div.container.container-narrow.marketing
+            %div.col-sm-7 -> @@include:/index-async.md
+            %div.col-sm-5
+              %h4 -> dgprocedures&trade;!
+              %p
+                A $100% original feature that will redefine how you
+                approach heavily concurrent code. No comparable alternative
+                in any other language. Honest.
+              %p
+                (No "pipes" though. You'll have to make do with boring
+                %a href="https://docs.python.org/3/library/asyncio-queue.html" -> blocking queues.
+                Sorry!)
+
+        %div.item
+          %div.container.container-narrow.marketing
+            %div.col-sm-7 -> @@include:/index-exceptions.md
+            %div.col-sm-5
+              %h4 -> Proper error handling!
+              %p
+                Remember that time you tried to write something in C? How your code
+                was a mess of <code>if</code>-s that check whether the last call
+                actually succeeded? No more! With an exception&trade; system, you
+                no longer have to do that by hand. Only handle what you can, and
+                let the code above do the rest!
+
+        %div.item
+          %div.container.container-narrow.marketing
+            %div.col-sm-7 -> @@include:/index-extensible.md
+            %div.col-sm-5
+              %h4 -> Extensible!
+              %p
+                Just when you thought dynamic typing was enough, we introduce:
+                dynamic compilation! Why complain about a language if you can make it
+                whatever you want it to be?
+
+    %script -> $('#examples').carousel({ interval: 10000 });
+
+    %div.container.container-narrow
       %div.row.text-center
         %div.col-md-12
-          %h2 -> Just download the damn thing already.
+          %h2 -> Download the damn thing already
           %p -> %code -> pip3 install git+https://github.com/pyos/dg
           %h2 -> %a href="@@ref:/tutorial/" class="btn btn-success btn-lg" -> Ready to learn!
 
     %div.footer.text-muted
       %div.container
         %p
-          Totally made by <a href="https://github.com/pyos">@pyos</a>.
-          "pyos" means "dog", by the way.
-        %p
-          Thanks to <a href="http://reddit.com/user/kurtbdudley">@kurtbdudley</a> for
-          %a href="http://r2.reddit.com/r/doge/comments/1pnmaz/i_couldnt_find_a_high_res_image_of_doge_for_my/"
-            this awesome image.
+          Made by <a href="https://github.com/pyos">@pyos</a>.
+          Except for the picture, which is by
+          <a href="http://alithographica.deviantart.com/art/Shiba-inu-377402502">@alithographica</a>.
+          I wish I could draw.
