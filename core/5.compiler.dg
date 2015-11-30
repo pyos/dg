@@ -577,7 +577,7 @@ Compiler = subclass CodeType where
   #: pushcond :: Node -> a
   #:
   pushcond = x ~> if
-    x :: Expression and x.op == '=' and x.op.infix =>
+    x :: Expression and x.op == '=' and x.op.infix and not (head x.args :: Name) =>
       x, y = x.args
       @varnames !! '<packed>'
       @varnames !! '<error>'
