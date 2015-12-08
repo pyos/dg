@@ -105,12 +105,12 @@
                 dynamic compilation! Why complain about a language if you can make it
                 whatever you want it to be?
 
-    %script -> $('#examples').carousel({ interval: 10000 });
+    %script -> $('#examples').carousel({ interval: 60000 });
 
     %div.container.container-narrow
       %div.row.text-center
         %div.col-md-12
-          %h2 -> Download the damn thing already
+          %h2 -> Just download the damn thing already
           %p -> %code -> pip3 install git+https://github.com/pyos/dg
           %h2 -> %a href="@@ref:/tutorial/" class="btn btn-success btn-lg" -> Ready to learn!
 
