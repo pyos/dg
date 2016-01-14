@@ -889,7 +889,7 @@ Compiler = subclass CodeType where
 
       if
         not const =>
-          not pure => raise path.invalid 'side-effecting imports should be constant'
+          not pure => raise name.invalid 'side-effecting imports should be constant'
           @pushname  '!import'
           @pushname  '!importname'
           @pushast   name
