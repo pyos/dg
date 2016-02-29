@@ -768,6 +768,11 @@ Compiler = subclass CodeType where
             err => (BUILTINS !! '!importname') name.value
             err :: ImportError => raise name.invalid $ str err
 
+          t and last t == '*' => if
+            pure  => raise name.invalid 'star imports are always impure'
+            qual  => raise name.invalid 'star imports are always unqualified'
+            @cell => raise name.invalid 'star imports can only appear at global level'
+
           var = if qual or not t => h
                    otherwise     => last t
           yield var
@@ -908,9 +913,15 @@ Compiler = subclass CodeType where
           @pushconst $ parsed !! 0
           @pushconst (file,)
           @append    'IMPORT_NAME' delta: -1 $ @names !! '.'.join dir
-          @append    'IMPORT_FROM' delta:  1 $ @names !! file
-          @append    'ROT_TWO'     delta:  0
-          @append    'POP_TOP'     delta: -1
+          if
+            file == '*' =>
+              pure = True
+              @append 'DUP_TOP'     delta: 1  # have to return *something*,
+              @append 'IMPORT_STAR' delta: 0  # might as well be the module itself.
+            otherwise =>
+              @append 'IMPORT_FROM' delta:  1 $ @names !! file
+              @append 'ROT_TWO'     delta:  0
+              @append 'POP_TOP'     delta: -1
 
       not pure =>
         @append 'DUP_TOP' delta: +1
