@@ -16,8 +16,6 @@ BUILTINS = dict
   # it would assume the intention was to call the newly defined function.
   (raise) : (e   -> raise e)
   (in)    : (a b -> a in  b)
-  (and)   : (a b -> a and b)
-  (or)    : (a b -> a or  b)
   (!)     : (f *: xs **: ys -> f *: xs **: ys)
   ($)     : (f *: xs **: ys -> f *: xs **: ys)
   (->)    : (-> None)
@@ -55,6 +53,14 @@ BUILTINS.update locals! where
   !!~ = operator.delitem
   finally   = True
   otherwise = True
+
+  or = *: [*xs, y] ->
+      for x in xs => x => return x
+      y
+
+  and = *: [*xs, y] ->
+      for x in xs => not x => return x
+      y
 
   #: Construct a set from distinct elements.
   #:

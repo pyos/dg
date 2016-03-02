@@ -87,13 +87,13 @@ autocall = h -> fix 1 inf $ f xs ~> h self f $ if
 default_to_none = f [x] ~> @pushcall f x $ Constant f.loc None
 
 
-#: Given two arguments, pick the first iff it matches a jump condition.
+#: Given two (or more) arguments, pick the first that matches a jump condition.
 #:
-#: shortcircuit :: str -> Handler
+#: shortcircuit :: str bool -> Handler
 #:
-shortcircuit = x -> fix 2 2 $ f [a, b] ~>
+shortcircuit = x -> fix 2 inf $ f [a, *bs] ~>
   @pushcond a
-  with @jump x False -1 => @pushast b
+  for b in bs => with @jump x False -1 => @pushast b
 
 
 #: Turn a handler that accepts pairs of nodes into one that accepts `u => v` nodes.
