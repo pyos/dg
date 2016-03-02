@@ -222,6 +222,10 @@ Readline = subclass object where
     # In case subclasses decide to override keybindings, make sure
     # they don't add them to the global mapping.
     @bindings = @bindings.copy!
+    @bindings !! Key.CONTROL_L = state ->
+      state = @erase state
+      @tty.write '\033[H\033[J'
+      state
     None
 
   #: A mapping of keys to state modificators. Note that a key may be
