@@ -27,7 +27,7 @@ compileast = x globals: () ->
   @ = Compiler ''
   @globals = set globals | set (@symbols x)
   @pushast x
-  @append 'RETURN_VALUE' delta: -1
+  @return_top
   @frozen
 
 
@@ -246,6 +246,17 @@ Compiler = subclass CodeType where
     @docstr = None  # The docstring to attach to the next function.
     None
 
+  #: Make the closure return the value from the top of the stack.
+  #:
+  #: return_top :: a
+  #:
+  return_top = ~>
+    for (k, i) in @unsafe => not $ k in @cellvars =>
+      # Break reference loops caused by variables which may reference this frame.
+      @pushconst None
+      @append 'STORE_FAST' i delta: -1
+    @append 'RETURN_VALUE' delta: -1
+
   #: Push the results of evaluating some expressions onto the stack.
   #:
   #: pushast :: Node... -> a
@@ -307,11 +318,7 @@ Compiler = subclass CodeType where
   #: pushclosure :: CodeType [Node] (dict str Node) -> a
   #:
   pushclosure = code defaults kwdefaults ~>
-    for (k, i) in code.unsafe => not $ k in code.cellvars =>
-      # Break reference loops caused by variables which may reference this frame.
-      code.pushconst None
-      code.append 'STORE_FAST' i delta: -1
-    code.append 'RETURN_VALUE' delta: -1
+    code.return_top
     const = code.frozen
     @pushmap  kwdefaults
     @pushast *: defaults
@@ -978,8 +985,11 @@ Compiler = subclass CodeType where
       @pushast x
       @awaittop 'GET_AWAITABLE' f
 
-    'raise',  autocall $ apply_one 'RAISE_VARARGS'  # TODO __cause__
-    'return', autocall $ apply_one 'RETURN_VALUE'
+    'return', autocall $ f [x] ~>
+      @pushast x
+      @return_top
+
+    'raise', autocall $ apply_one 'RAISE_VARARGS'  # TODO __cause__
 
     #: Automatic context managing.
     #:
