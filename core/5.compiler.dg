@@ -618,6 +618,7 @@ Compiler = subclass CodeType where
   #: popast :: Node -> a
   #:
   popast = x ~> if
+    x == '_' => @append 'POP_TOP' delta: -1
     x :: Name => @popname $ if
       x == '@'  => 'self'
       x == '@@' => raise x.invalid 'cannot change superclass'
