@@ -320,15 +320,53 @@ Compiler = subclass CodeType where
   pushclosure = code defaults kwdefaults ~>
     code.return_top
     const = code.frozen
-    @pushmap  kwdefaults
-    @pushast *: defaults
-    @pushcells const.co_freevars
-    @append    'BUILD_TUPLE' (len const.co_freevars) $ 1 - len const.co_freevars
-    @pushconst const
-    @pushconst code.qualname
-    @append    'MAKE_CLOSURE'
-      0 + len defaults + 256 * len kwdefaults
-      0 - len defaults - 2   * len kwdefaults - 2
+    if
+      PY_VERSION >= 0x030600a3 =>
+        # Python 3.6a3+ uses a new MAKE_FUNCTION opcode.
+        #   1. bit 0 set: tuple of default positional parameters
+        #   2. bit 1 set: map of default keyword parameters
+        #   3. bit 2 set: dictionary of annotations
+        #   4. bit 3 set: tuple of cells containing references to free variables
+        #   5. function code
+        #   6. qualified name
+        flags = 0
+        delta = -1
+        defaults =>
+            @pushast *: defaults
+            @append 'BUILD_TUPLE' (len defaults) $ 1 - len defaults
+            flags |= 1
+            delta -= 1
+        kwdefaults =>
+            @pushast *: kwdefaults.values!
+            @pushconst $ tuple kwdefaults
+            @append 'BUILD_CONST_KEY_MAP' (len kwdefaults) (-len kwdefaults)
+            flags |= 2
+            delta -= 1
+        const.co_freevars =>
+            @pushcells const.co_freevars
+            @append 'BUILD_TUPLE' (len const.co_freevars) $ 1 - len const.co_freevars
+            flags |= 8
+            delta -= 1
+        @pushconst const
+        @pushconst code.qualname
+        @append 'MAKE_FUNCTION' flags delta
+      otherwise =>
+        # Old MAKE_CLOSURE:
+        #   1..2k. names & values of default keyword parameters
+        #   2k+1..2k+n. default positional parameters
+        #   2k+n+1. tuple of cells containing references to free variables
+        #   (annotations go here, I think?)
+        #   2k+n+2. function code
+        #   2k+n+3. qualified name
+        @pushmap  kwdefaults
+        @pushast *: defaults
+        @pushcells const.co_freevars
+        @append    'BUILD_TUPLE' (len const.co_freevars) $ 1 - len const.co_freevars
+        @pushconst const
+        @pushconst code.qualname
+        @append    'MAKE_CLOSURE'
+          0 + len defaults + 256 * len kwdefaults
+          0 - len defaults - 2   * len kwdefaults - 2
 
   #: If a function is compiler-defined, return its implementation.
   #:

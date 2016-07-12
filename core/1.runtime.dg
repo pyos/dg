@@ -90,6 +90,7 @@ BUILTINS.update locals! where
 BUILTINS.update $ (*: xs -> dict xs)
   # Runtime functions and Python builtins used by language constructs.
   # (The builtins are copied because compiled code may overshadow them.)
+  '!dict',   dict
   '!super',  super
   '!locals', locals
 

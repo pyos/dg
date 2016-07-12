@@ -3,19 +3,28 @@ import '/opcode'
 import '/struct'
 import '/collections'
 
-# Allow cross-compiling for CPython 3.5 on CPython 3.4:
+# Allow cross-compiling for CPython 3.5/3.6 on CPython 3.4/3.5:
 opcode.opmap.setdefault 'WITH_CLEANUP_START'  81
 opcode.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
+opcode.opmap.setdefault 'BUILD_CONST_KEY_MAP' 156
 
 
 #: Calculate the length of a bytecode sequence given (opcode, argument) pairs, in bytes.
 #:
 #: codelen :: [(int, int)] -> int
 #:
-codelen = seq -> sum
-  where for (c, v) in seq => yield $ if
-    c < opcode.HAVE_ARGUMENT => 1
-    otherwise                => 3 * (1 + abs (v.bit_length! - 1) // 16)
+codelen = if
+  PY_VERSION >= 0x030600a3 => seq -> sum
+    # Python 3.6a3+ uses fixed-length wordcode. Additional bytes are encoded as
+    # EXTENDED_ARG opcodes.
+    where for (c, v) in seq => yield $ 2 * (1 + abs (v.bit_length! - 1) // 16)
+
+  otherwise => seq -> sum
+    # Python 3.5 uses 1-byte opcodes with optional 2-byte arguments.
+    # Additional words are encoded as EXTENDED_ARG opcodes.
+    where for (c, v) in seq => yield $ if
+      c < opcode.HAVE_ARGUMENT => 1
+      otherwise                => 3 * (1 + abs (v.bit_length! - 1) // 16)
 
 
 Jump = subclass object where
@@ -177,12 +186,20 @@ CodeType = subclass object where
   #:
   #: code :: (int, int) -> bytes
   #:
-  code = (op, arg) ~> if
-    op  < opcode.HAVE_ARGUMENT => struct.pack '<B'  op
-    arg < 0                    => @code (op, len @cellvars - arg - 1)
-    arg < 0x10000              => struct.pack '<BH' op arg
-    otherwise                  => @code (opcode.opmap !! 'EXTENDED_ARG', arg >> 16) +
-                                  struct.pack '<BH' op (arg & 0xffff)
+  code = if
+    # See `codelen`.
+    PY_VERSION >= 0x030600a3 => (op, arg) ~> if
+      arg < 0     => @code (op, len @cellvars - arg - 1)
+      arg < 0x100 => struct.pack '<BB' op arg
+      otherwise   => @code (opcode.opmap !! 'EXTENDED_ARG', arg >> 8) +
+                     struct.pack '<BB' op (arg & 0xff)
+
+    otherwise => (op, arg) ~> if
+      op  < opcode.HAVE_ARGUMENT => struct.pack '<B'  op
+      arg < 0                    => @code (op, len @cellvars - arg - 1)
+      arg < 0x10000              => struct.pack '<BH' op arg
+      otherwise                  => @code (opcode.opmap !! 'EXTENDED_ARG', arg >> 16) +
+                                    struct.pack '<BH' op (arg & 0xffff)
 
   #: Convert this object into an immutable version actually suitable for use with `eval`.
   #:
