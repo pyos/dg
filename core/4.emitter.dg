@@ -17,7 +17,7 @@ codelen = if
   PY_VERSION >= 0x030600a3 => seq -> sum
     # Python 3.6a3+ uses fixed-length wordcode. Additional bytes are encoded as
     # EXTENDED_ARG opcodes.
-    where for (c, v) in seq => yield $ 2 * (1 + abs (v.bit_length! - 1) // 16)
+    where for (c, v) in seq => yield $ 2 + abs (v.bit_length! - 1) // 8 * 2
 
   otherwise => seq -> sum
     # Python 3.5 uses 1-byte opcodes with optional 2-byte arguments.
@@ -28,42 +28,49 @@ codelen = if
 
 
 Jump = subclass object where
-  #: An argument to a jump opcode.
-  #:
-  #: code     :: CodeType  -- bytecode to insert a jump into.
-  #: start    :: int       -- offset at which the jump object was created.
-  #: op       :: str       -- instruction to insert.
-  #: relative :: bool      -- whether to start counting from `start`.
-  #: reverse  :: bool      -- ask questions first, insert later. Implies `absolute`.
-  #:
-  __init__ = @code @reverse @op delta ~>
-    @relative = @op == 'JUMP_FORWARD' or @op == 'FOR_ITER' or @op.startswith 'SETUP'
-    @start    = len @code.bytecode
-    @value    = None
-    @code.depth delta
-
-    if @reverse  => @relative => raise $ SystemError 'cannot make reverse relative jumps'
-       otherwise => @code.append @op 0
+  __init__ = @code @reverse @op @delta ~>
+    @relative = opcode.opmap !! @op in opcode.hasjrel
+    if @reverse  => @relative => raise AssertionError 'relative jumps are forward-only'
+       otherwise => @code.append @op 0 @delta
+    @start = len @code.bytecode
+    @end   = 0
+    @value = 0
+    @deps  = set'!
+    @code.jumps.append self
     None
 
-  __enter__ = self        -> self
-  __exit__  = self t v tv -> @set => False
+  __enter__ = self -> self
+  __exit__  = self _ _ _ ->
+    @set
+    False
 
-  #: Set the target of a forward jump. Insert the opcode of a reverse jump.
-  #:
-  #: set :: a
-  #:
   set = ~>
-    @value is None =>
-      @value = i = 0
-      not @relative => @value += codelen $ take  @start      @code.bytecode
-      not @reverse  => @value += codelen $ drop (@start + 1) @code.bytecode
-      not @reverse and not @relative =>
-        # This jump needs to account for itself.
-        while @value >> i => @value, i = @value + 3, i + 16
+    @reverse => @code.append @op 0 @delta
+    @end => raise AssertionError 'cannot set one jump many times'
+    @end = len @code.bytecode
+    @reverse => @start, @end = @end, @start
+    for jmp in @code.jumps => if
+      @relative => @start <= jmp.start - 1 < @end => jmp.deps.add self
+      otherwise =>           jmp.start - 1 < @end => jmp.deps.add self
+    @update
 
-    if @reverse  => @code.append @op @value
-       otherwise => @code.bytecode !! @start = opcode.opmap !! @op, @value
+  update = ~>
+    old = @value
+    offset = @start - 1
+    @value = codelen $ itertools.islice @code.bytecode
+      if @relative => @start
+         otherwise => 0
+      @end
+    @code.bytecode !! offset = opcode.opmap !! @op, @value
+    # values of other jump opcode might need to be changed as well.
+    # but there can be a cycle, gotta avoid an infinite recursion.
+    #  /---- JUMP_FORWARD -- value depends on size of JUMP_ABSOLUTE
+    #  | /-> ...
+    #  | \-- JUMP_ABSOLUTE -- value depends on size of JUMP_FORWARD
+    #  | /-- JUMP_ABSOLUTE -- value depends on size of all three instructions
+    #  \-+-> ...
+    codelen [(0, @value)] != codelen [(0, old)] =>
+      for jmp in @deps => jmp.update
 
 
 CodeType = subclass object where
@@ -116,6 +123,7 @@ CodeType = subclass object where
     function => @qualname += name
 
     @var        = None
+    @jumps      = []
     @fastlocals = collections.defaultdict dict
     @consts     = collections.defaultdict $ -> len @consts
     @varnames   = collections.defaultdict $ -> len @varnames
