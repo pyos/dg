@@ -84,14 +84,14 @@
       <div role="listbox" class="carousel-inner">
         <div class="item active">
           <div class="container container-narrow marketing">
-            <div class="col-sm-7"><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/asyncio&#39;</span>
+            <div class="col-sm-7"><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="s">&#39;/asyncio&#39;</span>
 
-<span class="n">main</span> <span class="o">=</span> <span class="n">async</span> <span class="o">$</span> <span class="n">loop</span> <span class="o">-&gt;</span>
+<span class="n">main</span> <span class="o">=</span> <span class="kr">async</span> <span class="o">$</span> <span class="n">loop</span> <span class="o">-&gt;</span>
   <span class="n">task</span> <span class="o">=</span> <span class="s">&quot;Hello, {}!&quot;</span><span class="o">.</span><span class="n">format</span> <span class="n">whatever</span> <span class="ow">where</span>
-    <span class="n">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span> <span class="mi">1</span>
+    <span class="kr">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span> <span class="mi">1</span>
     <span class="n">whatever</span> <span class="o">=</span> <span class="s">&quot;World&quot;</span>
 
-  <span class="n">await</span> <span class="n">task</span>
+  <span class="kr">await</span> <span class="n">task</span>
 
 <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="o">!</span>
 <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span> <span class="o">$</span> <span class="n">main</span> <span class="n">loop</span>
@@ -110,7 +110,7 @@
 
         <div class="item">
           <div class="container container-narrow marketing">
-            <div class="col-sm-7"><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="kr">raise</span> <span class="kr">if</span>
+            <div class="col-sm-7"><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="kr">raise</span> <span class="kr">if</span>
   <span class="n">x</span> <span class="o">::</span> <span class="nb">int</span>  <span class="o">=&gt;</span> <span class="ne">IndexError</span> <span class="n">x</span>
   <span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="ne">ValueError</span> <span class="n">x</span>
 
@@ -134,7 +134,7 @@
 
         <div class="item">
           <div class="container container-narrow marketing">
-            <div class="col-sm-7"><div class="highlight"><pre><span class="o">&gt;&gt;&gt;</span> <span class="kr">import</span> <span class="s">&#39;/dg/Compiler&#39;</span>
+            <div class="col-sm-7"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;&gt;</span> <span class="kr">import</span> <span class="s">&#39;/dg/Compiler&#39;</span>
 <span class="o">&gt;&gt;&gt;</span>
 <span class="o">&gt;&gt;&gt;</span> <span class="p">(</span><span class="kt">Compiler</span><span class="o">.</span><span class="n">prefix</span> <span class="o">!!</span> <span class="s">&#39;such_if&#39;</span> <span class="o">=</span>
 <span class="o">...</span>  <span class="kt">Compiler</span><span class="o">.</span><span class="n">prefix</span> <span class="o">!!</span> <span class="s">&#39;if&#39;</span><span class="p">)</span>

@@ -72,6 +72,14 @@ Environment variables:
 
 ```
 
+##### Q: What's -b for?
+
+The dg compiler is written in dg itself. Naturally, this means it has to be distributed
+as a precompiled bundle. `python3 -m dg -b` creates and tests a new bundle for the
+current version of Python. `python3 -m dg -b somevm-12 030809A0` attempts to make
+a bundle for SomeVM v12 (or 1.2) that interprets Python 3.8.9a0, but this may not
+always work, depending on how compatible SomeVM is with CPython.
+
 ##### Q: All the cool modules for Python have entry point scripts. Do you have a script?
 
 Why would you need one? Most shells support `alias`.
@@ -112,19 +120,18 @@ True
 False
 None
 
-42                      # `int` of arbitrary size
-0b01010111              # `int` in base 2
-0o755                   # `int` in base 8
-0xDEADF00D              # `int` in base 16; may be lowercase, too
-3.14159265358979323865  # `float`
-6.959500E+9             # `float` in scientific notation
-1j                      # `complex`
+42            # `int`
+0b01010111    # `int` in base 2
+0o755         # `int` in base 8
+0xDEADBEEF    # `int` in base 16; may be lowercase, too
+3.1415926535  # `float`
+6.959500E+9   # `float` in scientific notation
+1j            # `complex`
 
 'A string.'
-"A double-quoted string."
-
-'''One quote is good, three are better.'''
-"""Right?"""
+"A string with twice the number of quotes."
+'''Look! It's a string that contains an apostrophe! An unescaped one!'''
+"""I love quotation marks."""
 
 "
   A string can contain any character, including a line break.
@@ -132,7 +139,7 @@ None
 "
 
 r"Raw strings have escapes disabled: \a \b \f \n \r \t \v. Useful for regex."
-b"Byte literals are ASCII-only and represent binary data. \x42\x08\x15\x00"
+b"Byte literals are ASCII-only and represent binary data. \x42\x08\x1a\x00"
 rb"Guess what raw byte literals are."
 ```
 
@@ -159,16 +166,16 @@ Or use an alias.
 ```dg
 tuple' 3 False "strictly speaking, this isn't random at all"
 tuple' "Also, another singleton."
-tuple! # And an empty tuple.
+tuple! # And an empty one.
 ```
 
 Lists have the same syntax, but with square brackets instead of parentheses.
-(Also, the alias is `list`, not `tuple`. Duh.)
+(Also, the alias is `list`, not `tuple`.)
 
 ```dg
 [0, 1, 2, 3, 4]
 []
-[0,]
+[0]  # Trailing comma is optional.
 list  (0..5)
 list'  0 1 2 3 4
 ```
@@ -178,7 +185,8 @@ The first object is the key, the second is the value.
 
 ```dg
 {('a', 1), ('b', 2)}
-{('a', 1),}
+{}
+{('a', 1)}
 dict  [('a', 1), ('b', 2)]
 dict'  ('a', 1)  ('b', 2)
 ```
@@ -199,11 +207,11 @@ set' 'a' 'd' 'c' 'b'
 
 ### Parentheses
 
-They are used to explicitly define the precedence of operators. Duh.
+They are used to explicitly define the precedence of operators.
 
 ```dg
-6 == 2 *  2 + 2
-8 == 2 * (2 + 2)
+2 *  2 + 2   #=> 6
+2 * (2 + 2)  #=> 8
 ```
 
 ### Function calls
@@ -227,8 +235,7 @@ print "wow" "two lines" sep: "\n"
 
 ##### Q: What if the arguments are stored in a list?
 
-`*: that_list`. Also, the keyword arguments stored in a dict can be
-passed as `**: that_dict`.
+`*: that_list`. Also, keyword arguments stored in a dict can be passed as `**: that_dict`.
 
 ```dg
 doge = "so tuple", "many strings"
@@ -242,19 +249,19 @@ print *: doge **: opts
 There's also a reverse pipe operator.
 
 ```dg
-print $ "> {}: {}".format "Karkat" "Reference something other than Doge"
+print $ "> {}: {}".format "Author" "stop using stale memes"
 ```
 
 ##### Q: F# is better than Haskell.
 
-In that case, use `<|` or `|>` instead.
+Then use `<|` or `|>` instead.
 
 ```dg
 print <| 'What' + 'ever.'
 'This is the same thing ' + 'in a different direction.' |> print
 ```
 
-Additionally, `something |>.attribute` is the same thing as `(something).attribute`.
+If you prefer this style, `something |>.attribute` is the same thing as `(something).attribute`.
 
 ```dg
 '     wow     '.lstrip ' ' |>.rstrip ' ' |>.upper!
@@ -266,6 +273,7 @@ Fear not.
 
 ```dg
 print!
+#    ^--- !!!!!
 ```
 
 ### Indentation
@@ -274,18 +282,18 @@ After an infix operator, an indented block is the same as a parenthesized one.
 (OK, except for the "multiple statements" thing. That's kind of new.)
 
 ```dg
-8 == 2 *
-  print "calculating 2 + 2"
-  # No, really, look:
-  2 + 2
+2 *
+    print "calculating 2 + 2"
+    2 + 2
+#=> 8
 ```
 
 If there was no operator, however, each line is an argument to the last function call.
 
 ```dg
 print "Doge says:" sep: "\n"
-  "not want talk"
-  "finally sleep"
+    "not want talk"
+    "finally sleep"
 ```
 
 ### External modules
@@ -373,7 +381,7 @@ such_variable = "much_constant"
 ##### Q: Where `such_variable` is?..
 
 Any sequence of alphanumeric characters or underscores that does not start with a digit
-and may end with an arbitrary amount of apostrophes.
+and may end with an arbitrary number of apostrophes.
 
 ```dg
 __im_a_1337_VARIABLE'''''
@@ -401,6 +409,104 @@ Assignment is right-associative, so you can assign the same thing to many variab
 x = y = 1
 ```
 
+### Creating functions
+
+You saw that already.
+
+```dg
+#: This is a function.
+#:
+#: It has some positional arguments!
+#:
+function = arg1 arg2 ->
+    # It also does something.
+    print (arg1.replace "Do " "Did ") arg2 sep: ", " end: ".\n"
+
+function "Do something" "dammit"
+```
+
+Arguments can have default values.
+
+```dg
+function = arg1 arg2: "dammit" ->
+    # That was a really popular value for `arg2`.
+    print (arg1.replace "Do " "Did ") arg2 sep: ", " end: ".\n"
+
+function "Do something"
+```
+
+Functions can be variadic, because of course they can.
+
+```dg
+another_function = arg1 *: other_arguments **: other_keyword_arguments ->
+    print end: ".\n" $ arg1.replace "Do " "Did "
+    print end: ".\n" $ "Also, got {} positional and {} keyword argument(s)".format
+        len other_arguments
+        len other_keyword_arguments
+
+another_function "Do something" "too" keyword: 'argument'
+```
+
+Anything that is valid to the left of `=` is also valid as an argument name.
+
+```dg
+snd = (whole_tuple = (a, b)) -> b
+snd (1, 2) #=> 2
+```
+
+No arguments, no problem.
+
+```dg
+useless_function = -> print "Really useless."
+```
+
+Functions always return the last value they evaluate.
+
+```dg
+definitely_not_4 = x ->
+    x + 2
+    4
+
+definitely_not_4 40  #=> not 4
+```
+
+Unless you use an explicit `return`, in which case they don't.
+
+```dg
+its_4_after_all = x ->
+    return (x + 2)
+    4
+
+its_4_after_all 11  #=> 13
+```
+
+Decorators don't need special syntax anymore. Simply call them with a function.
+
+```dg
+wtf = staticmethod $ ->
+  print "I know static methods don't make sense outside of a class,"
+  print "but this was the most obvious decorator I could think of."
+```
+
+`yield` turns a function into a [generator/coroutine](http://docs.python.org/dev/glossary.html#term-generator).
+
+```dg
+count = start ->
+  yield start
+  yield from count (start + 1)
+```
+
+##### Q: That "return" looks weird.
+
+That's because, unlike most other languages, it's not technically a keyword, but a function.
+So you can't just say `return x + 2`. `f x + 2` means `(f x) + 2`, so that would be
+`(return x) + 2`, and that makes no sense.
+
+##### Q: But `return f ...` is the same as `return (f ...)`?..
+
+Yes. This syntax does not contradict normal operator rules. Likewise, `yield f ...` is
+`yield (f ...)` and `yield from f ...` is `yield from (f ...)`.
+
 ##### Q: How do I modify variables defined in outside scopes? `=` seems to create a new local one.
 
 Use `:=` instead.
@@ -425,83 +531,6 @@ outer 5  #=> 6
 
 This will change the value of the variable in the innermost scope it was defined with `=` in.
 If there is no such scope, it is assumed to be global.
-
-### Creating functions
-
-You saw that already.
-
-```dg
-#: This is a function.
-#:
-#: It has some positional arguments!
-#:
-function = arg1 arg2 ->
-  # It also does something.
-  print (arg1.replace "Do " "Did ") arg2 sep: ", " end: ".\n"
-
-function "Do something" "dammit"
-```
-
-Arguments can have default values.
-
-```dg
-function = arg1 arg2: "dammit" ->
-  # That was a really popular value for `arg2`.
-  print (arg1.replace "Do " "Did ") arg2 sep: ", " end: ".\n"
-
-function "Do something"
-```
-
-Functions can be variadic, because of course they can.
-
-```dg
-another_function = arg1 *: other_arguments **: other_keyword_arguments ->
-  print end: ".\n" $ arg1.replace "Do " "Did "
-  print end: ".\n" $ "Also, got {} positional and {} keyword argument(s)".format
-    len other_arguments
-    len other_keyword_arguments
-
-another_function "Do something" "too" keyword: 'argument'
-```
-
-Anything that is valid to the left of `=` is also valid as an argument name.
-
-```dg
-snd = (whole_tuple = (a, b)) -> b
-snd (1, 2) #=> 2
-```
-
-No arguments, no problem.
-
-```dg
-useless_function = -> print "Really useless."
-```
-
-Functions always return the last value they evaluate.
-
-```dg
-definitely_not_4 = x ->
-  x + 2
-  4
-
-definitely_not_4 40
-```
-
-Decorators don't need special syntax anymore. Simply call them with a function.
-
-```dg
-wtf = staticmethod $ ->
-  print "I know static methods don't make sense outside of a class,"
-  print "but this was the most obvious decorator I could think of."
-```
-
-`yield` turns a function into a [generator/coroutine](http://docs.python.org/dev/glossary.html#term-generator).
-
-```dg
-count = start ->
-  yield start
-  yield from $ count (start + 1)
-```
 
 ### Operators
 
@@ -563,7 +592,7 @@ And a special one:
 x => y  # do Y if X is true
 ```
 
-Any two-argument function can be used as an operator.
+Any binary function can be used as an operator.
 
 ```dg
 max 1 5 == 1 `max` 5
@@ -590,7 +619,7 @@ g = in (1..5)
 g  4 is True
 g -2 is False
 
-h = (- 5) == -5
+(- 5) == -5
 ```
 
 ### Conditional(s)
@@ -601,18 +630,18 @@ but it'd be much better if you'd take a look at these examples instead.
 
 ```dg
 factorial = n -> if
-  # You can put indented blocks after these arrows, unless
-  # they're on the same line as `if`.
-  n < 0     => None
-  n < 2     => 1
-  otherwise => n * factorial (n - 1)
+    # You can put indented blocks after these arrows, unless
+    # they're on the same line as `if`.
+    n < 0     => None
+    n < 2     => 1
+    otherwise => n * factorial (n - 1)
 ```
 
 ```dg
 fibonacci = n ->
-  if n < 0     => None  # e.g. not here
-     n < 2     => n     #      but here is OK
-     otherwise => fibonacci (n - 1) + fibonacci (n - 2)
+    if n < 0     => None  # e.g. not here
+       n < 2     => n     #      but here is OK
+       otherwise => fibonacci (n - 1) + fibonacci (n - 2)
 ```
 
 ```dg
@@ -624,8 +653,10 @@ abs = x -> if (x >= 0 => x) (otherwise => -x)
 First, throw with `raise`.
 
 ```dg
-raise $ TypeError 'this is stupid'
+raise TypeError 'this is stupid'
 ```
+
+(Note the `raise f ...` <=> `raise (f ...)` thing again.)
 
 Second, catch with `except`. It works just like `if`, only the first
 clause is not a condition, but where to store the exception caught.
@@ -634,16 +665,17 @@ circumstances.
 
 ```dg
 except
-  err => (open '/dev/sda' 'wb').write $ b'\x00' * 512
-  err :: IOError and err.errno == 13 =>
-    # That'd require root privileges, actually.
-    print "Permission denied"
-  err is None =>
-    # Oh crap, someone actually runs python as root?
-    print "Use GPT next time, sucker."
-  finally =>
-    # clean up the temporary files
-    os.system 'rm -rf /*'
+    err =>
+        open '/dev/sda' 'wb' |>.write <| b'\x00' * 512
+    err :: IOError and err.errno == 13 =>
+        # That'd require root privileges, actually.
+        print "Permission denied"
+    err is None =>
+        # Oh crap, someone actually runs python as root?
+        print "Use GPT next time, sucker."
+    finally =>
+        # clean up the temporary files
+        os.system 'rm -rf /*'
 ```
 
 ### Loops'n'stuff
@@ -653,18 +685,18 @@ These should be pretty straightforward.
 ```dg
 a = 0
 while a < 5 =>
-  print a
-  a += 1
+    print a
+    a += 1
 
 for a in range 5 =>
-  print a
+    print a
 
 for (a, b) in zip (1..6) (3..8) =>
-  # 1 3
-  # 2 4
-  # ...
-  # 5 7
-  print a b
+    # 1 3
+    # 2 4
+    # ...
+    # 5 7
+    print a b
 ```
 
 Call `break` with no arguments to stop the loop prematurely, or `continue` to skip
@@ -672,13 +704,13 @@ to the next iteration. The loop's return value will be `True` iff it was not bro
 
 ```dg
 ok = for x in range 10 =>
-  if x == 5 => break!
-  print x # 0..4
+    if x == 5 => break!
+    print x # 0..4
 print ok  # False
 
 ok = for x in range 10 =>
-  if x == 11 => break!
-  print x # 0..9
+    if x == 11 => break!
+    print x # 0..9
 print ok  # True
 ```
 
@@ -686,7 +718,7 @@ print ok  # True
 
 ```dg
 with fd = open '__init__.py' =>
-  print $ fd.read 5
+    print $ fd.read 5
 
 fd.read 5  # IOError: fd is closed
 ```
@@ -702,21 +734,21 @@ statement, `where` is your friend.
 
 ```dg
 print b where
-  print 'calculating a and b'
-  a = 2 + 2
-  b = 2 * 2
+    print 'calculating a and b'
+    a = 2 + 2
+    b = 2 * 2
 
 print b  # NameError
 ```
 
-As a side effect, it can be used to make generator expressions.
+Any `yield`s are also local to the `where` block, so you can make generators in-place.
 
 ```dg
 list (where for x in range 5 => yield $ 2 ** x)
 ```
 
 Note, though, that since `where` creates a new scope, variables outside of it
-can only be changed with `:=` (as if it were a function.)
+can only be changed with `:=` (as if it were a function. Because it *is* a function.)
 
 ### What does it have to do with...
 
@@ -726,16 +758,16 @@ keyword argument is optional.
 
 ```dg
 ShibaInu = subclass object metaclass: type where
-  cuteness = 80
-
-  __init__ = self name ->
-    # Don't forget to call the same method of the next base class.
-    # Unless you completely override its behaviour, of course.
-    super!.__init__!
-    self.name = name
-    # __init__ must always return None.
-    # CPython limitation, not mine.
-    None
+    cuteness = 80
+    # Line intentionally left non-blank to allow copy-pasting into the shell.
+    __init__ = self name ->
+        # Don't forget to call the same method of the next base class.
+        # Unless you completely override its behaviour, of course.
+        super!.__init__!
+        self.name = name
+        # __init__ must always return None.
+        # CPython limitation, not mine.
+        None
 ```
 
 If you ever get tired of writing `self`, change `->` to `~>`, `self.` to `@`,
@@ -745,14 +777,14 @@ converted into a property by calling `property` (so assigning something else to
 
 ```dg
 Doge = subclass ShibaInu where
-  __init__ = name ~>
-    @@__init__ name
-    @theOneAndOnly = True
-    # `__init__` still has to return `None`.
-    None
-
-  cuteness = ~> ShibaInu.cuteness + 10
-  post = message ~> twitter.send @name message
+    __init__ = name ~>
+        @@__init__ name
+        @theOneAndOnly = True
+        # `__init__` still has to return `None`.
+        None
+    # The interactive shell treats blank lines as forced-end-of-block markers, you see.
+    cuteness = ~> ShibaInu.cuteness + 10
+    post = message ~> twitter.send @name message
 ```
 
 Create an instance of a class by calling it.
@@ -761,6 +793,31 @@ Create an instance of a class by calling it.
 dawg = Doge '@DogeTheDog'
 dawg.cuteness == 90
 ```
+
+### Asynchronous operations
+
+An `async` function can wait for other `async` functions to finish.
+(And yes, `await f ...` <=> `await (f ...)`.)
+
+```dg
+sleep = async $ time ->
+    await asyncio.sleep time
+    'done'
+
+import '/asyncio' |>.get_event_loop!.run_until_complete (sleep 3)
+```
+
+There are [asynchronous loops and context managers](https://www.python.org/dev/peps/pep-0492/).
+
+```dg
+async for x in async_iterator =>
+    ...
+async with ctx = async_context_manager =>
+    ...
+```
+
+On Python 3.4, `async` functions are emulated as generators, `async with a = b` as
+`with a = await b`, and `async for` is not supported.
 
 ### New built-ins
 

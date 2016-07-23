@@ -39,16 +39,16 @@
     <div class="container container-narrow">
       <div class="row">
         <div class="col-sm-12 col-md-10 col-md-offset-1 markdown">
-          <h3>Installation</h3><p>Easy!</p><div class="highlight"><pre>pip3 install git+https://github.com/pyos/dg
+          <h3>Installation</h3><p>Easy!</p><div class="highlight"><pre><span></span>pip3 install git+https://github.com/pyos/dg
 </pre></div>
-<p>Alternatively, you can run</p><div class="highlight"><pre>git clone https://github.com/pyos/dg
+<p>Alternatively, you can run</p><div class="highlight"><pre><span></span>git clone https://github.com/pyos/dg
 </pre></div>
 <p>then move the repository to some directory that is in <code>$PYTHONPATH</code>. Or
 to <code>/usr/lib/python3.*/site-packages/</code>, or a virtual environment. In fact,
 if you don't want to install it system-wide, just leave it alone:
-Python always scans the current working directory for modules.</p><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre>python3 -m dg  <span class="c"># REPL!</span>
-python3 -m dg file.dg --do-something-useful-this-time  <span class="c"># Script!</span>
-python3 -m dg -m module  <span class="c"># Module! (Or package!)</span>
+Python always scans the current working directory for modules.</p><h3>Usage</h3><p>Even easier.</p><div class="highlight"><pre><span></span>python3 -m dg  <span class="c1"># REPL!</span>
+python3 -m dg file.dg --do-something-useful-this-time  <span class="c1"># Script!</span>
+python3 -m dg -m module  <span class="c1"># Module! (Or package!)</span>
 python3 -m dg -c <span class="s1">&#39;print &quot;Command!&quot;&#39;</span>
 </pre></div>
 <h5>Q: I expected a copy of a help message.</h5><pre>python3 [options] -m dg -h
@@ -89,14 +89,18 @@ Environment variables:
   PYTHONNOUSERSITE           -s
   PYTHONUNBUFFERED           -u
   PYTHONVERBOSE              -v
-</pre><h5>Q: All the cool modules for Python have entry point scripts. Do you have a script?</h5><p>Why would you need one? Most shells support <code>alias</code>.</p><div class="highlight"><pre><span class="nv">$ </span><span class="nb">alias </span><span class="nv">dg</span><span class="o">=</span><span class="s2">&quot;python3 -m dg&quot;</span>
-<span class="nv">$ </span>dg <span class="c"># Good ones do, anyway.</span>
+</pre><h5>Q: What's -b for?</h5><p>The dg compiler is written in dg itself. Naturally, this means it has to be distributed
+as a precompiled bundle. <code>python3 -m dg -b</code> creates and tests a new bundle for the
+current version of Python. <code>python3 -m dg -b somevm-12 030809A0</code> attempts to make
+a bundle for SomeVM v12 (or 1.2) that interprets Python 3.8.9a0, but this may not
+always work, depending on how compatible SomeVM is with CPython.</p><h5>Q: All the cool modules for Python have entry point scripts. Do you have a script?</h5><p>Why would you need one? Most shells support <code>alias</code>.</p><div class="highlight"><pre><span></span>$ <span class="nb">alias</span> <span class="nv">dg</span><span class="o">=</span><span class="s2">&quot;python3 -m dg&quot;</span>
+$ dg <span class="c1"># Good ones do, anyway.</span>
 &gt;&gt;&gt;
 </pre></div>
-<p>Just put that in your <code>.bashrc</code> or something.</p><h3>Comments</h3><div class="highlight"><pre><span class="c1"># sh-style. Know what I&#39;m saying?</span>
+<p>Just put that in your <code>.bashrc</code> or something.</p><h3>Comments</h3><div class="highlight"><pre><span></span><span class="c1"># sh-style. Know what I&#39;m saying?</span>
 </pre></div>
 <p>You probably know about docstrings. What you don't know is that they look
-nothing like Python docstrings. Sphinx users may recognise this, though.</p><div class="highlight"><pre><span class="c1">#: Do something with an argument.</span>
+nothing like Python docstrings. Sphinx users may recognise this, though.</p><div class="highlight"><pre><span></span><span class="c1">#: Do something with an argument.</span>
 <span class="c1">#:</span>
 <span class="c1">#: Raises:</span>
 <span class="c1">#:     NameError: this function makes no sense.</span>
@@ -106,23 +110,22 @@ nothing like Python docstrings. Sphinx users may recognise this, though.</p><div
 <span class="c1">#:</span>
 <span class="n">function</span> <span class="o">=</span> <span class="n">argument</span> <span class="o">-&gt;</span> <span class="n">something_absolutely_different</span>
 </pre></div>
-<h3>Literals</h3><div class="highlight"><pre><span class="bp">True</span>
+<h3>Literals</h3><div class="highlight"><pre><span></span><span class="bp">True</span>
 <span class="bp">False</span>
 <span class="bp">None</span>
 
-<span class="mi">42</span>                      <span class="c1"># `int` of arbitrary size</span>
-<span class="mb">0b01010111</span>              <span class="c1"># `int` in base 2</span>
-<span class="mo">0o755</span>                   <span class="c1"># `int` in base 8</span>
-<span class="mh">0xDEADF00D</span>              <span class="c1"># `int` in base 16; may be lowercase, too</span>
-<span class="mf">3.14159265358979323865</span>  <span class="c1"># `float`</span>
-<span class="mf">6.959500E+9</span>             <span class="c1"># `float` in scientific notation</span>
-<span class="mi">1j</span>                      <span class="c1"># `complex`</span>
+<span class="mi">42</span>            <span class="c1"># `int`</span>
+<span class="mb">0b01010111</span>    <span class="c1"># `int` in base 2</span>
+<span class="mo">0o755</span>         <span class="c1"># `int` in base 8</span>
+<span class="mh">0xDEADBEEF</span>    <span class="c1"># `int` in base 16; may be lowercase, too</span>
+<span class="mf">3.1415926535</span>  <span class="c1"># `float`</span>
+<span class="mf">6.959500E+9</span>   <span class="c1"># `float` in scientific notation</span>
+<span class="mi">1j</span>            <span class="c1"># `complex`</span>
 
 <span class="s">&#39;A string.&#39;</span>
-<span class="s">&quot;A double-quoted string.&quot;</span>
-
-<span class="s">&#39;&#39;&#39;One quote is good, three are better.&#39;&#39;&#39;</span>
-<span class="s">&quot;&quot;&quot;Right?&quot;&quot;&quot;</span>
+<span class="s">&quot;A string with twice the number of quotes.&quot;</span>
+<span class="s">&#39;&#39;&#39;Look! It&#39;s a string that contains an apostrophe! An unescaped one!&#39;&#39;&#39;</span>
+<span class="s">&quot;&quot;&quot;I love quotation marks.&quot;&quot;&quot;</span>
 
 <span class="s">&quot;</span>
 <span class="s">  A string can contain any character, including a line break.</span>
@@ -130,71 +133,72 @@ nothing like Python docstrings. Sphinx users may recognise this, though.</p><div
 <span class="s">&quot;</span>
 
 <span class="s">r&quot;Raw strings have escapes disabled: </span><span class="se">\a</span><span class="s"> </span><span class="se">\b</span><span class="s"> </span><span class="se">\f</span><span class="s"> </span><span class="se">\n</span><span class="s"> </span><span class="se">\r</span><span class="s"> </span><span class="se">\t</span><span class="s"> </span><span class="se">\v</span><span class="s">. Useful for regex.&quot;</span>
-<span class="s">b&quot;Byte literals are ASCII-only and represent binary data. </span><span class="se">\x42\x08\x15\x00</span><span class="s">&quot;</span>
+<span class="s">b&quot;Byte literals are ASCII-only and represent binary data. </span><span class="se">\x42\x08\x1a\x00</span><span class="s">&quot;</span>
 <span class="s">rb&quot;Guess what raw byte literals are.&quot;</span>
 </pre></div>
-<p>Tuples are ordered immutable collections:</p><div class="highlight"><pre><span class="p">(</span><span class="mi">2</span><span class="o">,</span> <span class="bp">True</span><span class="o">,</span> <span class="s">&#39;this tuple contains random stuff&#39;</span><span class="p">)</span>
+<p>Tuples are ordered immutable collections:</p><div class="highlight"><pre><span></span><span class="p">(</span><span class="mi">2</span><span class="o">,</span> <span class="bp">True</span><span class="o">,</span> <span class="s">&#39;this tuple contains random stuff&#39;</span><span class="p">)</span>
 </pre></div>
-<p>An empty tuple is an empty pair of parentheses.</p><div class="highlight"><pre><span class="p">()</span>
+<p>An empty tuple is an empty pair of parentheses.</p><div class="highlight"><pre><span></span><span class="p">()</span>
 </pre></div>
-<p>If you want a singleton tuple for some reason, put a comma after the only item.</p><div class="highlight"><pre><span class="p">(</span><span class="s">&quot;Fine, have your singleton.&quot;</span><span class="o">,</span><span class="p">)</span>
+<p>If you want a singleton tuple for some reason, put a comma after the only item.</p><div class="highlight"><pre><span></span><span class="p">(</span><span class="s">&quot;Fine, have your singleton.&quot;</span><span class="o">,</span><span class="p">)</span>
 </pre></div>
-<p>Or use an alias.</p><div class="highlight"><pre><span class="nb">tuple&#39;</span> <span class="mi">3</span> <span class="bp">False</span> <span class="s">&quot;strictly speaking, this isn&#39;t random at all&quot;</span>
+<p>Or use an alias.</p><div class="highlight"><pre><span></span><span class="nb">tuple&#39;</span> <span class="mi">3</span> <span class="bp">False</span> <span class="s">&quot;strictly speaking, this isn&#39;t random at all&quot;</span>
 <span class="nb">tuple&#39;</span> <span class="s">&quot;Also, another singleton.&quot;</span>
-<span class="nb">tuple</span><span class="o">!</span> <span class="c1"># And an empty tuple.</span>
+<span class="nb">tuple</span><span class="o">!</span> <span class="c1"># And an empty one.</span>
 </pre></div>
 <p>Lists have the same syntax, but with square brackets instead of parentheses.
-(Also, the alias is <code>list</code>, not <code>tuple</code>. Duh.)</p><div class="highlight"><pre><span class="p">[</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">]</span>
+(Also, the alias is <code>list</code>, not <code>tuple</code>.)</p><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">]</span>
 <span class="p">[]</span>
-<span class="p">[</span><span class="mi">0</span><span class="o">,</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Trailing comma is optional.</span>
 <span class="nb">list</span>  <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">5</span><span class="p">)</span>
 <span class="nb">list&#39;</span>  <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">4</span>
 </pre></div>
 <p>Dictionaries, too. These require each item to be a pair (i.e. a 2-tuple), though.
-The first object is the key, the second is the value.</p><div class="highlight"><pre><span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)}</span>
-<span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span><span class="p">}</span>
+The first object is the key, the second is the value.</p><div class="highlight"><pre><span></span><span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)}</span>
+<span class="p">{}</span>
+<span class="p">{(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)}</span>
 <span class="nb">dict</span>  <span class="p">[(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">,</span> <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)]</span>
 <span class="nb">dict&#39;</span>  <span class="p">(</span><span class="s">&#39;a&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="p">(</span><span class="s">&#39;b&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span>
 </pre></div>
-<p>There's a shorthand notation for dictionaries with identifier keys:</p><div class="highlight"><pre><span class="nb">dict</span>  <span class="n">a</span><span class="o">:</span> <span class="mi">1</span> <span class="n">b</span><span class="o">:</span> <span class="mi">2</span>
+<p>There's a shorthand notation for dictionaries with identifier keys:</p><div class="highlight"><pre><span></span><span class="nb">dict</span>  <span class="n">a</span><span class="o">:</span> <span class="mi">1</span> <span class="n">b</span><span class="o">:</span> <span class="mi">2</span>
 <span class="nb">dict&#39;</span> <span class="n">a</span><span class="o">:</span> <span class="mi">1</span> <span class="n">b</span><span class="o">:</span> <span class="mi">2</span>
 </pre></div>
-<p>Sets can only be created through an alias. There's no set literal.</p><div class="highlight"><pre><span class="nb">set</span>  <span class="s">&#39;abcdabc&#39;</span>
+<p>Sets can only be created through an alias. There's no set literal.</p><div class="highlight"><pre><span></span><span class="nb">set</span>  <span class="s">&#39;abcdabc&#39;</span>
 <span class="nb">set&#39;</span> <span class="s">&#39;a&#39;</span> <span class="s">&#39;d&#39;</span> <span class="s">&#39;c&#39;</span> <span class="s">&#39;b&#39;</span>
 </pre></div>
-<h3>Parentheses</h3><p>They are used to explicitly define the precedence of operators. Duh.</p><div class="highlight"><pre><span class="mi">6</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">*</span>  <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
-<span class="mi">8</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+<h3>Parentheses</h3><p>They are used to explicitly define the precedence of operators.</p><div class="highlight"><pre><span></span><span class="mi">2</span> <span class="o">*</span>  <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>   <span class="c1">#=&gt; 6</span>
+<span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1">#=&gt; 8</span>
 </pre></div>
-<h3>Function calls</h3><ol><li>Write the name of the function.</li><li>Insert a space.</li><li>Put an argument you want to call it with.</li><li>Repeat 2 and 3 until tired.</li></ol><div class="highlight"><pre><span class="nb">print</span> <span class="s">&quot;such console,&quot;</span> <span class="s">&quot;beautiful text&quot;</span>
+<h3>Function calls</h3><ol><li>Write the name of the function.</li><li>Insert a space.</li><li>Put an argument you want to call it with.</li><li>Repeat 2 and 3 until tired.</li></ol><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="s">&quot;such console,&quot;</span> <span class="s">&quot;beautiful text&quot;</span>
 </pre></div>
-<h5>Q: Can I pass arguments by name?</h5><p>Sure. <code>name: value</code>.</p><div class="highlight"><pre><span class="nb">print</span> <span class="s">&quot;wow&quot;</span> <span class="s">&quot;two lines&quot;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+<h5>Q: Can I pass arguments by name?</h5><p>Sure. <code>name: value</code>.</p><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="s">&quot;wow&quot;</span> <span class="s">&quot;two lines&quot;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
 </pre></div>
-<h5>Q: What if the arguments are stored in a list?</h5><p><code>*: that_list</code>. Also, the keyword arguments stored in a dict can be
-passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span class="n">doge</span> <span class="o">=</span> <span class="s">&quot;so tuple&quot;</span><span class="o">,</span> <span class="s">&quot;many strings&quot;</span>
+<h5>Q: What if the arguments are stored in a list?</h5><p><code>*: that_list</code>. Also, keyword arguments stored in a dict can be passed as <code>**: that_dict</code>.</p><div class="highlight"><pre><span></span><span class="n">doge</span> <span class="o">=</span> <span class="s">&quot;so tuple&quot;</span><span class="o">,</span> <span class="s">&quot;many strings&quot;</span>
 <span class="n">opts</span> <span class="o">=</span> <span class="nb">dict</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
 
 <span class="nb">print</span> <span class="o">*:</span> <span class="n">doge</span> <span class="o">**:</span> <span class="n">opts</span>
 </pre></div>
-<h5>Q: Do I have to use parentheses when calling a function with a result of another function?</h5><p>There's also a reverse pipe operator.</p><div class="highlight"><pre><span class="nb">print</span> <span class="o">$</span> <span class="s">&quot;&gt; {}: {}&quot;</span><span class="o">.</span><span class="n">format</span> <span class="s">&quot;Karkat&quot;</span> <span class="s">&quot;Reference something other than Doge&quot;</span>
+<h5>Q: Do I have to use parentheses when calling a function with a result of another function?</h5><p>There's also a reverse pipe operator.</p><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="o">$</span> <span class="s">&quot;&gt; {}: {}&quot;</span><span class="o">.</span><span class="n">format</span> <span class="s">&quot;Author&quot;</span> <span class="s">&quot;stop using stale memes&quot;</span>
 </pre></div>
-<h5>Q: F# is better than Haskell.</h5><p>In that case, use <code>&lt;|</code> or <code>|&gt;</code> instead.</p><div class="highlight"><pre><span class="nb">print</span> <span class="o">&lt;|</span> <span class="s">&#39;What&#39;</span> <span class="o">+</span> <span class="s">&#39;ever.&#39;</span>
+<h5>Q: F# is better than Haskell.</h5><p>Then use <code>&lt;|</code> or <code>|&gt;</code> instead.</p><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="o">&lt;|</span> <span class="s">&#39;What&#39;</span> <span class="o">+</span> <span class="s">&#39;ever.&#39;</span>
 <span class="s">&#39;This is the same thing &#39;</span> <span class="o">+</span> <span class="s">&#39;in a different direction.&#39;</span> <span class="o">|&gt;</span> <span class="nb">print</span>
 </pre></div>
-<p>Additionally, <code>something |&gt;.attribute</code> is the same thing as <code>(something).attribute</code>.</p><div class="highlight"><pre><span class="s">&#39;     wow     &#39;</span><span class="o">.</span><span class="n">lstrip</span> <span class="s">&#39; &#39;</span> <span class="o">|&gt;.</span><span class="n">rstrip</span> <span class="s">&#39; &#39;</span> <span class="o">|&gt;.</span><span class="n">upper</span><span class="o">!</span>
+<p>If you prefer this style, <code>something |&gt;.attribute</code> is the same thing as <code>(something).attribute</code>.</p><div class="highlight"><pre><span></span><span class="s">&#39;     wow     &#39;</span><span class="o">.</span><span class="n">lstrip</span> <span class="s">&#39; &#39;</span> <span class="o">|&gt;.</span><span class="n">rstrip</span> <span class="s">&#39; &#39;</span> <span class="o">|&gt;.</span><span class="n">upper</span><span class="o">!</span>
 </pre></div>
-<h5>Q: What if...what if there are NO arguments? At all?</h5><p>Fear not.</p><div class="highlight"><pre><span class="nb">print</span><span class="o">!</span>
+<h5>Q: What if...what if there are NO arguments? At all?</h5><p>Fear not.</p><div class="highlight"><pre><span></span><span class="nb">print</span><span class="o">!</span>
+<span class="c1">#    ^--- !!!!!</span>
 </pre></div>
 <h3>Indentation</h3><p>After an infix operator, an indented block is the same as a parenthesized one.
-(OK, except for the "multiple statements" thing. That's kind of new.)</p><div class="highlight"><pre><span class="mi">8</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">*</span>
-  <span class="nb">print</span> <span class="s">&quot;calculating 2 + 2&quot;</span>
-  <span class="c1"># No, really, look:</span>
-  <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
+(OK, except for the "multiple statements" thing. That's kind of new.)</p><div class="highlight"><pre><span></span><span class="mi">2</span> <span class="o">*</span>
+    <span class="nb">print</span> <span class="s">&quot;calculating 2 + 2&quot;</span>
+    <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
+<span class="c1">#=&gt; 8</span>
 </pre></div>
-<p>If there was no operator, however, each line is an argument to the last function call.</p><div class="highlight"><pre><span class="nb">print</span> <span class="s">&quot;Doge says:&quot;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
-  <span class="s">&quot;not want talk&quot;</span>
-  <span class="s">&quot;finally sleep&quot;</span>
+<p>If there was no operator, however, each line is an argument to the last function call.</p><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="s">&quot;Doge says:&quot;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+    <span class="s">&quot;not want talk&quot;</span>
+    <span class="s">&quot;finally sleep&quot;</span>
 </pre></div>
-<h3>External modules</h3><p>dg can import any Python module you throw at it, standard library included.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/sys&#39;</span>
+<h3>External modules</h3><p>dg can import any Python module you throw at it, standard library included.</p><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="s">&#39;/sys&#39;</span>
 </pre></div>
 <p>If you're importing from a package, module names are relative to it.
 So if you have a directory structure like this...</p><pre>mypackage
@@ -203,56 +207,108 @@ So if you have a directory structure like this...</p><pre>mypackage
 |- submodule.dg
 \- subpackage/
    |- module1.dg
-   \- module2.dg</pre><p>...and your <code>module2.dg</code> looks like this...</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
+   \- module2.dg</pre><p>...and your <code>module2.dg</code> looks like this...</p><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="s">&#39;module1&#39;</span>
 <span class="kr">import</span> <span class="s">&#39;module1/global_variable&#39;</span>
 <span class="kr">import</span> <span class="s">&#39;../submodule&#39;</span>
 <span class="c1"># Now we have `module1`, `global_variable`, and `submodule`.</span>
 </pre></div>
 <p>...the ending to this sentence becomes obvious. Oh, and since those are POSIX
-paths, they are normalized automatically.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/doesnotexist/../../sys&#39;</span>  <span class="c1"># same as &#39;/sys&#39;</span>
+paths, they are normalized automatically.</p><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="s">&#39;/doesnotexist/../../sys&#39;</span>  <span class="c1"># same as &#39;/sys&#39;</span>
 </pre></div>
-<p><code>import</code> returns the object it has imported.</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="o">==</span> <span class="n">os</span>
+<p><code>import</code> returns the object it has imported.</p><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="s">&#39;/os&#39;</span> <span class="o">==</span> <span class="n">os</span>
 </pre></div>
 <p>There are some flags that modify the behavior of <code>import</code>. <code>pure</code> makes it, well, pure:
-that is, it will not store the module in a variable (but will return it.)</p><div class="highlight"><pre><span class="c1"># Assuming you haven&#39;t imported posixpath yet:</span>
+that is, it will not store the module in a variable (but will return it.)</p><div class="highlight"><pre><span></span><span class="c1"># Assuming you haven&#39;t imported posixpath yet:</span>
 <span class="kr">import</span> <span class="s">&#39;/posixpath&#39;</span> <span class="n">pure</span>  <span class="c1">#=&gt; &lt;module posixpath ...&gt;</span>
 <span class="n">posixpath</span>                 <span class="c1">#=&gt; NameError</span>
 </pre></div>
-<p><code>pure</code> also allows you to import a module even if you don't know its name until run-time:</p><div class="highlight"><pre><span class="n">name</span>  <span class="o">=</span> <span class="s">&#39;/o&#39;</span>
+<p><code>pure</code> also allows you to import a module even if you don't know its name until run-time:</p><div class="highlight"><pre><span></span><span class="n">name</span>  <span class="o">=</span> <span class="s">&#39;/o&#39;</span>
 <span class="n">name</span> <span class="o">+=</span> <span class="s">&#39;s&#39;</span>
 <span class="kr">import</span> <span class="n">name</span>       <span class="c1">#=&gt; SyntaxError</span>
 <span class="kr">import</span> <span class="n">name</span> <span class="n">pure</span>  <span class="c1">#=&gt; &lt;module os ...&gt;</span>
 </pre></div>
 <p>While <code>import</code> normally returns the object that corresponds to the last item of the path,
-<code>qualified</code> will make it return the first one instead:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="c1">#=&gt; &lt;module somekindofpath ...&gt;</span>
+<code>qualified</code> will make it return the first one instead:</p><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="c1">#=&gt; &lt;module somekindofpath ...&gt;</span>
 <span class="kr">import</span> <span class="s">&#39;/os/path&#39;</span> <span class="n">qualified</span> <span class="c1">#=&gt; &lt;module os ...&gt;</span>
 </pre></div>
-<p>Obviously, you can combine these flags in one statement:</p><div class="highlight"><pre><span class="kr">import</span> <span class="s">&#39;/xml/etree/ElementTree&#39;</span> <span class="n">qualified</span> <span class="n">pure</span>
+<p>Obviously, you can combine these flags in one statement:</p><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="s">&#39;/xml/etree/ElementTree&#39;</span> <span class="n">qualified</span> <span class="n">pure</span>
 <span class="c1">#=&gt; &lt;module xml ...&gt;, no variable is created</span>
 </pre></div>
-<h3>Assignment</h3><div class="highlight"><pre><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
+<h3>Assignment</h3><div class="highlight"><pre><span></span><span class="n">such_variable</span> <span class="o">=</span> <span class="s">&quot;much_constant&quot;</span>
 </pre></div>
 <h5>Q: Where <code>such_variable</code> is?..</h5><p>Any sequence of alphanumeric characters or underscores that does not start with a digit
-and may end with an arbitrary amount of apostrophes.</p><div class="highlight"><pre><span class="n">__im_a_1337_VARIABLE&#39;&#39;&#39;&#39;&#39;</span>
+and may end with an arbitrary number of apostrophes.</p><div class="highlight"><pre><span></span><span class="n">__im_a_1337_VARIABLE&#39;&#39;&#39;&#39;&#39;</span>
 </pre></div>
-<p>If the value on the right side is a collection, it can be unpacked.</p><div class="highlight"><pre><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
+<p>If the value on the right side is a collection, it can be unpacked.</p><div class="highlight"><pre><span></span><span class="n">very_pattern</span><span class="o">,</span> <span class="n">so_two_items</span><span class="o">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="s">&#39;wow&#39;</span><span class="o">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="s">&#39;sleep&#39;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">*</span> <span class="s">&#39;eat&#39;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="s">&#39;woof&#39;</span>
 </pre></div>
-<p>List syntax can be used, too. It means the exact same thing.</p><div class="highlight"><pre><span class="p">[</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">,</span> <span class="o">*</span><span class="n">c</span><span class="o">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span>
+<p>List syntax can be used, too. It means the exact same thing.</p><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">,</span> <span class="o">*</span><span class="n">c</span><span class="o">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span>
 <span class="c1">#=&gt; a = 1</span>
 <span class="c1">#   b = 2</span>
 <span class="c1">#   c = [3, 4]</span>
 <span class="c1">#   d = 5</span>
 </pre></div>
-<p>Assignment is right-associative, so you can assign the same thing to many variables at once.</p><div class="highlight"><pre><span class="n">x</span> <span class="o">=</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">1</span>
+<p>Assignment is right-associative, so you can assign the same thing to many variables at once.</p><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">1</span>
 </pre></div>
-<h5>Q: How do I modify variables defined in outside scopes? <code>=</code> seems to create a new local one.</h5><p>Use <code>:=</code> instead.</p><div class="highlight"><pre><span class="n">outer</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
+<h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span></span><span class="c1">#: This is a function.</span>
+<span class="c1">#:</span>
+<span class="c1">#: It has some positional arguments!</span>
+<span class="c1">#:</span>
+<span class="n">function</span> <span class="o">=</span> <span class="n">arg1</span> <span class="n">arg2</span> <span class="o">-&gt;</span>
+    <span class="c1"># It also does something.</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="n">arg1</span><span class="o">.</span><span class="n">replace</span> <span class="s">&quot;Do &quot;</span> <span class="s">&quot;Did &quot;</span><span class="p">)</span> <span class="n">arg2</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;, &quot;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span>
+
+<span class="n">function</span> <span class="s">&quot;Do something&quot;</span> <span class="s">&quot;dammit&quot;</span>
+</pre></div>
+<p>Arguments can have default values.</p><div class="highlight"><pre><span></span><span class="n">function</span> <span class="o">=</span> <span class="n">arg1</span> <span class="n">arg2</span><span class="o">:</span> <span class="s">&quot;dammit&quot;</span> <span class="o">-&gt;</span>
+    <span class="c1"># That was a really popular value for `arg2`.</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="n">arg1</span><span class="o">.</span><span class="n">replace</span> <span class="s">&quot;Do &quot;</span> <span class="s">&quot;Did &quot;</span><span class="p">)</span> <span class="n">arg2</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;, &quot;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span>
+
+<span class="n">function</span> <span class="s">&quot;Do something&quot;</span>
+</pre></div>
+<p>Functions can be variadic, because of course they can.</p><div class="highlight"><pre><span></span><span class="n">another_function</span> <span class="o">=</span> <span class="n">arg1</span> <span class="o">*:</span> <span class="n">other_arguments</span> <span class="o">**:</span> <span class="n">other_keyword_arguments</span> <span class="o">-&gt;</span>
+    <span class="nb">print</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">$</span> <span class="n">arg1</span><span class="o">.</span><span class="n">replace</span> <span class="s">&quot;Do &quot;</span> <span class="s">&quot;Did &quot;</span>
+    <span class="nb">print</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">$</span> <span class="s">&quot;Also, got {} positional and {} keyword argument(s)&quot;</span><span class="o">.</span><span class="n">format</span>
+        <span class="nb">len</span> <span class="n">other_arguments</span>
+        <span class="nb">len</span> <span class="n">other_keyword_arguments</span>
+
+<span class="n">another_function</span> <span class="s">&quot;Do something&quot;</span> <span class="s">&quot;too&quot;</span> <span class="n">keyword</span><span class="o">:</span> <span class="s">&#39;argument&#39;</span>
+</pre></div>
+<p>Anything that is valid to the left of <code>=</code> is also valid as an argument name.</p><div class="highlight"><pre><span></span><span class="nb">snd</span> <span class="o">=</span> <span class="p">(</span><span class="n">whole_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">b</span>
+<span class="nb">snd</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c1">#=&gt; 2</span>
+</pre></div>
+<p>No arguments, no problem.</p><div class="highlight"><pre><span></span><span class="n">useless_function</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&quot;Really useless.&quot;</span>
+</pre></div>
+<p>Functions always return the last value they evaluate.</p><div class="highlight"><pre><span></span><span class="n">definitely_not_4</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
+    <span class="n">x</span> <span class="o">+</span> <span class="mi">2</span>
+    <span class="mi">4</span>
+
+<span class="n">definitely_not_4</span> <span class="mi">40</span>  <span class="c1">#=&gt; not 4</span>
+</pre></div>
+<p>Unless you use an explicit <code>return</code>, in which case they don't.</p><div class="highlight"><pre><span></span><span class="n">its_4_after_all</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
+    <span class="kr">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="mi">4</span>
+
+<span class="n">its_4_after_all</span> <span class="mi">11</span>  <span class="c1">#=&gt; 13</span>
+</pre></div>
+<p>Decorators don't need special syntax anymore. Simply call them with a function.</p><div class="highlight"><pre><span></span><span class="n">wtf</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="o">$</span> <span class="o">-&gt;</span>
+  <span class="nb">print</span> <span class="s">&quot;I know static methods don&#39;t make sense outside of a class,&quot;</span>
+  <span class="nb">print</span> <span class="s">&quot;but this was the most obvious decorator I could think of.&quot;</span>
+</pre></div>
+<p><code>yield</code> turns a function into a <a href="http://docs.python.org/dev/glossary.html#term-generator">generator/coroutine</a>.</p><div class="highlight"><pre><span></span><span class="n">count</span> <span class="o">=</span> <span class="n">start</span> <span class="o">-&gt;</span>
+  <span class="kr">yield</span> <span class="n">start</span>
+  <span class="kr">yield</span> <span class="n">from</span> <span class="n">count</span> <span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+<h5>Q: That "return" looks weird.</h5><p>That's because, unlike most other languages, it's not technically a keyword, but a function.
+So you can't just say <code>return x + 2</code>. <code>f x + 2</code> means <code>(f x) + 2</code>, so that would be
+<code>(return x) + 2</code>, and that makes no sense.</p><h5>Q: But <code>return f ...</code> is the same as <code>return (f ...)</code>?..</h5><p>Yes. This syntax does not contradict normal operator rules. Likewise, <code>yield f ...</code> is
+<code>yield (f ...)</code> and <code>yield from f ...</code> is <code>yield from (f ...)</code>.</p><h5>Q: How do I modify variables defined in outside scopes? <code>=</code> seems to create a new local one.</h5><p>Use <code>:=</code> instead.</p><div class="highlight"><pre><span></span><span class="n">outer</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
   <span class="n">inner</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">a</span> <span class="o">=</span> <span class="n">x</span><span class="p">)</span>
   <span class="n">inner</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
   <span class="n">a</span>
 
 <span class="n">outer</span>  <span class="c1">#=&gt; 5</span>
 </pre></div>
-<div class="highlight"><pre><span class="n">outer</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
+<div class="highlight"><pre><span></span><span class="n">outer</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-&gt;</span>
   <span class="n">inner</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">a</span> <span class="o">:=</span> <span class="n">x</span><span class="p">)</span>
   <span class="n">inner</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
   <span class="n">a</span>
@@ -260,50 +316,7 @@ and may end with an arbitrary amount of apostrophes.</p><div class="highlight"><
 <span class="n">outer</span> <span class="mi">5</span>  <span class="c1">#=&gt; 6</span>
 </pre></div>
 <p>This will change the value of the variable in the innermost scope it was defined with <code>=</code> in.
-If there is no such scope, it is assumed to be global.</p><h3>Creating functions</h3><p>You saw that already.</p><div class="highlight"><pre><span class="c1">#: This is a function.</span>
-<span class="c1">#:</span>
-<span class="c1">#: It has some positional arguments!</span>
-<span class="c1">#:</span>
-<span class="n">function</span> <span class="o">=</span> <span class="n">arg1</span> <span class="n">arg2</span> <span class="o">-&gt;</span>
-  <span class="c1"># It also does something.</span>
-  <span class="nb">print</span> <span class="p">(</span><span class="n">arg1</span><span class="o">.</span><span class="n">replace</span> <span class="s">&quot;Do &quot;</span> <span class="s">&quot;Did &quot;</span><span class="p">)</span> <span class="n">arg2</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;, &quot;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span>
-
-<span class="n">function</span> <span class="s">&quot;Do something&quot;</span> <span class="s">&quot;dammit&quot;</span>
-</pre></div>
-<p>Arguments can have default values.</p><div class="highlight"><pre><span class="n">function</span> <span class="o">=</span> <span class="n">arg1</span> <span class="n">arg2</span><span class="o">:</span> <span class="s">&quot;dammit&quot;</span> <span class="o">-&gt;</span>
-  <span class="c1"># That was a really popular value for `arg2`.</span>
-  <span class="nb">print</span> <span class="p">(</span><span class="n">arg1</span><span class="o">.</span><span class="n">replace</span> <span class="s">&quot;Do &quot;</span> <span class="s">&quot;Did &quot;</span><span class="p">)</span> <span class="n">arg2</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&quot;, &quot;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span>
-
-<span class="n">function</span> <span class="s">&quot;Do something&quot;</span>
-</pre></div>
-<p>Functions can be variadic, because of course they can.</p><div class="highlight"><pre><span class="n">another_function</span> <span class="o">=</span> <span class="n">arg1</span> <span class="o">*:</span> <span class="n">other_arguments</span> <span class="o">**:</span> <span class="n">other_keyword_arguments</span> <span class="o">-&gt;</span>
-  <span class="nb">print</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">$</span> <span class="n">arg1</span><span class="o">.</span><span class="n">replace</span> <span class="s">&quot;Do &quot;</span> <span class="s">&quot;Did &quot;</span>
-  <span class="nb">print</span> <span class="n">end</span><span class="o">:</span> <span class="s">&quot;.</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">$</span> <span class="s">&quot;Also, got {} positional and {} keyword argument(s)&quot;</span><span class="o">.</span><span class="n">format</span>
-    <span class="nb">len</span> <span class="n">other_arguments</span>
-    <span class="nb">len</span> <span class="n">other_keyword_arguments</span>
-
-<span class="n">another_function</span> <span class="s">&quot;Do something&quot;</span> <span class="s">&quot;too&quot;</span> <span class="n">keyword</span><span class="o">:</span> <span class="s">&#39;argument&#39;</span>
-</pre></div>
-<p>Anything that is valid to the left of <code>=</code> is also valid as an argument name.</p><div class="highlight"><pre><span class="nb">snd</span> <span class="o">=</span> <span class="p">(</span><span class="n">whole_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">b</span>
-<span class="nb">snd</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c1">#=&gt; 2</span>
-</pre></div>
-<p>No arguments, no problem.</p><div class="highlight"><pre><span class="n">useless_function</span> <span class="o">=</span> <span class="o">-&gt;</span> <span class="nb">print</span> <span class="s">&quot;Really useless.&quot;</span>
-</pre></div>
-<p>Functions always return the last value they evaluate.</p><div class="highlight"><pre><span class="n">definitely_not_4</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span>
-  <span class="n">x</span> <span class="o">+</span> <span class="mi">2</span>
-  <span class="mi">4</span>
-
-<span class="n">definitely_not_4</span> <span class="mi">40</span>
-</pre></div>
-<p>Decorators don't need special syntax anymore. Simply call them with a function.</p><div class="highlight"><pre><span class="n">wtf</span> <span class="o">=</span> <span class="nb">staticmethod</span> <span class="o">$</span> <span class="o">-&gt;</span>
-  <span class="nb">print</span> <span class="s">&quot;I know static methods don&#39;t make sense outside of a class,&quot;</span>
-  <span class="nb">print</span> <span class="s">&quot;but this was the most obvious decorator I could think of.&quot;</span>
-</pre></div>
-<p><code>yield</code> turns a function into a <a href="http://docs.python.org/dev/glossary.html#term-generator">generator/coroutine</a>.</p><div class="highlight"><pre><span class="n">count</span> <span class="o">=</span> <span class="n">start</span> <span class="o">-&gt;</span>
-  <span class="kr">yield</span> <span class="n">start</span>
-  <span class="kr">yield</span> <span class="n">from</span> <span class="o">$</span> <span class="n">count</span> <span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-</pre></div>
-<h3>Operators</h3><p>Standard issue stuff:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">+</span> <span class="n">y</span>   <span class="c1"># addition</span>
+If there is no such scope, it is assumed to be global.</p><h3>Operators</h3><p>Standard issue stuff:</p><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">+</span> <span class="n">y</span>   <span class="c1"># addition</span>
 <span class="n">x</span> <span class="o">-</span> <span class="n">y</span>   <span class="c1"># subtraction or set difference</span>
 <span class="n">x</span> <span class="o">*</span> <span class="n">y</span>   <span class="c1"># multiplication</span>
 <span class="n">x</span> <span class="o">**</span> <span class="n">y</span>  <span class="c1"># exponentiation</span>
@@ -316,14 +329,14 @@ If there is no such scope, it is assumed to be global.</p><h3>Creating functions
 <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">y</span>  <span class="c1"># bit shift to the left</span>
 <span class="n">x</span> <span class="o">&gt;&gt;</span> <span class="n">y</span>  <span class="c1"># bit shift to the right</span>
 </pre></div>
-<p>All of the above operators have an in-place form:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">+=</span> <span class="n">y</span>  <span class="c1"># sets x to (x + y)</span>
+<p>All of the above operators have an in-place form:</p><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">+=</span> <span class="n">y</span>  <span class="c1"># sets x to (x + y)</span>
 <span class="n">x</span> <span class="o">/=</span> <span class="n">y</span>  <span class="c1"># sets x to (x / y)</span>
 <span class="n">x</span> <span class="o">|=</span> <span class="n">y</span>  <span class="c1"># you get the idea</span>
 </pre></div>
-<p>Prefix:</p><div class="highlight"><pre><span class="o">~</span><span class="n">x</span> <span class="c1"># bitwise inversion</span>
+<p>Prefix:</p><div class="highlight"><pre><span></span><span class="o">~</span><span class="n">x</span> <span class="c1"># bitwise inversion</span>
 <span class="o">-</span><span class="n">x</span> <span class="c1"># numeric negation</span>
 </pre></div>
-<p>Attribute/subitem access:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">!!</span>  <span class="n">y</span> <span class="o">=</span> <span class="n">z</span>  <span class="c1"># set item Y of a collection X to Z</span>
+<p>Attribute/subitem access:</p><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">!!</span>  <span class="n">y</span> <span class="o">=</span> <span class="n">z</span>  <span class="c1"># set item Y of a collection X to Z</span>
 <span class="n">x</span> <span class="o">!!</span>  <span class="n">y</span>      <span class="c1"># get its value again</span>
 <span class="n">x</span> <span class="o">!!~</span> <span class="n">y</span>      <span class="c1"># and remove it</span>
 
@@ -331,164 +344,178 @@ If there is no such scope, it is assumed to be global.</p><h3>Creating functions
 <span class="n">x</span><span class="o">.</span><span class="n">y</span>     <span class="c1"># ooh, Z again!</span>
 <span class="n">x</span><span class="o">.~</span><span class="n">y</span>    <span class="c1"># remove that attribute</span>
 </pre></div>
-<p>Boolean logic:</p><div class="highlight"><pre><span class="n">x</span> <span class="ow">or</span> <span class="n">y</span>
+<p>Boolean logic:</p><div class="highlight"><pre><span></span><span class="n">x</span> <span class="ow">or</span> <span class="n">y</span>
 <span class="n">x</span> <span class="ow">and</span> <span class="n">y</span>
 <span class="kr">not</span> <span class="n">x</span>
 </pre></div>
-<p>And a special one:</p><div class="highlight"><pre><span class="n">x</span> <span class="o">=&gt;</span> <span class="n">y</span>  <span class="c1"># do Y if X is true</span>
+<p>And a special one:</p><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=&gt;</span> <span class="n">y</span>  <span class="c1"># do Y if X is true</span>
 </pre></div>
-<p>Any two-argument function can be used as an operator.</p><div class="highlight"><pre><span class="nb">max</span> <span class="mi">1</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">`max`</span> <span class="mi">5</span>
+<p>Any binary function can be used as an operator.</p><div class="highlight"><pre><span></span><span class="nb">max</span> <span class="mi">1</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">`max`</span> <span class="mi">5</span>
 <span class="nb">divmod</span> <span class="mi">10</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">10</span> <span class="o">`divmod`</span> <span class="mi">3</span>
 </pre></div>
 <p>Operators that do not modify anything (with the exception of <code>or</code>, <code>and</code>, and <code>=&gt;</code>)
-are <a href="http://en.wikipedia.org/wiki/First-class_function">first-class</a>.</p><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span>
+are <a href="http://en.wikipedia.org/wiki/First-class_function">first-class</a>.</p><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span>
 <span class="n">f</span> <span class="mi">1</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">3</span>
 </pre></div>
 <p>Any infix operator can be <a href="http://docs.python.org/dev/library/functools.html#functools.partial">partially bound</a>
 by omitting either of its sides. An exception to this is <code>-</code>, which behaves
-as an unary <code>-</code> if the left side is missing.</p><div class="highlight"><pre><span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span><span class="p">)</span>
+as an unary <code>-</code> if the left side is missing.</p><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span><span class="p">)</span>
 <span class="n">f</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">20</span>
 
 <span class="n">g</span> <span class="o">=</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">5</span><span class="p">)</span>
 <span class="n">g</span>  <span class="mi">4</span> <span class="ow">is</span> <span class="bp">True</span>
 <span class="n">g</span> <span class="mi">-2</span> <span class="ow">is</span> <span class="bp">False</span>
 
-<span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span> <span class="mi">5</span><span class="p">)</span> <span class="o">==</span> <span class="mi">-5</span>
+<span class="p">(</span><span class="o">-</span> <span class="mi">5</span><span class="p">)</span> <span class="o">==</span> <span class="mi">-5</span>
 </pre></div>
 <h3>Conditional(s)</h3><p>The main and only (unless you count <code>=&gt;</code>, as well as really awkward uses
 of <code>and</code> &amp; <code>or</code>) conditional is <code>if</code>. I <em>could</em> write a large explanation,
-but it'd be much better if you'd take a look at these examples instead.</p><div class="highlight"><pre><span class="n">factorial</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-&gt;</span> <span class="kr">if</span>
-  <span class="c1"># You can put indented blocks after these arrows, unless</span>
-  <span class="c1"># they&#39;re on the same line as `if`.</span>
-  <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span>     <span class="o">=&gt;</span> <span class="bp">None</span>
-  <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span>     <span class="o">=&gt;</span> <span class="mi">1</span>
-  <span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+but it'd be much better if you'd take a look at these examples instead.</p><div class="highlight"><pre><span></span><span class="n">factorial</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-&gt;</span> <span class="kr">if</span>
+    <span class="c1"># You can put indented blocks after these arrows, unless</span>
+    <span class="c1"># they&#39;re on the same line as `if`.</span>
+    <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span>     <span class="o">=&gt;</span> <span class="bp">None</span>
+    <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span>     <span class="o">=&gt;</span> <span class="mi">1</span>
+    <span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
-<div class="highlight"><pre><span class="n">fibonacci</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-&gt;</span>
-  <span class="kr">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span>     <span class="o">=&gt;</span> <span class="bp">None</span>  <span class="c1"># e.g. not here</span>
-     <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span>     <span class="o">=&gt;</span> <span class="n">n</span>     <span class="c1">#      but here is OK</span>
-     <span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="n">fibonacci</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fibonacci</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="n">fibonacci</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-&gt;</span>
+    <span class="kr">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">0</span>     <span class="o">=&gt;</span> <span class="bp">None</span>  <span class="c1"># e.g. not here</span>
+       <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span>     <span class="o">=&gt;</span> <span class="n">n</span>     <span class="c1">#      but here is OK</span>
+       <span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="n">fibonacci</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fibonacci</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
 </pre></div>
-<div class="highlight"><pre><span class="nb">abs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="kr">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">=&gt;</span> <span class="n">x</span><span class="p">)</span> <span class="p">(</span><span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="o">-</span><span class="n">x</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><span class="nb">abs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="kr">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">=&gt;</span> <span class="n">x</span><span class="p">)</span> <span class="p">(</span><span class="kr">otherwise</span> <span class="o">=&gt;</span> <span class="o">-</span><span class="n">x</span><span class="p">)</span>
 </pre></div>
-<h3>Exceptions</h3><p>First, throw with <code>raise</code>.</p><div class="highlight"><pre><span class="kr">raise</span> <span class="o">$</span> <span class="ne">TypeError</span> <span class="s">&#39;this is stupid&#39;</span>
+<h3>Exceptions</h3><p>First, throw with <code>raise</code>.</p><div class="highlight"><pre><span></span><span class="kr">raise</span> <span class="ne">TypeError</span> <span class="s">&#39;this is stupid&#39;</span>
 </pre></div>
-<p>Second, catch with <code>except</code>. It works just like <code>if</code>, only the first
+<p>(Note the <code>raise f ...</code> &lt;=&gt; <code>raise (f ...)</code> thing again.)</p><p>Second, catch with <code>except</code>. It works just like <code>if</code>, only the first
 clause is not a condition, but where to store the exception caught.
 If the last condition is <code>finally</code>, the respective action is evaluated regardless of
-circumstances.</p><div class="highlight"><pre><span class="kr">except</span>
-  <span class="n">err</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nb">open</span> <span class="s">&#39;/dev/sda&#39;</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span> <span class="o">$</span> <span class="s">b&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="mi">512</span>
-  <span class="n">err</span> <span class="o">::</span> <span class="ne">IOError</span> <span class="ow">and</span> <span class="n">err</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="mi">13</span> <span class="o">=&gt;</span>
-    <span class="c1"># That&#39;d require root privileges, actually.</span>
-    <span class="nb">print</span> <span class="s">&quot;Permission denied&quot;</span>
-  <span class="n">err</span> <span class="ow">is</span> <span class="bp">None</span> <span class="o">=&gt;</span>
-    <span class="c1"># Oh crap, someone actually runs python as root?</span>
-    <span class="nb">print</span> <span class="s">&quot;Use GPT next time, sucker.&quot;</span>
-  <span class="kr">finally</span> <span class="o">=&gt;</span>
-    <span class="c1"># clean up the temporary files</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">system</span> <span class="s">&#39;rm -rf /*&#39;</span>
+circumstances.</p><div class="highlight"><pre><span></span><span class="kr">except</span>
+    <span class="n">err</span> <span class="o">=&gt;</span>
+        <span class="nb">open</span> <span class="s">&#39;/dev/sda&#39;</span> <span class="s">&#39;wb&#39;</span> <span class="o">|&gt;.</span><span class="n">write</span> <span class="o">&lt;|</span> <span class="s">b&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="mi">512</span>
+    <span class="n">err</span> <span class="o">::</span> <span class="ne">IOError</span> <span class="ow">and</span> <span class="n">err</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="mi">13</span> <span class="o">=&gt;</span>
+        <span class="c1"># That&#39;d require root privileges, actually.</span>
+        <span class="nb">print</span> <span class="s">&quot;Permission denied&quot;</span>
+    <span class="n">err</span> <span class="ow">is</span> <span class="bp">None</span> <span class="o">=&gt;</span>
+        <span class="c1"># Oh crap, someone actually runs python as root?</span>
+        <span class="nb">print</span> <span class="s">&quot;Use GPT next time, sucker.&quot;</span>
+    <span class="kr">finally</span> <span class="o">=&gt;</span>
+        <span class="c1"># clean up the temporary files</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span> <span class="s">&#39;rm -rf /*&#39;</span>
 </pre></div>
-<h3>Loops'n'stuff</h3><p>These should be pretty straightforward.</p><div class="highlight"><pre><span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
+<h3>Loops'n'stuff</h3><p>These should be pretty straightforward.</p><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="kr">while</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mi">5</span> <span class="o">=&gt;</span>
-  <span class="nb">print</span> <span class="n">a</span>
-  <span class="n">a</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="nb">print</span> <span class="n">a</span>
+    <span class="n">a</span> <span class="o">+=</span> <span class="mi">1</span>
 
 <span class="kr">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="o">=&gt;</span>
-  <span class="nb">print</span> <span class="n">a</span>
+    <span class="nb">print</span> <span class="n">a</span>
 
 <span class="kr">for</span> <span class="p">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span> <span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">6</span><span class="p">)</span> <span class="p">(</span><span class="mi">3</span><span class="o">..</span><span class="mi">8</span><span class="p">)</span> <span class="o">=&gt;</span>
-  <span class="c1"># 1 3</span>
-  <span class="c1"># 2 4</span>
-  <span class="c1"># ...</span>
-  <span class="c1"># 5 7</span>
-  <span class="nb">print</span> <span class="n">a</span> <span class="n">b</span>
+    <span class="c1"># 1 3</span>
+    <span class="c1"># 2 4</span>
+    <span class="c1"># ...</span>
+    <span class="c1"># 5 7</span>
+    <span class="nb">print</span> <span class="n">a</span> <span class="n">b</span>
 </pre></div>
 <p>Call <code>break</code> with no arguments to stop the loop prematurely, or <code>continue</code> to skip
-to the next iteration. The loop's return value will be <code>True</code> iff it was not broken.</p><div class="highlight"><pre><span class="n">ok</span> <span class="o">=</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">10</span> <span class="o">=&gt;</span>
-  <span class="kr">if</span> <span class="n">x</span> <span class="o">==</span> <span class="mi">5</span> <span class="o">=&gt;</span> <span class="n">break</span><span class="o">!</span>
-  <span class="nb">print</span> <span class="n">x</span> <span class="c1"># 0..4</span>
+to the next iteration. The loop's return value will be <code>True</code> iff it was not broken.</p><div class="highlight"><pre><span></span><span class="n">ok</span> <span class="o">=</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">10</span> <span class="o">=&gt;</span>
+    <span class="kr">if</span> <span class="n">x</span> <span class="o">==</span> <span class="mi">5</span> <span class="o">=&gt;</span> <span class="kr">break</span><span class="o">!</span>
+    <span class="nb">print</span> <span class="n">x</span> <span class="c1"># 0..4</span>
 <span class="nb">print</span> <span class="n">ok</span>  <span class="c1"># False</span>
 
 <span class="n">ok</span> <span class="o">=</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">10</span> <span class="o">=&gt;</span>
-  <span class="kr">if</span> <span class="n">x</span> <span class="o">==</span> <span class="mi">11</span> <span class="o">=&gt;</span> <span class="n">break</span><span class="o">!</span>
-  <span class="nb">print</span> <span class="n">x</span> <span class="c1"># 0..9</span>
+    <span class="kr">if</span> <span class="n">x</span> <span class="o">==</span> <span class="mi">11</span> <span class="o">=&gt;</span> <span class="kr">break</span><span class="o">!</span>
+    <span class="nb">print</span> <span class="n">x</span> <span class="c1"># 0..9</span>
 <span class="nb">print</span> <span class="n">ok</span>  <span class="c1"># True</span>
 </pre></div>
-<p><code>with</code> is used to enter <a href="http://www.python.org/dev/peps/pep-0343/">contexts</a>.</p><div class="highlight"><pre><span class="kr">with</span> <span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span> <span class="s">&#39;__init__.py&#39;</span> <span class="o">=&gt;</span>
-  <span class="nb">print</span> <span class="o">$</span> <span class="n">fd</span><span class="o">.</span><span class="n">read</span> <span class="mi">5</span>
+<p><code>with</code> is used to enter <a href="http://www.python.org/dev/peps/pep-0343/">contexts</a>.</p><div class="highlight"><pre><span></span><span class="kr">with</span> <span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span> <span class="s">&#39;__init__.py&#39;</span> <span class="o">=&gt;</span>
+    <span class="nb">print</span> <span class="o">$</span> <span class="n">fd</span><span class="o">.</span><span class="n">read</span> <span class="mi">5</span>
 
 <span class="n">fd</span><span class="o">.</span><span class="n">read</span> <span class="mi">5</span>  <span class="c1"># IOError: fd is closed</span>
 </pre></div>
 <h3>Objects and types</h3><p>Wait, no. Gotta show you something else first.</p><h3>Local name binding</h3><p>If you don't want some variables to be visible outside of a single
-statement, <code>where</code> is your friend.</p><div class="highlight"><pre><span class="nb">print</span> <span class="n">b</span> <span class="ow">where</span>
-  <span class="nb">print</span> <span class="s">&#39;calculating a and b&#39;</span>
-  <span class="n">a</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
-  <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">2</span>
+statement, <code>where</code> is your friend.</p><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="n">b</span> <span class="ow">where</span>
+    <span class="nb">print</span> <span class="s">&#39;calculating a and b&#39;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">2</span>
 
 <span class="nb">print</span> <span class="n">b</span>  <span class="c1"># NameError</span>
 </pre></div>
-<p>As a side effect, it can be used to make generator expressions.</p><div class="highlight"><pre><span class="nb">list</span> <span class="p">(</span><span class="ow">where</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="o">=&gt;</span> <span class="kr">yield</span> <span class="o">$</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">x</span><span class="p">)</span>
+<p>Any <code>yield</code>s are also local to the <code>where</code> block, so you can make generators in-place.</p><div class="highlight"><pre><span></span><span class="nb">list</span> <span class="p">(</span><span class="ow">where</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span> <span class="mi">5</span> <span class="o">=&gt;</span> <span class="kr">yield</span> <span class="o">$</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">x</span><span class="p">)</span>
 </pre></div>
 <p>Note, though, that since <code>where</code> creates a new scope, variables outside of it
-can only be changed with <code>:=</code> (as if it were a function.)</p><h3>What does it have to do with...</h3><p>OK, ready? <code>subclass</code> turns the local namespace into a class, and a local namespace
+can only be changed with <code>:=</code> (as if it were a function. Because it <em>is</em> a function.)</p><h3>What does it have to do with...</h3><p>OK, ready? <code>subclass</code> turns the local namespace into a class, and a local namespace
 is exactly what <code>where</code> creates. Its arguments are base classes. The <code>metaclass</code>
-keyword argument is optional.</p><div class="highlight"><pre><span class="kt">ShibaInu</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span> <span class="n">metaclass</span><span class="o">:</span> <span class="nb">type</span> <span class="ow">where</span>
-  <span class="n">cuteness</span> <span class="o">=</span> <span class="mi">80</span>
-
-  <span class="n">__init__</span> <span class="o">=</span> <span class="bp">self</span> <span class="n">name</span> <span class="o">-&gt;</span>
-    <span class="c1"># Don&#39;t forget to call the same method of the next base class.</span>
-    <span class="c1"># Unless you completely override its behaviour, of course.</span>
-    <span class="nb">super</span><span class="o">!.</span><span class="n">__init__</span><span class="o">!</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
-    <span class="c1"># __init__ must always return None.</span>
-    <span class="c1"># CPython limitation, not mine.</span>
-    <span class="bp">None</span>
+keyword argument is optional.</p><div class="highlight"><pre><span></span><span class="kt">ShibaInu</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="nb">object</span> <span class="n">metaclass</span><span class="o">:</span> <span class="nb">type</span> <span class="ow">where</span>
+    <span class="n">cuteness</span> <span class="o">=</span> <span class="mi">80</span>
+    <span class="c1"># Line intentionally left non-blank to allow copy-pasting into the shell.</span>
+    <span class="n">__init__</span> <span class="o">=</span> <span class="bp">self</span> <span class="n">name</span> <span class="o">-&gt;</span>
+        <span class="c1"># Don&#39;t forget to call the same method of the next base class.</span>
+        <span class="c1"># Unless you completely override its behaviour, of course.</span>
+        <span class="nb">super</span><span class="o">!.</span><span class="n">__init__</span><span class="o">!</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c1"># __init__ must always return None.</span>
+        <span class="c1"># CPython limitation, not mine.</span>
+        <span class="bp">None</span>
 </pre></div>
 <p>If you ever get tired of writing <code>self</code>, change <code>-&gt;</code> to <code>~&gt;</code>, <code>self.</code> to <code>@</code>,
 and <code>super!.</code> to <code>@@</code>. A method with no arguments created with <code>~&gt;</code> is automatically
 converted into a property by calling <code>property</code> (so assigning something else to
-<code>property</code> will change the behavior of <code>~&gt;</code>).</p><div class="highlight"><pre><span class="kt">Doge</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="kt">ShibaInu</span> <span class="ow">where</span>
-  <span class="n">__init__</span> <span class="o">=</span> <span class="n">name</span> <span class="o">~&gt;</span>
-    <span class="o">@@</span><span class="n">__init__</span> <span class="n">name</span>
-    <span class="o">@</span><span class="n">theOneAndOnly</span> <span class="o">=</span> <span class="bp">True</span>
-    <span class="c1"># `__init__` still has to return `None`.</span>
-    <span class="bp">None</span>
-
-  <span class="n">cuteness</span> <span class="o">=</span> <span class="o">~&gt;</span> <span class="kt">ShibaInu</span><span class="o">.</span><span class="n">cuteness</span> <span class="o">+</span> <span class="mi">10</span>
-  <span class="n">post</span> <span class="o">=</span> <span class="n">message</span> <span class="o">~&gt;</span> <span class="n">twitter</span><span class="o">.</span><span class="n">send</span> <span class="o">@</span><span class="n">name</span> <span class="n">message</span>
+<code>property</code> will change the behavior of <code>~&gt;</code>).</p><div class="highlight"><pre><span></span><span class="kt">Doge</span> <span class="o">=</span> <span class="kr">subclass</span> <span class="kt">ShibaInu</span> <span class="ow">where</span>
+    <span class="n">__init__</span> <span class="o">=</span> <span class="n">name</span> <span class="o">~&gt;</span>
+        <span class="o">@@</span><span class="n">__init__</span> <span class="n">name</span>
+        <span class="o">@</span><span class="n">theOneAndOnly</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="c1"># `__init__` still has to return `None`.</span>
+        <span class="bp">None</span>
+    <span class="c1"># The interactive shell treats blank lines as forced-end-of-block markers, you see.</span>
+    <span class="n">cuteness</span> <span class="o">=</span> <span class="o">~&gt;</span> <span class="kt">ShibaInu</span><span class="o">.</span><span class="n">cuteness</span> <span class="o">+</span> <span class="mi">10</span>
+    <span class="n">post</span> <span class="o">=</span> <span class="n">message</span> <span class="o">~&gt;</span> <span class="n">twitter</span><span class="o">.</span><span class="n">send</span> <span class="o">@</span><span class="n">name</span> <span class="n">message</span>
 </pre></div>
-<p>Create an instance of a class by calling it.</p><div class="highlight"><pre><span class="n">dawg</span> <span class="o">=</span> <span class="kt">Doge</span> <span class="s">&#39;@DogeTheDog&#39;</span>
+<p>Create an instance of a class by calling it.</p><div class="highlight"><pre><span></span><span class="n">dawg</span> <span class="o">=</span> <span class="kt">Doge</span> <span class="s">&#39;@DogeTheDog&#39;</span>
 <span class="n">dawg</span><span class="o">.</span><span class="n">cuteness</span> <span class="o">==</span> <span class="mi">90</span>
 </pre></div>
-<h3>New built-ins</h3><p><code>foldl</code> (and <code>foldl1</code>) is a left fold. Look it up.</p><div class="highlight"><pre><span class="nb">sum</span>     <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">foldl</span>  <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="n">xs</span>
+<h3>Asynchronous operations</h3><p>An <code>async</code> function can wait for other <code>async</code> functions to finish.
+(And yes, <code>await f ...</code> &lt;=&gt; <code>await (f ...)</code>.)</p><div class="highlight"><pre><span></span><span class="n">sleep</span> <span class="o">=</span> <span class="kr">async</span> <span class="o">$</span> <span class="n">time</span> <span class="o">-&gt;</span>
+    <span class="kr">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span> <span class="n">time</span>
+    <span class="s">&#39;done&#39;</span>
+
+<span class="kr">import</span> <span class="s">&#39;/asyncio&#39;</span> <span class="o">|&gt;.</span><span class="n">get_event_loop</span><span class="o">!.</span><span class="n">run_until_complete</span> <span class="p">(</span><span class="n">sleep</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+<p>There are <a href="https://www.python.org/dev/peps/pep-0492/">asynchronous loops and context managers</a>.</p><div class="highlight"><pre><span></span><span class="kr">async</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">async_iterator</span> <span class="o">=&gt;</span>
+    <span class="o">...</span>
+<span class="kr">async</span> <span class="kr">with</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">async_context_manager</span> <span class="o">=&gt;</span>
+    <span class="o">...</span>
+</pre></div>
+<p>On Python 3.4, <code>async</code> functions are emulated as generators, <code>async with a = b</code> as
+<code>with a = await b</code>, and <code>async for</code> is not supported.</p><h3>New built-ins</h3><p><code>foldl</code> (and <code>foldl1</code>) is a left fold. Look it up.</p><div class="highlight"><pre><span></span><span class="nb">sum</span>     <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">foldl</span>  <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="n">xs</span>
 <span class="n">product</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">foldl1</span> <span class="p">(</span><span class="o">*</span><span class="p">)</span>   <span class="n">xs</span>  <span class="c1"># same thing, but no starting value</span>
 </pre></div>
-<p><code>scanl</code> and <code>scanl1</code> are similar, but also yield intermediate values.</p><div class="highlight"><pre><span class="n">accumulate</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">scanl1</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="n">xs</span>
+<p><code>scanl</code> and <code>scanl1</code> are similar, but also yield intermediate values.</p><div class="highlight"><pre><span></span><span class="n">accumulate</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-&gt;</span> <span class="n">scanl1</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="n">xs</span>
 <span class="n">accumulate</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1">#=&gt; 1, 3, 6, 10</span>
 </pre></div>
-<p><code>bind</code> is <code>functools.partial</code>:</p><div class="highlight"><pre><span class="n">greet</span> <span class="o">=</span> <span class="nb">bind</span> <span class="nb">print</span> <span class="s">&#39;Hello&#39;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;, &#39;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&#39;!</span><span class="se">\n</span><span class="s">&#39;</span>
+<p><code>bind</code> is <code>functools.partial</code>:</p><div class="highlight"><pre><span></span><span class="n">greet</span> <span class="o">=</span> <span class="nb">bind</span> <span class="nb">print</span> <span class="s">&#39;Hello&#39;</span> <span class="n">sep</span><span class="o">:</span> <span class="s">&#39;, &#39;</span> <span class="n">end</span><span class="o">:</span> <span class="s">&#39;!</span><span class="se">\n</span><span class="s">&#39;</span>
 <span class="n">greet</span> <span class="s">&#39;World&#39;</span>
 </pre></div>
-<p><code>flip</code> swaps the order of arguments of a binary function:</p><div class="highlight"><pre><span class="n">contains</span> <span class="o">=</span> <span class="nb">flip</span> <span class="p">(</span><span class="ow">in</span><span class="p">)</span>
+<p><code>flip</code> swaps the order of arguments of a binary function:</p><div class="highlight"><pre><span></span><span class="n">contains</span> <span class="o">=</span> <span class="nb">flip</span> <span class="p">(</span><span class="ow">in</span><span class="p">)</span>
 <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">10</span><span class="p">)</span> <span class="o">`contains`</span> <span class="mi">3</span>
 </pre></div>
-<p><code>&lt;-</code> is a function composition operator:</p><div class="highlight"><pre><span class="n">dot_product</span> <span class="o">=</span> <span class="nb">sum</span> <span class="o">&lt;-</span> <span class="nb">bind</span> <span class="nb">map</span> <span class="p">(</span><span class="o">*</span><span class="p">)</span>  <span class="c1">#=&gt; xs -&gt; sum $ map (*) xs</span>
+<p><code>&lt;-</code> is a function composition operator:</p><div class="highlight"><pre><span></span><span class="n">dot_product</span> <span class="o">=</span> <span class="nb">sum</span> <span class="o">&lt;-</span> <span class="nb">bind</span> <span class="nb">map</span> <span class="p">(</span><span class="o">*</span><span class="p">)</span>  <span class="c1">#=&gt; xs -&gt; sum $ map (*) xs</span>
 <span class="n">dot_product</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">5</span><span class="p">)</span> <span class="p">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">6</span><span class="p">)</span>    <span class="c1">#=&gt; 44</span>
 </pre></div>
-<p><code>::</code> is short for <code>isinstance</code>:</p><div class="highlight"><pre><span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">::</span> <span class="nb">tuple</span>
+<p><code>::</code> is short for <code>isinstance</code>:</p><div class="highlight"><pre><span></span><span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">::</span> <span class="nb">tuple</span>
 </pre></div>
-<p><code>takewhile</code> and <code>dropwhile</code> are imported from <code>itertools</code>:</p><div class="highlight"><pre><span class="n">until_zero</span> <span class="o">=</span> <span class="nb">bind</span> <span class="nb">takewhile</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span><span class="p">)</span>
+<p><code>takewhile</code> and <code>dropwhile</code> are imported from <code>itertools</code>:</p><div class="highlight"><pre><span></span><span class="n">until_zero</span> <span class="o">=</span> <span class="nb">bind</span> <span class="nb">takewhile</span> <span class="p">(</span><span class="mi">0</span> <span class="o">!=</span><span class="p">)</span>
 <span class="n">until_zero</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">6</span><span class="p">)</span> <span class="c1">#=&gt; 1, 2, 3, 4</span>
 </pre></div>
-<p><code>take</code> returns the first N items, and <code>drop</code> returns the rest:</p><div class="highlight"><pre><span class="nb">take</span> <span class="mi">5</span> <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">10</span><span class="p">)</span> <span class="c1">#=&gt; 0, 1, 2, 3, 4</span>
+<p><code>take</code> returns the first N items, and <code>drop</code> returns the rest:</p><div class="highlight"><pre><span></span><span class="nb">take</span> <span class="mi">5</span> <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">10</span><span class="p">)</span> <span class="c1">#=&gt; 0, 1, 2, 3, 4</span>
 <span class="nb">drop</span> <span class="mi">5</span> <span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">10</span><span class="p">)</span> <span class="c1">#=&gt; 5, 6, 7, 8, 9</span>
 </pre></div>
-<p><code>iterate</code> repeatedly applies a function to some value:</p><div class="highlight"><pre><span class="n">count</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="nb">iterate</span> <span class="p">(</span><span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="n">x</span>
+<p><code>iterate</code> repeatedly applies a function to some value:</p><div class="highlight"><pre><span></span><span class="n">count</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-&gt;</span> <span class="nb">iterate</span> <span class="p">(</span><span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="n">x</span>
 <span class="n">count</span> <span class="mi">5</span> <span class="c1">#=&gt; 5, 6, 7, 8, ...</span>
 </pre></div>
 <p><code>head</code> and <code>fst</code> return the first item of a collection, <code>tail</code> returns the rest.
 <code>snd</code> returns the second item. <code>last</code> is, well, the last item, and <code>init</code> is
-everything <em>but</em> the last item. The last two functions do not work on iterables.</p><div class="highlight"><pre><span class="nb">head</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1">#=&gt; 1</span>
+everything <em>but</em> the last item. The last two functions do not work on iterables.</p><div class="highlight"><pre><span></span><span class="nb">head</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1">#=&gt; 1</span>
 <span class="nb">tail</span> <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1">#=&gt; 2, 3, 4</span>
 <span class="nb">fst</span>  <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span>        <span class="c1">#=&gt; 1</span>
 <span class="nb">snd</span>  <span class="p">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="p">)</span>        <span class="c1">#=&gt; 2</span>
