@@ -481,6 +481,11 @@ converted into a property by calling <code>property</code> (so assigning somethi
 
 <span class="kr">import</span> <span class="s">&#39;/asyncio&#39;</span> <span class="o">|&gt;.</span><span class="n">get_event_loop</span><span class="o">!.</span><span class="n">run_until_complete</span> <span class="p">(</span><span class="n">sleep</span> <span class="mi">3</span><span class="p">)</span>
 </pre></div>
+<p>If you hated <code>asyncio.coroutine</code> and think <code>async</code> is not much
+of an improvement, <code>-&gt;&gt;</code> is a shorthand for <code>async $ -&gt;</code>.</p><div class="highlight"><pre><span></span><span class="n">sleep_more</span> <span class="o">=</span> <span class="n">time</span> <span class="o">-&gt;&gt;</span>
+    <span class="kr">await</span> <span class="n">sleep</span> <span class="n">time</span>
+    <span class="kr">await</span> <span class="n">sleep</span> <span class="n">time</span>
+</pre></div>
 <p>There are <a href="https://www.python.org/dev/peps/pep-0492/">asynchronous loops and context managers</a>.</p><div class="highlight"><pre><span></span><span class="kr">async</span> <span class="kr">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">async_iterator</span> <span class="o">=&gt;</span>
     <span class="o">...</span>
 <span class="kr">async</span> <span class="kr">with</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">async_context_manager</span> <span class="o">=&gt;</span>

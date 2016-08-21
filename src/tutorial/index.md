@@ -807,6 +807,15 @@ sleep = async $ time ->
 import '/asyncio' |>.get_event_loop!.run_until_complete (sleep 3)
 ```
 
+If you hated `asyncio.coroutine` and think `async` is not much
+of an improvement, `->>` is a shorthand for `async $ ->`.
+
+```dg
+sleep_more = time ->>
+    await sleep time
+    await sleep time
+```
+
 There are [asynchronous loops and context managers](https://www.python.org/dev/peps/pep-0492/).
 
 ```dg
