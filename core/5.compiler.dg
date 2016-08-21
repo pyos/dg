@@ -775,6 +775,7 @@ Compiler = subclass CodeType where
     '', f args ~> @symbols $ Expression f.loc *: args
     '->',    _ _ ~> ()  # These operators create new functions, with brand new
     '~>',    _ _ ~> ()  # local namespaces. They will call `symbols` on their own.
+    '->>',   _ _ ~> ()
     'where', _ _ ~> ()
 
     '=', fix 2 2 $ f (n, x) ~>
@@ -831,6 +832,7 @@ Compiler = subclass CodeType where
     ':=',  fix 2 2 $ f (name, value) ~> @pushpop name value
     '->',  fix 2 2 $ f (args, body)  ~> @pushfunc   f.async args body
     '~>',  fix 2 2 $ f (args, body)  ~> @pushmethod f.async args body
+    '->>', fix 2 2 $ f (args, body)  ~> @pushfunc   True    args body
     '!!~', fix 2 2 $ f (coll, item)  ~>
       @pushast   coll
       @pushast   item
@@ -1220,6 +1222,7 @@ Compiler = subclass CodeType where
     '@@',    undefined 'this operator is prefix'
     '->',    default_to_none
     '~>',    default_to_none
+    '->>',   default_to_none
     'for',   default_to_none
     'while', default_to_none
     'where', default_to_none
@@ -1257,7 +1260,8 @@ Compiler = subclass CodeType where
     #:
     #:   -> x
     #:
-    '->', f [body] ~> @pushfunc' f.async body () () () {} () () {}
+    '->',  f [body] ~> @pushfunc' f.async body () () () {} () () {}
+    '->>', f [body] ~> @pushfunc' True    body () () () {} () () {}
 
     #: Construct a property.
     #:
