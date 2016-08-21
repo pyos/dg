@@ -20,6 +20,7 @@ BUILTINS = dict
   ($)     : (f *: xs **: ys -> f *: xs **: ys)
   (->)    : (-> None)
   (~>)    : (~> None)
+  (->>)   : (->> None)
 
 
 BUILTINS.update locals! where
