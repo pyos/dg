@@ -406,35 +406,43 @@ Compiler = subclass CodeType where
   #:
   pushcalltop = argc argv ~>
     kw = {}
+    va = []
+    vkw = []
 
     for x in argv => if
       x :: Expression and x.op == ':' => if
         x :: LeftBind      => raise x.invalid 'keyword argument without a value'
         x :: RightBind     => raise x.invalid 'keyword argument without a name'
         fst x.args in kw   => raise x.invalid 'keyword arguments should be unique'
+        fst x.args == '*'  => va.extend $ tail x.args
+        fst x.args == '**' => vkw.extend $ tail x.args
         fst x.args :: Name => kw !! (fst x.args).value = snd x.args
         otherwise          => raise x.invalid 'keyword arguments cannot be patterns'
-      otherwise => @pushast x
+      otherwise =>
+        @pushast x
+        argc += 1
 
-    argc += len argv - len kw
-    va  = kw.pop '*'  None
-    vkw = kw.pop '**' None
     argc   > 255 => raise (head argv).invalid 'too many positional arguments'
     len kw > 255 => raise (head argv).invalid 'too many keyword arguments'
 
-    if # NOTE 3.5 allows multiple varargs and varkwargs.
+    if
        PY_VERSION < 0x030500a4 =>
          @pushmap kw
-         va  => @pushast va
-         vkw => @pushast vkw
+         if len va > 1 => @pushname '!chain'
+         @pushast *: va
+         if len va > 1 => @append 'CALL_FUNCTION' (len va) (1 - len va)
+         if len vkw > 1 => @pushname '!keyword_union'
+         @pushast *: vkw
+         if len vkw > 1 => @append 'CALL_FUNCTION' (len vkw) (1 - len vkw)
        otherwise =>
-         va => @pushast va
-         # XXX CPython 3.5: push more varargs lists, then
-         # @append 'BUILD_LIST_UNPACK' (len va) delta: (1 - len va)
+         @pushast *: va
+         if len va > 1 =>
+           @append 'BUILD_LIST_UNPACK' (len va) delta: (1 - len va)
          @pushmap kw
-         vkw => @pushast vkw
-         # push more varkwargs, then let k = argc + 2 * len kw + len va + len vkw in
-         # @append 'BUILD_MAP_UNPACK_WITH_CALL' (k * 256 + len vkw) delta: (1 - len vkw)
+         @pushast *: vkw
+         if len vkw > 1 =>
+           k = argc + 2 * len kw + len va + len vkw
+           @append 'BUILD_MAP_UNPACK_WITH_CALL' (k * 256 + len vkw) delta: (1 - len vkw)
     @append
       'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
       0 + argc + 256 * len kw

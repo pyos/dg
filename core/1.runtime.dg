@@ -94,6 +94,8 @@ BUILTINS.update $ (*: xs -> dict xs)
   '!dict',   dict
   '!super',  super
   '!locals', locals
+  '!chain',  itertools.chain
+  '!keyword_union', *: xs -> foldl1 (x y -> dict x **: y) xs
 
   '!subclass', attrs doc qualname name module *: bases **: kwds ->
     types.new_class name bases kwds $ ns ->
