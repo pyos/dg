@@ -116,11 +116,8 @@ CodeType = subclass object where
     @generator = False  # only becomes known during generation
     @coroutine = False
     @name      = str name
+    @qualname  = getattr @cell 'qualname' '' + '.' + @name |>.lstrip '.'
     @docstring = doc
-    @qualname  = ''
-    cell => cell.qualname => @qualname += cell.qualname + '.'
-    cell => cell.function => @qualname += '<locals>.'
-    function => @qualname += name
 
     @var        = None
     @jumps      = []
