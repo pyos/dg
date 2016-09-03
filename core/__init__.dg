@@ -1,5 +1,6 @@
 import '/os'
 import '/marshal'
+import '/builtins'
 
 
 #: Recompile this directory.
@@ -11,7 +12,7 @@ import '/marshal'
 #: build :: [CodeType] str int -> [CodeType]
 #:
 build = old tag version ->
-  ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version
+  ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version __builtins__: builtins.__dict__
   for c in old => eval c ns
   for d in __path__ =>
     for f in sorted (os.listdir d) => if not $ f.startswith '_' =>
