@@ -472,12 +472,10 @@ Compiler = subclass CodeType where
     if PY_VERSION < 0x030500a4 =>
       # Too old to have BUILD_*_UNPACK, will have to emulate.
       @pushmap kw
-      if len va > 1 => @pushname '!chain'
-      @pushast *: va
-      if len va > 1 => @append 'CALL_FUNCTION' (len va) (1 - len va)
-      if len vkw > 1 => @pushname '!keyword_union'
-      @pushast *: vkw
-      if len vkw > 1 => @append 'CALL_FUNCTION' (len vkw) (1 - len vkw)
+      if len va > 1 => @pushast $ Expression (head va).loc (Name (head va).loc False '!chain') *: va
+         otherwise  => @pushast *: va
+      if len vkw > 1 => @pushast $ Expression (head vkw).loc (Name (head vkw).loc False '!keyword_union') *: vkw
+         otherwise   => @pushast *: vkw
     @append
       'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
       0 + argc + 256 * len kw
