@@ -1,6 +1,7 @@
 import '/importlib'
 import '/itertools'
 import '/posixpath'
+import '/collections'
 
 inf = float 'inf'
 
@@ -241,9 +242,14 @@ parse_defn_args = xs -> a, kw, da, dkw, va, vkw, add where
 Compiler = subclass CodeType where
   __init__ = *: args **: kwargs ~>
     @@__init__ *: args **: kwargs
-    @loops = list!  # Jumps to the beginnings of loops we're currently in. Used by `continue`.
-    @unsafe = set!  # Variables used to store exceptions. These may cause reference loops.
-    @docstr = None  # The docstring to attach to the next function.
+    #: Jumps to the beginnings of loops we're currently in. Used by `continue`.
+    @loops = list!
+    #: Variables used to store exceptions. These may cause reference loops.
+    @unsafe = set!
+    #: The docstring to attach to the next function.
+    @docstr = None
+    #: Just a counter. Used an incremented by `pushmacro`.
+    @counter = 0
     None
 
   #: Make the closure return the value from the top of the stack.
@@ -654,6 +660,26 @@ Compiler = subclass CodeType where
     @pushconst None
     @append 'YIELD_FROM'
 
+  #: Parse some text as dg code and evaluate in the current context.
+  #: Variable names that start with `_` are private and are only defined within
+  #: the invocation of the macro itself. Arguments should be ASTs; they are placed
+  #: where references to their names would be.
+  #:
+  #: pushmacro :: Node **Node -> a
+  #:
+  pushmacro = body **: args ~>
+    ast = parse body '<compiler macro>'
+    uniq = @counter += 1
+    queue = collections.deque [ast]
+    while queue =>
+      it = queue.popleft!
+      if it :: Name and it.value in args => it.__class__, it.__dict__ = (args !! it.value).__class__, (args !! it.value).__dict__
+         it :: Name and it.value.startswith '_' => it.value = '<{}:{}>'.format uniq it.value
+         it :: Expression =>
+            queue.append it.op
+            queue.extend it.args
+    @pushast ast
+
   #: Push an `if` condition onto the stack.
   #:
   #: This is the same thing as `pushast`, except if the condition is an assignment
@@ -665,38 +691,13 @@ Compiler = subclass CodeType where
   pushcond = x ~> if
     x :: Expression and x.op == '=' and x.op.infix and not (head x.args :: Name) =>
       x, y = x.args
-      @varnames !! '<packed>'
-      @varnames !! '<error>'
-
-      @pushast y
-      @popast $ Name x.loc False '<packed>'
-      @pushast
-        Expression x.loc
-          Name x.loc False 'except'
-          Expression x.loc
-            Name x.loc True  '=>'
-            Name x.loc False '<error>'
-            Expression x.loc
-              Name x.loc True '='
-              x
-              Name x.loc False '<packed>'
-          Expression x.loc
-            Name x.loc True  '=>'
-            Expression x.loc
-              Name x.loc True  '::'
-              Name x.loc False '<error>'
-              Expression x.loc
-                Name x.loc True  ','
-                Name x.loc False 'ValueError'
-                Name x.loc False 'TypeError'
-            Constant x.loc False
-          Expression x.loc
-            Name x.loc True  '=>'
-            Expression x.loc
-              Name x.loc True  'is'
-              Name x.loc False '<error>'
-              Constant x.loc None
-            Constant x.loc True
+      @pushmacro '''
+        _packed = y
+        except
+          _error =>
+            x = _packed
+            True
+          _error :: (ValueError, TypeError) => False''' x: x y: y
     otherwise => @pushast x
 
   #: Pop a value off the stack and store it somewhere.
@@ -1246,10 +1247,8 @@ Compiler = subclass CodeType where
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
          otherwise                          => @pushexcept  name try xs
 
-  #: Functions that handle `async` qualifier on their own.
-  #: Instead of awaiting on a value returned by these functions,
-  #: `async` will simply mark the node that corresponds to the name
-  #: as `.async = True`.
+  #: Compiler-defined functions that can be wrapped in an `async`.
+  #: Attempting to call `async` with anything else is a syntax error.
   asyncs = set $ map (prefix !!) ['->', '~>', 'for', 'with', 'where']
 
   #: Left infix bind overrides. Unless infix operator `R` is redefined,
@@ -1300,6 +1299,7 @@ Compiler = subclass CodeType where
     #: Construct a function with no arguments.
     #:
     #:   -> x
+    #:   ->> x   <=>   async $ -> x
     #:
     '->',  f [body] ~> @pushfunc' f.async body () () () {} () () {}
     '->>', f [body] ~> @pushfunc' True    body () () () {} () () {}
