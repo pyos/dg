@@ -3,10 +3,16 @@ import '/opcode'
 import '/struct'
 import '/collections'
 
-# Allow cross-compiling for CPython 3.5/3.6 on CPython 3.4/3.5:
-opcode.opmap.setdefault 'WITH_CLEANUP_START'  81
-opcode.opmap.setdefault 'WITH_CLEANUP_FINISH' 82
-opcode.opmap.setdefault 'BUILD_CONST_KEY_MAP' 156
+# Allow cross-compiling for CPython 3.5/3.6/3.7 on CPython 3.4/3.5:
+opcode.opmap.setdefault 'WITH_CLEANUP_START'         81
+opcode.opmap.setdefault 'WITH_CLEANUP_FINISH'        82
+opcode.opmap.setdefault 'CALL_FUNCTION_EX'           142
+opcode.opmap.setdefault 'BUILD_LIST_UNPACK'          149
+opcode.opmap.setdefault 'BUILD_MAP_UNPACK'           150
+opcode.opmap.setdefault 'BUILD_MAP_UNPACK_WITH_CALL' 151
+opcode.opmap.setdefault 'BUILD_TUPLE_UNPACK'         152
+opcode.opmap.setdefault 'BUILD_SET_UNPACK'           153
+opcode.opmap.setdefault 'BUILD_CONST_KEY_MAP'        156
 
 
 #: Calculate the length of a bytecode sequence given (opcode, argument) pairs, in bytes.

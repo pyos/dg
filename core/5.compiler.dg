@@ -425,24 +425,59 @@ Compiler = subclass CodeType where
     argc   > 255 => raise (head argv).invalid 'too many positional arguments'
     len kw > 255 => raise (head argv).invalid 'too many keyword arguments'
 
-    if
-       PY_VERSION < 0x030500a4 =>
-         @pushmap kw
-         if len va > 1 => @pushname '!chain'
-         @pushast *: va
-         if len va > 1 => @append 'CALL_FUNCTION' (len va) (1 - len va)
-         if len vkw > 1 => @pushname '!keyword_union'
-         @pushast *: vkw
-         if len vkw > 1 => @append 'CALL_FUNCTION' (len vkw) (1 - len vkw)
-       otherwise =>
-         @pushast *: va
-         if len va > 1 =>
-           @append 'BUILD_LIST_UNPACK' (len va) delta: (1 - len va)
-         @pushmap kw
-         @pushast *: vkw
-         if len vkw > 1 =>
-           k = argc + 2 * len kw + len va + len vkw
-           @append 'BUILD_MAP_UNPACK_WITH_CALL' (k * 256 + len vkw) delta: (1 - len vkw)
+    if PY_VERSION >= 0x030600b0 =>
+      # (TODO: use this on 3.5 via BUILD_TUPLE_UNPACK and co.? There's no BUILD_CONST_KEY_MAP...)
+      # New opcodes: (1) CALL_FUNCTION, (2) CALL_FUNCTION_KW, (3) CALL_FUNCTION_EX
+      if not va and not vkw =>
+        if kw =>
+          # (2) accepts positional + keyword arguments + tuple of keyword names
+          @pushast *: kw.values!
+          @pushconst $ tuple kw
+          return @append 'CALL_FUNCTION_KW' (argc + len kw) (0 - argc - len kw)
+        # (1) only accepts positional arguments.
+        return @append 'CALL_FUNCTION' argc (1 - argc)
+      # (3) accepts varargs and varkwargs.
+      #     To pack positional arguments, we have to transform `f x *: y z: w **: v` into
+      #     `f *: (x,) *: y **: {('z', w)} **: v` and then pack multiple var(kw)args:
+      #     `f *: (!chain (x,) y) **: (!keyword_union {('z', w)} v)`.
+      if argc or not va =>
+        # Exactly one tuple is required, so if there are only keyword arguments, we push ().
+        @append 'BUILD_TUPLE' argc (1 - argc)
+      @pushast *: va
+      if len va > not argc =>
+        @append 'BUILD_TUPLE_UNPACK' (len va + bool argc) delta: (not argc - len va)
+      if kw =>
+        # Keywords are optional -- argument to CALL_FUNCTION_EX is 0 if there are none.
+        @pushast *: kw.values!
+        @pushconst $ tuple kw
+        @append 'BUILD_CONST_KEY_MAP' (len kw) delta: (-len kw)
+      @pushast *: vkw
+      if len vkw > not kw =>
+        # 3.6b0 BUILD_MAP_UNPACK_WITH_CALL derives stack offset of function by itself.
+        @append 'BUILD_MAP_UNPACK_WITH_CALL' (len vkw + bool kw) delta: (not kw - len vkw)
+      has_kwargs = int (bool vkw or bool kw)
+      return @append 'CALL_FUNCTION_EX' has_kwargs delta: (-1 - has_kwargs)
+
+    if PY_VERSION >= 0x030500a4 =>
+      @pushast *: va
+      if len va > 1 =>
+        @append 'BUILD_TUPLE_UNPACK' (len va) delta: (1 - len va)
+      @pushmap kw
+      @pushast *: vkw
+      if len vkw > 1 =>
+        # Argument is (number of entries) + 256 * (stack offset to function object).
+        k = argc + 2 * len kw + len va + len vkw
+        @append 'BUILD_MAP_UNPACK_WITH_CALL' (k * 256 + len vkw) delta: (1 - len vkw)
+
+    if PY_VERSION < 0x030500a4 =>
+      # Too old to have BUILD_*_UNPACK, will have to emulate.
+      @pushmap kw
+      if len va > 1 => @pushname '!chain'
+      @pushast *: va
+      if len va > 1 => @append 'CALL_FUNCTION' (len va) (1 - len va)
+      if len vkw > 1 => @pushname '!keyword_union'
+      @pushast *: vkw
+      if len vkw > 1 => @append 'CALL_FUNCTION' (len vkw) (1 - len vkw)
     @append
       'CALL_FUNCTION' + '_VAR' * bool va + '_KW' * bool vkw
       0 + argc + 256 * len kw
