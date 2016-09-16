@@ -2,6 +2,7 @@ import '/re'
 import '/sys'
 import '/time'
 import '/types'
+import '/asyncio'
 import '/builtins'
 
 import 'BUILTINS'
@@ -89,6 +90,8 @@ runrepl = fd ->
   rdl = Readline sys.stdin sys.stdout
   rdl.completion_ns = module.__dict__
 
+  coroutine = getattr types 'CoroutineType' None
+
   while True => except
     e => x, assignment = next $ dropwhile (not <- fst) $
            map (x -> compilerepl x module.__dict__) $
@@ -100,7 +103,10 @@ runrepl = fd ->
     e is None => except
       e =>
         module._ = eval x module.__dict__
-        not assignment => sys.displayhook module._
+        not assignment =>
+          coroutine and module._ :: coroutine =>
+            module._ = asyncio.get_event_loop!.run_until_complete module._
+          sys.displayhook module._
       e :: SystemExit    => raise e
       e :: BaseException => sys.excepthook (type e) e e.__traceback__
 
