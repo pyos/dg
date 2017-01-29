@@ -311,7 +311,7 @@ Readline = subclass object where
     @erase state
     prefix = if
       state.prompt :: collections.Callable => state.prompt state
-      otherwise => state.prompt
+      otherwise => str state.prompt
     prelen = len $ Sequence.sub (m -> m.group 1 or '') prefix
     wh, ww = @tty.size
     h, w = prelen + len state.buffer `divmod` ww
@@ -366,7 +366,7 @@ Readline = subclass object where
     @erase state
     prefix = if
       state.prompt :: collections.Callable => state.prompt state
-      otherwise => state.prompt
+      otherwise => str state.prompt
     @tty.write $ prefix + @preprocess state.buffer + '\n\r'
     @tty.flush
     state
