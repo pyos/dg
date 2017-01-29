@@ -102,11 +102,12 @@ runrepl = fd ->
     e :: BaseException     => sys.excepthook (type e) e e.__traceback__, time.sleep 0.1
     e is None => except
       e =>
-        module._ = eval x module.__dict__
+        v = eval x module.__dict__
         not assignment =>
-          coroutine and module._ :: coroutine =>
-            module._ = asyncio.get_event_loop!.run_until_complete module._
-          sys.displayhook module._
+          coroutine and v :: coroutine =>
+            v = asyncio.get_event_loop!.run_until_complete v
+          sys.displayhook v
+        hasattr builtins '_' => module._ = builtins._
       e :: SystemExit    => raise e
       e :: BaseException => sys.excepthook (type e) e e.__traceback__
 
