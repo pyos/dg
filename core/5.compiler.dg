@@ -1194,7 +1194,7 @@ Compiler = subclass CodeType where
     #:   for x in xs => continue!
     #:
     'continue', fix 0 0 $ f _ ~> if
-      @loops    => (last @loops).set
+      @loops    => (last @loops).set_copy
       otherwise => raise f.invalid 'no loop to `continue`'
 
     #: Yield control to the caller. Enforces a generator context.

@@ -50,6 +50,12 @@ Jump = subclass object where
     @set
     False
 
+  set_copy = ~>
+    j = Jump @code @reverse @op @delta
+    j.start = @start
+    j.deps = (type j.deps) j.deps
+    j.set
+
   set = ~>
     @reverse => @code.append @op 0 @delta
     @end => raise AssertionError 'cannot set one jump many times'
