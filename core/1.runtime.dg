@@ -280,7 +280,12 @@ _NEW_BUILTINS = BUILTINS.copy!
 globals!.update BUILTINS
 BUILTINS.update $ if
   __builtins__ :: dict => __builtins__
-  otherwise => __builtins__.dict!
+  otherwise => __builtins__.__dict__
+
+
+add_module_builtins = module -> if
+  PY_TAG.startswith 'pypy3-' => module.__dict__.update _NEW_BUILTINS
+  otherwise => module.__builtins__ = BUILTINS
 
 
 ModuleLoader = subclass importlib.machinery.SourceFileLoader where
@@ -288,8 +293,7 @@ ModuleLoader = subclass importlib.machinery.SourceFileLoader where
     compile (data.decode 'utf-8') filename
 
   exec_module = module ~>
-    if PY_TAG.startswith 'pypy3-' => module.__dict__.update _NEW_BUILTINS
-       otherwise => module.__builtins__ = BUILTINS
+    add_module_builtins module
     importlib.machinery.SourceFileLoader.exec_module self module
 
 
@@ -304,5 +308,4 @@ sys.meta_path.insert 0 $ subclass importlib.abc.MetaPathFinder where
 # When doing `python -m ...`, instead of actually importing `__main__.dg` `runpy`
 # attempts to execute it directly in a pre-existing module named `__main__`. Since
 # it wasn't imported through `ModuleLoader`, it lacks the new builtins, which is bad.
-if PY_TAG.startswith 'pypy3-' => (sys.modules !! '__main__').__dict__.update _NEW_BUILTINS
-   otherwise => (sys.modules !! '__main__').__builtins__ = BUILTINS
+add_module_builtins (sys.modules !! '__main__')

@@ -10,6 +10,7 @@ import 'Name'
 import 'LeftBind'
 import 'Expression'
 import 'Compiler'
+import 'add_module_builtins'
 import 'parse'
 import 'compilefd'
 import 'compileast'
@@ -76,7 +77,7 @@ compilerepl = source globals: () -> except
 runcode = code ->
   md = sys.modules !! '__main__' = types.ModuleType '__main__'
   md.__file__     = code.co_filename
-  md.__builtins__ = BUILTINS
+  add_module_builtins md
   eval code md.__dict__
 
 
@@ -85,7 +86,7 @@ runrepl = fd ->
   sys.ps1   = getattr sys 'ps1' '>>> '
   sys.ps2   = getattr sys 'ps2' '... '
   module    = sys.modules !! '__main__' = types.ModuleType '__main__'
-  module.__builtins__ = BUILTINS
+  add_module_builtins module
 
   rdl = Readline sys.stdin sys.stdout
   rdl.completion_ns = module.__dict__
