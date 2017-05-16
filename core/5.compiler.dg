@@ -584,54 +584,44 @@ Compiler = subclass CodeType where
     main = @jump 'SETUP_EXCEPT' delta: +8  # +what?
     @pushast try
     @append 'ROT_TWO'   delta: +0
-    @append 'POP_BLOCK' delta: -1
-    # There was no exception, we'll store None instead.
-    # The second one will be used to skip over POP_EXCEPT or
-    # consumed by END_FINALLY.
-    @pushconst None
-    @pushconst None
-    @popast name
-    # Exceptions reference tracebacks which reference frames which reference local
-    # variables which an exception is, causing a reference loop that defers all destructors
-    # until the next GC sweep. We're going to break that loop.
-    name :: Name and name.value in @varnames => @unsafe.add (name.value, @varnames !! name.value)
-
+    @append 'POP_TOP'   delta: -1
+    @append 'POP_BLOCK'
+    @pushconst False
+    @pushconst None  # No exception.
     with @jump 'JUMP_FORWARD' =>
-      # Finishing SETUP_EXCEPT with an exception pushes
-      # 3 items onto the stack: traceback, value, type.
-      # Value needs to be stored in `name`.
-      main.set
-      @append 'ROT_TWO' delta: +0
-      @append 'DUP_TOP' delta: +1
-      @popast name
-      @append 'ROT_TWO' delta: +0
-      @pushconst True  # This will trigger POP_EXCEPT.
-
+      main.set  # Exception is on stack, top to bottom: type, value, traceback.
+      @append 'DUP_TOP_TWO' # delta already accounted for by two conditional `pushconst`s
+      @append 'POP_TOP' delta: -1
+      @pushconst True
+      @append 'ROT_TWO'
+    @popast name
+    # Basically an `if`.
     jumps = list
       where for (cond, action) in cases =>
         @pushcond cond
         with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
           @pushast action
           yield $ @jump 'JUMP_FORWARD' delta: -1
-
-    # Disable POP_EXCEPT by popping True off the stack.
-    # Only happens if there was an exception.
-    with @jump 'JUMP_IF_FALSE_OR_POP' delta: -1 => None
-    # This will re-raise the exception if there was one.
-    # Otherwise, it will pop None off the stack.
-    @append 'END_FINALLY' delta: -9
-
+    # Basically an `else`. Rethrow an exception, if it exists.
+    with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+      @append 'END_FINALLY' delta: -8
     with @jump 'JUMP_FORWARD' =>
-      # If a handler was triggered, there's now a return value
-      # on top of the stack. It needs to be stored for safekeeping.
       for j in jumps => j.set
-      @append 'STORE_FAST' $ @varnames !! '<except-result>'
-      # Traceback, value, and type may still be on stack.
-      # They didn't stop existing or anything.
-      with @jump 'POP_JUMP_IF_FALSE' => @append 'POP_EXCEPT'
-      @append 'POP_TOP'  # There goes the result of the try clause.
-      @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
-      @append 'DELETE_FAST' $ @varnames !! '<except-result>'
+      # When an `if` clause matched, override the result value with its result.
+      @append 'ROT_TWO'
+      with @jump 'POP_JUMP_IF_FALSE' =>
+        # POP_EXCEPT will remove the result from the stack, but there are 3 more items between it
+        # and the space we reserved. There's no ROT_FIVE, sadly. We'll use a temporary variable.
+        @append 'STORE_FAST' $ @varnames !! '<except-result>'
+        @append 'POP_EXCEPT'
+        @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
+        @append 'DELETE_FAST' $ @varnames !! '<except-result>'
+      @append 'ROT_TWO'
+      @append 'POP_TOP'  # already accounted for in JUMP_FORWARD
+    # Exceptions reference tracebacks which reference frames which reference local
+    # variables which an exception is, causing a reference loop that defers all destructors
+    # until the next GC sweep. We're going to break that loop.
+    name :: Name and name.value in @varnames => @unsafe.add (name.value, @varnames !! name.value)
 
   #: `await` on the value on top of the stack.
   #:
