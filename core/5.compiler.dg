@@ -439,9 +439,9 @@ Compiler = subclass CodeType where
           # (2) accepts positional + keyword arguments + tuple of keyword names
           @pushast *: kw.values!
           @pushconst $ tuple kw
-          return @append 'CALL_FUNCTION_KW' (argc + len kw) (0 - argc - len kw)
+          return @append 'CALL_FUNCTION_KW' (argc + len kw) (-1 - argc - len kw)
         # (1) only accepts positional arguments.
-        return @append 'CALL_FUNCTION' argc (1 - argc)
+        return @append 'CALL_FUNCTION' argc (0 - argc)
       # (3) accepts varargs and varkwargs.
       #     To pack positional arguments, we have to transform `f x *: y z: w **: v` into
       #     `f *: (x,) *: y **: {('z', w)} **: v` and then pack multiple var(kw)args:
@@ -551,7 +551,7 @@ Compiler = subclass CodeType where
     a.insert 0 'self'
     @pushfunc' async body a *: xs
 
-  #: Push a result of try-except-finally onto the stack.
+  #: Append a result of try-except-finally to the list on top of the stack.
   #:
   #: Returns the same value as `pushexcept`. `finally` is evaluated in the end,
   #: but the value it returns is ignored.
@@ -559,8 +559,6 @@ Compiler = subclass CodeType where
   #: pushfinally :: Node Node [(Node, Node)] Node -> a
   #:
   pushfinally = name try cases finally ~>
-    # Blindly copied from Python by `diff`ing
-    # disassembly of code with `finally` and without one.
     with @jump 'SETUP_FINALLY' delta: +3 =>
       @pushexcept name try cases
       @append 'POP_BLOCK'
@@ -572,7 +570,7 @@ Compiler = subclass CodeType where
     @append 'POP_TOP'     delta: -1
     @append 'END_FINALLY' delta: -4
 
-  #: Push a result of try-except onto the stack.
+  #: Append a result of try-except to the list on top of the stack.
   #:
   #: If any condition matched, the assigned action is evaluated and its value
   #: returned. If not, but no exception was raised, the value of `try` is
@@ -583,8 +581,7 @@ Compiler = subclass CodeType where
   pushexcept = name try cases ~>
     main = @jump 'SETUP_EXCEPT' delta: +8  # +what?
     @pushast try
-    @append 'ROT_TWO'   delta: +0
-    @append 'POP_TOP'   delta: -1
+    @append 'LIST_APPEND' 1 delta: -1
     @append 'POP_BLOCK'
     @pushconst False
     @pushconst None  # No exception.
@@ -610,14 +607,21 @@ Compiler = subclass CodeType where
       # When an `if` clause matched, override the result value with its result.
       @append 'ROT_TWO'
       with @jump 'POP_JUMP_IF_FALSE' =>
-        # POP_EXCEPT will remove the result from the stack, but there are 3 more items between it
-        # and the space we reserved. There's no ROT_FIVE, sadly. We'll use a temporary variable.
+        # XXX I've failed to understand exactly what POP_EXCEPT does and how many items are on the stack.
         @append 'STORE_FAST' $ @varnames !! '<except-result>'
+        @append 'POP_TOP'  # type, value, traceback; stack size accounted for by END_FINALLY
+        @append 'POP_TOP'
+        @append 'POP_TOP'
         @append 'POP_EXCEPT'
         @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
         @append 'DELETE_FAST' $ @varnames !! '<except-result>'
-      @append 'ROT_TWO'
-      @append 'POP_TOP'  # already accounted for in JUMP_FORWARD
+        @append 'LIST_APPEND' 1  # stack size accounted for in JUMP_FORWARD
+        done = @jump 'JUMP_FORWARD'
+      @append 'LIST_APPEND' 1
+      @append 'DUP_TOP' delta: +1
+      @pushconst -2
+      @append 'DELETE_SUBSCR' delta: -2  # the result of `try`
+    done.set
     # Exceptions reference tracebacks which reference frames which reference local
     # variables which an exception is, causing a reference loop that defers all destructors
     # until the next GC sweep. We're going to break that loop.
@@ -1073,8 +1077,8 @@ Compiler = subclass CodeType where
         otherwise => Name ctx.loc False '_', ctx
 
       opcode = 'SETUP_WITH'
-      @pushconst None  # reserve space for a return value
-      @pushast   ctx
+      @append 'BUILD_LIST' 0 delta: +1
+      @pushast ctx
 
       f.async => if
         # XXX CPython 3.5: `async with`
@@ -1085,13 +1089,12 @@ Compiler = subclass CodeType where
         # XXX CPython 3.4: simulate as `with var = yield from ctx => body`
         otherwise => @awaittop 'GET_AWAITABLE' f
 
-      with @jump opcode delta: +8 =>  #=> None, __exit__, return value of __enter__
-        @popast    var                #=> None, __exit__
-        @pushast   body               #=> None, __exit__, return value
-        @append    'ROT_THREE' delta: +0
-        @append    'ROT_TWO'   delta: +0
-        @append    'POP_BLOCK' delta: -1     #=> return value, __exit__
-        @pushconst None                      # this is for END_FINALLY
+      with @jump opcode delta: +5 =>  # pops context, pushes __exit__ and returned value
+        @popast var
+        @pushast body
+        @append 'LIST_APPEND' 2 delta: -1
+        @append 'POP_BLOCK'
+        @pushconst None  # this is for END_FINALLY
       if # XXX CPython 3.4: `__exit__` always synchronous.
          PY_VERSION < 0x030500a4 =>
            @append 'WITH_CLEANUP' delta: -1
@@ -1099,7 +1102,8 @@ Compiler = subclass CodeType where
            @append 'WITH_CLEANUP_START'
            f.async => @awaittop 'GET_AWAITABLE' f
            @append 'WITH_CLEANUP_FINISH' delta: -1
-      @append 'END_FINALLY'  delta: -8
+      @append 'END_FINALLY' delta: -5
+      @append 'UNPACK_SEQUENCE' 1
 
     #: Repeat while a condition is true.
     #:
@@ -1233,9 +1237,10 @@ Compiler = subclass CodeType where
     #:     finally => something  # will be executed even if exception is going to be rethrown
     #:
     'except', fix 1 inf $ pair_args $ f [(name, try), *xs] ~>
-      @pushconst None  # Reserve space under the block for return value.
+      @append 'BUILD_LIST' 0 delta: +1
       if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
          otherwise                          => @pushexcept  name try xs
+      @append 'UNPACK_SEQUENCE' 1
 
   #: Compiler-defined functions that can be wrapped in an `async`.
   #: Attempting to call `async` with anything else is a syntax error.
