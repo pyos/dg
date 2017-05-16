@@ -304,4 +304,5 @@ sys.meta_path.insert 0 $ subclass importlib.abc.MetaPathFinder where
 # When doing `python -m ...`, instead of actually importing `__main__.dg` `runpy`
 # attempts to execute it directly in a pre-existing module named `__main__`. Since
 # it wasn't imported through `ModuleLoader`, it lacks the new builtins, which is bad.
-(sys.modules !! '__main__').__builtins__ = BUILTINS
+if PY_TAG.startswith 'pypy3-' => (sys.modules !! '__main__').__dict__.update _NEW_BUILTINS
+   otherwise => (sys.modules !! '__main__').__builtins__ = BUILTINS
