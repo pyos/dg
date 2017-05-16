@@ -6,7 +6,8 @@ import '/functools'
 import '/itertools'
 import '/posixpath'
 import '/importlib'
-import '/importlib/machinery'
+import '/importlib/abc' qualified
+import '/importlib/machinery' qualified
 import '/collections'
 
 
@@ -271,6 +272,8 @@ BUILTINS.update locals! where
   scanl1 = f xs -> itertools.accumulate xs f
   # FIXME should also define foldr(1) and scanr(1). Probably.
 
+_NEW_BUILTINS = BUILTINS.copy!
+
 
 # Overriding `__builtins__` after the code has already started running
 # does nothing. We'll have to dump builtins into the global namespace.
@@ -280,28 +283,23 @@ BUILTINS.update $ if
   otherwise => __builtins__.dict!
 
 
-ModuleLoader = subclass machinery.SourceFileLoader where
+ModuleLoader = subclass importlib.machinery.SourceFileLoader where
   source_to_code = data filename ~>
     compile (data.decode 'utf-8') filename
 
   exec_module = module ~>
-    module.__builtins__ = BUILTINS
-    machinery.SourceFileLoader.exec_module self module
+    if PY_TAG.startswith 'pypy3-' => module.__dict__.update _NEW_BUILTINS
+       otherwise => module.__builtins__ = BUILTINS
+    importlib.machinery.SourceFileLoader.exec_module self module
 
 
-sys.path_importer_cache.clear!
-sys.path_hooks.append $ machinery.FileFinder.path_hook *:
-  #  * Python >= 3.3 uses importlib for everything.
-  #  * Its default import behavior is implemented as a path hook that
-  #    chooses a module loader by looking at the extension.
-  #  * Once a path hook is chosen, it can't fall back to another one,
-  #    so we have to extend the default hook, not add our own.
-  #  * A path hook is a function, not a class, so we have to look into its
-  #    free variables to find out the original set of module loaders.
-  where for r:(_, exts) in ((sys.path_hooks.pop -1).__closure__ !! -1).cell_contents => if
-    '.dg' in exts => # Remove the old version of the hook on `import reload`.
-    '.py' in exts => yield (ModuleLoader, ['.dg']), yield r
-    otherwise     => yield r  # ^-- put our hook right before the default hook.
+sys.meta_path.insert 0 $ subclass importlib.abc.MetaPathFinder where
+  find_spec = classmethod $ fullname path: None target: None ~> next
+    where for entry in (if (path is None => sys.path) (otherwise => path)) =>
+      entry :: (str, bytes) =>
+        spec = importlib.machinery.FileFinder entry (ModuleLoader, ['.dg']) |>.find_spec fullname target
+        spec and spec.loader => yield spec
+    None
 
 # When doing `python -m ...`, instead of actually importing `__main__.dg` `runpy`
 # attempts to execute it directly in a pre-existing module named `__main__`. Since
