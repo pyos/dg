@@ -275,7 +275,9 @@ BUILTINS.update locals! where
 # Overriding `__builtins__` after the code has already started running
 # does nothing. We'll have to dump builtins into the global namespace.
 globals!.update BUILTINS
-BUILTINS.update __builtins__
+BUILTINS.update $ if
+  __builtins__ :: dict => __builtins__
+  otherwise => __builtins__.dict!
 
 
 ModuleLoader = subclass machinery.SourceFileLoader where
