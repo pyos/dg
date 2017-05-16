@@ -3,9 +3,12 @@ import '/opcode'
 import '/struct'
 import '/collections'
 
-# Allow cross-compiling for CPython 3.5/3.6/3.7 on CPython 3.4/3.5:
+# Allow cross-compiling for CPython 3.5/3.6/3.7 on CPython 3.4/3.5 and vice versa:
 opcode.opmap.setdefault 'WITH_CLEANUP_START'         81
 opcode.opmap.setdefault 'WITH_CLEANUP_FINISH'        82
+opcode.opmap.setdefault 'MAKE_CLOSURE'               134
+opcode.opmap.setdefault 'CALL_FUNCTION_VAR'          140
+opcode.opmap.setdefault 'CALL_FUNCTION_VAR_KW'       142
 opcode.opmap.setdefault 'CALL_FUNCTION_EX'           142
 opcode.opmap.setdefault 'BUILD_LIST_UNPACK'          149
 opcode.opmap.setdefault 'BUILD_MAP_UNPACK'           150
