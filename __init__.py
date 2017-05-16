@@ -1,5 +1,6 @@
 import os
 import sys
+import types
 
 try:
     PY_TAG     = sys.implementation.cache_tag or 'unknown'
@@ -16,6 +17,11 @@ def load():
             for code in load(fd):
                 eval(code)
     except FileNotFoundError:
-        raise ImportError('python implementation {!r} not supported'.format(PY_TAG))
+        try:
+            with open(os.path.join(BUNDLE_DIR, PY_TAG + '.dgbundle.py')) as fd:
+                for code in eval(fd.read(), {'C': types.CodeType}):
+                    eval(code)
+        except FileNotFoundError:
+            raise ImportError('python implementation {!r} not supported'.format(PY_TAG))
 
 load()

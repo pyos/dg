@@ -65,12 +65,15 @@ if mode == '-h' => print USAGE
      this = core.load dg.PY_TAG dg.BUNDLE_DIR
      this = list $ core.build this tag version
      print '[INFO] build 1 (bootstrap) ok'
-     if tag != dg.PY_TAG => print '[WARN] building for a different VM; self-testing impossible.'
-        otherwise =>
-          this = list $ core.build this tag version
-          this = list $ core.build this tag version
-          print '[INFO] builds 2 & 3 (test) ok'
-     core.save this tag dg.BUNDLE_DIR
+     if
+       tag != dg.PY_TAG =>
+         print '[WARN] building for a different VM; self-testing impossible.'
+         core.save_compat this tag dg.BUNDLE_DIR
+       otherwise =>
+         this = list $ core.build this tag version
+         this = list $ core.build this tag version
+         print '[INFO] builds 2 & 3 (test) ok'
+         core.save this tag dg.BUNDLE_DIR
 
    mode == '-m' => runpy.run_module _arg! (dict __builtins__: dg.BUILTINS) '__main__' True
    mode == '-c' => repl.runcode $ dg.compile _arg! '<command>'

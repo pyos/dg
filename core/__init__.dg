@@ -1,4 +1,5 @@
 import '/os'
+import '/types'
 import '/marshal'
 import '/builtins'
 
@@ -28,11 +29,9 @@ build = old tag version ->
 #: load :: str str -> [CodeType]
 #:
 load = tag dirname ->
-  # TODO add support for some VM-independent (well, as much as possible) format.
-  #      Pure Python files that create`types.CodeType` objects, maybe? The point is,
-  #      it should be possible to use one VM (e.g. CPython) to create bundles for
-  #      some other VM (e.g. PyPy) that uses an incompatible marshalling protocol.
-  with fd = open (os.path.join dirname (tag + '.dgbundle')) 'rb' => marshal.load fd
+  except
+    err => with fd = open (os.path.join dirname (tag + '.dgbundle')) 'rb' => marshal.load fd
+    err :: FileNotFoundError => with fd = open (os.path.join dirname (tag + '.dgbundle.py')) => eval fd.read! {('C', types.CodeType)}
 
 
 #: Write the compiled code bundle as returned by `rebuild`.
@@ -50,3 +49,23 @@ save = code tag dirname ->
   # is an error in the compiler, so opening the file before finishing the
   # encoding process is undesirable.
   with fd = open (os.path.join dirname (tag + '.dgbundle')) 'wb' => fd.write data
+
+
+_repr = x -> if
+  x :: types.CodeType =>
+    fields  = ['argcount', 'kwonlyargcount', 'nlocals', 'stacksize', 'flags', 'code', 'consts', 'names']
+    fields += ['varnames', 'filename', 'name', 'firstlineno', 'lnotab', 'freevars', 'cellvars']
+    'C({})'.format $ ','.join $ map (f -> _repr $ getattr x $ 'co_' + f) fields
+  x :: list  => '[{}]'.format $ ''.join $ map (i -> _repr i + ',') x
+  x :: tuple => '({})'.format $ ''.join $ map (i -> _repr i + ',') x
+  otherwise => repr x
+
+
+#: Write the compiled bundle without using `marshal`.
+#:
+#: save_compat :: [CodeType] str str -> a
+#:
+save_compat = code tag dirname ->
+  data = _repr code
+  os.makedirs dirname exist_ok: True
+  with fd = open (os.path.join dirname (tag + '.dgbundle.py')) 'w' => fd.write data
