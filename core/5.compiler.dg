@@ -1133,8 +1133,9 @@ Compiler = subclass CodeType where
       @pushconst False
       with @jump 'SETUP_LOOP' =>
         @pushast $ snd var.args
-        if f.async   => @awaittop 'GET_AITER' f
-           otherwise => @append   'GET_ITER'
+        if f.async and PY_VERSION < 0x03070000 => @awaittop 'GET_AITER' f
+           f.async => @append 'GET_AITER'
+           otherwise => @append 'GET_ITER'
 
         restart = @jump 'JUMP_ABSOLUTE' True
         @loops.append $ @jump 'CONTINUE_LOOP' reverse: True
