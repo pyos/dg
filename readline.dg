@@ -21,6 +21,10 @@ Sequence = re.compile r'''(?sx)\033(?:
 )|(.)'''
 
 
+#: A sequence of characters considered by the real GNU readline to be zero-length.
+ZeroLengthSequence = re.compile r'''\001.*?\002'''
+
+
 Key = subclass object where
   DEL_ASCII = '\x7f'     # This is actually used as Backspace. Probably.
   DEL_ANSI  = '\033[3~'  # *This* is Delete.
@@ -312,7 +316,7 @@ Readline = subclass object where
     prefix = if
       state.prompt :: collections.Callable => state.prompt state
       otherwise => str state.prompt
-    prelen = len $ Sequence.sub (m -> m.group 1 or '') prefix
+    prelen = len $ ZeroLengthSequence.sub '' prefix
     wh, ww = @tty.size
     h, w = prelen + len state.buffer `divmod` ww
     y, x = prelen + state.position   `divmod` ww
