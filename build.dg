@@ -7,7 +7,7 @@ import '/hamlike'
 
 
 p_file     = path -> with fd = open path => fd.read -1
-p_sass     = path -> ((subprocess.Popen ('sass', '--style', 'compressed', path) stdout: subprocess.PIPE).stdout.read -1).decode 'utf-8'
+p_sass     = path -> ((subprocess.Popen ('sassc', '--style', 'compressed', path) stdout: subprocess.PIPE).stdout.read -1).decode 'utf-8'
 p_hamlike  = path data -> (hamlike.Hamlike data path).block.data
 p_markdown = path data -> dmark.parse data
 

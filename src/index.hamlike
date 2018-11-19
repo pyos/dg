@@ -26,6 +26,7 @@
           %h4 -> Overthrow the oppressive dictatorship!
           %p
             Guido rejecting your awesome syntactic proposals? He's not in charge anymore.
+            (This point has not aged well, has it?)
 
         %div.col-sm-4
           %h4 -> Annoy advocates of the category theory!
@@ -49,7 +50,8 @@
         %div.col-sm-4
           %h4 -> It even runs on PyPy!
           %p
-            Got to wait for a JIT-enabled PyPy 3.3 first, though.
+            %strike -> Got to wait for a JIT-enabled PyPy 3.3 first, though.
+            Rejoice, for the wait is over!
 
         %div.col-sm-4
           %h4 -> Seriously, what IS this?
