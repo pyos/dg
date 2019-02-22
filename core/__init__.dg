@@ -12,9 +12,11 @@ import '/builtins'
 #:
 #: build :: [CodeType] str int -> [CodeType]
 #:
-build = old tag version ->
+build = old tag version bundle_tag: None ->
   ns = dict __name__: 'dg' PY_TAG: tag PY_VERSION: version __builtins__: builtins.__dict__
   for c in old => eval c ns
+  bundle_tag is None or
+    yield $ (ns !! 'compile') ('BUNDLE_TAG = {!r}'.format bundle_tag)
   for d in __path__ =>
     for f in sorted (os.listdir d) => if not $ f.startswith '_' =>
       with fd = open (os.path.join d f) 'r' =>

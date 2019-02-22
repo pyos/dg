@@ -7,6 +7,7 @@ import '/dg'
 import '/dg/core'
 import '/dg/repl'
 
+BUNDLE_TAG = 1520668605
 
 USAGE = '''
 python3 [options] -m dg -h
@@ -56,25 +57,31 @@ _arg = -> if
 sys.argv.pop 0  # `-m`
 sys.argv = mode, *_ = sys.argv or ['-',]
 
+rebuild = tag version verbose ->
+  this = core.load dg.PY_TAG dg.BUNDLE_DIR
+  this = list $ core.build this tag version BUNDLE_TAG
+  verbose => print '[INFO] build 1 (bootstrap) ok'
+  if
+    tag != dg.PY_TAG =>
+      verbose => print '[WARN] building for a different VM; self-testing impossible.'
+      core.save_compat this tag dg.BUNDLE_DIR
+    otherwise =>
+      this = list $ core.build this tag version BUNDLE_TAG
+      this = list $ core.build this tag version BUNDLE_TAG
+      verbose => print '[INFO] builds 2 & 3 (test) ok'
+      core.save this tag dg.BUNDLE_DIR
+
+if mode != '-b' and getattr dg 'BUNDLE_TAG' None != BUNDLE_TAG =>
+   except err => rebuild dg.PY_TAG dg.PY_VERSION verbose: False
+          err :: Exception => print '[WARN] dg bundle outdated, and rebuild failed; try python -m dg -b' file: sys.stderr
+
 if mode == '-h' => print USAGE
    mode == '-b' =>
      tag, version = if
        len sys.argv > 2 => sys.argv !! 1, int (sys.argv !! 2) 16
        len sys.argv > 1 => sys.argv !! 1, dg.PY_VERSION
        otherwise        => dg.PY_TAG,     dg.PY_VERSION
-     this = core.load dg.PY_TAG dg.BUNDLE_DIR
-     this = list $ core.build this tag version
-     print '[INFO] build 1 (bootstrap) ok'
-     if
-       tag != dg.PY_TAG =>
-         print '[WARN] building for a different VM; self-testing impossible.'
-         core.save_compat this tag dg.BUNDLE_DIR
-       otherwise =>
-         this = list $ core.build this tag version
-         this = list $ core.build this tag version
-         print '[INFO] builds 2 & 3 (test) ok'
-         core.save this tag dg.BUNDLE_DIR
-
+     rebuild tag version verbose: True
    mode == '-m' => runpy.run_module _arg! (dict __builtins__: dg.BUILTINS) '__main__' True
    mode == '-c' => repl.runcode $ dg.compile _arg! '<command>'
    mode != '-'  => repl.runfile $ open encoding: 'utf-8' $ head sys.argv
