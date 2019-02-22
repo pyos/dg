@@ -17,19 +17,21 @@ opcode.opmap.setdefault 'BUILD_TUPLE_UNPACK'         152
 opcode.opmap.setdefault 'BUILD_SET_UNPACK'           153
 opcode.opmap.setdefault 'BUILD_CONST_KEY_MAP'        156
 
+_PY_FEATURE_WORDCODE = (PY_VERSION >= 0x030600a3)
+
 
 #: Calculate the length of a bytecode sequence given (opcode, argument) pairs, in bytes.
 #:
 #: codelen :: [(int, int)] -> int
 #:
 codelen = if
-  PY_VERSION >= 0x030600a3 => seq -> sum
-    # Python 3.6a3+ uses fixed-length wordcode. Additional bytes are encoded as
+  _PY_FEATURE_WORDCODE => seq -> sum
+    # CPython/PyPy 3.6a3+ use fixed-length wordcode. Additional bytes are encoded as
     # EXTENDED_ARG opcodes.
     where for (c, v) in seq => yield $ 2 + abs (v.bit_length! - 1) // 8 * 2
 
   otherwise => seq -> sum
-    # Python 3.5 uses 1-byte opcodes with optional 2-byte arguments.
+    # CPython/PyPy 3.5 use 1-byte opcodes with optional 2-byte arguments.
     # Additional words are encoded as EXTENDED_ARG opcodes.
     where for (c, v) in seq => yield $ if
       c < opcode.HAVE_ARGUMENT => 1
@@ -208,7 +210,7 @@ CodeType = subclass object where
   #:
   code = if
     # See `codelen`.
-    PY_VERSION >= 0x030600a3 => (op, arg) ~> if
+    _PY_FEATURE_WORDCODE => (op, arg) ~> if
       arg < 0     => @code (op, len @cellvars - arg - 1)
       arg < 0x100 => struct.pack '<BB' op arg
       otherwise   => @code (opcode.opmap !! 'EXTENDED_ARG', arg >> 8) +

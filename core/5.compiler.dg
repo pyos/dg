@@ -3,6 +3,12 @@ import '/itertools'
 import '/posixpath'
 import '/collections'
 
+_PY_FEATURE_UNIFIED_MAKE_FUNCTION = (PY_VERSION >= 0x030600a3)
+_PY_FEATURE_UNIFIED_CALL_FUNCTION = (PY_VERSION >= 0x030600b0 and PY_TAG.startswith 'cpython-')
+_PY_FEATURE_NATIVE_VARARG_PACK    = (PY_VERSION >= 0x030500a4)
+_PY_FEATURE_ASYNC                 = (PY_VERSION >= 0x030500a4)
+_PY_FEATURE_SYNC_AITER            = (PY_VERSION >= 0x03070000) # not sure about the build
+
 inf = float 'inf'
 
 
@@ -327,7 +333,7 @@ Compiler = subclass CodeType where
     code.return_top
     const = code.frozen
     if
-      PY_VERSION >= 0x030600a3 =>
+      _PY_FEATURE_UNIFIED_MAKE_FUNCTION =>
         # Python 3.6a3+ uses a new MAKE_FUNCTION opcode.
         #   1. bit 0 set: tuple of default positional parameters
         #   2. bit 1 set: map of default keyword parameters
@@ -431,7 +437,7 @@ Compiler = subclass CodeType where
     argc   > 255 => raise (head argv).invalid 'too many positional arguments'
     len kw > 255 => raise (head argv).invalid 'too many keyword arguments'
 
-    if PY_VERSION >= 0x030600b0 =>
+    if _PY_FEATURE_UNIFIED_CALL_FUNCTION =>
       # (TODO: use this on 3.5 via BUILD_TUPLE_UNPACK and co.? There's no BUILD_CONST_KEY_MAP...)
       # New opcodes: (1) CALL_FUNCTION, (2) CALL_FUNCTION_KW, (3) CALL_FUNCTION_EX
       if not va and not vkw =>
@@ -443,15 +449,17 @@ Compiler = subclass CodeType where
         # (1) only accepts positional arguments.
         return @append 'CALL_FUNCTION' argc (0 - argc)
       # (3) accepts varargs and varkwargs.
-      #     To pack positional arguments, we have to transform `f x *: y z: w **: v` into
-      #     `f *: (x,) *: y **: {('z', w)} **: v` and then pack multiple var(kw)args:
-      #     `f *: (!chain (x,) y) **: (!keyword_union {('z', w)} v)`.
+      # To pack positional arguments, we have to transform `f x *: y z: w **: v` into
+      # `f *: (x,) *: y **: {('z', w)} **: v` and then pack multiple var(kw)args:
+      # `f *: (!chain (x,) y) **: (!keyword_union {('z', w)} v)`. Exactly one tuple
+      # is required, so if there are only keyword arguments, we push ().
       if argc or not va =>
-        # Exactly one tuple is required, so if there are only keyword arguments, we push ().
         @append 'BUILD_TUPLE' argc (1 - argc)
+      # FIXME this loses ordering between varargs and normal args, e.g. in `f *: x y`.
       @pushast *: va
-      if len va > not argc =>
-        @append 'BUILD_TUPLE_UNPACK' (len va + bool argc) delta: (not argc - len va)
+      total_va = len va + bool (argc or not va)
+      if total_va > 1 =>
+        @append 'BUILD_TUPLE_UNPACK' total_va delta: (1 - total_va)
       if kw =>
         # Keywords are optional -- argument to CALL_FUNCTION_EX is 0 if there are none.
         @pushast *: kw.values!
@@ -464,7 +472,8 @@ Compiler = subclass CodeType where
       has_kwargs = int (bool vkw or bool kw)
       return @append 'CALL_FUNCTION_EX' has_kwargs delta: (-1 - has_kwargs)
 
-    if PY_VERSION >= 0x030500a4 =>
+    # Only old opcodes: CALL_FUNCTION[_VAR][_KW](argc + 256 * kwargc)
+    if _PY_FEATURE_NATIVE_VARARG_PACK =>
       @pushast *: va
       if len va > 1 =>
         @append 'BUILD_TUPLE_UNPACK' (len va) delta: (1 - len va)
@@ -472,12 +481,15 @@ Compiler = subclass CodeType where
       @pushast *: vkw
       if len vkw > 1 =>
         # Argument is (number of entries) + 256 * (stack offset to function object).
+        # XXX `len va` should be 1 here?.. Don't have CPython 3.5 to check, maybe just
+        #     drop support to be safe.
         k = argc + 2 * len kw + len va + len vkw
         @append 'BUILD_MAP_UNPACK_WITH_CALL' (k * 256 + len vkw) delta: (1 - len vkw)
-
-    if PY_VERSION < 0x030500a4 =>
+    if not _PY_FEATURE_NATIVE_VARARG_PACK =>
       # Too old to have BUILD_*_UNPACK, will have to emulate.
       @pushmap kw
+      # XXX looks suspicious that this is ordered as (f, args, kwargs, va, vkw)
+      #     while the stuff above results in (f, args, va, kwargs, vkw)...
       if len va > 1 => @pushast $ Expression (head va).loc (Name (head va).loc False '!chain') *: va
          otherwise  => @pushast *: va
       if len vkw > 1 => @pushast $ Expression (head vkw).loc (Name (head vkw).loc False '!keyword_union') *: vkw
@@ -648,9 +660,9 @@ Compiler = subclass CodeType where
     @generator => raise errnode.invalid 'cannot use `async`/`await` in a generator'
     @coroutine = True
     @append delta: delta $ if
-      PY_VERSION >= 0x030500a4 => opcode
-      opcode == 'GET_ANEXT'    => 'GET_NEXT'
-      otherwise                => 'GET_ITER'
+      _PY_FEATURE_ASYNC     => opcode
+      opcode == 'GET_ANEXT' => 'GET_NEXT'
+      otherwise             => 'GET_ITER'
     @pushconst None
     @append 'YIELD_FROM'
 
@@ -1084,7 +1096,7 @@ Compiler = subclass CodeType where
 
       f.async => if
         # XXX CPython 3.5: `async with`
-        PY_VERSION >= 0x030500a4 =>
+        _PY_FEATURE_ASYNC =>
           @append 'BEFORE_ASYNC_WITH'  # `delta` accounted for by 'SETUP_WITH'
           @awaittop 'GET_AWAITABLE' f
           opcode = 'SETUP_ASYNC_WITH'
@@ -1098,12 +1110,12 @@ Compiler = subclass CodeType where
         @append 'POP_BLOCK'
         @pushconst None  # this is for END_FINALLY
       if # XXX CPython 3.4: `__exit__` always synchronous.
-         PY_VERSION < 0x030500a4 =>
-           @append 'WITH_CLEANUP' delta: -1
-         otherwise =>
+         _PY_FEATURE_ASYNC =>
            @append 'WITH_CLEANUP_START'
            f.async => @awaittop 'GET_AWAITABLE' f
            @append 'WITH_CLEANUP_FINISH' delta: -1
+         otherwise =>
+           @append 'WITH_CLEANUP' delta: -1
       @append 'END_FINALLY' delta: -5
       @append 'UNPACK_SEQUENCE' 1
 
@@ -1135,43 +1147,43 @@ Compiler = subclass CodeType where
       @pushconst False
       with @jump 'SETUP_LOOP' =>
         @pushast $ snd var.args
-        if f.async and PY_VERSION < 0x03070000 => @awaittop 'GET_AITER' f
-           f.async => @append 'GET_AITER'
+        if f.async and _PY_FEATURE_SYNC_AITER => @append 'GET_AITER'
+           f.async => @awaittop 'GET_AITER' f
            otherwise => @append 'GET_ITER'
 
         restart = @jump 'JUMP_ABSOLUTE' True
         @loops.append $ @jump 'CONTINUE_LOOP' reverse: True
 
-        if # TODO find a way to implement this in 3.4.
-           f.async and PY_VERSION < 0x030500a4 =>
-             raise f.invalid 'no single asynchronous iteration convention in Python < 3.5'
-           f.async =>
-             with @jump 'SETUP_EXCEPT' delta: +7 =>
-               # 1. Await for next item.
-               @awaittop 'GET_ANEXT' f delta: +1
-               @popast $ fst var.args
-               @append 'POP_BLOCK'
-               # 2. No exception occurred; we have our item.
-               @pushast body
-               @append 'POP_TOP' delta: -1
-               restart.set
-             # 3. An exception *did* occur; either iteration has ended,
-             #    or iterator is buggy.
-             @append 'DUP_TOP' delta: +1
-             @pushname 'StopAsyncIteration'
-             @append 'COMPARE_OP' delta: -1 $ opcode.cmp_op.index 'exception match'
-             with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
-               # Rethrow everything other than `StopAsyncIteration`.
-               @append 'END_FINALLY' -3
-             # Ignore `StopAsyncIteration`.
-             @append 'POP_EXCEPT' delta: -4
+        if
+          f.async =>
+            # TODO find a way to implement this in 3.4.
+            _PY_FEATURE_ASYNC or raise f.invalid 'no single asynchronous iteration convention in Python < 3.5'
+            with @jump 'SETUP_EXCEPT' delta: +7 =>
+              # 1. Await for next item.
+              @awaittop 'GET_ANEXT' f delta: +1
+              @popast $ fst var.args
+              @append 'POP_BLOCK'
+              # 2. No exception occurred; we have our item.
+              @pushast body
+              @append 'POP_TOP' delta: -1
+              restart.set
+            # 3. An exception *did* occur; either iteration has ended,
+            #    or iterator is buggy.
+            @append 'DUP_TOP' delta: +1
+            @pushname 'StopAsyncIteration'
+            @append 'COMPARE_OP' delta: -1 $ opcode.cmp_op.index 'exception match'
+            with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
+              # Rethrow everything other than `StopAsyncIteration`.
+              @append 'END_FINALLY' -3
+            # Ignore `StopAsyncIteration`.
+            @append 'POP_EXCEPT' delta: -4
 
-           otherwise =>
-             with @jump 'FOR_ITER' delta: +1 =>
-               @popast $ fst var.args
-               @pushast  body
-               @append   'POP_TOP' delta: -1
-               restart.set
+          otherwise =>
+            with @jump 'FOR_ITER' delta: +1 =>
+              @popast $ fst var.args
+              @pushast  body
+              @append   'POP_TOP' delta: -1
+              restart.set
 
         @loops.pop -1
         @append 'POP_BLOCK' delta: -1
