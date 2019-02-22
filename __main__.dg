@@ -7,7 +7,7 @@ import '/dg'
 import '/dg/core'
 import '/dg/repl'
 
-BUNDLE_TAG = 1520668605
+BUNDLE_TAG = 3521147469
 
 USAGE = '''
 python3 [options] -m dg -h
