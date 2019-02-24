@@ -1,6 +1,6 @@
 ## dg
 
-A (technically) simple language that compiles to CPython bytecode.
+A (technically) simple language that compiles to CPython bytecode. **DISCLAIMER**: this project is just for fun, please don't use it for anything serious, thanks.
 
 ### Requirements
 
