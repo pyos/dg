@@ -999,7 +999,7 @@ Compiler = subclass CodeType where
           @append    'CALL_FUNCTION' 1 delta: -1
           @pushname  '__package__'
           @pushconst qual
-          @append    'CALL_FUNCTION' 4 delta: -4
+          @append    'CALL_FUNCTION' 3 delta: -3
 
         qual or (parsed !! 0 == 0 and len (parsed !! 1) == 1) =>
           @pushconst $ parsed !! 0
@@ -1014,8 +1014,8 @@ Compiler = subclass CodeType where
           if
             file == '*' =>
               pure = True
-              @append 'DUP_TOP'     delta: 1  # have to return *something*,
-              @append 'IMPORT_STAR' delta: 0  # might as well be the module itself.
+              @append 'DUP_TOP'     delta:  1  # have to return *something*,
+              @append 'IMPORT_STAR' delta: -1  # might as well be the module itself.
             otherwise =>
               @append 'IMPORT_FROM' delta:  1 $ @names !! file
               @append 'ROT_TWO'     delta:  0
