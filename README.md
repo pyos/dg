@@ -17,7 +17,8 @@ pip3 install git+https://github.com/pyos/dg
 ```sh
 python -m dg
 python -m dg file.dg argument1 argument2
-python -m dg <<< "print 'Hello, World!'"
+python -m dg <<< 'print "Hello, World!"'
+echo 'print "Hello, World!"' > dg_module.dg; python -c 'import dg, dg_module'
 ```
 
 ### More complex stuff
