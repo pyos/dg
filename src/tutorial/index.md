@@ -92,6 +92,12 @@ $ dg # Good ones do, anyway.
 
 Just put that in your `.bashrc` or something.
 
+##### Q: I don't want to write the whole application in dg, can I only use it for a Python module?
+
+Sure. There's a hook for the Python import system, so as long as you do `import dg` first,
+files with a `.dg` extension are perfectly importable. And if you place this line in `__init__.py`
+of a package, you could then write the rest of it in dg and the users won't notice the difference!
+
 ### Comments
 
 ```dg

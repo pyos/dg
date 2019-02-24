@@ -97,7 +97,9 @@ always work, depending on how compatible SomeVM is with CPython.</p><h5>Q: All t
 $ dg <span class="c1"># Good ones do, anyway.</span>
 &gt;&gt;&gt;
 </pre></div>
-<p>Just put that in your <code>.bashrc</code> or something.</p><h3>Comments</h3><div class="highlight"><pre><span></span><span class="c1"># sh-style. Know what I&#39;m saying?</span>
+<p>Just put that in your <code>.bashrc</code> or something.</p><h5>Q: I don't want to write the whole application in dg, can I only use it for a Python module?</h5><p>Sure. There's a hook for the Python import system, so as long as you do <code>import dg</code> first,
+files with a <code>.dg</code> extension are perfectly importable. And if you place this line in <code>__init__.py</code>
+of a package, you could then write the rest of it in dg and the users won't notice the difference!</p><h3>Comments</h3><div class="highlight"><pre><span></span><span class="c1"># sh-style. Know what I&#39;m saying?</span>
 </pre></div>
 <p>You probably know about docstrings. What you don't know is that they look
 nothing like Python docstrings. Sphinx users may recognise this, though.</p><div class="highlight"><pre><span></span><span class="c1">#: Do something with an argument.</span>
