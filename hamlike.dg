@@ -1,0 +1,112 @@
+import '/re'
+import '/dg/Parser'
+import '/dg/Ending'
+
+
+Unary = subclass object where __init__ = @data ~>
+Text  = subclass Unary  where
+Expr  = subclass Unary  where
+Block = subclass Text   where
+Space = subclass Text   where
+
+
+Binary = subclass object where 
+  # FIXME isn't easily extendable.
+  EXT  = set!  # Extension nodes are auto-indented when following another node.
+  VOID = set!  # Void nodes have no closing tag.
+  __init__ = @kind @data ~>
+    @ext  = @kind in @EXT
+    @void = @kind in @VOID or @ext
+    None
+
+
+Control = subclass Binary where
+  EXT  = set' 'else' 'elif' 'pluralize'
+  VOID = set' 'extends' 'from' 'include' 'set' 'import' 'do' 'break' 'continue'
+
+
+HTMLTag = subclass Binary where
+  # Taken from the HTML5 spec.
+  VOID = set' '!doctype' 'area' 'base' 'br' 'col' 'command' 'embed' 'hr' 'img' |
+         set' 'input' 'keygen' 'link' 'meta' 'param' 'source' 'track' 'wbr'
+
+
+Hamlike = subclass Parser where
+  trim    = False
+  htmltag = staticmethod $ x -> '<'  + x +  '>'
+  control = staticmethod $ x -> '{%' + x + '%}'
+  expr    = staticmethod $ x -> '{{' + x + '}}'
+
+  regex = re.compile r'''(?imx)
+     (?P<newline>  \s*\n(?P<indent>\ *))
+    |(?P<space>    \ +)
+    |(?P<arrow>    ->)
+    |(?P<tag>      %  \ *
+       (?P<tag_name>!?\w+)(?P<tag_class>(?:\.[\w-]+)*)
+       (?P<tag_data>(?:'(?:[^\\]|\\.)*?' | "(?:[^\\]|\\.)*?" | [^-\n]+? | -)*?) \ *(?=$|->)
+     )
+    |(?P<comment>  //  .*)
+    |(?P<control>  -  \ *(?P<control_data>(?P<control_name>\w+)(?:\ .*)?))
+    |(?P<expr>     =  \ *(?P<expr_data>.*))
+    |(?P<escape>   \\ \ *(?P<escape_data>.*))
+    |(?P<text>     [^=%\-].*)
+    |.
+  '''
+
+  token = pos f m ~> if
+    f == 'space'   => next self
+    f == 'arrow'   => @block where @indent.append $ last @indent + 2
+    f == 'newline' => @block where
+      level = len $ m.group 'indent'
+      @append $ Space $ if (@trim => ' ') (otherwise => m.group 0)
+      while @indent and level <= last @indent =>
+        @append $ Ending pos ''
+        @indent.pop!
+      @indent.append level
+    f == 'comment' => Text ''
+    f == 'text'    => Text   $ m.group 'text'
+    f == 'escape'  => Text   $ m.group 'escape_data'
+    f == 'expr'    => Expr   $ m.group 'expr_data'
+    f == 'control' => Control (m.group 'control_name') (m.group 'control_data')
+    f == 'tag'     => HTMLTag (m.group 'tag_name') $
+      x = m.group 'tag_name'
+      y = m.group 'tag_data'
+      z = m.group 'tag_class'
+      x + y + (bool z * ' class="{}"'.format (z.replace '.' ' ').strip!)
+    otherwise      => @error 'invalid input' pos
+
+  block =   ~> Block $ ''.join $ map @node $ takewhile (x -> not $ x :: Ending) self
+  node  = x ~> if
+    x :: Text    => x.data
+    x :: Expr    => @expr x.data
+    x :: Control => @control x.data + @binary x (@control $ 'end' + x.kind)
+    x :: HTMLTag => @htmltag x.data + @binary x (@htmltag $ '/'   + x.kind)
+
+  binary = x end ~> ''.join
+    where if not x.void =>
+      lastblock = 0  # Pointer to the `subnode` after the last non-`Space`.
+      subnodes  = list
+        where for (i, z) in enumerate self => if
+          z :: Space            => yield z
+          z :: Block            => yield z, (lastblock := i + 1)
+          z :: type x and z.ext => yield z, (lastblock := i + 1)
+          otherwise             => yield z, break!
+
+      # The whitespace after `lastblock` does not belong to this node.
+      @extend    $ reversed  $ subnodes !! slice lastblock None
+      yield from $ map @node $ subnodes !! slice None lastblock
+      yield end
+
+
+HamlikeExtension = except
+  err => import '/jinja2/ext/Extension'
+  err :: ImportError => None
+  err is None        => subclass Extension where preprocess = data name *: _ ~> if
+    name.endswith '.hamlike' => parse data name $ subclass Hamlike where
+      trim    = getattr @environment 'trim_hamlike' False
+      control = _ x -> @environment.block_start_string    + x + @environment.block_end_string
+      expr    = _ x -> @environment.variable_start_string + x + @environment.variable_end_string
+    otherwise => data
+
+
+parse = data name: '<string>' cls: Hamlike -> (cls data name).block.data
