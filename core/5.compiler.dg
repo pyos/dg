@@ -538,6 +538,11 @@ Compiler = subclass CodeType where
   #:
   pushfunc' = async body a kw da dkw va vkw patterns ~>
     g = @spawn '<lambda>' a kw va vkw doc: @docstr
+    # Don't need to create a new scope if its boundaries are exactly the same
+    # as the enclosing one's. (This does not match *all* valid invocations of
+    # `where`, just the most common ones: `a where b` and `where b`.)
+    body :: Expression and body.op == 'where' and len body.args <= 2 =>
+      body = Expression body.loc (Name body.op.loc True '\n') *: (reversed body.args)
     g.regsyms body
     g.coroutine = async
     a and a !! 0 == 'self' =>
