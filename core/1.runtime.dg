@@ -57,13 +57,11 @@ BUILTINS.update locals! where
   finally   = True
   otherwise = True
 
-  or = *: [*xs, y] ->
-      for x in xs => x => return x
-      y
-
-  and = *: [*xs, y] ->
-      for x in xs => not x => return x
-      y
+  # These are not defined through `any`/`all` because they mimic
+  # the builtins, which return the first truthy/falsy object itself
+  # rather than the result of its conversion to a bool.
+  or  = *: [*xs, y] -> y where for x in xs => if x => return x
+  and = *: [*xs, y] -> y where for x in xs => if not x => return x
 
   #: Construct a set from distinct elements.
   #:
@@ -106,6 +104,9 @@ BUILTINS.update $ (*: xs -> dict xs)
       ns !! '__module__'   = module
       ns !! '__qualname__' = qualname
 
+  #: Convert a POSIX path into (# of parent package + 1, root module name,
+  #: path to the subobject). Passed as first argument to `!import`. Absolute
+  #: imports have the first value set to 0.
   '!importname', info ->
     parent = 1
     path   = posixpath.normpath info |>.split '/'
@@ -120,11 +121,9 @@ BUILTINS.update $ (*: xs -> dict xs)
 
   '!import', (parent, h, t) package qualified _import: importlib._bootstrap._gcd_import ->
     root = node = _import h package parent
-
     for p in t =>
       node = except err => getattr node p
                     err :: AttributeError => _import p node.__package__ 1
-
     if qualified => root
        otherwise => node
 
@@ -150,43 +149,43 @@ BUILTINS.update locals! where
   #:
   flip = f -> x y -> f y x
 
-  #: Stop an iterator after n items.
+  #: Stop an iterable after n items.
   #:
   #: take :: int (iter a) -> iter a
   #:
   take = n xs -> itertools.islice xs None n
 
-  #: Ignore the first n items of an iterator.
+  #: Ignore the first n items of an iterable.
   #:
   #: drop :: int (iter a) -> iter a
   #:
   drop = n xs -> itertools.islice xs n None
 
-  #: Stop an iterator once an item fails a predicate.
+  #: Stop reading from an iterable once an item fails a predicate.
   #:
   #: takewhile :: (a -> bool) (iter a) -> iter a
   #:
   takewhile = f xs -> itertools.takewhile f xs
 
-  #: Ignore items from an iterator until the first one that fails a predicate.
+  #: Ignore items from an iterable until the first one that fails a predicate.
   #:
   #: dropwhile :: (a -> bool) (iter a) -> iter a
   #:
   dropwhile = f xs -> itertools.dropwhile f xs
 
-  #: Concatenate multiple iterators.
+  #: Concatenate multiple iterables.
   #:
   #: chain :: *(iter a) -> iter a
   #:
   chain = itertools.chain
 
-  #: Attach an item to the beginning of an iterator.
+  #: Attach an item to the beginning of an iterable.
   #:
   #: (:+) :: a (iter a) -> iter a
   #:
   :+ = a b -> itertools.chain (a,) b
 
-  #: Attach an item to the end of an iterator.
+  #: Attach an item to the end of an iterable.
   #:
   #: (+:) :: (iter a) a -> iter a
   #:
@@ -194,41 +193,41 @@ BUILTINS.update locals! where
 
   #: Return the first item of a tuple.
   #:
-  #: fst :: (a...) -> a
+  #: fst :: (a, ...) -> a
   #:
   fst = xs -> next $ iter xs
 
   #: Return the second item of a tuple.
   #:
-  #: snd :: (a...) -> a
+  #: snd :: (a, b, ...) -> b
   #:
   snd = xs -> next $ drop 1 xs
 
-  #: Return the first item of an iterator.
+  #: Return the first item of an iterable.
   #:
   #: head :: (iter a) -> a
   #:
   head = xs -> next $ iter xs
 
-  #: Drop one item from an iterator.
+  #: Drop one item from an iterable.
   #:
-  #: tail :: (iter a) -> a
+  #: tail :: (iter a) -> iter a
   #:
   tail = xs -> list $ drop 1 xs
 
-  #: Drop the last item of a collection.
+  #: Drop the last item from an iterable.
   #:
-  #: init :: (Collection a) -> Collection a
+  #: init :: (Collection a) -> iter a
   #:
   init = !! slice None -1
 
   #: Return the last item of a collection.
   #:
-  #: last :: (Collection a) -> Collection a
+  #: last :: (Collection a) -> a
   #:
   last = !! -1
 
-  #: Consume the whole iterator to ensure its side effects are visible.
+  #: Iterate over an iterable. Mainly useful for side effects.
   #:
   #: exhaust :: (iter a) -> b
   #:
@@ -271,7 +270,8 @@ BUILTINS.update locals! where
   #: scanl1 :: (a a -> a) (iter a) -> iter a
   #:
   scanl1 = f xs -> itertools.accumulate xs f
-  # FIXME should also define foldr(1) and scanr(1). Probably.
+
+  # TODO should also define foldr(1) and scanr(1). Probably.
 
 _NEW_BUILTINS = BUILTINS.copy!
 
@@ -285,6 +285,8 @@ BUILTINS.update $ if
 
 
 add_module_builtins = module -> if
+  # PyPy does not support overriding __builtins__, unfortunately.
+  # This probably makes *-imports even worse than they usually are...
   PY_TAG.startswith 'pypy3-' => module.__dict__.update _NEW_BUILTINS
   otherwise => module.__builtins__ = BUILTINS
 
@@ -306,7 +308,7 @@ sys.meta_path.insert 0 $ subclass importlib.abc.MetaPathFinder where
         spec and spec.loader => yield spec
     None
 
-# When doing `python -m ...`, instead of actually importing `__main__.dg` `runpy`
+# When doing `python -m ...`, instead of actually importing `__main__.dg`, `runpy`
 # attempts to execute it directly in a pre-existing module named `__main__`. Since
 # it wasn't imported through `ModuleLoader`, it lacks the new builtins, which is bad.
 add_module_builtins (sys.modules !! '__main__')
