@@ -874,6 +874,7 @@ Compiler = subclass CodeType where
           yield var
           parent, [h] + t, var
 
+  #: Built-in functions of any arity.
   prefix = dict'
     '',    f xs ~> @pushcall *: xs
     '\n',  f xs ~> @pushlast *: xs
@@ -883,26 +884,21 @@ Compiler = subclass CodeType where
     '~>',  fix 2 2 $ f (args, body)  ~> @pushmethod f.async args body
     '->>', fix 2 2 $ f (args, body)  ~> @pushfunc   True    args body
     '~>>', fix 2 2 $ f (args, body)  ~> @pushmethod True    args body
-    '!!~', fix 2 2 $ f (coll, item)  ~>
-      @pushast   coll
-      @pushast   item
-      @append    'DELETE_SUBSCR' delta: -2
-      @pushconst None
 
     ':',      undefined 'keyword argument to what function?'
     '!',      undefined 'this operator is postfix'
     '~',      undefined 'this operator is prefix'
     '@',      undefined 'this operator is prefix'
     '@@',     undefined 'this operator is prefix'
-    ',',      apply_one 'BUILD_TUPLE'
-    "set'",   apply_one 'BUILD_SET'
-    "list'",  apply_one 'BUILD_LIST'
-    "tuple'", apply_one 'BUILD_TUPLE'
     # XXX Python 3.5 allows packing multiple lists into one.
     #     For example, [a_1, a_2, ..., *xs_1, b_1, ..., *xs_2, ...]
     #     first pushes [a_1, a_2, ...], then xs_1, then [b_1, ...], then xs_2, etc.,
     #     before finally joining them with BUILD_LIST_UNPACK(no_of_lists).
     #     Same with tuples (BUILD_TUPLE_UNPACK) and dicts (BUILD_MAP_UNPACK).
+    ',',      apply_one 'BUILD_TUPLE'
+    "set'",   apply_one 'BUILD_SET'
+    "list'",  apply_one 'BUILD_LIST'
+    "tuple'", apply_one 'BUILD_TUPLE'
     'or',     shortcircuit 'JUMP_IF_TRUE_OR_POP'
     '=>',     shortcircuit 'JUMP_IF_FALSE_OR_POP'
     'and',    shortcircuit 'JUMP_IF_FALSE_OR_POP'
@@ -942,37 +938,50 @@ Compiler = subclass CodeType where
     '>=',     compare
     '>',      compare
 
+    '!!~', fix 2 2 $ f (coll, item)  ~>
+      @pushast   coll
+      @pushast   item
+      @append    'DELETE_SUBSCR' delta: -2
+      @pushconst None
+
+    #: Get an attribute of an object by name.
     '.', fix 2 2 $ f (x, y) ~>
       y :: Name or raise y.invalid 'not an attribute'
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
+    #: Right pipe into attribute getter: `a |>.b` <=> `(a).b`
     '|>.', fix 2 2 $ f (x, y) ~>
       y :: Name or raise y.invalid 'not an attribute'
       @pushast x
       @append  'LOAD_ATTR' $ @names !! y.value
 
+    #: Call and take an attribute of the result: `a!.b` <=> `(a!).b`
     '!.', fix 2 2 $ f (x, y) ~>
       y :: Name or raise y.invalid 'not an attribute'
       @pushcall x
       @append   'LOAD_ATTR' $ @names !! y.value
 
+    #: Delete an attribute of an object by name.
     '.~', fix 2 2 $ f (x, y) ~>
       y :: Name or raise y.invalid 'not an attribute'
       @pushast   x
       @append    'DELETE_ATTR' delta: -1 $ @names !! y.value
       @pushconst None
 
+    #: Haskell-style left pipe: `a $ b` <=> `a (b)`.
     '$', fix 2 2 $ f (g, x) ~>
       x.closed = True
       if g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
          otherwise => @pushcall g x
 
+    #: Left pipe: `a <| b` <=> `a (b)`.
     '<|', fix 2 2 $ f (g, x) ~>
       x.closed = True
       if g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
          otherwise => @pushcall g x
 
+    #: Right pipe: `a |> b` <=> `b (a)`.
     '|>', fix 2 2 $ f (x, g) ~>
       x.closed = True
       if g :: Expression and not g.closed and g.op == '' => @pushcall g.op *: (g.args+:x)
@@ -1038,9 +1047,9 @@ Compiler = subclass CodeType where
       @pushclosure g () {}
       @append 'CALL_FUNCTION' 0
 
-    #: Type creation.
+    #: Duplicate the local namespace and turn it into a class.
     #:
-    #: Duplicate the local namespace and turn it into a type. `where` is useful here.
+    #: Tip: `where` is useful here.
     #:
     'subclass', f args ~>
       @pushname  '!subclass'
@@ -1068,22 +1077,23 @@ Compiler = subclass CodeType where
         raise f.invalid 'this cannot be async'
 
     #: Await until an async operation is complete.
-    #:
-    #: Note that async `for` and `with` do not have to be awaited on.
-    #:
     'await', autocall $ f [x] ~>
       @pushast x
       @awaittop 'GET_AWAITABLE' f
 
+    #: Make the current function terminate early with a value. Only a single
+    #: value (which may be a tuple); `return f args` is `return (f args)`.
     'return', autocall $ f [x] ~>
       @pushast x
       @return_top
 
+    #: Throw an exception. Like `return`, `raise f args` <=> `raise $ f args`.
     'raise', autocall $ apply_one 'RAISE_VARARGS'  # TODO __cause__
 
-    #: Automatic context managing.
+    #: Call __enter__ at the beginning and __exit__ at the end.
     #:
-    #: I think it's called IDisposable or something.
+    #: Using an assignment as the context has special behavior: the assigned
+    #: value is the result of __enter__, not the context itself.
     #:
     'with', fix 2 2 $ f (ctx, body) ~>
       var, ctx = if
@@ -1121,9 +1131,10 @@ Compiler = subclass CodeType where
 
     #: Repeat while a condition is true.
     #:
-    #: I wonder if there's a nicer way to write interlinked jumps.
+    #:   while not done => do something
     #:
     'while', fix 2 2 $ f (cond, body) ~>
+      # I wonder if there's a nicer way to write interlinked jumps.
       @pushconst False
       with @jump 'SETUP_LOOP' =>
         restart = @jump 'JUMP_ABSOLUTE' True
@@ -1218,7 +1229,7 @@ Compiler = subclass CodeType where
       from = head xs == 'from' and not (head xs).closed
       from => xs.pop 0
 
-      @coroutine => raise f.invalid 'cannot use `yield` in a coroutine; use `async` instead'
+      @coroutine => raise f.invalid 'cannot use `yield` in a coroutine; use `await` instead'
       @generator = True
       if len xs == 1 => @pushast $ head xs
          otherwise   => @pushcall *: xs
