@@ -229,9 +229,9 @@ BUILTINS.update locals! where
 
   #: Iterate over an iterable. Mainly useful for side effects.
   #:
-  #: exhaust :: (iter a) -> b
+  #: exhaust :: (iter a) -> NoneType
   #:
-  exhaust = x -> collections.deque x 0
+  exhaust = x -> None where collections.deque x 0
 
   #: Repeatedly apply a function to an element.
   #:
