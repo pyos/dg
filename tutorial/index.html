@@ -392,12 +392,12 @@ but it'd be much better if you'd take a look at these examples instead.</p><div 
 clause is not a condition, but where to store the exception caught.
 If the last condition is <code>finally</code>, the respective action is evaluated regardless of
 circumstances.</p><div class="highlight"><pre><span></span><span class="kr">except</span>
-    <span class="n">err</span> <span class="o">=&gt;</span>
+    <span class="n">grr</span> <span class="o">=&gt;</span>
         <span class="nb">open</span> <span class="s">&#39;/dev/sda&#39;</span> <span class="s">&#39;wb&#39;</span> <span class="o">|&gt;.</span><span class="n">write</span> <span class="o">&lt;|</span> <span class="s">b&#39;</span><span class="se">\x00</span><span class="s">&#39;</span> <span class="o">*</span> <span class="mi">512</span>
-    <span class="n">err</span> <span class="o">::</span> <span class="ne">IOError</span> <span class="ow">and</span> <span class="n">err</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="mi">13</span> <span class="o">=&gt;</span>
+    <span class="n">grr</span> <span class="o">::</span> <span class="ne">IOError</span> <span class="ow">and</span> <span class="n">grr</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="mi">13</span> <span class="o">=&gt;</span>
         <span class="c1"># That&#39;d require root privileges, actually.</span>
         <span class="nb">print</span> <span class="s">&quot;Permission denied&quot;</span>
-    <span class="n">err</span> <span class="ow">is</span> <span class="bp">None</span> <span class="o">=&gt;</span>
+    <span class="n">grr</span> <span class="ow">is</span> <span class="bp">None</span> <span class="o">=&gt;</span>
         <span class="c1"># Oh crap, someone actually runs python as root?</span>
         <span class="nb">print</span> <span class="s">&quot;Use GPT next time, sucker.&quot;</span>
     <span class="kr">finally</span> <span class="o">=&gt;</span>

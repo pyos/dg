@@ -4,10 +4,10 @@ f = x -> raise if
   otherwise => ValueError x
 
 g = x -> except
-  err => f x
-  err :: IndexError => 0
+  grr => f x
+  grr :: IndexError => 0
 
 except
-  err => g 0
-  err :: ValueError => 1
+  grr => g 0
+  grr :: ValueError => 1
 ```

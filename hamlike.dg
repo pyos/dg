@@ -99,9 +99,9 @@ Hamlike = subclass Parser where
 
 
 HamlikeExtension = except
-  err => import '/jinja2/ext/Extension'
-  err :: ImportError => None
-  err is None        => subclass Extension where preprocess = data name *: _ ~> if
+  grr => import '/jinja2/ext/Extension'
+  grr :: ImportError => None
+  grr is None        => subclass Extension where preprocess = data name *: _ ~> if
     name.endswith '.hamlike' => parse data name $ subclass Hamlike where
       trim    = getattr @environment 'trim_hamlike' False
       control = _ x -> @environment.block_start_string    + x + @environment.block_end_string

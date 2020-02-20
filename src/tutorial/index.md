@@ -671,12 +671,12 @@ circumstances.
 
 ```dg
 except
-    err =>
+    grr =>
         open '/dev/sda' 'wb' |>.write <| b'\x00' * 512
-    err :: IOError and err.errno == 13 =>
+    grr :: IOError and grr.errno == 13 =>
         # That'd require root privileges, actually.
         print "Permission denied"
-    err is None =>
+    grr is None =>
         # Oh crap, someone actually runs python as root?
         print "Use GPT next time, sucker."
     finally =>
