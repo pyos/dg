@@ -248,8 +248,8 @@ parse_defn_args = xs -> a, kw, da, dkw, va, vkw, add where
 Compiler = subclass CodeType where
   __init__ = *: args **: kwargs ~>
     @@__init__ *: args **: kwargs
-    #: Jumps to the beginnings of loops we're currently in. Used by `continue`.
-    @loops = list!
+    #: Jumps to the beginnings of loops we're currently in. Used by `continue`. `None` is a sentinel.
+    @loops = list' None
     #: Variables used to store exceptions. These may cause reference loops.
     @unsafe = set!
     #: The docstring to attach to the next function.
@@ -305,10 +305,10 @@ Compiler = subclass CodeType where
        x :: LeftBind   => @pushbind  False x.op *: x.args
        x :: RightBind  => @pushbind  True  x.op *: x.args
        x :: Expression => @pushcall  x.op *: x.args
-       otherwise       => raise TypeError 'invalid node' $ type x
+       otherwise       => raise x.invalid $ 'unknown node type {}'.format type x
     x.doc => @docstr = None
     stacksize + 1 != @currstack =>
-      raise AssertionError $ 'stack delta = {} after {}'.format (@currstack - stacksize) x
+      raise x.invalid $ 'pushed {} items onto the stack'.format $ @currstack - stacksize
 
   #: Push some string-object pairs. Used by keyword arguments and annotations.
   #:
@@ -323,10 +323,17 @@ Compiler = subclass CodeType where
   #: pushlast :: *Node -> a
   #:
   pushlast = *: (*xs, y) ~>
+    @pushnone *: xs
+    @pushast y
+
+  #: Evaluate and discard multiple expressions.
+  #:
+  #: pushnone :: *Node -> a
+  #:
+  pushnone = *: xs ~>
     for x in xs =>
       @pushast x
       @append 'POP_TOP' delta: -1
-    @pushast y
 
   #: Create a function out of a code object.
   #:
@@ -571,81 +578,74 @@ Compiler = subclass CodeType where
     a.insert 0 'self'
     @pushfunc' async body a *: xs
 
-  #: Append a result of try-except-finally to the list on top of the stack.
+  #: Evaluate a block while catching all exceptions, then evaluate another block
+  #: with either the result of the first one or the exception state.
   #:
-  #: Returns the same value as `pushexcept`. `finally` is evaluated in the end,
-  #: but the value it returns is ignored.
+  #:   * `try` must push a single item onto the stack, then `else` must push `None` or terminate;
+  #:   * on entry to `catch`, the stack is either [..., result, None] or [..., traceback, exception, type];
+  #:   * if `catch` calls `rethrow` in this state (must be done once), it is left with [..., result].
+  #:   * otherwise, it must push the new result, then call `ignore`.
   #:
-  #: pushfinally :: Node Node [(Node, Node)] Node -> a
-  #:
-  pushfinally = name try cases finally ~>
-    with @jump 'SETUP_FINALLY' delta: +3 =>
-      @pushexcept name try cases
+  handle_exceptions = try catch else: None opcode: 'SETUP_EXCEPT' ~>
+    # SETUP_EXCEPT has somewhat weird behavior in that popping the block also restores
+    # the contents of the stack, so we can't just keep items below the current level.
+    slot = @varnames !! '<except-result>'
+    stacksize = @currstack
+    # SETUP_EXCEPT pushes 6 elements when jumping to the handler: old and new contents of `sys.exc_info`.
+    with @jump opcode delta: +6 =>
+      try!
+      @append 'STORE_FAST'  slot delta: -1
       @append 'POP_BLOCK'
-      @pushconst None
-    # `break` and `continue` should not be used in `finally`.
-    _loops, @loops = @loops, list!
-    @pushast finally
-    @loops = _loops
-    @append 'POP_TOP'     delta: -1
-    @append 'END_FINALLY' delta: -4
+      @append 'LOAD_FAST'   slot delta: +1
+      @append 'DELETE_FAST' slot
+      if else => else!
+         otherwise => @pushconst None
+    catch
+      ->
+        has_result = @currstack > stacksize + 1
+        has_result => @append 'STORE_FAST'  slot delta: -1  # ugh
+        with @jump 'POP_JUMP_IF_FALSE' => # new type
+          @append 'POP_TOP' # new value
+          @append 'POP_TOP' # new traceback
+          @append 'POP_EXCEPT' # restores old type, value, and traceback
+        has_result => @append 'LOAD_FAST'   slot delta: +1
+        has_result => @append 'DELETE_FAST' slot
+      -> @append 'END_FINALLY' delta: -7 # 6 from the setup, 1 from after_try's None
 
-  #: Append a result of try-except to the list on top of the stack.
+  #: Push the result of `except` onto the stack.
   #:
-  #: If any condition matched, the assigned action is evaluated and its value
-  #: returned. If not, but no exception was raised, the value of `try` is
-  #: returned instead. (`name` is where the exception [or None] is stored.)
+  #: If any condition matched, the assigned action is evaluated and its value returned. If not,
+  #: but no exception was raised, the value of `try` is returned instead. (`name` is where the
+  #: exception [or None] is stored.)
   #:
   #: pushexcept :: Node Node [(Node, Node)] -> a
   #:
-  pushexcept = name try cases ~>
-    main = @jump 'SETUP_EXCEPT' delta: +8  # +what?
-    @pushast try
-    @append 'LIST_APPEND' 1 delta: -1
-    @append 'POP_BLOCK'
-    @pushconst False
-    @pushconst None  # No exception.
-    with @jump 'JUMP_FORWARD' =>
-      main.set  # Exception is on stack, top to bottom: type, value, traceback.
-      @append 'DUP_TOP_TWO' # delta already accounted for by two conditional `pushconst`s
-      @append 'POP_TOP' delta: -1
-      @pushconst True
-      @append 'ROT_TWO'
-    @popast name
-    # Basically an `if`.
-    jumps = list
-      where for (cond, action) in cases =>
-        @pushcond cond
-        with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
-          @pushast action
-          yield $ @jump 'JUMP_FORWARD' delta: -1
-    # Basically an `else`. Rethrow an exception, if it exists.
-    with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
-      @append 'END_FINALLY' delta: -8
-    with @jump 'JUMP_FORWARD' =>
-      for j in jumps => j.set
-      # When an `if` clause matched, override the result value with its result.
-      @append 'ROT_TWO'
-      with @jump 'POP_JUMP_IF_FALSE' =>
-        # XXX I've failed to understand exactly what POP_EXCEPT does and how many items are on the stack.
-        @append 'STORE_FAST' $ @varnames !! '<except-result>'
-        @append 'POP_TOP'  # type, value, traceback; stack size accounted for by END_FINALLY
-        @append 'POP_TOP'
-        @append 'POP_TOP'
-        @append 'POP_EXCEPT'
-        @append 'LOAD_FAST'   $ @varnames !! '<except-result>'
-        @append 'DELETE_FAST' $ @varnames !! '<except-result>'
-        @append 'LIST_APPEND' 1  # stack size accounted for in JUMP_FORWARD
-        done = @jump 'JUMP_FORWARD'
-      @append 'LIST_APPEND' 1
+  pushexcept = name try cases finally ~> if
+    finally => @handle_exceptions (-> @pushexcept name try cases None) opcode: 'SETUP_FINALLY' $ ignore rethrow ->
+      @loops.append None  # `break` and `continue` should not be used in `finally`.
+      @pushnone finally
+      @loops.pop -1
+      rethrow!
+    cases => @handle_exceptions (-> @pushast try) $ ignore rethrow ->
       @append 'DUP_TOP' delta: +1
-      @pushconst -2
-      @append 'DELETE_SUBSCR' delta: -2  # the result of `try`
-    done.set
-    # Exceptions reference tracebacks which reference frames which reference local
-    # variables which an exception is, causing a reference loop that defers all destructors
-    # until the next GC sweep. We're going to break that loop.
-    name :: Name and name.value in @varnames => @unsafe.add (name.value, @varnames !! name.value)
+      with @jump 'JUMP_IF_FALSE_OR_POP' delta: -1 =>
+        @append 'DUP_TOP_TWO' delta: +2
+        @append 'POP_TOP'     delta: -1
+      @popast name
+      jumps = list
+        where for (cond, action) in cases =>
+          @pushcond cond
+          with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
+            @pushast action
+            ignore! # Done *after* `action` so that `sys.exc_info` behaves correctly.
+            yield @jump 'JUMP_FORWARD' delta: -1
+      rethrow!
+      for j in jumps => j.set
+      # Exceptions reference tracebacks which reference frames which reference local
+      # variables which an exception is, causing a reference loop that defers all destructors
+      # until the next GC sweep. We're going to break that loop.
+      name :: Name and name.value in @varnames => @unsafe.add (name.value, @varnames !! name.value)
+    otherwise => @pushast try
 
   #: `await` on the value on top of the stack.
   #:
@@ -1171,8 +1171,7 @@ Compiler = subclass CodeType where
       @loop (-> None) $ restart ->
         @pushast cond
         with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
-          @pushast body
-          @append  'POP_TOP' delta: -1
+          @pushnone body
           restart.set
 
     #: Iterate over something. Something may be asynchronous.
@@ -1180,6 +1179,9 @@ Compiler = subclass CodeType where
     #: Note that `var` may be any valid assignment target, not only a local variable.
     #:
     'for', fix 2 2 $ f (var, body) ~>
+      f.async =>
+        # TODO find a way to implement this in 3.4.
+        _PY_FEATURE_ASYNC or raise f.invalid 'no single asynchronous iteration convention in Python < 3.5'
       # `var` was already syntax-checked in `symbols`.
       @loop
         ->
@@ -1188,29 +1190,21 @@ Compiler = subclass CodeType where
              f.async => @awaittop 'GET_AITER' f
              otherwise => @append 'GET_ITER'
         restart -> if
-          f.async =>
-            # TODO find a way to implement this in 3.4.
-            _PY_FEATURE_ASYNC or raise f.invalid 'no single asynchronous iteration convention in Python < 3.5'
-            # Effectively a try-catch that handles `StopAsyncIteration`.
-            with @jump 'SETUP_EXCEPT' delta: +7 =>
-              @awaittop 'GET_ANEXT' f delta: +1
+          f.async => @handle_exceptions (-> @awaittop 'GET_ANEXT' f delta: +1)
+            ignore rethrow ->
+              @append 'DUP_TOP'     delta: +1
+              @append 'LOAD_GLOBAL' delta: +1 $ @names !! 'StopAsyncIteration'
+              @append 'COMPARE_OP'  delta: -1 $ opcode.cmp_op.index 'exception match'
+              with @jump 'POP_JUMP_IF_TRUE' delta: -1 => rethrow! # always terminates
+              ignore! # Do not restart the loop, obviously.
+            ->
               @popast $ fst var.args
-              @append 'POP_BLOCK' # Do not handle `StopAsyncIteration` in `body`.
-              @pushast body
-              @append 'POP_TOP' delta: -1
+              @pushnone body
               restart.set
-            # Check exception type; if not `StopAsyncIteration`, rethrow.
-            @append 'DUP_TOP' delta: +1
-            @pushname 'StopAsyncIteration'
-            @append 'COMPARE_OP' delta: -1 $ opcode.cmp_op.index 'exception match'
-            with @jump 'POP_JUMP_IF_TRUE' delta: -1 => @append 'END_FINALLY' -3
-            @append 'POP_EXCEPT' delta: -4
-
           otherwise =>
             with @jump 'FOR_ITER' delta: +1 =>
               @popast $ fst var.args
-              @pushast  body
-              @append   'POP_TOP' delta: -1
+              @pushnone body
               restart.set
             @currstack -= 1 # `FOR_ITER` pops the iterator when it hits the end
 
@@ -1219,7 +1213,7 @@ Compiler = subclass CodeType where
     #:   xs_is_empty = for x in xs => break!
     #:
     'break', fix 0 0 $ f _ ~> if
-      @loops =>
+      last @loops =>
         (stack_on_exit, _, _, jmp_tail) = last @loops
         jmp_tail.append $ @jump 'JUMP_FORWARD' delta: (@unwind stack_on_exit + 1)
       otherwise => raise f.invalid 'no loop to `break` out of'
@@ -1229,7 +1223,7 @@ Compiler = subclass CodeType where
     #:   for x in xs => continue!
     #:
     'continue', fix 0 0 $ f _ ~> if
-      @loops    =>
+      last @loops =>
         (_, stack_on_body, jmp_head, _) = last @loops
         jmp_head.set_copy delta: (@unwind stack_on_body + 1)
       otherwise => raise f.invalid 'no loop to `continue`'
@@ -1280,10 +1274,8 @@ Compiler = subclass CodeType where
     #:     finally => something  # will be executed even if exception is going to be rethrown
     #:
     'except', fix 1 inf $ pair_args $ f [(name, try), *xs] ~>
-      @append 'BUILD_LIST' 0 delta: +1
-      if xs and head (last xs) == 'finally' => @pushfinally name try xs $ snd $ xs.pop -1
-         otherwise                          => @pushexcept  name try xs
-      @append 'UNPACK_SEQUENCE' 1
+      if xs and head (last xs) == 'finally' => @pushexcept name try xs $ snd $ xs.pop -1
+         otherwise                          => @pushexcept name try xs None
 
   #: Compiler-defined functions that can be wrapped in an `async`.
   #: Attempting to call `async` with anything else is a syntax error.
