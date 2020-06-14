@@ -267,7 +267,7 @@ Compiler = subclass CodeType where
       # Break reference loops caused by variables which may reference this frame.
       @pushconst None
       @append 'STORE_FAST' i delta: -1
-    @append 'RETURN_VALUE' delta: -1
+    @append 'RETURN_VALUE'
 
   #: Push the results of evaluating some expressions onto the stack.
   #:
@@ -298,6 +298,7 @@ Compiler = subclass CodeType where
             @lnotab += lineoff // 256 * b'\x00\xff' +
                        byteoff // 256 * b'\xff\x00' + bytes (byteoff % 256, lineoff % 256)
 
+    stacksize = @currstack
     x.doc => @docstr = x.doc
     if x :: Name       => @pushname  x.value
        x :: Constant   => @pushconst x.value
@@ -306,6 +307,8 @@ Compiler = subclass CodeType where
        x :: Expression => @pushcall  x.op *: x.args
        otherwise       => raise TypeError 'invalid node' $ type x
     x.doc => @docstr = None
+    stacksize + 1 != @currstack =>
+      raise AssertionError $ 'stack delta = {} after {}'.format (@currstack - stacksize) x
 
   #: Push some string-object pairs. Used by keyword arguments and annotations.
   #:
