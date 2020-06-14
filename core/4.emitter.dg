@@ -178,12 +178,14 @@ CodeType = subclass object where
   #:
   #: optimize :: Maybe (bytes list tuple bytes -> bytes)
   #:
-  optimize = if PY_TAG.startswith 'cpython-' => fn where
-    import '/ctypes/pythonapi'
-    import '/ctypes/py_object'
-    fn = pythonapi.PyCode_Optimize
-    fn.restype  = py_object
-    fn.argtypes = py_object, py_object, py_object, py_object
+  optimize = except
+    err => fn where
+      import '/ctypes/pythonapi'
+      import '/ctypes/py_object'
+      fn = pythonapi.PyCode_Optimize
+      fn.restype  = py_object
+      fn.argtypes = py_object, py_object, py_object, py_object
+    err :: Exception => None
 
   #: Calculated value of CodeType.co_flags.
   #:
