@@ -55,8 +55,8 @@ Jump = subclass object where
     @set
     False
 
-  set_copy = ~>
-    j = Jump @code @reverse @op @delta
+  set_copy = delta ~>
+    j = Jump @code @reverse @op delta
     j.start = @start
     j.deps = (type j.deps) j.deps
     j.set

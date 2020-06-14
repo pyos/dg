@@ -796,6 +796,32 @@ Compiler = subclass CodeType where
     @append 'DUP_TOP' delta: +1
     @popast name
 
+  #: Generate a loop that can use `break` and `continue`. The return value is a boolean
+  #: that is true if no `break` was hit.
+  #:
+  #: loop :: (-> a) (Jump -> b) -> c
+  #:
+  loop = setup body ~>
+    stack_on_entry = @currstack
+    @pushconst False
+    setup!
+    stack_on_body = @currstack
+    jmp_head = @jump 'JUMP_ABSOLUTE' True
+    jmp_tail = []
+    @loops.append (stack_on_entry + 1, stack_on_body, jmp_head, jmp_tail)
+    body jmp_head
+    @loops.pop -1
+    @unwind stack_on_entry
+    @pushconst True
+    for jmp in jmp_tail => jmp.set
+
+  #: Remove items from the stack until the given size is reached, return the amount popped.
+  #:
+  #: unwind :: int -> int
+  #:
+  unwind = size ~> (max @currstack size - size) where
+    while @currstack > size => @append 'POP_TOP' delta: -1
+
   #: Given an AST, find out which local variables it creates.
   #:
   #: symbols :: Node... -> iter str
@@ -1142,20 +1168,12 @@ Compiler = subclass CodeType where
     #:   while not done => do something
     #:
     'while', fix 2 2 $ f (cond, body) ~>
-      # I wonder if there's a nicer way to write interlinked jumps.
-      @pushconst False
-      with @jump 'SETUP_LOOP' =>
-        restart = @jump 'JUMP_ABSOLUTE' True
-        @loops.append $ @jump 'CONTINUE_LOOP' reverse: True
+      @loop (-> None) $ restart ->
         @pushast cond
         with @jump 'POP_JUMP_IF_FALSE' delta: -1 =>
           @pushast body
           @append  'POP_TOP' delta: -1
           restart.set
-        @loops.pop -1
-        @append 'POP_BLOCK'
-        @append 'POP_TOP'   delta: -1
-        @pushconst True
 
     #: Iterate over something. Something may be asynchronous.
     #:
@@ -1163,38 +1181,29 @@ Compiler = subclass CodeType where
     #:
     'for', fix 2 2 $ f (var, body) ~>
       # `var` was already syntax-checked in `symbols`.
-      @pushconst False
-      with @jump 'SETUP_LOOP' =>
-        @pushast $ snd var.args
-        if f.async and _PY_FEATURE_SYNC_AITER => @append 'GET_AITER'
-           f.async => @awaittop 'GET_AITER' f
-           otherwise => @append 'GET_ITER'
-
-        restart = @jump 'JUMP_ABSOLUTE' True
-        @loops.append $ @jump 'CONTINUE_LOOP' reverse: True
-
-        if
+      @loop
+        ->
+          @pushast $ snd var.args
+          if f.async and _PY_FEATURE_SYNC_AITER => @append 'GET_AITER'
+             f.async => @awaittop 'GET_AITER' f
+             otherwise => @append 'GET_ITER'
+        restart -> if
           f.async =>
             # TODO find a way to implement this in 3.4.
             _PY_FEATURE_ASYNC or raise f.invalid 'no single asynchronous iteration convention in Python < 3.5'
+            # Effectively a try-catch that handles `StopAsyncIteration`.
             with @jump 'SETUP_EXCEPT' delta: +7 =>
-              # 1. Await for next item.
               @awaittop 'GET_ANEXT' f delta: +1
               @popast $ fst var.args
-              @append 'POP_BLOCK'
-              # 2. No exception occurred; we have our item.
+              @append 'POP_BLOCK' # Do not handle `StopAsyncIteration` in `body`.
               @pushast body
               @append 'POP_TOP' delta: -1
               restart.set
-            # 3. An exception *did* occur; either iteration has ended,
-            #    or iterator is buggy.
+            # Check exception type; if not `StopAsyncIteration`, rethrow.
             @append 'DUP_TOP' delta: +1
             @pushname 'StopAsyncIteration'
             @append 'COMPARE_OP' delta: -1 $ opcode.cmp_op.index 'exception match'
-            with @jump 'POP_JUMP_IF_TRUE' delta: -1 =>
-              # Rethrow everything other than `StopAsyncIteration`.
-              @append 'END_FINALLY' -3
-            # Ignore `StopAsyncIteration`.
+            with @jump 'POP_JUMP_IF_TRUE' delta: -1 => @append 'END_FINALLY' -3
             @append 'POP_EXCEPT' delta: -4
 
           otherwise =>
@@ -1203,18 +1212,16 @@ Compiler = subclass CodeType where
               @pushast  body
               @append   'POP_TOP' delta: -1
               restart.set
-
-        @loops.pop -1
-        @append 'POP_BLOCK' delta: -1
-        @append 'POP_TOP'   delta: -1
-        @pushconst True
+            @currstack -= 1 # `FOR_ITER` pops the iterator when it hits the end
 
     #: Stop the loop immediately. The loop will return `False`.
     #:
     #:   xs_is_empty = for x in xs => break!
     #:
     'break', fix 0 0 $ f _ ~> if
-      @loops    => @append 'BREAK_LOOP'    delta: +1
+      @loops =>
+        (stack_on_exit, _, _, jmp_tail) = last @loops
+        jmp_tail.append $ @jump 'JUMP_FORWARD' delta: (@unwind stack_on_exit + 1)
       otherwise => raise f.invalid 'no loop to `break` out of'
 
     #: Continue on to the next iteration.
@@ -1222,7 +1229,9 @@ Compiler = subclass CodeType where
     #:   for x in xs => continue!
     #:
     'continue', fix 0 0 $ f _ ~> if
-      @loops    => (last @loops).set_copy
+      @loops    =>
+        (_, stack_on_body, jmp_head, _) = last @loops
+        jmp_head.set_copy delta: (@unwind stack_on_body + 1)
       otherwise => raise f.invalid 'no loop to `continue`'
 
     #: Yield control to the caller. Enforces a generator context.
